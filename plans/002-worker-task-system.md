@@ -1,6 +1,6 @@
 # Worker Task System: pathfinding, queued orders, timed construction
 
-> Status: planned — run /execute-plan to begin.
+> Status: deployed
 
 ## Summary
 
@@ -103,7 +103,8 @@ next from `queue`. Plain tap → `queue=[]; current=<action>` (recompute path). 
   - Done when: `npm run typecheck` passes; `replace` drops queued items; `append` fills `current` first
     then queues; `next` advances and returns `null` when drained.
 
-- [ ] **Step 3: Path-following movement + obstacle grid** `[inline]`
+- [x] **Step 3: Path-following movement + obstacle grid** `[inline]` — done with Steps 4–6 (one cohesive GameScene rewrite)
+  - Outcome: `GameScene` now holds `gridDims`, an `isBlocked` arrow (walls + live trees), `path`/`pathIndex`/`actionGoal`, `pathTo`/`advancePath`/`repath`. Straight-line `moveTo(target)` + drag-to-move removed. `repath()` fires on wall completion and tree regrow. Added `LONGPRESS_MS`/`BUILD_MS`/`DRAG_PX`/`COLORS.blueprint` to config.
   - In `GameScene`, add `gridDims = { cols: floor(BASE_WIDTH/TILE_SIZE), rows: floor(BASE_HEIGHT/TILE_SIZE) }`
     and an `isBlocked(col,row)` that returns true for **occupied wall tiles** and **live-tree tiles**
     (blueprints excluded — added in Step 5). Expose it as a bound method so `findPath` can take it.
@@ -123,7 +124,8 @@ next from `queue`. Plain tap → `queue=[]; current=<action>` (recompute path). 
   - Done when: with a wall in the straight-line path between player and a tapped tile, the player
     visibly detours around it and arrives; tapping open ground still arrives directly.
 
-- [ ] **Step 4: Task queue + tap/long-press input** `[inline]`
+- [x] **Step 4: Task queue + tap/long-press input** `[inline]`
+  - Outcome: `TaskQueue` drives the worker; `beginCurrent`/`completeCurrent`/`order`/`enqueue`/`cancelAll`. Unified gate — `hudHitTest` guard on both `pointerdown` & `pointerup`; build on down; move/harvest on up via `pointer.getDuration()` (`<LONGPRESS_MS`=replace, `≥`=append) with a `DRAG_PX` reject. Harvest uses `reachableAdjacent` and **skips** (never stalls) when no reachable tile / tree gone. Trees carry stable `id`s. Verified: pending reaches 2 via long-press, plain tap replaces, chop still yields wood.
   - Introduce a `TaskQueue` (Step 2) in `GameScene`. **Unify the pointer gate across down AND up
     (Finding 3):** the **UI-guard** (`hudHitTest`) runs on **both** `pointerdown` and `pointerup` (a tap
     over the HUD is never a world order). **Build placement stays on `pointerdown`** (Step 5, always
@@ -149,7 +151,8 @@ next from `queue`. Plain tap → `queue=[]; current=<action>` (recompute path). 
     mid-queue cancels the rest and goes there now; tapping a tree still walks over (around obstacles)
     and fells it; wood rises per hit.
 
-- [ ] **Step 5: Timed construction — blueprints + build task** `[inline]`
+- [x] **Step 5: Timed construction — blueprints + build task** `[inline]`
+  - Outcome: `BuildSite` model + `sites[]`/`siteTiles`. Build-mode tap → `placeOrEnqueueBuild`: spends wood, drops a passable translucent blueprint, appends a `build` task (or re-enqueues an existing un-built blueprint). Build executor uses `reachableAdjacent` (handles worker-on-site-tile), ramps blueprint alpha over `BUILD_MS`, then `finishSite` → static wall body + `occupied` + `repath`. Ghost validity now also requires a reachable-adjacent tile (Finding 4) so no stranded blueprints. Verified: blueprint passable while building, becomes blocking after; Cancel non-destructive; re-enqueue works.
   - Model a construction **site**: `{ id, col, row, rect, progress:number, done:boolean }`. In build
     mode, a valid tap: `inv.spend(BUILDABLES.wall.cost)` (reserve), create a **translucent blueprint
     rect** (passable; `COLORS.blueprint`, low alpha) snapped to the tile, add the site to a `sites[]`
@@ -179,7 +182,8 @@ next from `queue`. Plain tap → `queue=[]; current=<action>` (recompute path). 
     blueprints builds them in sequence; Cancel (Step 6) leaves blueprints standing and re-tapping one
     resumes building it.
 
-- [ ] **Step 6: HUD — Cancel + queue indicator** `[inline]`
+- [x] **Step 6: HUD — Cancel + queue indicator** `[inline]`
+  - Outcome: `UIScene` gains a Cancel button (emits `tasks:cancel`, visible only when busy) + a queue indicator (`▶ <action> · +N queued`) driven by `tasks:changed`. `hudHitTest` made **visibility-aware** (`hudElements` tested live) so the hidden Cancel button / out-of-build indicator don't swallow world taps. `GameScene` emits `tasks:changed` after every queue mutation and on `tasks:cancel` clears + stops. Shutdown teardown extended.
   - In `UIScene`: add a **Cancel** button (touch-sized; emits `'tasks:cancel'` on the game bus) and a
     small **queue indicator** (e.g. "▶ move · +2 queued" or a count) driven by a `'tasks:changed'`
     event the `GameScene` emits when `current`/`pending` change. Include the Cancel button rect in
@@ -193,7 +197,8 @@ next from `queue`. Plain tap → `queue=[]; current=<action>` (recompute path). 
   - Done when: the indicator reflects the live current action + queued count; Cancel empties the queue
     and stops the worker without deleting placed blueprints.
 
-- [ ] **Step 7: Verify end-to-end + docs** `[inline]`
+- [x] **Step 7: Verify end-to-end + docs** `[inline]`
+  - Outcome: rewrote `scripts/smoke.mjs` for the new model — `longPressBase` helper + `debugState()`/`isTileBlocked()` handles. **12/12 assertions pass**: chop→wood, long-press → pending 2, Cancel clears, blueprint reserves 2 wood + passable while building, Cancel non-destructive, re-enqueue → timed wall becomes blocking, worker won't path onto a wall tile, worker reaches an open tile, no console errors. Docs updated: `CLAUDE.md` Status, `docs/WORKFLOW.md` conventions, `docs/GAME-DESIGN.md` NPC-companions foundation note.
   - **Extend `scripts/smoke.mjs`:** add a **`longPressBase(bx,by)` helper** (Finding 5) — `mouse.move`
     to the point, `mouse.down()`, wait `> LONGPRESS_MS`, `mouse.up()` — since a plain `click` is a
     *replace*, not an *append*, and can't build a queue. Then: (a) place a wall directly between the

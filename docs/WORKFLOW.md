@@ -81,6 +81,13 @@ _To be firmed up as we go. Starting position:_
   through one intent gate.
 - **Tear down cross-scene listeners** in `this.events.once(SHUTDOWN, …)` — `game.events`/`registry`
   outlive a scene, so listeners double-register on restart otherwise.
+- **Worker task system** (plan 002): units move via A* (`src/systems/pathfind.ts` — `findPath` returns
+  `[]`=already-there / `null`=unreachable / a tile list; `reachableAdjacent` finds a stand-tile next to
+  a target). Orders are a `TaskQueue` of `Action`s (`src/systems/tasks.ts`); **tap = act-now (replace),
+  long-press ≥`LONGPRESS_MS` = append**, resolved on `pointerup` with a drag reject. Building is a timed
+  on-site job: place a passable *blueprint* (wood reserved on placement), worker paths to a reachable
+  adjacent tile and works `BUILD_MS`, then it becomes a blocking wall. `hudHitTest` is visibility-aware
+  so hidden buttons don't swallow world taps. Pathing obstacles = completed walls + live trees.
 - **Pixel art:** integer scaling, `pixelArt: true`, nearest-neighbour; design at a fixed low base
   resolution and scale up.
 - Keep functions small; name for the domain (resource, node, recipe, stockpile), not the framework.

@@ -30,12 +30,15 @@ See [docs/WORKFLOW.md](docs/WORKFLOW.md) for how these are wired in and the day-
 
 ## Status
 
-Core-loop slice landed (plan 001): **tap a tree → walk over → multi-hit chop → wood into a character
-`Inventory`**; **Build mode → tap a tile → place a wall** (spends wood, blocks movement); trees turn to
-stumps and regrow. Data-driven items/nodes/buildables (`src/data/`), separate systems (`src/systems/`),
-and a decoupled `UIScene` HUD over the world scene. On the **Phaser 3 + TypeScript + Vite** mobile-first
-scaffold (Boot→Preload→MainMenu→Game + UI overlay), GitHub Pages auto-deploy. Verified via headless
-smoke (`npm run smoke`). Next: survival systems (day/night, hunger) — see
+Core loop + **worker task system** landed (plans 001–002): tap a tree → the worker **pathfinds** to it
+(A*, routing around walls + trees) → multi-hit chop → wood into a character `Inventory`. Orders **queue**
+(tap = act now / clear; **long-press = append**); **Build** places a passable *blueprint* and the worker
+walks over and **builds it over time** into a solid, blocking wall. **Cancel** clears the queue
+(blueprints survive). Data-driven items/nodes/buildables (`src/data/`), pure systems (`src/systems/`:
+`pathfind`, `tasks`, `grid`, `Inventory`), decoupled `UIScene` HUD. On the **Phaser 3 + TypeScript +
+Vite** mobile-first scaffold (Boot→Preload→MainMenu→Game + UI overlay), GitHub Pages auto-deploy.
+Verified via headless smoke (`npm run smoke`). The worker/task/pathfinding core is the seam the NPC
+companions plug into. Next: survival systems (day/night, hunger) — see
 [docs/GAME-DESIGN.md](docs/GAME-DESIGN.md) MVP slice; [docs/DECISIONS.md](docs/DECISIONS.md) for settled vs open.
 
 ## The game in one line

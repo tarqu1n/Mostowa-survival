@@ -1,14 +1,17 @@
 import Phaser from 'phaser';
-import { BASE_WIDTH, BASE_HEIGHT, TILE_SIZE, INTERACT_RANGE, CHOP_INTERVAL_MS, COLORS } from '../config';
+import { BASE_WIDTH, BASE_HEIGHT, TILE_SIZE, CHOP_INTERVAL_MS, LONGPRESS_MS, BUILD_MS, DRAG_PX, COLORS } from '../config';
 import { NODES } from '../data/nodes';
 import { BUILDABLES } from '../data/buildables';
 import type { ResourceNodeDef } from '../data/types';
 import { Inventory } from '../systems/Inventory';
 import { worldToTile, tileToWorldCenter, snapToTileCenter, tileKey } from '../systems/grid';
+import { findPath, reachableAdjacent, type Cell } from '../systems/pathfind';
+import { TaskQueue, type Action } from '../systems/tasks';
 import type { UIScene } from './UIScene';
 
-/** A live/stump resource node instance in the world (placeholder rectangle + its data + state). */
+/** A live/stump resource node instance in the world (placeholder rect + its data + state). */
 interface TreeNode {
+  id: string;
   rect: Phaser.GameObjects.Rectangle;
   def: ResourceNodeDef;
   hp: number;
@@ -17,30 +20,49 @@ interface TreeNode {
   row: number;
 }
 
+/** A placed-but-not-yet-built wall: a passable blueprint the worker builds on site over time. */
+interface BuildSite {
+  id: string;
+  col: number;
+  row: number;
+  rect: Phaser.GameObjects.Rectangle;
+  progress: number;
+  done: boolean;
+}
+
 /**
- * World scene: the core loop slice — tap a tree to walk over and chop it for wood, tap the ground
- * to move, and (in build mode) tap a tile to place a wall that blocks movement.
+ * World scene: the worker task system. The player unit pathfinds around obstacles (walls + live
+ * trees), works through a queue of orders (tap = act now / clear; long-press = append), and builds
+ * walls as timed on-site jobs (place a passable blueprint → worker walks over → works → solid wall).
  *
- * All pointer handling flows through ONE intent gate ({@link onPointerDown}/{@link onPointerMove})
- * so build-mode taps, chop taps, and moves never leak into each other, and HUD taps (the Build
- * button) are ignored here — the UIScene owns those.
+ * All pointer input flows through one gate: the HUD hit-region is ignored on BOTH down and up; build
+ * placement resolves on `pointerdown`; move/harvest orders resolve on `pointerup` (long-press = queue).
  */
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Rectangle & { body: Phaser.Physics.Arcade.Body };
-  private target = new Phaser.Math.Vector2();
   private readonly speed = 90;
 
   private inv!: Inventory;
   private trees: TreeNode[] = [];
-  private pendingChop: TreeNode | null = null;
+
+  private readonly queue = new TaskQueue();
+  private path: Cell[] = [];
+  private pathIndex = 0;
+  private actionGoal: Cell | null = null; // the tile we're currently pathing to (for re-pathing)
   private chopElapsed = 0;
 
   private buildMode = false;
   private walls!: Phaser.Physics.Arcade.StaticGroup;
   private occupied = new Set<string>();
+  private sites: BuildSite[] = [];
+  private siteTiles = new Set<string>();
   private ghost!: Phaser.GameObjects.Rectangle;
+  private nextSiteId = 0;
 
   private ui!: UIScene;
+  private gridDims = { cols: Math.floor(BASE_WIDTH / TILE_SIZE), rows: Math.floor(BASE_HEIGHT / TILE_SIZE) };
+  private downWorld = new Phaser.Math.Vector2();
+  private downOnUI = false;
 
   constructor() {
     super('Game');
@@ -55,132 +77,259 @@ export class GameScene extends Phaser.Scene {
 
     this.spawnTrees();
 
-    // Placeholder player: a lantern-lit square you nudge around with taps.
+    // Placeholder player: a lantern-lit square you order around with taps.
     const p = this.add.rectangle(BASE_WIDTH / 2, BASE_HEIGHT / 2, TILE_SIZE - 2, TILE_SIZE - 2, COLORS.player);
     this.physics.add.existing(p);
     this.player = p as typeof this.player;
+    this.player.setDepth(10);
     this.player.body.setCollideWorldBounds(true);
     this.physics.world.setBounds(0, 0, BASE_WIDTH, BASE_HEIGHT);
-    this.target.set(this.player.x, this.player.y);
 
-    // Walls: static bodies the player collides with.
+    // Walls: static bodies the player collides with (a backstop; pathing already avoids them).
     this.walls = this.physics.add.staticGroup();
     this.physics.add.collider(this.player, this.walls);
 
     // Build ghost — hidden until build mode; recoloured valid/invalid as it tracks the tapped tile.
-    this.ghost = this.add
-      .rectangle(0, 0, TILE_SIZE, TILE_SIZE, COLORS.ghostValid, 0.5)
-      .setVisible(false)
-      .setDepth(5);
+    this.ghost = this.add.rectangle(0, 0, TILE_SIZE, TILE_SIZE, COLORS.ghostValid, 0.5).setVisible(false).setDepth(6);
 
     // HUD overlay runs alongside this scene; grab its instance for the UI-tap guard.
     this.scene.launch('UI');
     this.ui = this.scene.get('UI') as UIScene;
 
-    // Single intent gate for all pointer input (Finding 1 & 2).
+    // One unified pointer gate (down + up).
     this.input.on('pointerdown', this.onPointerDown, this);
     this.input.on('pointermove', this.onPointerMove, this);
+    this.input.on('pointerup', this.onPointerUp, this);
 
     this.game.events.on('build:toggle', this.toggleBuild, this);
+    this.game.events.on('tasks:cancel', this.cancelAll, this);
 
-    // Teardown bus listeners so a scene restart doesn't double-register.
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.game.events.off('build:toggle', this.toggleBuild, this);
+      this.game.events.off('tasks:cancel', this.cancelAll, this);
     });
 
     this.buildHud();
+    this.emitTasks();
   }
 
   override update(_time: number, delta: number): void {
-    // Chop routine takes priority: approach the target tree, then hit it on an interval.
-    if (this.pendingChop) {
-      const tree = this.pendingChop;
-      if (!tree.alive) {
-        this.pendingChop = null;
-      } else {
-        const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, tree.rect.x, tree.rect.y);
-        if (dist <= INTERACT_RANGE) {
-          this.player.body.setVelocity(0, 0);
-          this.chopElapsed += delta;
-          if (this.chopElapsed >= CHOP_INTERVAL_MS) {
-            this.chopElapsed = 0;
-            this.chop(tree);
-          }
-        } else {
-          this.chopElapsed = 0;
-          this.physics.moveTo(this.player, tree.rect.x, tree.rect.y, this.speed);
-        }
-        return;
-      }
+    const action = this.queue.current;
+    if (!action) {
+      this.player.body.setVelocity(0, 0);
+      return;
     }
-
-    // Plain tap-to-move.
-    const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.target.x, this.target.y);
-    if (dist > 2) {
-      this.physics.moveTo(this.player, this.target.x, this.target.y, this.speed);
-    } else {
-      this.player.body.reset(this.target.x, this.target.y);
+    switch (action.kind) {
+      case 'move':
+        if (this.advancePath()) this.completeCurrent();
+        break;
+      case 'harvest':
+        this.runHarvest(action, delta);
+        break;
+      case 'build':
+        this.runBuild(action, delta);
+        break;
     }
   }
 
-  // --- Input routing -------------------------------------------------------
+  // --- Obstacle grid + path following -------------------------------------
+
+  /** Walkability for the pathfinder: completed walls and live trees block; blueprints are passable. */
+  private readonly isBlocked = (col: number, row: number): boolean =>
+    this.occupied.has(tileKey(col, row)) || this.trees.some((t) => t.alive && t.col === col && t.row === row);
+
+  private playerTile(): Cell {
+    return { col: worldToTile(this.player.x), row: worldToTile(this.player.y) };
+  }
+
+  /** Path the worker toward `goal`; returns false if unreachable (`null` path). `[]` = already there. */
+  private pathTo(goal: Cell): boolean {
+    const path = findPath(this.playerTile(), goal, this.isBlocked, this.gridDims);
+    if (path === null) return false;
+    this.path = path;
+    this.pathIndex = 0;
+    this.actionGoal = goal;
+    return true;
+  }
+
+  /** Step along the current path; returns true once the worker has reached the final waypoint. */
+  private advancePath(): boolean {
+    if (this.pathIndex >= this.path.length) {
+      this.player.body.setVelocity(0, 0);
+      return true;
+    }
+    const wp = this.path[this.pathIndex];
+    const wx = tileToWorldCenter(wp.col);
+    const wy = tileToWorldCenter(wp.row);
+    if (Phaser.Math.Distance.Between(this.player.x, this.player.y, wx, wy) <= 2) {
+      this.player.body.reset(wx, wy);
+      this.pathIndex += 1;
+      return this.pathIndex >= this.path.length;
+    }
+    this.physics.moveTo(this.player, wx, wy, this.speed);
+    return false;
+  }
+
+  /** Recompute the path to the active goal after the world changed (wall built / tree regrew). */
+  private repath(): void {
+    if (!this.actionGoal || !this.queue.current) return;
+    const path = findPath(this.playerTile(), this.actionGoal, this.isBlocked, this.gridDims);
+    if (path === null) {
+      this.completeCurrent(); // goal got walled off — drop it, don't stall
+      return;
+    }
+    this.path = path;
+    this.pathIndex = 0;
+  }
+
+  // --- Task queue lifecycle ------------------------------------------------
+
+  /** Begin executing whatever is `current` — compute its path / stand tile, or skip if impossible. */
+  private beginCurrent(): void {
+    this.chopElapsed = 0;
+    this.path = [];
+    this.pathIndex = 0;
+    this.actionGoal = null;
+    const a = this.queue.current;
+    if (!a) {
+      this.player.body.setVelocity(0, 0);
+      return;
+    }
+    if (a.kind === 'move') {
+      if (!this.pathTo({ col: a.col, row: a.row })) this.completeCurrent();
+      return;
+    }
+    if (a.kind === 'harvest') {
+      const tree = this.treeById(a.treeId);
+      if (!tree || !tree.alive) return this.completeCurrent();
+      const stand = reachableAdjacent(this.playerTile(), { col: tree.col, row: tree.row }, this.isBlocked, this.gridDims);
+      if (!stand || !this.pathTo(stand)) this.completeCurrent();
+      return;
+    }
+    // build
+    const site = this.siteById(a.siteId);
+    if (!site || site.done) return this.completeCurrent();
+    const stand = reachableAdjacent(this.playerTile(), { col: site.col, row: site.row }, this.isBlocked, this.gridDims);
+    if (!stand || !this.pathTo(stand)) this.completeCurrent();
+  }
+
+  /** Finish the current action and advance to the next (or go idle), emitting a queue update. */
+  private completeCurrent(): void {
+    const next = this.queue.next();
+    if (next) this.beginCurrent();
+    else this.player.body.setVelocity(0, 0);
+    this.emitTasks();
+  }
+
+  /** Replace the queue with a single act-now order. */
+  private order(a: Action): void {
+    this.queue.replace(a);
+    this.beginCurrent();
+    this.emitTasks();
+  }
+
+  /** Append an order; if the worker was idle, start it. */
+  private enqueue(a: Action): void {
+    const wasIdle = this.queue.current === null;
+    this.queue.append(a);
+    if (wasIdle) this.beginCurrent();
+    this.emitTasks();
+  }
+
+  private cancelAll(): void {
+    this.queue.clear();
+    this.path = [];
+    this.pathIndex = 0;
+    this.actionGoal = null;
+    this.player.body.setVelocity(0, 0);
+    this.emitTasks();
+  }
+
+  private emitTasks(): void {
+    this.game.events.emit('tasks:changed', { current: this.queue.current?.kind ?? null, pending: this.queue.pending });
+  }
+
+  // --- Harvest / build executors ------------------------------------------
+
+  private runHarvest(a: Extract<Action, { kind: 'harvest' }>, delta: number): void {
+    const tree = this.treeById(a.treeId);
+    if (!tree || !tree.alive) return this.completeCurrent();
+    if (this.advancePath()) {
+      this.player.body.setVelocity(0, 0);
+      this.chopElapsed += delta;
+      if (this.chopElapsed >= CHOP_INTERVAL_MS) {
+        this.chopElapsed = 0;
+        this.chop(tree);
+      }
+    }
+  }
+
+  private runBuild(a: Extract<Action, { kind: 'build' }>, delta: number): void {
+    const site = this.siteById(a.siteId);
+    if (!site || site.done) return this.completeCurrent();
+    if (this.advancePath()) {
+      this.player.body.setVelocity(0, 0);
+      site.progress += delta;
+      site.rect.setAlpha(0.35 + 0.55 * Math.min(1, site.progress / BUILD_MS));
+      if (site.progress >= BUILD_MS) {
+        this.finishSite(site);
+        this.completeCurrent();
+      }
+    }
+  }
+
+  // --- Input gate ----------------------------------------------------------
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
-    if (this.ui.hudHitTest(pointer.x, pointer.y)) return; // tap landed on the HUD — leave it to the UI
-
+    this.downOnUI = this.ui.hudHitTest(pointer.x, pointer.y);
+    if (this.downOnUI) return; // HUD owns this tap
+    this.downWorld.set(pointer.worldX, pointer.worldY);
     if (this.buildMode) {
       this.updateGhost(pointer);
-      this.tryPlaceWall(pointer);
-      return;
+      this.placeOrEnqueueBuild(pointer);
     }
-
-    const tree = this.treeAt(pointer.worldX, pointer.worldY);
-    if (tree) {
-      this.pendingChop = tree;
-      this.chopElapsed = 0;
-      return;
-    }
-
-    // Otherwise it's a move: cancel any pending chop and set a new destination.
-    this.pendingChop = null;
-    this.target.set(pointer.worldX, pointer.worldY);
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
-    if (this.ui.hudHitTest(pointer.x, pointer.y)) return;
-    if (this.buildMode) {
-      this.updateGhost(pointer);
-      return;
-    }
-    // Drag-to-move only while genuinely moving (not mid-chop) so a drag can't hijack a chop approach.
-    if (pointer.isDown && !this.pendingChop) {
-      this.target.set(pointer.worldX, pointer.worldY);
-    }
+    if (this.buildMode && !this.ui.hudHitTest(pointer.x, pointer.y)) this.updateGhost(pointer);
   }
 
-  // --- Chopping ------------------------------------------------------------
+  private onPointerUp(pointer: Phaser.Input.Pointer): void {
+    if (this.buildMode || this.downOnUI || this.ui.hudHitTest(pointer.x, pointer.y)) return;
+    // Reject drags/swipes — only deliberate taps become orders.
+    if (Phaser.Math.Distance.Between(this.downWorld.x, this.downWorld.y, pointer.worldX, pointer.worldY) > DRAG_PX) return;
+
+    const tree = this.treeAt(pointer.worldX, pointer.worldY);
+    const action: Action = tree
+      ? { kind: 'harvest', treeId: tree.id }
+      : { kind: 'move', col: worldToTile(pointer.worldX), row: worldToTile(pointer.worldY) };
+    if (pointer.getDuration() >= LONGPRESS_MS) this.enqueue(action);
+    else this.order(action);
+  }
+
+  // --- Trees / chopping ----------------------------------------------------
 
   private spawnTrees(): void {
     const def = NODES.tree;
-    // Fixed spawns, snapped to tile centres so build occupancy/overlap tests are exact.
     const tiles: Array<[number, number]> = [
       [5, 8],
       [14, 12],
       [8, 20],
     ];
-    for (const [col, row] of tiles) {
-      const x = tileToWorldCenter(col);
-      const y = tileToWorldCenter(row);
-      const rect = this.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, def.color);
-      this.trees.push({ rect, def, hp: def.maxHp, alive: true, col, row });
-    }
+    tiles.forEach(([col, row], i) => {
+      const rect = this.add.rectangle(tileToWorldCenter(col), tileToWorldCenter(row), TILE_SIZE, TILE_SIZE, def.color).setDepth(1);
+      this.trees.push({ id: `tree-${i}`, rect, def, hp: def.maxHp, alive: true, col, row });
+    });
+  }
+
+  private treeById(id: string): TreeNode | undefined {
+    return this.trees.find((t) => t.id === id);
   }
 
   /** The live tree under a world point, if any (within ~one tile). */
   private treeAt(x: number, y: number): TreeNode | null {
     for (const tree of this.trees) {
-      if (!tree.alive) continue;
-      if (Phaser.Math.Distance.Between(x, y, tree.rect.x, tree.rect.y) <= TILE_SIZE) return tree;
+      if (tree.alive && Phaser.Math.Distance.Between(x, y, tree.rect.x, tree.rect.y) <= TILE_SIZE) return tree;
     }
     return null;
   }
@@ -188,19 +337,15 @@ export class GameScene extends Phaser.Scene {
   private chop(tree: TreeNode): void {
     tree.hp -= 1;
     this.inv.add(tree.def.woodItemId, tree.def.woodPerHit);
-    // Visual tick: a quick scale pop so a hit reads.
     this.tweens.add({ targets: tree.rect, scale: 1.18, duration: 80, yoyo: true });
-
     if (tree.hp <= 0) {
       tree.alive = false;
       tree.rect.setScale(1).setFillStyle(tree.def.stumpColor);
-      this.pendingChop = null;
-      this.target.set(this.player.x, this.player.y); // stay put — don't drift back to a stale target
-      this.player.body.reset(this.player.x, this.player.y);
       this.time.delayedCall(tree.def.regrowMs, () => {
         tree.hp = tree.def.maxHp;
         tree.alive = true;
         tree.rect.setFillStyle(tree.def.color);
+        this.repath(); // regrown tree may now block the active route
       });
     }
   }
@@ -209,55 +354,107 @@ export class GameScene extends Phaser.Scene {
 
   private toggleBuild(): void {
     this.buildMode = !this.buildMode;
-    if (this.buildMode) {
-      this.pendingChop = null; // don't keep chopping while placing
-    } else {
-      this.ghost.setVisible(false);
-    }
+    if (!this.buildMode) this.ghost.setVisible(false);
     this.game.events.emit('build:modeChanged', this.buildMode);
   }
 
-  /** Can a wall go on this tile? (In bounds, not occupied, not on a live tree.) */
-  private tilePlaceable(col: number, row: number, key: string): boolean {
-    const cols = Math.floor(BASE_WIDTH / TILE_SIZE);
-    const rows = Math.floor(BASE_HEIGHT / TILE_SIZE);
-    if (col < 0 || row < 0 || col >= cols || row >= rows) return false;
-    if (this.occupied.has(key)) return false;
+  private siteById(id: string): BuildSite | undefined {
+    return this.sites.find((s) => s.id === id);
+  }
+
+  private siteAt(col: number, row: number): BuildSite | undefined {
+    return this.sites.find((s) => !s.done && s.col === col && s.row === row);
+  }
+
+  /** True if a wall can be blueprinted here: in bounds, empty, off live trees, and reachable. */
+  private tilePlaceable(col: number, row: number): boolean {
+    const key = tileKey(col, row);
+    if (col < 0 || row < 0 || col >= this.gridDims.cols || row >= this.gridDims.rows) return false;
+    if (this.occupied.has(key) || this.siteTiles.has(key)) return false;
     if (this.trees.some((t) => t.alive && t.col === col && t.row === row)) return false;
-    return true;
+    // Must have a tile the worker can stand on to build it (Finding 4 — no stranded blueprints).
+    return reachableAdjacent(this.playerTile(), { col, row }, this.isBlocked, this.gridDims) !== null;
   }
 
   private updateGhost(pointer: Phaser.Input.Pointer): void {
     const col = worldToTile(pointer.worldX);
     const row = worldToTile(pointer.worldY);
-    const key = tileKey(col, row);
-    const ok = this.tilePlaceable(col, row, key) && this.inv.canAfford(BUILDABLES.wall.cost);
+    const ok = this.tilePlaceable(col, row) && this.inv.canAfford(BUILDABLES.wall.cost);
     this.ghost
       .setPosition(snapToTileCenter(pointer.worldX), snapToTileCenter(pointer.worldY))
       .setFillStyle(ok ? COLORS.ghostValid : COLORS.ghostInvalid, 0.5)
       .setVisible(true);
   }
 
-  private tryPlaceWall(pointer: Phaser.Input.Pointer): void {
+  private placeOrEnqueueBuild(pointer: Phaser.Input.Pointer): void {
     const col = worldToTile(pointer.worldX);
     const row = worldToTile(pointer.worldY);
-    const key = tileKey(col, row);
-    if (!this.tilePlaceable(col, row, key)) return;
+
+    // Tapping an existing un-built blueprint re-enqueues its build (Cancel is non-destructive).
+    const existing = this.siteAt(col, row);
+    if (existing) {
+      this.enqueue({ kind: 'build', siteId: existing.id });
+      return;
+    }
+
+    if (!this.tilePlaceable(col, row)) return;
     if (!this.inv.spend(BUILDABLES.wall.cost)) return; // unaffordable — no-op
 
-    const x = tileToWorldCenter(col);
-    const y = tileToWorldCenter(row);
-    const wall = this.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, BUILDABLES.wall.color);
-    this.walls.add(wall);
-    const body = wall.body as Phaser.Physics.Arcade.StaticBody;
+    const key = tileKey(col, row);
+    const rect = this.add
+      .rectangle(tileToWorldCenter(col), tileToWorldCenter(row), TILE_SIZE, TILE_SIZE, COLORS.blueprint, 0.35)
+      .setDepth(1);
+    const site: BuildSite = { id: `site-${this.nextSiteId++}`, col, row, rect, progress: 0, done: false };
+    this.sites.push(site);
+    this.siteTiles.add(key);
+    this.enqueue({ kind: 'build', siteId: site.id });
+  }
+
+  /** Complete a blueprint into a solid, blocking wall (materialises on the worker-vacated tile). */
+  private finishSite(site: BuildSite): void {
+    site.done = true;
+    site.rect.setAlpha(1).setFillStyle(BUILDABLES.wall.color);
+    this.walls.add(site.rect);
+    const body = site.rect.body as Phaser.Physics.Arcade.StaticBody;
     body.setSize(TILE_SIZE, TILE_SIZE);
     body.updateFromGameObject();
-    this.occupied.add(key);
+    this.occupied.add(tileKey(site.col, site.row));
+    this.repath();
+  }
+
+  // --- Debug (headless smoke test reads this) ------------------------------
+
+  /** State snapshot for the smoke test. */
+  debugState(): {
+    currentKind: string | null;
+    pending: number;
+    pathLen: number;
+    sites: number;
+    buildMode: boolean;
+    occupied: number;
+    pcol: number;
+    prow: number;
+  } {
+    const t = this.playerTile();
+    return {
+      currentKind: this.queue.current?.kind ?? null,
+      pending: this.queue.pending,
+      pathLen: Math.max(0, this.path.length - this.pathIndex),
+      sites: this.sites.length,
+      buildMode: this.buildMode,
+      occupied: this.occupied.size,
+      pcol: t.col,
+      prow: t.row,
+    };
+  }
+
+  /** True if the tile is currently a pathfinding obstacle (test helper). */
+  isTileBlocked(col: number, row: number): boolean {
+    return this.isBlocked(col, row);
   }
 
   // --- Rendering -----------------------------------------------------------
 
-  /** A simple checker of dirt/grass tiles so the world reads as a pixel grid. */
   private drawPlaceholderGround(): void {
     const g = this.add.graphics();
     for (let y = 0; y < BASE_HEIGHT; y += TILE_SIZE) {
@@ -271,7 +468,7 @@ export class GameScene extends Phaser.Scene {
 
   private buildHud(): void {
     this.add
-      .text(6, BASE_HEIGHT - 30, 'tap tree: chop · tap ground: move · Build: walls', {
+      .text(6, BASE_HEIGHT - 30, 'tap: order · hold: queue · Build: walls', {
         fontFamily: 'monospace',
         fontSize: '8px',
         color: '#6f6552',

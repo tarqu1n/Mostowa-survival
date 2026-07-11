@@ -18,6 +18,15 @@ export const INTERACT_RANGE = TILE_SIZE * 1.4;
 /** Milliseconds between chop hits while felling a node. */
 export const CHOP_INTERVAL_MS = 400;
 
+/** Hold time (ms) that turns a tap into a queued order rather than an act-now order. */
+export const LONGPRESS_MS = 350;
+
+/** On-site work time (ms) for a worker to finish one wall from its blueprint. */
+export const BUILD_MS = 2500;
+
+/** Pointer travel (px, base res) above which a press is treated as a drag, not an order. */
+export const DRAG_PX = 12;
+
 /** Semantic colour palette (dark & grotty). Expand as the art identity firms up. */
 export const COLORS = {
   background: 0x14100f,
@@ -28,4 +37,5 @@ export const COLORS = {
   ui: 0xe8dcc0,
   ghostValid: 0x4caf50, // build ghost when a tile is placeable + affordable
   ghostInvalid: 0xb23b3b, // build ghost when blocked or unaffordable
+  blueprint: 0x5a7a9a, // placed-but-unbuilt construction site (drawn translucent)
 } as const;

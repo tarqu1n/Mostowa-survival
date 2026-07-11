@@ -152,6 +152,11 @@ Ideas captured as they land; to be firmed into real systems later.
 
 ## NPC companions (draft)
 
+> **Foundation in place (plan 002):** the worker/task/pathfinding core — A* movement around
+> obstacles, a per-worker `TaskQueue` of move/harvest/build orders, and timed on-site construction —
+> is built and driving the player unit. NPC companions become *additional units* over the same
+> machinery, not a new system.
+
 - **Recruitable NPC characters** the player can **send out to do tasks during the day** (e.g.
   scavenging/gathering, and later other jobs) — extending what you can accomplish beyond the player alone.
 - **They must be fed** — companions consume food, tying directly into the **hunger/food economy**:

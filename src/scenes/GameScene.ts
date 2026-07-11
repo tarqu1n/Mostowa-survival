@@ -958,6 +958,9 @@ export class GameScene extends Phaser.Scene {
     occupied: number;
     pcol: number;
     prow: number;
+    zombies: number;
+    playerHp: number;
+    mode: 'command' | 'combat' | 'inspect';
   } {
     const t = this.playerTile();
     return {
@@ -969,6 +972,9 @@ export class GameScene extends Phaser.Scene {
       occupied: this.occupied.size,
       pcol: t.col,
       prow: t.row,
+      zombies: this.zombies.filter((z) => z.alive).length,
+      playerHp: this.playerHp,
+      mode: this.mode,
     };
   }
 

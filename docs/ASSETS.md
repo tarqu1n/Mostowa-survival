@@ -30,8 +30,11 @@ terrain-only).
 the assets themselves standalone. Full terms in that folder's `LICENSE.md`; keep it alongside the
 assets if this repo or a build ever goes public.
 
-Still evaluation-stage: staged in the repo, not yet wired into the Phaser loader (that's the next
-step, once we're past placeholders per the phased approach below).
+**Wired into the Phaser loader:** ground/wall/tree tiles + the player's walk cycle landed first;
+the kid zombie's walk + damaged-reaction frames followed (plan 003, the first enemy). Still
+placeholder-tinted rather than fully styled (no hit-flash/VFX yet, per plan 003's out-of-scope
+list) — the swappable-manifest approach in `src/data/tileset.ts` means trialling a different pack
+is still just pointing `ACTIVE_TILESET` elsewhere.
 
 <details>
 <summary>Other candidates considered</summary>

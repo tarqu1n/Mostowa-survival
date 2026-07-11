@@ -182,7 +182,7 @@ if (q.pending >= 2) ok(`long-press queued orders (pending ${q.pending})`);
 else fail(`queue did not fill via long-press (pending ${q.pending}, current ${q.currentKind})`);
 
 // 2b. A queued harvest outlines its tree yellow; hold-drag paints several orders in one gesture.
-await tapWorld(...center(2, 2)); // act-now move busies the worker so queued items don't drain
+await tapWorld(...center(2, 6)); // act-now move busies the worker so queued items don't drain (row 2 would land under the plan-003 mode-toggle HUD buttons)
 await longPressWorld(...center(8, 20)); // append a harvest of a still-live tree (5,8 was felled above)
 await page.waitForTimeout(120);
 // Trees are sprites (not Rectangles, see docs/ASSETS.md) — queued harvest is outlined via a
@@ -253,6 +253,139 @@ const arrived = await dbg();
 if (Math.abs(arrived.pcol - 11) <= 1 && Math.abs(arrived.prow - 16) <= 1) ok('worker reaches an open tile (routing around obstacles)');
 else fail(`worker did not reach the open target (at ${arrived.pcol},${arrived.prow})`);
 void preMove;
+
+// 8. Combat (plan 003): a kid zombie is fixed-spawned at tile (11,30), well outside its own
+// vision (80px / 5 tiles) from the player's spawn — see plan 003 Step 4. HUD coordinates: COMBAT
+// toggle (40,48), INSPECT toggle (112,48), PUNCH button (43,612), movepad base (300,540) r=40.
+const padCenter = await toClient([300, 540]);
+async function movepadStep(dx, dy, holdMs = 150) {
+  await page.mouse.move(padCenter.x, padCenter.y);
+  await page.mouse.down();
+  await page.mouse.move(padCenter.x + dx, padCenter.y + dy, { steps: 3 });
+  await page.waitForTimeout(holdMs);
+  await page.mouse.up();
+}
+
+// 8a. Inspect mode: tap the (still-alive) zombie, a live tree, and the built wall from step 6 —
+// each shows a matching stats panel; empty ground hides it. Doesn't require Combat mode/proximity.
+await tapBase(112, 48); // INSPECT toggle
+await page.waitForTimeout(150);
+if ((await dbg()).mode === 'inspect') ok('INSPECT toggle → mode inspect');
+else fail(`INSPECT toggle did not switch mode (got ${(await dbg()).mode})`);
+
+await tapWorld(...center(11, 30)); // the zombie's fixed spawn tile
+await page.waitForTimeout(150);
+const zPanel = await page.evaluate(() => {
+  const ui = window.game.scene.getScene('UI');
+  return { visible: ui.inspectPanelBg.visible, title: ui.inspectPanelTitle.text, hp: ui.inspectPanelHp.text };
+});
+if (zPanel.visible && zPanel.title === 'Kid Zombie' && zPanel.hp === 'HP: 3/3') ok(`zombie inspect panel: ${zPanel.title} ${zPanel.hp}`);
+else fail(`zombie inspect panel wrong: ${JSON.stringify(zPanel)}`);
+
+await tapWorld(...center(14, 12)); // a still-alive tree (5,8 was chopped in step 1)
+await page.waitForTimeout(150);
+const treePanel = await page.evaluate(() => {
+  const ui = window.game.scene.getScene('UI');
+  return { visible: ui.inspectPanelBg.visible, title: ui.inspectPanelTitle.text };
+});
+if (treePanel.visible && treePanel.title === 'Tree') ok('tree inspect panel shows');
+else fail(`tree inspect panel wrong: ${JSON.stringify(treePanel)}`);
+
+await tapWorld(...center(11, 10)); // the wall built in step 6
+await page.waitForTimeout(150);
+const wallPanel = await page.evaluate(() => {
+  const ui = window.game.scene.getScene('UI');
+  return { visible: ui.inspectPanelBg.visible, title: ui.inspectPanelTitle.text, extra: ui.inspectPanelExtra.text };
+});
+if (wallPanel.visible && wallPanel.title === 'Wall' && wallPanel.extra.includes('Built')) ok('wall inspect panel shows (Built)');
+else fail(`wall inspect panel wrong: ${JSON.stringify(wallPanel)}`);
+
+await tapWorld(...center(20, 2)); // empty ground → dismisses
+await page.waitForTimeout(150);
+const emptyPanel = await page.evaluate(() => window.game.scene.getScene('UI').inspectPanelBg.visible);
+if (!emptyPanel) ok('tapping empty ground in Inspect mode hides the panel');
+else fail('panel stayed visible after tapping empty ground');
+
+await tapBase(112, 48); // INSPECT off → command
+await page.waitForTimeout(150);
+
+// 8b. Combat mode: walk to the zombie via the movepad, let its contact damage tick the player's
+// HP down, and confirm death restarts the scene (player/zombie/mode back to initial spawn state).
+await tapBase(40, 48); // COMBAT toggle
+await page.waitForTimeout(150);
+if ((await dbg()).mode === 'combat') ok('COMBAT toggle → mode combat');
+else fail(`COMBAT toggle did not switch mode (got ${(await dbg()).mode})`);
+
+let adjacent = false;
+for (let i = 0; i < 30; i++) {
+  await movepadStep(0, 35);
+  const st = await dbg();
+  if (st.mode !== 'combat') break; // a stray restart mid-walk would otherwise loop forever
+  const dist = await page.evaluate(() => {
+    const gs = window.game.scene.getScene('Game');
+    const z = gs.zombies.find((z) => z.alive);
+    return z ? Math.abs(gs.player.y - z.sprite.y) + Math.abs(gs.player.x - z.sprite.x) : Infinity;
+  });
+  if (dist < 20) {
+    adjacent = true;
+    break;
+  }
+}
+if (adjacent) ok('movepad walked the player to the zombie');
+else fail('movepad did not close the distance to the zombie');
+
+let sawDamage = false;
+let restarted = false;
+let lastHp = (await dbg()).playerHp;
+for (let i = 0; i < 16 && !restarted; i++) {
+  await page.waitForTimeout(1000);
+  const hp = (await dbg()).playerHp;
+  if (hp < lastHp) sawDamage = true;
+  if (sawDamage && hp === 10 && lastHp < 10) restarted = true;
+  lastHp = hp;
+}
+if (sawDamage) ok('zombie contact damage ticked playerHp down');
+else fail('playerHp never decreased while adjacent to the chasing zombie');
+if (restarted) ok('playerHp reaching 0 restarted the scene (HP back to max)');
+else fail(`scene did not appear to restart after HP drain (last playerHp ${lastHp})`);
+
+const postRestart = await dbg();
+if (postRestart.zombies === 1 && postRestart.pcol === 11 && postRestart.prow === 20 && postRestart.mode === 'command')
+  ok('restart reset zombies/position/mode to initial spawn state');
+else fail(`restart did not fully reset state: ${JSON.stringify(postRestart)}`);
+
+// 8c. Punch: post-restart, walk to the fresh zombie and destroy it in 3 hits (maxHp 3, flat 1 dmg).
+await tapBase(40, 48); // COMBAT toggle (restart reset mode to command)
+await page.waitForTimeout(150);
+adjacent = false;
+for (let i = 0; i < 30; i++) {
+  await movepadStep(0, 35);
+  const dist = await page.evaluate(() => {
+    const gs = window.game.scene.getScene('Game');
+    const z = gs.zombies.find((z) => z.alive);
+    return z ? Math.abs(gs.player.y - z.sprite.y) + Math.abs(gs.player.x - z.sprite.x) : Infinity;
+  });
+  if (dist < 20) {
+    adjacent = true;
+    break;
+  }
+}
+if (adjacent) ok('movepad walked the player to the fresh post-restart zombie');
+else fail('movepad did not close the distance to the fresh zombie');
+
+const zBefore = (await dbg()).zombies;
+for (let i = 0; i < 3; i++) {
+  await tapBase(43, 612); // PUNCH button
+  await page.waitForTimeout(150);
+}
+const zAfter = (await dbg()).zombies;
+if (zBefore === 1 && zAfter === 0) ok(`3 punches destroyed the zombie (${zBefore} → ${zAfter})`);
+else fail(`punch did not destroy the zombie as expected (${zBefore} → ${zAfter})`);
+
+await tapBase(40, 48); // COMBAT off → command
+await page.waitForTimeout(150);
+if ((await dbg()).mode === 'command') ok('COMBAT toggle off → mode command');
+else fail('COMBAT toggle off did not return to command mode');
 
 if (errors.length) fail(`console/page errors:\n${errors.join('\n')}`);
 else ok('no console/page errors');

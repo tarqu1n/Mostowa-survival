@@ -7,6 +7,38 @@ Format: `YYYY-MM-DD — [DECIDED|PROPOSED|OPEN] Title` then a short rationale.
 
 ---
 
+## 2026-07-11 — [DECIDED] Shared stats via typed adapters, not a class hierarchy
+
+`InspectableStats` (the Inspect-mode panel's shape) is produced by small pure adapter functions
+(`treeStats`/`wallStats`/`zombieStats`/`playerCombatStats` in `systems/stats.ts`) that read from
+each runtime type's existing fields, rather than a shared base class or interface all entities
+must implement. Rationale: trees/walls/zombies/the player already have different runtime shapes
+(`TreeNode`/`BuildSite`/`ZombieUnit`/scene fields) built by different systems; forcing a common
+class hierarchy across them would ripple through code that has nothing to do with inspection, for
+a UI concern that only needs a read-only view.
+
+## 2026-07-11 — [DECIDED] Object inspection scope: trees + walls only, no new placeholder entity
+
+Inspect mode (plan 003) covers trees, walls, zombies, and the player — no new crate/box entity was
+added just to have a third kind of inspectable object. Rationale: nothing in the game creates such
+an entity yet; adding one purely for the inspector would be speculative scaffolding.
+
+## 2026-07-11 — [DECIDED] Tap-on-entity resolution: a dedicated Inspect mode, not tap/long-press overload
+
+Viewing an entity's stats is a distinct HUD-toggled mode (tap anything while in Inspect mode), not
+an overload of Command mode's existing tap (act now) / long-press (queue) semantics. Rationale:
+Command-mode tap behaviour needed to stay exactly as-is (trees/build-sites/move), and overloading a
+third meaning onto the same gesture would make it ambiguous which one fires.
+
+## 2026-07-11 — [DECIDED] Three mutually-exclusive input modes: Command / Combat / Inspect
+
+One HUD toggle pair switches between **Command** (default tap-to-pathfind, unchanged), **Combat**
+(virtual movepad + Punch button, direct real-time control, bypasses the pathfinder/task queue), and
+**Inspect** (tap anything for a stats panel, issues no commands). Only one non-Command mode is
+active at a time; toggling one on flips the other off. Rationale: Combat's direct real-time control
+and Command's tap-to-pathfind are fundamentally different input schemes that shouldn't both be live
+at once — letting both interpret the same tap would fight over the player's movement.
+
 ## 2026-07-11 — [DECIDED] Direct tweaks auto-push on green; review gates stay on the plan loop only
 
 For small changes Matt requests directly (tweaks/fixes/debug helpers, not plan steps): implement →

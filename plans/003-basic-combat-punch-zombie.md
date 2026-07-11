@@ -1,6 +1,6 @@
 # Basic Combat: Combat Mode, Punch, First Zombie, Stats Inspector
 
-> Status: planned — run /execute-plan to begin.
+> Status: in review
 
 ## Summary
 
@@ -499,7 +499,25 @@ target — this slice deliberately implements only a minimal slice of that (see 
     panel with that entity's name + HP; tapping empty ground shows nothing; toggling back to
     Command mode restores today's exact tap behavior (verify chop/build/move all still work).
 
-- [ ] **Step 8: Smoke test coverage + docs** `[delegate]`
+- [x] **Step 8: Smoke test coverage + docs** `[delegate — done inline, retained full plan context]`
+  - Outcome: `GameScene.debugState()` extended with `zombies`/`playerHp`/`mode`. `scripts/smoke.mjs`
+    gained a combat pass: Inspect-mode panels for the zombie/tree/wall + empty-ground dismiss,
+    movepad-driven approach to the zombie, contact-damage ticking `playerHp` down, death triggering
+    `scene.restart()` with position/zombie/mode verified back at initial spawn state, then (post-
+    restart) walking to the fresh zombie and Punching it dead in 3 hits. All 4 doc files updated
+    (CLAUDE.md Status, GAME-DESIGN.md MVP item 4 + Enemy design note, DECISIONS.md — 4 new dated
+    entries, ASSETS.md — kid zombie wired-in note); also corrected the tileset pack's own
+    `public/assets/tilesets/zombie-apocalypse/README.md`, which still claimed "not wired into the
+    game loader yet" (stale since before plan 003, but caught during this doc pass).
+  - **Real bug found and fixed via the full smoke run** (not just the new assertions): the new
+    permanent COMBAT/INSPECT toggle buttons occupy screen space that a **pre-existing** smoke-test
+    tap (`center(2, 2)`, chosen before these buttons existed) now lands on at `MIN_ZOOM`. That
+    silently toggled Combat mode mid-run, which (correctly, per Step 6's mode-gating) swallowed
+    several *subsequent* Command-mode tap/long-press assertions — cascading into ~4 unrelated-
+    looking failures (queue-paint outline, hold-drag queueing, final pathfind-around-obstacle
+    check) that had nothing to do with their own logic. Relocated that tap to `center(2, 6)`,
+    clear of the new HUD row; documented why inline. `npm run build && npm run smoke` — full suite
+    green, zero console/page errors.
   - Extend `scripts/smoke.mjs` (mirror its existing style — `toClient`/`worldToClient` helpers,
     `ok`/`fail` assertions, drives the real page) to add a combat pass: toggle Combat mode, tap the
     movepad to walk toward the zombie's fixed spawn tile, tap Punch three times facing it, assert

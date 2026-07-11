@@ -81,6 +81,12 @@ player is heavily incentivised to be back at base defending, not caught out in t
 Enemy variety leans into the humour: zombie campsite animals, zombified local characters, absurd
 creatures — grotty but funny.
 
+> **First enemy in (plan 003):** the kid zombie's AI is a deliberately minimal stub — one state
+> machine, `idle`/`chasing` on a vision-radius check, no deaggro. It's a proof of the combat/AI
+> plumbing (stats schema, `resolveMeleeAttack`, pathfind-based chase), not the roaming/attacking
+> model above — noise-based aggro, deaggro, pack-pulling, and additional enemy types are still to
+> design.
+
 ## Maps & world structure
 
 The world is **multiple discrete maps**, not one giant continuous map:
@@ -175,7 +181,10 @@ Smallest thing that captures the day→fortify→night→defend *feel*:
    wood into a character `Inventory` (plan 001).
 3. **Fortify:** ~~place a wall segment~~ ✅ (walls, plan 001) · and one trap from gathered resources (todo).
 4. **Night:** a short timed wave of a couple of roaming/attacking zombies; base + trap + player can
-   repel them; day/night tint + a survival meter ticking through it. (todo)
+   repel them; day/night tint + a survival meter ticking through it. **Partially done (plan 003):**
+   Combat mode (movepad + Punch), a shared stats/damage-resolution model, and one fixed-spawn kid
+   zombie with idle/chasing AI + contact damage are in. Still todo: wave-spawning/pacing, day/night
+   tint, and traps.
 
 Weather, deep crafting trees, full map, save system, richer AI layer on *after* the slice is fun.
 

@@ -75,9 +75,10 @@ eyeball and each file *is* one usable 16×16 (or smaller) frame.
 
 ## Using this in Phaser
 
-This pack is currently **staged for evaluation**, not wired into the game loader yet (per
-`docs/ASSETS.md`'s phased plan: placeholders → pick one base tileset → layer Gemini/AI assets on
-top). When we do wire it in:
+**Wired in** (see `docs/ASSETS.md`): ground/wall/tree tiles, the player's walk cycle, and (plan
+003) the kid zombie's walk + damaged-reaction frames are loaded via the swappable manifest in
+`src/data/tileset.ts`. Most of the pack's 532 files are still unused — cherry-pick more as new
+features need them:
 
 - Files live under `public/assets/...`, so Vite serves them at `<BASE_URL>assets/tilesets/zombie-apocalypse/...`
   (respects the `base` config in `vite.config.ts` — don't hardcode a leading `/`).

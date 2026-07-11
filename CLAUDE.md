@@ -37,8 +37,17 @@ walks over and **builds it over time** into a solid, blocking wall. **Cancel** c
 (blueprints survive). Data-driven items/nodes/buildables (`src/data/`), pure systems (`src/systems/`:
 `pathfind`, `tasks`, `grid`, `Inventory`), decoupled `UIScene` HUD. On the **Phaser 3 + TypeScript +
 Vite** mobile-first scaffold (Boot→Preload→MainMenu→Game + UI overlay), GitHub Pages auto-deploy.
-Verified via headless smoke (`npm run smoke`). The worker/task/pathfinding core is the seam the NPC
-companions plug into. Next: survival systems (day/night, hunger) — see
+Verified via headless smoke (`npm run smoke`).
+
+**Basic combat landed (plan 003):** a shared `BaseStats`/`CombatantStats`/`ObjectStats` schema
+(`src/data/types.ts`) + pure `systems/combat.ts` resolve melee damage/hit-chance uniformly for
+Punch and enemy attacks. Three mutually-exclusive HUD-toggled input modes — **Command** (today's
+tap-to-pathfind, unchanged), **Combat** (virtual movepad + Punch button, direct real-time control,
+bypasses the pathfinder), **Inspect** (tap any tree/wall/zombie for a stats panel). The first enemy,
+a **kid zombie**, is wired in from the staged Zombie Apocalypse tileset with minimal idle→chasing
+AI and contact damage; player HP reaching 0 restarts the scene (no save system yet, so "restart" =
+back to spawn with the world reset). The worker/task/pathfinding core is the seam both the zombie's
+AI and the eventual NPC companions plug into. Next: survival systems (day/night, hunger) — see
 [docs/GAME-DESIGN.md](docs/GAME-DESIGN.md) MVP slice; [docs/DECISIONS.md](docs/DECISIONS.md) for settled vs open.
 
 ## The game in one line

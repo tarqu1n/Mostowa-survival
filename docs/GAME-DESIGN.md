@@ -3,6 +3,15 @@
 Living document for what Mostowa Survival *is*. Rough now; sharpens as we play. Everything here
 is design intent — keep it aligned with the objectives below whenever we plan a feature.
 
+> **Ideas land here as they come.** Matt jots gameplay ideas into this doc (and lore into
+> [LORE.md](LORE.md)) incrementally, often while other work runs. Capture them faithfully as they're
+> shared — they get refined into concrete systems and MVP scope later, not necessarily built in order.
+
+## Influences
+
+- **Don't Starve** — the survival-needs model (hunger as a core, ticking pressure), grim-but-comic
+  tone, and scavenge-by-day/danger-by-night rhythm are touchstones.
+
 ## Pitch
 
 You're camping at **Mostowa** when a **zombie apocalypse** breaks out. By day you range across the
@@ -96,9 +105,40 @@ Don't hard-wire a single world; build the map-loading + travel system to add map
 ## Pillars in more detail
 
 - **Base building** — claim and shape your camp area; walls/gates define a defensible perimeter.
-- **Survival** — need meters (e.g. hunger, warmth, energy, health) tick with time; day/night tint.
+- **Survival** — need meters tick with time; **hunger is a core mechanic** (Don't Starve-style — a
+  constant pressure that pushes you out to scavenge food and punishes hoarding time). Alongside it:
+  health and other wellbeing needs (e.g. warmth, energy). See "Survival & inventory systems" below.
 - **Crafting** — data-driven items/recipes/stations; scavenged inputs → tools, weapons, defenses.
 - **Base defense** — traps + walls + player combat vs the nightly wave; the payoff for the day's prep.
+
+## Survival & inventory systems (draft)
+
+Ideas captured as they land; to be firmed into real systems later.
+
+### Inventory & base storage
+
+- **Two inventories:** a limited **character inventory** (what you carry into the field) and a larger
+  **base inventory / storage**.
+- **In the base, you have auto-access to the base inventory** — no walking to a specific chest;
+  being "home" opens it. You freely **transfer items to and from your character inventory** there.
+- Implication: the field is constrained by carry space (choose what to haul back); the base is where
+  you offload, stockpile, and load up for the next run. Carry limits make the day's route a decision.
+
+### Health & wellbeing view
+
+- A dedicated **Health & Wellbeing screen** showing the player's status — the need meters (hunger,
+  health, and later warmth/energy/etc.) and any conditions/effects.
+- It includes a **"what's available to eat" section** — surfacing edible items (from character and/or
+  base inventory) so the player can manage hunger deliberately rather than digging through raw inventory.
+
+### Hunger (core mechanic — Don't Starve-like)
+
+- **Hunger is central**, not a side stat. It ticks down constantly with time/activity and creates the
+  core survival pressure: keep fed or suffer (health drain / penalties when starving).
+- Drives the whole scavenge loop — you range out for food, and hunger is a big reason you can't just
+  turtle in the base forever. Food is a managed resource: gather, cook/craft, store, ration.
+- To design out later: food types & spoilage, cooking/crafting food at stations, hunger→health
+  cascade, and how night danger trades off against the need to forage.
 
 ## MVP vertical slice (first playable) — proposed
 

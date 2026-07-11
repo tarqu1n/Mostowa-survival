@@ -11,16 +11,19 @@ smoothly transitions across dawn/dusk, and exposes a readable **phase state** (`
 time, and — when it hits zero — **starves the player**, draining the health introduced by the combat
 slice (plan 003). Food enters the world two ways: a new **edible item** and a **forageable berry-bush
 node** (a walkable resource node mirroring the tree/chop machinery). Eating happens through a new
-**Health & Wellbeing screen** — an in-HUD overlay showing the hunger + health meters and a
-"what's available to eat" list you tap to consume. Night is **tint + phase only this slice** — no
-enemy spawning (that layers on after combat). Nothing is persisted; all survival state resets on
-reload (consistent with the un-saved world today).
+**Health & Wellbeing screen** — an in-HUD overlay showing the hunger + health meters, the player's
+**stats** (from combat's stats bag), and a "what's available to eat" list you tap to consume. A
+**second, separate overlay** holds the **inventory** (full item list) and an **equipped-items**
+section (a display shell — there's no equipment model yet, so equipped slots render empty, ready for
+a future equip system). Night is **tint + phase only this slice** — no enemy spawning (that layers on
+after combat). Nothing is persisted; all survival state resets on reload (consistent with the
+un-saved world today).
 
 ## Context & decisions
 
 **Locked with the user:**
 - **Time model:** fixed real-time loop (continuous auto-advancing cycle, smooth tint). Because a
-  production-speed cycle is untestable via `waitForTimeout`, add debug fast-forward hooks (Step 7)
+  production-speed cycle is untestable via `waitForTimeout`, add debug fast-forward hooks (Step 8)
   mirroring the existing `debug:regenTrees` event so the smoke test can drive the clock/hunger.
 - **Night scope:** darkening tint + queryable phase state only. **No enemy waves this slice.**
 - **Health:** builds on **plan 003 (combat), assumed executed first.** Plan 003 introduces on
@@ -34,8 +37,16 @@ reload (consistent with the un-saved world today).
 - **Persistence:** **runtime-only, none this slice.** Saving only the clock/hunger while the world,
   inventory, walls and position all reset on reload would be incoherent; real persistence lands with a
   full save system later. Do **not** add a `localStorage` survival save.
-- **Eat UX:** a **Health & Wellbeing screen** (not a bare eat button): meters for hunger + health and
-  an edible-items list; tap an item to eat one unit.
+- **Eat UX:** a **Health & Wellbeing screen** (not a bare eat button): meters for hunger + health,
+  the player's **stats** (plan 003's `playerStats: CombatantStats` — maxHp/armour/speed/strength/
+  dex/dodge/vision), and an edible-items list; tap an item to eat one unit.
+- **Two separate overlays** (user call): overlay A = Health & Wellbeing (needs meters + stats +
+  eat); overlay B = **Inventory + Equipped**, a distinct panel opened by its own button, listing the
+  full inventory and an **equipped-items display shell**. There is **no equipment model** in the game
+  (no equippable items, no slots — plan 003's attack is unarmed Punch), so equipped renders as empty
+  placeholder slots wired to display whatever a future equipment model provides; **no equip/unequip
+  action this slice.** Both overlays share one reusable in-`UIScene` panel helper (built in Step 6,
+  reused in Step 7).
 
 **Codebase seams (file:line anchors current at planning time — reconfirm before editing):**
 - **Tick seam:** `src/scenes/GameScene.ts` `override update(_time, delta)` (`:185-206`). Both the idle
@@ -128,9 +139,9 @@ Don't-Starve-style pressure (constant, punishes hoarding), and the Health & Well
     pointers (rectangles aren't interactive unless `setInteractive` is called — confirm it isn't).
     Ensure it sits below `UIScene` (it does — separate scene). Check depth 15 doesn't hide the build
     ghost (depth 6) in a way that matters at night — a dimmed ghost is acceptable.
-  - Docs: none yet (batched into Step 7).
+  - Docs: none yet (batched into Step 8).
   - Done when: `npm run build` is green; running the game visibly darkens toward night and lightens
-    toward day on a loop; `debugState()` (extended in Step 7) will expose `clockMs`/`dayPhase`/`dayCount`.
+    toward day on a loop; `debugState()` (extended in Step 8) will expose `clockMs`/`dayPhase`/`dayCount`.
 
 - [ ] **Step 2: Day/night HUD readout** `[delegate]`
   - `UIScene.ts`: add a **passive** readout (plain rect+text, **not** pushed to `hudElements`) showing
@@ -145,7 +156,7 @@ Don't-Starve-style pressure (constant, punishes hoarding), and the Health & Well
       the handler; **add the matching `.off` in the SHUTDOWN block** (`:166-172`).
   - Side effects: none beyond one more HUD element; verify it doesn't overlap the zoom/follow/build
     widgets at 360px wide.
-  - Docs: none (Step 7).
+  - Docs: none (Step 8).
   - Done when: build green; the readout updates from day→night→day and increments the day number each
     full cycle.
 
@@ -159,9 +170,9 @@ Don't-Starve-style pressure (constant, punishes hoarding), and the Health & Well
     `this.emit('change')`, return `true`. Mirror `spend`'s structure.
   - Side effects: `ItemDef.nutrition` is optional so `wood` and all existing usage stay valid. No
     caller uses `remove` yet (wired in Steps 5/6). Smoke reads `inventory.get('wood')` — unaffected.
-  - Docs: none (Step 7).
+  - Docs: none (Step 8).
   - Done when: build green; `remove` returns false when short and decrements + emits otherwise
-    (exercise via a throwaway check or the Step 7 smoke).
+    (exercise via a throwaway check or the Step 8 smoke).
 
 - [ ] **Step 4: Forageable berry-bush node (generalise the resource-node system)** `[inline]`
   - Goal: trees and berry bushes are both `ResourceNodeDef` entries differing only in **data**, per the
@@ -192,7 +203,7 @@ Don't-Starve-style pressure (constant, punishes hoarding), and the Health & Well
     The build system's placeability check (can't build on a blocked tile) should still forbid building
     on a bush only if that matches intent — a bush is walkable, so building over it is acceptable;
     confirm the buildable-placement occupancy test doesn't crash on a non-blocking node.
-  - Docs: none (Step 7).
+  - Docs: none (Step 8).
   - Done when: build green; tapping a berry bush walks the worker over and harvests `berries` into the
     inventory (visible via inventory), the bush depletes then regrows, and the worker paths **through**
     bush tiles (unlike trees).
@@ -228,18 +239,24 @@ Don't-Starve-style pressure (constant, punishes hoarding), and the Health & Well
     assumption). The hunger tick runs every frame regardless of worker state (it's above the
     early-return). Confirm no divide-by-zero / NaN when `delta` is large (tab refocus) — `drainHunger`
     clamps, and the `while` starvation loop is bounded because it decrements each iteration.
-  - Docs: none (Step 7).
+  - Docs: none (Step 8).
   - Done when: build green; hunger visibly falls over time (via the Step 6 meter or `debugState`);
-    forcing hunger to 0 (Step 7 debug hook) starts ticking `playerHp` down every 2 s and eventually
+    forcing hunger to 0 (Step 8 debug hook) starts ticking `playerHp` down every 2 s and eventually
     triggers 003's restart; eating raises hunger.
 
-- [ ] **Step 6: Health & Wellbeing screen (meters + "what's available to eat")** `[inline]`
+- [ ] **Step 6: Reusable overlay panel + Health & Wellbeing screen (meters + stats + "what's available to eat")** `[inline]`
+  - **Reusable panel helper (built here, reused by Step 7):** factor a small in-`UIScene` overlay
+    primitive so both overlays share one implementation — a dimmed full-screen backdrop rect + a
+    centred panel rect (both high depth so they sit above other HUD elements) + a close affordance (an
+    ✕ button and/or tapping the backdrop) + open/close that manages `hudElements` membership (add the
+    backdrop + interactive rows on open so world taps don't leak through; remove/hide on close —
+    `hudHitTest` is visibility-aware so hidden elements already don't swallow taps). Only one overlay
+    open at a time (opening one closes the other). Keep it a plain object/method group within
+    `UIScene`, not a new Phaser scene (simpler; the world keeps running underneath — real-time
+    survival). Panels populate their body via a per-overlay render callback.
   - `UIScene.ts`: add a **STATUS** button (interactive, pushed to `hudElements`, button template
-    `:53-61`) in a free HUD slot (e.g. top-left under the wood counter, or bottom-left) that toggles an
-    overlay panel. Build the panel as a group of rects/texts within `UIScene` (not a new Phaser scene —
-    simpler; the world keeps running underneath, real-time survival). Panel contents:
-    - A dimmed full-screen backdrop rect + a centred panel rect (both high depth so they sit above
-      other HUD elements). A close affordance (an ✕ button or tapping the backdrop).
+    `:53-61`) in a free HUD slot (e.g. top-left under the wood counter, or bottom-left) that toggles
+    the Health & Wellbeing overlay via the helper. Panel contents:
     - **Hunger meter:** label + a bar = background rect + foreground rect whose width =
       `barWidth * hunger / HUNGER_MAX` (there's no existing bar widget — the closest analog is
       `site.rect` width/alpha feedback; build a simple two-rect bar). Colour it (e.g. amber), turn it
@@ -249,6 +266,13 @@ Don't-Starve-style pressure (constant, punishes hoarding), and the Health & Well
       `player:hpChanged { hp, maxHp }` event (subscribe to it; if 003 stores HP only via the event and
       not the registry, seed lazily to `maxHp` and fill in on the first event). If plan 003's exact
       HP surface differs, adapt to whatever it emits.
+    - **Player stats:** a read-only list of plan 003's `playerStats: CombatantStats`
+      (maxHp, armour, speed, strength, dex, dodge, and `vision` if present) rendered as
+      `label: value` rows (mirror 003's Inspect-mode stats-panel display style if that's landed).
+      These are static this slice (nothing changes them) — read once from `registry.get('playerStats')`.
+      **Dependency:** requires GameScene to expose `playerStats` on the registry; if plan 003 doesn't
+      already `registry.set('playerStats', this.playerStats)` in `create()`, add that one line as part
+      of this step (it's 003's data, surfaced for the HUD).
     - **"What's available to eat" list:** iterate `ITEMS` for entries with `nutrition != null`, show
       each with its live count from `this.inv.get(id)` and its nutrition; make each row interactive
       (button template) — tapping it emits `needs:eat { itemId: id }` (Step 5 handles it) **only when
@@ -260,16 +284,42 @@ Don't-Starve-style pressure (constant, punishes hoarding), and the Health & Well
       check — hidden elements already don't swallow taps).
   - **Teardown:** every new `.on` (`hunger:changed`, `player:hpChanged`, Inventory `'change'`) gets a
     matching `.off` in the UIScene SHUTDOWN block (`:166-172`).
-  - Side effects: this is the first modal overlay in the HUD — make sure opening it doesn't break the
-    existing `hudHitTest` world-tap gating for the buttons underneath (they're covered by the backdrop
-    which should itself be in `hudElements`). Verify the panel lays out within 360×640 and is
-    thumb-reachable.
-  - Docs: none (Step 7).
-  - Done when: build green; STATUS opens the screen showing live hunger + health bars and an edible
-    list; tapping Berries (count>0) decrements the count, raises the hunger bar, and closes/stays-open
-    consistently; the bars track live as hunger drains and HP changes.
+  - Side effects: this is the first modal overlay in the HUD (via the reusable helper) — make sure
+    opening it doesn't break the existing `hudHitTest` world-tap gating for the buttons underneath
+    (they're covered by the backdrop which should itself be in `hudElements`). Verify the panel lays
+    out within 360×640 and is thumb-reachable.
+  - Docs: none (Step 8).
+  - Done when: build green; STATUS opens the screen showing live hunger + health bars, the player
+    stat rows, and an edible list; tapping Berries (count>0) decrements the count, raises the hunger
+    bar, and closes/stays-open consistently; the bars track live as hunger drains and HP changes.
 
-- [ ] **Step 7: Debug hooks, smoke coverage, and docs** `[inline]`
+- [ ] **Step 7: Inventory + Equipped overlay (display shell)** `[inline]`
+  - `UIScene.ts`: add a second HUD button (e.g. **BAG** / **INV**, interactive, pushed to
+    `hudElements`, button template `:53-61`) in a free slot distinct from STATUS, that opens a second
+    overlay **reusing the Step 6 panel helper** (opening it closes the Wellbeing overlay — one at a
+    time). Panel contents:
+    - **Inventory section:** iterate `this.inv.snapshot()` and render one row per present item —
+      item name (from `ITEMS[id].name`), a colour swatch (from `ITEMS[id].color`, like the wood
+      counter), and the count. Read-only (no drop/use here; eating stays on the Wellbeing screen).
+      Refresh the rows on the Inventory `'change'` event (subscribe to the instance like `refreshWood`,
+      `:159`), so foraging/eating updates the list live while it's open. Handle the empty case (no
+      items) with a subtle "Empty" line.
+    - **Equipped section:** a **display shell only** — render a small fixed set of empty slot boxes
+      (e.g. 2–3 rects with a `—`/"empty" label) under an "Equipped" heading, plus a caption like
+      "Nothing equipped". Drive it from `registry.get('equipped') ?? {}` (slot→itemId map) so that when
+      a future equipment model populates that registry key the same render fills the slots — but this
+      slice sets nothing there, so every slot renders empty. **No equip/unequip interaction.**
+  - **Teardown:** the Inventory `'change'` subscription (and any panel-specific listeners) get matching
+    `.off` in the UIScene SHUTDOWN block (`:166-172`).
+  - Side effects: second overlay through the shared helper — verify the "only one open at a time"
+    logic and `hudElements` add/remove works when toggling between STATUS and BAG. No new game-state or
+    events; purely a read view over `Inventory` + a placeholder. Confirm layout within 360×640.
+  - Docs: none (Step 8).
+  - Done when: build green; BAG opens a distinct overlay listing all held items with live counts
+    (forage a berry → its row/count appears/updates) and an "Equipped" section of empty slots;
+    opening BAG closes the Wellbeing overlay and vice-versa.
+
+- [ ] **Step 8: Debug hooks, smoke coverage, and docs** `[inline]`
   - **Debug hooks (so the smoke test can drive a real-time system):** in `GameScene.ts`, add
     `game.events` handlers mirroring `debug:regenTrees` (registered/torn-down `:168-180`):
     `debug:setHunger { value }` (set `this.hunger`, emit `hunger:changed`) and `debug:advanceTime
@@ -286,19 +336,24 @@ Don't-Starve-style pressure (constant, punishes hoarding), and the Health & Well
     `advanceTime` rolls `dayCount` up); (b) forage a berry bush (tap it via `tapWorld` at a known bush
     tile, `waitForTimeout` for the walk+pick) and assert `inventory.get('berries')` rose; (c) set
     hunger to 0 via `debugSetHunger`, wait > `STARVE_DAMAGE_INTERVAL_MS`, assert `playerHp` (however
-    003 exposes it) fell; (d) open STATUS, eat a berry, assert `hunger` rose and `berries` count fell.
-    Keep the manual `ok()`/`fail()` style and the final page-errors-empty assertion.
+    003 exposes it) fell; (d) open STATUS, eat a berry, assert `hunger` rose and `berries` count fell;
+    (e) open BAG and assert the inventory overlay is present / shows the held items (a light check —
+    e.g. the overlay's item rows reflect `inventory.snapshot()`). Keep the manual `ok()`/`fail()` style
+    and the final page-errors-empty assertion.
   - **Docs:**
     - `CLAUDE.md` Status line: append that the survival slice (day/night tint + phase, hunger core +
-      starvation→health cascade, forageable food, Health & Wellbeing screen) landed as plan 004;
-      note night is tint+phase only (enemies later).
+      starvation→health cascade, forageable food, Health & Wellbeing screen with stats, and a separate
+      Inventory + Equipped overlay — equipped a display shell) landed as plan 004; note night is
+      tint+phase only (enemies later).
     - `docs/GAME-DESIGN.md`: tick MVP slice item 4's "day/night tint + a survival meter ticking through
       it" as ✅ (day/night + hunger), leaving "short timed wave" as the remaining todo; add a terse note
       under Hunger / Survival systems that the first cut is built (real-time cycle, hunger→health
       cascade via combat's `playerHp`, Health & Wellbeing screen shipped as the eat surface).
     - `docs/DECISIONS.md`: add a dated `[DECIDED]` entry — real-time day/night loop; night = tint+phase
       only this slice; hunger drains combat-owned `playerHp` on starvation; survival state **not**
-      persisted (runtime-only) pending a full save system; eat via the Health & Wellbeing screen.
+      persisted (runtime-only) pending a full save system; eat via the Health & Wellbeing screen
+      (which also shows player stats); inventory + equipped live in a separate overlay, with equipped a
+      **display shell** (no equipment model yet — deferred to a future plan).
     - `docs/WORKFLOW.md` "Smoke-testing the core loop": one line that the smoke now also drives
       day/night + hunger via the `debugAdvanceTime`/`debugSetHunger` hooks.
   - Side effects: debug hooks ship in the build — acceptable (so does `debug:regenTrees`); keep them
@@ -313,6 +368,9 @@ Don't-Starve-style pressure (constant, punishes hoarding), and the Health & Well
   (plan 003) via the phase state this slice exposes.
 - **Persistence / save-load** of survival (or any) game state — runtime-only this slice; a full save
   system is a separate later plan.
+- **Equipment system** — no equippable items, equip slots, or equip/unequip action this slice. The
+  "Equipped" section is a **display shell** driven by a `registry.get('equipped')` map that stays empty;
+  a real equipment model (equippable item data, slots, equip flow, combat effect) is a future plan.
 - **Additional needs** beyond hunger (warmth, energy, thirst) and the hunger→spoilage/cooking economy —
   hunger + the health cascade only; the Wellbeing screen is built to accommodate more needs later.
 - **Cooking / food crafting / spoilage**, multiple food types beyond the one berry item, and food from

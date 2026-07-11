@@ -444,7 +444,19 @@ target — this slice deliberately implements only a minimal slice of that (see 
     dragging the movepad moves the player directly (visibly not path-following); tapping Punch while
     facing the zombie damages it (ties together Step 5).
 
-- [ ] **Step 7: Inspect mode — stats panel + tap routing** `[inline]`
+- [x] **Step 7: Inspect mode — stats panel + tap routing** `[inline]`
+  - Outcome: new `src/systems/stats.ts` (`treeStats`/`wallStats`/`zombieStats`/
+    `playerCombatStats`, the last unused this slice per plan — schema completeness, same pattern as
+    `rangedDamage` in Step 1). `TreeNode`/`BuildSite`/`ZombieUnit` exported from `GameScene.ts` so
+    `stats.ts` can type against them (type-only import, no runtime circular dependency).
+    `GameScene.onPointerUp` gates `mode === 'inspect'` into a new `inspectAt()` (zombie → tree →
+    site priority, emits `inspect:show`/`inspect:hide`) ahead of the Step 6 `mode !== 'command'`
+    return, exactly as anticipated there. `UIScene` renders a centered stats panel (title/HP/extra
+    rows), shown on `inspect:show`, hidden on `inspect:hide` / tapping the panel itself / leaving
+    Inspect mode. Verified live in-browser: tree, kid zombie (full combatant stat block), and a
+    building blueprint (`Status: Building`) each show correct panels; tapping empty ground and
+    tapping the panel itself both dismiss it; Command-mode tap-to-move/chop/build all still work
+    unchanged after cycling through every mode.
   - Write four adapter functions mapping runtime instances to `InspectableStats` (probably
     colocated in `src/data/types.ts` or a new small `src/systems/stats.ts` if that reads cleaner —
     use judgement, keep them simple pure functions, no new class hierarchy). **Objects and

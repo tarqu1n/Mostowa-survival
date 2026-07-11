@@ -3,6 +3,7 @@ import { BASE_WIDTH, BASE_HEIGHT, COLORS, DEFAULT_ZOOM, ZOOM_STEP, MIN_ZOOM, MAX
 import { ITEMS } from '../data/items';
 import { BUILDABLES } from '../data/buildables';
 import type { Inventory } from '../systems/Inventory';
+import type { InspectableStats } from '../data/types';
 
 /**
  * HUD overlay, run in parallel over GameScene (never replaces it). Renders the wood counter, a
@@ -43,6 +44,13 @@ export class UIScene extends Phaser.Scene {
   private movepadPointerId: number | null = null;
   private combatPunchButton!: Phaser.GameObjects.Rectangle;
   private combatPunchLabel!: Phaser.GameObjects.Text;
+
+  // Inspect mode: a simple stats panel, centered, shown on 'inspect:show' / hidden on
+  // 'inspect:hide' or leaving Inspect mode.
+  private inspectPanelBg!: Phaser.GameObjects.Rectangle;
+  private inspectPanelTitle!: Phaser.GameObjects.Text;
+  private inspectPanelHp!: Phaser.GameObjects.Text;
+  private inspectPanelExtra!: Phaser.GameObjects.Text;
 
   /** Interactive HUD elements GameScene must treat as UI, not world — tested live so a hidden
    * button (Cancel when idle, the indicator outside build mode) never swallows a world tap. */
@@ -197,6 +205,37 @@ export class UIScene extends Phaser.Scene {
     this.combatPunchButton.on('pointerdown', () => this.game.events.emit('combat:punch'));
     this.hudElements.push(this.combatPunchButton);
 
+    // Inspect-mode stats panel — centered, clear of the always-on HUD zones. Hidden until
+    // 'inspect:show'; tapping the panel itself dismisses it (mirrors the Cancel/Build buttons'
+    // pointerdown-emits-an-event style).
+    const ipw = 200;
+    const iph = 150;
+    const ipx = BASE_WIDTH / 2;
+    const ipy = BASE_HEIGHT / 2 - 40;
+    this.inspectPanelBg = this.add
+      .rectangle(ipx, ipy, ipw, iph, 0x1c1815, 0.92)
+      .setStrokeStyle(1, COLORS.ui, 0.8)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(20)
+      .setVisible(false);
+    this.inspectPanelTitle = this.add
+      .text(ipx, ipy - iph / 2 + 16, '', { fontFamily: 'monospace', fontSize: '13px', color: '#e8dcc0' })
+      .setOrigin(0.5)
+      .setDepth(21)
+      .setVisible(false);
+    this.inspectPanelHp = this.add
+      .text(ipx, ipy - iph / 2 + 38, '', { fontFamily: 'monospace', fontSize: '11px', color: '#e8dcc0' })
+      .setOrigin(0.5)
+      .setDepth(21)
+      .setVisible(false);
+    this.inspectPanelExtra = this.add
+      .text(ipx, ipy - iph / 2 + 58, '', { fontFamily: 'monospace', fontSize: '10px', color: '#9a8f74', align: 'center' })
+      .setOrigin(0.5, 0)
+      .setDepth(21)
+      .setVisible(false);
+    this.inspectPanelBg.on('pointerdown', () => this.game.events.emit('inspect:hide'));
+    this.hudElements.push(this.inspectPanelBg);
+
     // Movepad drag tracking: scoped to whichever pointer id pressed the base, so a second finger
     // (e.g. a pinch-zoom on GameScene) doesn't hijack it.
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
@@ -240,6 +279,8 @@ export class UIScene extends Phaser.Scene {
     this.game.events.on('zoom:changed', this.onZoomChanged, this);
     this.game.events.on('camera:followChanged', this.onFollowChanged, this);
     this.game.events.on('mode:changed', this.onModeChanged, this);
+    this.game.events.on('inspect:show', this.showInspectPanel, this);
+    this.game.events.on('inspect:hide', this.hideInspectPanel, this);
 
     // Teardown so a future scene restart doesn't double-register on stale listeners.
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -249,6 +290,8 @@ export class UIScene extends Phaser.Scene {
       this.game.events.off('zoom:changed', this.onZoomChanged, this);
       this.game.events.off('camera:followChanged', this.onFollowChanged, this);
       this.game.events.off('mode:changed', this.onModeChanged, this);
+      this.game.events.off('inspect:show', this.showInspectPanel, this);
+      this.game.events.off('inspect:hide', this.hideInspectPanel, this);
     });
   }
 
@@ -305,6 +348,24 @@ export class UIScene extends Phaser.Scene {
       this.movepadPointerId = null;
       this.movepadKnob.setPosition(this.movepadCenter.x, this.movepadCenter.y);
     }
+    if (mode !== 'inspect') this.hideInspectPanel();
+  }
+
+  private showInspectPanel(stats: InspectableStats): void {
+    this.inspectPanelTitle.setText(stats.name);
+    this.inspectPanelHp.setText(stats.currentHp !== undefined ? `HP: ${stats.currentHp}/${stats.maxHp}` : `Max HP: ${stats.maxHp}`);
+    this.inspectPanelExtra.setText((stats.extra ?? []).map((e) => `${e.label}: ${e.value}`).join('\n'));
+    this.inspectPanelBg.setVisible(true);
+    this.inspectPanelTitle.setVisible(true);
+    this.inspectPanelHp.setVisible(true);
+    this.inspectPanelExtra.setVisible((stats.extra ?? []).length > 0);
+  }
+
+  private hideInspectPanel(): void {
+    this.inspectPanelBg.setVisible(false);
+    this.inspectPanelTitle.setVisible(false);
+    this.inspectPanelHp.setVisible(false);
+    this.inspectPanelExtra.setVisible(false);
   }
 
   /** Drag the movepad knob toward the pointer (clamped to the base radius) and emit the

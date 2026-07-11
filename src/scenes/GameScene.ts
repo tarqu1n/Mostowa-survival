@@ -27,6 +27,7 @@ import { worldToTile, tileToWorldCenter, snapToTileCenter, tileKey } from '../sy
 import { findPath, reachableAdjacent, type Cell } from '../systems/pathfind';
 import { TaskQueue, type Action } from '../systems/tasks';
 import { resolveMeleeAttack } from '../systems/combat';
+import { treeStats, wallStats, zombieStats } from '../systems/stats';
 import type { UIScene } from './UIScene';
 import {
   ACTIVE_TILESET,
@@ -38,7 +39,7 @@ import {
 } from '../data/tileset';
 
 /** A live/stump resource node instance in the world (tree sprite + its data + state). */
-interface TreeNode {
+export interface TreeNode {
   id: string;
   sprite: Phaser.GameObjects.Image;
   def: ResourceNodeDef;
@@ -53,7 +54,7 @@ interface TreeNode {
  * `rect` stays the physics/collision + blueprint-progress visual throughout; once built it's
  * hidden and `visual` (the wall sprite) is shown on top instead.
  */
-interface BuildSite {
+export interface BuildSite {
   id: string;
   col: number;
   row: number;
@@ -64,7 +65,7 @@ interface BuildSite {
 }
 
 /** A live enemy instance in the world — minimal idle/chasing AI (see plan 003). */
-interface ZombieUnit {
+export interface ZombieUnit {
   id: string;
   sprite: Phaser.GameObjects.Sprite & { body: Phaser.Physics.Arcade.Body };
   def: EnemyDef;
@@ -590,8 +591,12 @@ export class GameScene extends Phaser.Scene {
       this.isPanning = false; // the drag panned the camera — never resolves as a tap
       return;
     }
-    // Combat mode drives the player via the movepad, not taps; Inspect mode issues no commands at
-    // all (Step 7 adds Inspect's own tap-to-view-stats handling in this spot).
+    // Inspect mode shows a stats panel instead of issuing a command; Combat mode drives the
+    // player via the movepad, not taps. Both skip the Command-mode tree/move fallthrough below.
+    if (this.mode === 'inspect') {
+      this.inspectAt(pointer.worldX, pointer.worldY);
+      return;
+    }
     if (this.mode !== 'command') return;
 
     const action = this.actionAt(pointer.worldX, pointer.worldY);
@@ -676,6 +681,30 @@ export class GameScene extends Phaser.Scene {
 
   private onCombatMoveEnd(): void {
     if (this.mode === 'combat') this.player.body.setVelocity(0, 0);
+  }
+
+  /** Inspect-mode tap: hit-test zombies, then trees, then build sites (closest-thing-wins
+   * priority order) and show that entity's stats panel; empty ground closes any open panel. */
+  private inspectAt(x: number, y: number): void {
+    const col = worldToTile(x);
+    const row = worldToTile(y);
+
+    const zombie = this.zombies.find((z) => z.alive && z.col === col && z.row === row);
+    if (zombie) {
+      this.game.events.emit('inspect:show', zombieStats(zombie));
+      return;
+    }
+    const tree = this.treeAt(x, y);
+    if (tree) {
+      this.game.events.emit('inspect:show', treeStats(tree));
+      return;
+    }
+    const site = this.sites.find((s) => s.col === col && s.row === row);
+    if (site) {
+      this.game.events.emit('inspect:show', wallStats(site));
+      return;
+    }
+    this.game.events.emit('inspect:hide');
   }
 
   // --- Trees / chopping ----------------------------------------------------

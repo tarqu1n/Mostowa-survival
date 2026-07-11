@@ -76,71 +76,145 @@ target — this slice deliberately implements only a minimal slice of that (see 
   the wall has something to display in its stats panel. This is **not** the "wall HP/damage from
   combat" mechanic plan 002 deferred — walls remain indestructible in combat this slice; only the
   *display* stat is added now as forward-compatible scaffolding.
-- **Shared stats model**: rather than forcing `ResourceNodeDef`/`BuildableDef`/new `EnemyDef`/player
-  into one deep class hierarchy (they're structurally quite different), use a small common
-  **`InspectableStats`** shape (`{ name: string; maxHp: number; currentHp?: number; extra?:
-  { label: string; value: string }[] }`) plus one adapter function per entity kind
-  (`treeStats(node)`, `wallStats(site)`, `zombieStats(unit)`, `playerStats()`) that normalizes each
-  existing runtime shape into it. This avoids a premature abstraction across four different existing
-  patterns while still giving the panel one uniform thing to render.
-- **Player HP**: no player HP exists today. This slice adds a minimal `playerHp`/`playerMaxHp` on
-  `GameScene` so zombie contact damage has somewhere to go and the stats panel has something to show
-  for the player. **Death/respawn handling is a stub, not a design**: if `playerHp` hits 0, clamp at
-  0, log it, and reset to `playerMaxHp` at the player's current position (no game-over screen, no
-  penalty) — full death/respawn design is an explicit open question for a later slice, don't expand
-  it here.
+- **Shared stats model — real schema, not just a display shape.** Two tiers, both plain
+  `interface`s (no class hierarchy, just `extends` for field composition):
+  ```ts
+  interface BaseStats {
+    maxHp: number;
+    armour: number;     // flat reduction to incoming damage
+    speed: number;       // px/s; 0 for anything that doesn't move
+    vision?: number;      // world-px sight/detection radius; omit if not applicable
+  }
+  interface CombatantStats extends BaseStats {
+    strength: number;    // flat bonus to melee damage dealt
+    dex: number;          // flat bonus to ranged damage dealt (unused this slice, no ranged weapon)
+    dodge: number;        // % subtracted from attacker's hit chance
+  }
+  interface ObjectStats extends BaseStats {
+    activationRange?: number;  // proximity trigger (traps etc.), unused this slice
+  }
+  ```
+  `EnemyDef` and the player's own stats bag compose `CombatantStats`. `ResourceNodeDef`
+  (trees) and `BuildableDef` (walls) compose `ObjectStats`, meaning they **do** carry
+  `armour`/`speed` fields (set to `0`) for schema consistency, but per an explicit user call:
+  those fields are **inert for objects this slice** — no damage-resolution code reads an
+  object's `armour`, nothing moves an object by its `speed`, and the Step 7 inspector panel
+  **omits armour/speed from the display for objects** (they'd just always read "0" and mean
+  nothing yet). `maxHp` is a static/catalog-only field — **current** HP is always tracked
+  separately on the runtime instance (`TreeNode.hp`, `ZombieUnit.hp`, a new `playerHp`),
+  exactly mirroring the existing tree pattern; it is never duplicated onto the stats shape
+  itself.
+- **Combat resolution formulas (v1, flat, tune-by-feel like everything else)** — new pure
+  `src/systems/combat.ts` (Phaser-free, alongside `tasks`/`pathfind`/`grid`):
+  - `meleeDamage(attacker: CombatantStats, weaponBaseDamage: number) = weaponBaseDamage + attacker.strength`
+  - `rangedDamage(attacker: CombatantStats, weaponBaseDamage: number) = weaponBaseDamage + attacker.dex` (defined now for the schema's sake; nothing calls it this slice — no ranged weapon exists yet)
+  - `hitChance(defender: CombatantStats) = clamp(100 - defender.dodge, 5, 100)` (a 5% floor so dodge
+    can never make something literally unhittable; with every current entity's `dodge = 0` this is
+    always 100% — the roll is mechanically present but a no-op until something sets `dodge > 0`)
+  - `damageTaken(incoming: number, defender: CombatantStats) = max(0, incoming - defender.armour)`
+  - A single `resolveMeleeAttack(attacker, defender, weaponBaseDamage): number` composes the above
+    (rolls hit chance, then computes `damageTaken(meleeDamage(...), defender)`, returns the actual
+    HP to subtract, or `0` on a miss) — both Punch (Step 5) and the zombie's contact attack (Step 4)
+    call this **one** function rather than each hand-rolling damage math.
+  - A new `UNARMED_BASE_DAMAGE = 1` constant in `config.ts` is `weaponBaseDamage` for both Punch and
+    zombie-bite — this is what makes Punch's already-agreed "flat 1 damage" fall out naturally
+    (player `strength: 0` + `UNARMED_BASE_DAMAGE: 1` − zombie `armour: 0` = 1), rather than being a
+    separately hardcoded number in `punch()`.
+- **`vision` replaces two things this slice would otherwise invent separately**: a zombie's own
+  `vision` stat *is* its aggro-detection radius (world-px distance to the player — no separate
+  `AGGRO_RADIUS` constant needed), and the player's `vision` stat is what the existing fog-of-war
+  code should read instead of the current flat `VISION_RADIUS` config constant (which becomes just
+  the *starting value* assigned into the player's stats, not something read directly at render
+  time).
+- **`speed` replaces the separate `moveSpeed` field** this plan previously put directly on
+  `EnemyDef` — it's just `CombatantStats.speed` now. Consider (judgement call for whoever executes
+  Step 3) also migrating the player's existing hardcoded `this.speed = 90` to read from the new
+  player stats bag, since duplicating the number in two places would drift.
+- **Player stats**: no player stats exist today. This slice adds a `playerStats: CombatantStats`
+  bag on `GameScene` (starting values below) plus a separate mutable `playerHp: number` (mirrors the
+  def/runtime-hp split used everywhere else). A `damagePlayer(amount: number)` method runs incoming
+  hits through `damageTaken`/clamps at 0. **Death/respawn handling is a stub, not a design**: if
+  `playerHp` hits 0, clamp at 0, log it, and reset to `playerStats.maxHp` at the player's current
+  position (no game-over screen, no penalty) — full death/respawn design is an explicit open
+  question for a later slice, don't expand it here.
 - **Zombie AI (minimal, not the full roaming/aggro model)**: one state machine, two states —
   `idle` (stationary, does nothing) and `chasing` (re-pathfinds toward the player's current tile
   via `systems/pathfind.ts` every ~300ms and walks it via the same `physics.moveTo` waypoint
   approach `advancePath()` uses, not a new movement system). Transitions: `idle → chasing` when the
-  player comes within an `AGGRO_RADIUS` tile distance (new `config.ts` constant); no `chasing →
-  idle` deaggro this slice (full roaming/aggro nuance is explicitly deferred). While `chasing` and
-  adjacent to the player, deals `def.contactDamage` to `playerHp` on a cooldown (new
-  `CONTACT_DAMAGE_COOLDOWN_MS` constant, e.g. 1000ms) rather than every frame.
-- **First zombie**: the **kid zombie** (weakest/simplest — lowest `maxHp`, e.g. 3, matching the
-  tree's `maxHp: 3` so Punch-at-1-damage takes 3 hits, mirroring the chop feel). Exactly one zombie
-  instance spawns for this slice (a fixed test position on the map) — wave-spawning is out of scope.
+  world-px distance to the player is within the zombie's own `def.vision` (see above — no separate
+  radius constant); no `chasing → idle` deaggro this slice (full roaming/aggro nuance is explicitly
+  deferred). While `chasing` and adjacent to the player, calls `resolveMeleeAttack(zombieStats,
+  playerStats, UNARMED_BASE_DAMAGE)` and applies the result via `damagePlayer(...)` on a cooldown
+  (new `CONTACT_DAMAGE_COOLDOWN_MS` config constant, e.g. 1000ms) rather than every frame.
+- **First zombie**: the **kid zombie** (weakest/simplest). Starting `CombatantStats`:
+  `maxHp: 3, armour: 0, speed: 45, vision: 80 (5 tiles), strength: 1, dex: 0, dodge: 0` — `maxHp: 3`
+  matches the tree's `maxHp: 3` so Punch (1 damage) takes 3 hits, mirroring the chop feel; `speed:
+  45` ≈ half the player's `90` (chaseable but outrunnable); `strength: 1` is what a zombie bite
+  actually uses via `resolveMeleeAttack` instead of a separate `contactDamage` field (dropped from
+  `EnemyDef` — melee damage is now always derived from `strength`, whichever entity is attacking).
+  Exactly one instance spawns for this slice (a fixed test position on the map) — wave-spawning is
+  out of scope.
+- **Starting numbers for the full cast** (all placeholders, tune by feel):
+
+  | | maxHp | armour | speed | vision | strength | dex | dodge |
+  |---|---|---|---|---|---|---|---|
+  | Player | 10 | 0 | 90 | 80 (5 tiles) | 0 | 0 | 0 |
+  | Kid zombie | 3 | 0 | 45 | 80 (5 tiles) | 1 | — | 0 |
+  | Tree (object) | 3 | 0 (inert) | 0 (inert) | — | — | — | — |
+  | Wall (object) | 10 | 0 (inert) | 0 (inert) | — | — | — | — |
 
 ## Steps
 
-- [ ] **Step 1: Shared stats shape + EnemyDef catalog** `[inline]`
-  - In `src/data/types.ts`, add:
+- [ ] **Step 1: Shared stats schema + combat resolution + EnemyDef catalog** `[inline]`
+  - In `src/data/types.ts`, add the three-interface schema from Context & decisions verbatim
+    (`BaseStats`, `CombatantStats extends BaseStats`, `ObjectStats extends BaseStats`), plus:
     ```ts
+    export interface EnemyDef extends CombatantStats {
+      id: string;
+      name: string;
+      color: number;  // placeholder tint until the real sprite is wired (Step 2)
+    }
     export interface InspectableStats {
       name: string;
       maxHp: number;
       currentHp?: number;
       extra?: { label: string; value: string }[];
     }
-    export interface EnemyDef {
-      id: string;
-      name: string;
-      maxHp: number;
-      contactDamage: number;
-      moveSpeed: number;      // px/s, mirrors GameScene's existing `this.speed` convention
-      color: number;          // placeholder tint until the real sprite is wired (Step 2)
-    }
     ```
-    Add a matching `maxHp: number` (durability-for-display only, see Context) to the existing
-    `BuildableDef` interface — check its current fields first and slot it in consistently with
-    `cost`/`color`.
+    Update the existing `ResourceNodeDef` and `BuildableDef` interfaces to also `extends
+    ObjectStats` (check their current fields first — `ResourceNodeDef` already has `maxHp`, so
+    extending `ObjectStats` just adds `armour`/`speed` as new required fields; `BuildableDef` gains
+    `maxHp`/`armour`/`speed` all as new fields).
   - Create `src/data/enemies.ts` mirroring `src/data/nodes.ts`'s exact style (header comment,
     `Record<string, EnemyDef>` keyed catalog):
     ```ts
     export const ENEMIES: Record<string, EnemyDef> = {
-      kidZombie: { id: 'kidZombie', name: 'Kid Zombie', maxHp: 3, contactDamage: 1, moveSpeed: 45, color: 0x6b8f3e },
+      kidZombie: {
+        id: 'kidZombie', name: 'Kid Zombie', color: 0x6b8f3e,
+        maxHp: 3, armour: 0, speed: 45, vision: 80, strength: 1, dex: 0, dodge: 0,
+      },
     };
     ```
-    (`moveSpeed: 45` ≈ half the player's `this.speed = 90` — a chaseable-but-outrunnable pace; fine
-    to adjust by feel, it's a placeholder like everything else in this slice.)
-  - In `src/data/buildables.ts`, add the new `maxHp` field to the existing `wall` entry with a
-    reasonable placeholder value (e.g. `maxHp: 10`).
-  - Side effects: `BuildableDef`'s new field is additive (existing consumers of `BUILDABLES.wall`
-    that only read `.cost`/`.color` are unaffected), but grep for any exhaustive object-literal
-    typing of `BuildableDef` elsewhere that might now warn/error on a missing field.
+  - In `src/data/nodes.ts`, add `armour: 0, speed: 0` to the `tree` entry (inert placeholders, see
+    Context). In `src/data/buildables.ts`, add `maxHp: 10, armour: 0, speed: 0` to the `wall` entry
+    (same — `maxHp` is a real display stat per the locked decision, `armour`/`speed` are inert).
+  - Create `src/systems/combat.ts` mirroring `tasks.ts`/`pathfind.ts`'s header-comment-plus-pure-
+    functions style (no Phaser import): `meleeDamage`, `rangedDamage`, `hitChance`, `damageTaken`,
+    and `resolveMeleeAttack` exactly as specified in Context & decisions. `resolveMeleeAttack` should
+    take a `rng: () => number` parameter (defaulting to `Math.random`) so the hit-chance roll is
+    injectable/deterministic for the Step 8 smoke test rather than hardcoding `Math.random()` inside
+    the pure function.
+  - Add `UNARMED_BASE_DAMAGE = 1` and `CONTACT_DAMAGE_COOLDOWN_MS = 1000` to `src/config.ts` next to
+    the other tunables (the latter is used by Step 4, defined here since it's a combat tunable).
+  - Side effects: the new required fields on `ResourceNodeDef`/`BuildableDef` are **not** optional,
+    so grep for every existing literal of each type (currently just `NODES.tree` and
+    `BUILDABLES.wall` per Step 1's own research — confirm no others exist) and update them in the
+    same pass or `npm run build` will fail to type-check.
   - Docs: none (internal data model, covered by the Step 8 doc pass).
-  - Done when: `npm run build` type-checks with the new fields/file in place and no other file
-    needs changes yet (nothing consumes them until later steps).
+  - Done when: `npm run build` type-checks with the new fields/file in place; a quick manual check
+    in a scratch script or the browser console that `resolveMeleeAttack({...player defaults},
+    {...kidZombie defaults}, UNARMED_BASE_DAMAGE)` returns `1` confirms the formula composes as
+    intended before any scene code consumes it.
 
 - [ ] **Step 2: Wire the kid zombie tileset entry** `[delegate]`
   - In `src/data/tileset.ts`, extend `TilesetManifest`'s `actors` shape to add zombie frame lists
@@ -165,28 +239,35 @@ target — this slice deliberately implements only a minimal slice of that (see 
     that `this.anims.get('kid-zombie-walk')` / `'kid-zombie-damaged'` exist (inspectable via
     `window.game.anims` in devtools). The zombie doesn't need to be on-screen yet — that's Step 4.
 
-- [ ] **Step 3: Player facing + player HP** `[inline]`
-  - In `GameScene.ts`, add a `lastFacing: { dCol: number; dRow: number }` field on the scene
-    (defaulting to a sensible direction, e.g. `{ dCol: 0, dRow: 1 }` facing down), updated:
-    - In Combat mode, from the movepad's current nonzero vector each frame it's active (this step
-      just adds the field/update-hook; Step 5 wires the actual movepad input that feeds it).
-    - In Command/pathfind movement, from the sign of the current waypoint delta each time
-      `advancePath()` picks a new waypoint (whatever the existing per-waypoint direction already is
-      — don't recompute, just capture it).
-  - Add `playerHp: number` / `playerMaxHp: number` (e.g. `playerMaxHp = 10`, matching a new
-    `config.ts` constant `PLAYER_MAX_HP`) to `GameScene`, plus a `damagePlayer(amount: number)`
-    method: `playerHp = Math.max(0, playerHp - amount)`; if it hits 0, `console.log` a placeholder
-    message (e.g. `'[stub] player down — resetting HP'`) and reset `playerHp = playerMaxHp` (no
-    position/state changes beyond HP — the player stays wherever they are). Emit a
-    `player:hpChanged` event (`this.game.events.emit('player:hpChanged', { hp: playerHp, maxHp:
-    playerMaxHp })`) whenever `playerHp` changes, following the existing `tasks:changed`/
-    `build:modeChanged` event-emit convention.
-  - Add `PLAYER_MAX_HP` to `src/config.ts` next to the other tunables, with a one-line comment.
-  - Side effects: none yet — nothing calls `damagePlayer` or reads `lastFacing` until Steps 4-6.
+- [ ] **Step 3: Player stats, facing, and HP** `[inline]`
+  - In `GameScene.ts`, add `playerStats: CombatantStats` initialized to the Context & decisions
+    "Player" row (`{ maxHp: 10, armour: 0, speed: 90, vision: 80, strength: 0, dex: 0, dodge: 0 }`
+    — pull the `10`/`90`/`80` into named `config.ts` constants `PLAYER_MAX_HP`,
+    `PLAYER_START_SPEED`, `PLAYER_START_VISION` rather than inlining, since these were previously
+    separate ad hoc things (`this.speed`, the global `VISION_RADIUS`) now consolidating here).
+    Judgement call: also migrate the existing `this.speed`-based movement code and any fog-of-war
+    code currently reading `VISION_RADIUS` directly to read `this.playerStats.speed`/`.vision`
+    instead, so there's one source of truth — do this if it's a small, contained rename; leave a
+    `// TODO` and skip it if the fog-of-war code turns out to be more tangled than expected (not
+    worth blocking this step on an unrelated refactor).
+  - Add a separate mutable `playerHp: number` (starts at `playerStats.maxHp`) — kept apart from
+    `playerStats` exactly like `TreeNode.hp` is kept apart from `ResourceNodeDef.maxHp`.
+  - Add a `damagePlayer(amount: number)` method: `playerHp = Math.max(0, playerHp - amount)`; if it
+    hits 0, `console.log` a placeholder message (e.g. `'[stub] player down — resetting HP'`) and
+    reset `playerHp = playerStats.maxHp` (no position/state changes beyond HP — the player stays put).
+    Emit `player:hpChanged` (`{ hp: playerHp, maxHp: playerStats.maxHp }`) whenever `playerHp`
+    changes, following the existing `tasks:changed`/`build:modeChanged` event convention.
+  - Add a `lastFacing: { dCol: number; dRow: number }` field (defaulting to `{ dCol: 0, dRow: 1 }`,
+    facing down), updated: in Combat mode from the movepad's current nonzero vector each frame it's
+    active (this step just adds the field/update-hook; Step 6 wires the actual movepad input that
+    feeds it); in Command/pathfind movement, from the sign of the current waypoint delta each time
+    `advancePath()` picks a new waypoint (capture the existing direction, don't recompute it).
+  - Side effects: none yet beyond the optional speed/vision migration above — nothing calls
+    `damagePlayer`, reads `lastFacing`, or resolves an attack against `playerStats` until Steps 4-6.
   - Docs: none.
   - Done when: `npm run build` passes; a manual `window.game.scene.getScene('Game').damagePlayer(1)`
-    in devtools console logs the emitted event (check via a temporary `game.events.on('player:hpChanged', console.log)`
-    in devtools) and clamps/resets correctly at 0.
+    in devtools console logs the emitted event (check via a temporary
+    `game.events.on('player:hpChanged', console.log)` in devtools) and clamps/resets correctly at 0.
 
 - [ ] **Step 4: Zombie runtime unit + minimal chase/contact-damage AI** `[inline]`
   - In `GameScene.ts`, add a scene-local `interface ZombieUnit { id: string; sprite:
@@ -199,11 +280,14 @@ target — this slice deliberately implements only a minimal slice of that (see 
     tree placement to avoid overlap), `hp: ENEMIES.kidZombie.maxHp`, `state: 'idle'`, sprite textured
     with `kidZombieFrameKey(0)` from Step 2, playing `'kid-zombie-walk'` only while actually moving
     (mirror `updatePlayerAnim`'s velocity-gated play/stop pattern) and forcing frame 0 at rest.
-  - Add a per-frame (or throttled) update step for each live zombie: compute tile distance to the
-    player; if `state === 'idle'` and within `AGGRO_RADIUS` (new `config.ts` constant, e.g. `5`),
-    set `state = 'chasing'`. If `'chasing'`: if adjacent to the player (tile distance ≤ 1) and
-    `now - lastContactAt >= CONTACT_DAMAGE_COOLDOWN_MS` (new `config.ts` constant, e.g. `1000`),
-    call `damagePlayer(def.contactDamage)` and update `lastContactAt`; else, if `now -
+  - Add a per-frame (or throttled) update step for each live zombie: compute the world-px distance
+    to the player; if `state === 'idle'` and that distance is within `zombie.def.vision`, set
+    `state = 'chasing'` (this *is* the aggro check — no separate radius constant). If `'chasing'`:
+    if adjacent to the player (tile distance ≤ 1) and `now - lastContactAt >=
+    CONTACT_DAMAGE_COOLDOWN_MS` (the `config.ts` constant added in Step 1), call
+    `resolveMeleeAttack(zombie.def, this.playerStats, UNARMED_BASE_DAMAGE)` from `systems/combat.ts`
+    and apply the returned amount via `damagePlayer(...)`, updating `lastContactAt` regardless of
+    whether the roll hit (the cooldown gates *attempts*, not just successful hits); else, if `now -
     lastRepathAt >= 300`, recompute a path to the player's current tile via `systems/pathfind.ts`'s
     existing A* function (same one `GameScene` already calls for the worker) and advance the zombie
     toward the next waypoint using the same `physics.moveTo`-based waypoint approach `advancePath()`
@@ -216,20 +300,23 @@ target — this slice deliberately implements only a minimal slice of that (see 
     slice is tile-distance-based, not physics-overlap-based, to keep it simple).
   - Docs: none.
   - Done when: loading the game shows the kid zombie sprite on the map; walking the player within
-    `AGGRO_RADIUS` tiles makes it start moving toward the player; standing adjacent for a few seconds
-    visibly ticks `playerHp` down (checkable via the Step 3 devtools listener) at the cooldown rate,
-    not every frame.
+    the zombie's `vision` distance makes it start moving toward the player; standing adjacent for a
+    few seconds visibly ticks `playerHp` down (checkable via the Step 3 devtools listener) at the
+    cooldown rate, not every frame — and given every current entity's `dodge: 0`, every attempt
+    should land (this is a good moment to sanity-check the `hitChance` floor/clamp is doing the
+    right thing, even though it's a no-op at these starting numbers).
 
 - [ ] **Step 5: Punch action** `[inline]`
   - In `GameScene.ts`, add a `punch()` method: compute the facing tile
     (`playerTile() + lastFacing`, using `systems/grid.ts` helpers), find a live zombie in
     `zombies` occupying that tile (mirror how `treeAt()` hit-tests, but by tile-equality against
-    `zombie.col`/`row` rather than a world-space rect), and if found: `zombie.hp -= 1` (flat, per
-    the locked decision — not `def`-driven yet, hardcode the `1` with a comment noting it's the
-    intentionally-unbalanced starting value); if `zombie.hp <= 0`, set `alive = false`, destroy its
-    sprite, and remove it from `zombies` (mirror however `chop()`'s felling/removal works for
-    consistency, including whether felled trees leave a stump — a dead zombie can just be removed
-    outright, no zombie-stump equivalent needed).
+    `zombie.col`/`row` rather than a world-space rect), and if found: call
+    `resolveMeleeAttack(this.playerStats, zombie.def, UNARMED_BASE_DAMAGE)` from
+    `systems/combat.ts` and subtract the returned amount from `zombie.hp` (this is the one place
+    Punch's "flat 1 damage" actually resolves — via the shared formula, not a hardcoded `1`); if
+    `zombie.hp <= 0`, set `alive = false`, destroy its sprite, and remove it from `zombies` (mirror
+    however `chop()`'s felling/removal works for consistency, including whether felled trees leave
+    a stump — a dead zombie can just be removed outright, no zombie-stump equivalent needed).
   - Wire `punch()` to fire on a `combat:punch` event (emitted by the Combat-mode Punch button —
     built in Step 6) via `this.game.events.on('combat:punch', () => this.punch())` in the scene's
     event-wiring section (mirror where `build:toggle`/`tasks:cancel` listeners are already
@@ -256,7 +343,8 @@ target — this slice deliberately implements only a minimal slice of that (see 
     release, and a Punch button bottom-left (same Rectangle+Text template as other HUD buttons)
     emitting `combat:punch` on tap. Hide both when leaving Combat mode.
   - In `GameScene.ts`, listen for `combat:move`: while in Combat mode, directly set the player
-    body's velocity from the vector (scaled by `this.speed`) instead of going through
+    body's velocity from the vector (scaled by `this.playerStats.speed`, or `this.speed` if Step 3
+    left the migration as a TODO) instead of going through
     `advancePath()`/the task queue, and update `lastFacing` (Step 3) from the vector whenever it's
     nonzero; `combat:moveEnd` zeroes velocity. Ensure entering Combat mode doesn't fight with an
     in-flight Command-mode task (e.g. clear/pause the current `TaskQueue` action on entering Combat
@@ -271,13 +359,26 @@ target — this slice deliberately implements only a minimal slice of that (see 
     facing the zombie damages it (ties together Step 5).
 
 - [ ] **Step 7: Inspect mode — stats panel + tap routing** `[inline]`
-  - Write the four adapter functions from the locked "shared stats model" decision (probably
+  - Write four adapter functions mapping runtime instances to `InspectableStats` (probably
     colocated in `src/data/types.ts` or a new small `src/systems/stats.ts` if that reads cleaner —
-    use judgement, keep them simple pure functions, no new class hierarchy):
-    `treeStats(node: TreeNode): InspectableStats`, `wallStats(site: BuildSite): InspectableStats`,
-    `zombieStats(unit: ZombieUnit): InspectableStats`, `playerStats(hp: number, maxHp: number):
-    InspectableStats`. Each just maps existing fields into the common shape (e.g.
-    `zombieStats` → `{ name: unit.def.name, maxHp: unit.def.maxHp, currentHp: unit.hp }`).
+    use judgement, keep them simple pure functions, no new class hierarchy). **Objects and
+    combatants populate different fields**, per the locked "armour/speed are inert for objects"
+    decision — object adapters must NOT surface `armour`/`speed` (they'd always read a meaningless
+    `0`), combatant adapters should surface the full stat block:
+    - `treeStats(node: TreeNode): InspectableStats` → `{ name: 'Tree', maxHp: node.def.maxHp,
+      currentHp: node.hp }` (no `extra` — no other display-worthy fields on a tree this slice).
+    - `wallStats(site: BuildSite): InspectableStats` → `{ name: 'Wall', maxHp:
+      BUILDABLES.wall.maxHp, extra: [{ label: 'Status', value: site.done ? 'Built' : 'Building' }]
+      }` (no `currentHp` — walls have no runtime damage state this slice, just the static
+      display stat plus its build-progress status).
+    - `zombieStats(unit: ZombieUnit): InspectableStats` → `{ name: unit.def.name, maxHp:
+      unit.def.maxHp, currentHp: unit.hp, extra: [{ label: 'Armour', value:
+      String(unit.def.armour) }, { label: 'Speed', value: String(unit.def.speed) }, { label:
+      'Vision', value: String(unit.def.vision) }, { label: 'Strength', value:
+      String(unit.def.strength) }, { label: 'Dodge', value: String(unit.def.dodge) }] }`.
+    - `playerCombatStats(stats: CombatantStats, hp: number): InspectableStats` → same shape as
+      `zombieStats`, sourced from `this.playerStats`/`this.playerHp` (named `playerCombatStats` to
+      avoid clashing with the `playerStats` field already added on `GameScene` in Step 3).
   - In `GameScene.ts`'s pointer-up handling (`actionAt()` / around `GameScene.ts:482-485`), add an
     early branch: if `mode === 'inspect'`, hit-test the tapped point against zombies (by tile),
     then trees (`treeAt`, already exists), then build sites, in that priority order (closest-thing-
@@ -340,6 +441,14 @@ target — this slice deliberately implements only a minimal slice of that (see 
   intentionally just idle/chasing on a radius check.
 - Wall HP/damage *from combat* (breaching, zombies attacking walls) — only a static display stat
   is added to `BuildableDef` this slice; walls remain indestructible in play.
+- Any functional use of `armour`/`speed` on objects (trees/walls) — present in the data for schema
+  consistency, explicitly inert (no damage math reads them, nothing moves by them, the inspector
+  hides them for objects).
+- Balancing Strength/Dex/Dodge/Armour beyond the placeholder starting numbers in Context &
+  decisions, and any ranged-damage use of Dex (no ranged weapon exists to call `rangedDamage` yet —
+  it's defined for schema completeness only).
+- Any UI exposing raw hit-chance/dodge math to the player (e.g. a "% to hit" readout) — the roll
+  happens invisibly inside `resolveMeleeAttack`.
 - Real player death/respawn design (game-over state, penalties, position reset) — the HP-hits-0
   behavior added here is an explicit placeholder stub.
 - Directional player/zombie sprites or animations — facing is gameplay-logic-only this slice.

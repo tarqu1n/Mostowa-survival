@@ -93,14 +93,26 @@ save persistence, camera/scrolling world, multiple maps.
   - Extend `src/scenes/GameScene.ts`. Create the character `Inventory` (Step 2), store it via
     `this.registry.set('inventory', inv)`, and re-emit its `'change'` as
     `this.game.events.emit('inventory:changed', snapshot)` so the HUD can subscribe.
-  - Spawn 2–3 **tree** nodes (from `NODES.tree`) as rectangles at fixed positions (tree `color`,
-    ~`TILE_SIZE` square). Track each node's `hp` and alive/stump state. Keep them in an array.
-  - **Refactor input routing** (this is the core of the slice): a single scene `pointerdown` handler
-    that decides intent by what was tapped —
-    (a) if the tap hits a live tree (point-in-bounds / distance test over the node list) → set a
-    `pendingAction = { type:'chop', node }` and move the player toward a point just short of the tree;
-    (b) otherwise → treat as a move (existing tap-to-move). Leave a clear seam for build mode (Step 6)
-    to intercept taps first.
+  - Spawn 2–3 **tree** nodes (from `NODES.tree`) as rectangles, positioned on **tile centres** via
+    the Step-3 grid helpers (`tileToWorldCenter`) so the occupancy/overlap tests in Step 6 are exact
+    (Finding 5). Tree `color`, ~`TILE_SIZE` square. Track each node's `hp` and alive/stump state in
+    an array; store its `col,row` (`grid.tileKey`) so Step 6 can mark those tiles blocked.
+  - **Refactor input routing** (this is the core of the slice) — own **all** pointer handling, not
+    just `pointerdown` (Finding 2). Replace the current `pointerdown`/`pointermove` pair with a single
+    intent gate:
+    (a) **build-mode seam first** — a clear early-return hook so Step 6 can intercept taps before world
+    routing;
+    (b) **UI guard** — ignore any pointer whose screen position is inside the HUD hit-region (Finding 1;
+    coordinate with Step 5's HUD layout — e.g. an exported `isPointerOverHud(pointer)` or a shared
+    rect), so taps on the Build button never leak into world move/chop/place;
+    (c) if the tap hits a live tree (point-in-bounds / distance test over the node list) → set
+    `pendingAction = { type:'chop', node }` and move toward a point just short of the tree;
+    (d) otherwise → treat as a move.
+    Fold the drag-to-move `pointermove` through the same gate (or drop drag for this slice) so dragging
+    can't override a chop approach or slide the player under the build ghost.
+  - **Listener teardown** (Finding 3): any `this.game.events` / registry subscriptions this scene adds
+    must be removed in `this.events.once('shutdown', …)` so a future menu-return / scene restart
+    doesn't double-register.
   - In `update`, when the player is within `INTERACT_RANGE` (add to `config.ts`, e.g. `TILE_SIZE*1.4`)
     of a `pendingAction.chop` target, stop moving and run the chop loop: every `CHOP_INTERVAL_MS`
     (config, ~400ms) reduce the tree's `hp` by 1 and `inv.add(woodItemId, woodPerHit)`; small visual
@@ -121,11 +133,18 @@ save persistence, camera/scrolling world, multiple maps.
     `GameScene`. It renders: a **wood counter** (icon swatch in `ITEMS.wood.color` + count, top area),
     a **Build** toggle button (tap target sized for touch), and a small **mode indicator**
     ("BUILD MODE — tap a tile / tap Build to cancel") shown only in build mode.
-  - Wiring via `this.game.events`: on create, seed from `this.registry.get('inventory')?.snapshot()`;
-    listen for `'inventory:changed'` → update the counter; listen for `'build:modeChanged'` (bool) →
-    toggle the indicator + button pressed-state. The Build button emits `'build:toggle'`.
+  - Wiring: seed the counter from `this.registry.get('inventory')?.snapshot()` and subscribe to that
+    **shared `Inventory` instance's native `'change'`** event directly (Finding 4) — no `game.events`
+    hop for inventory. Reserve the game bus for build: listen for `'build:modeChanged'` (bool) → toggle
+    the indicator + button pressed-state; the Build button emits `'build:toggle'`. (This means Step 4's
+    re-emit of inventory onto the bus is unnecessary — drop it.)
+  - **Expose the HUD hit-region** so Step 4's UI guard (Finding 1) can reject world taps that land on
+    the HUD: e.g. a small exported helper / shared rect covering the Build button (and counter). Keep
+    it simple — a rectangle test is enough for this slice.
   - Register `UIScene` in `src/main.ts` scene array, and `this.scene.launch('UI')` from `GameScene`'s
     `create()` (launch = run alongside, not replace).
+  - **Listener teardown** (Finding 3): remove bus listeners and the Inventory `'change'` handler in
+    `this.events.once('shutdown', …)`.
   - Side effects: touches `src/main.ts` (scene list) and `GameScene.create` (launch call). Ensure
     `UIScene` sits above `GameScene` in render order (launch after, or set depth).
   - Docs: none yet (batched into Step 7).
@@ -136,9 +155,12 @@ save persistence, camera/scrolling world, multiple maps.
   - In `GameScene`, add a `buildMode: boolean`. Listen for `this.game.events.on('build:toggle', …)`
     to flip it and emit `'build:modeChanged'` back. Maintain an **occupancy set** of placed-wall tile
     keys (`grid.tileKey`).
-  - While in build mode: intercept taps **before** the Step-4 routing. Show a **ghost** rectangle
-    snapped to the tapped tile (`grid.snapToTileCenter`), coloured valid/invalid — invalid if the tile
-    is already occupied, overlaps a live tree, or the player can't `inv.canAfford(BUILDABLES.wall.cost)`.
+  - While in build mode: intercept taps **before** the Step-4 tree/move routing, but still **after**
+    the UI guard (Finding 1) — a tap on the Build button (to exit build mode) must **not** also place a
+    wall on the tile beneath it. Show a **ghost** rectangle snapped to the tapped tile
+    (`grid.snapToTileCenter`), coloured valid/invalid — invalid if the tile is already occupied,
+    overlaps a live tree (use the tree tile keys from Step 4), or the player can't
+    `inv.canAfford(BUILDABLES.wall.cost)`.
     On a tap on a **valid** tile: `inv.spend(cost)`, create a wall (rect in `wall.color`) as a member
     of a `physics.add.staticGroup()`, add the tile key to the occupancy set. Keep build mode on for
     repeated placement; tapping Build again exits (ghost hidden).
@@ -154,12 +176,15 @@ save persistence, camera/scrolling world, multiple maps.
 - [ ] **Step 7: Verify end-to-end + docs** `[inline]`
   - **Verify** via the headless smoke pattern in `docs/WORKFLOW.md` (`npm run build && npm run preview`
     + Chromium at `/opt/pw-browsers/`): drive tap→chop (assert wood count rises), toggle Build, place a
-    wall (assert wood drops by 2), and confirm no console/runtime errors. Capture before/after
-    screenshots to eyeball the HUD/layout.
+    wall (assert wood drops by 2), and confirm no console/runtime errors. **Explicitly assert the
+    Finding-1 arbitration:** tapping the Build button toggles mode **without** queuing a world move or
+    placing a wall under it. Capture before/after screenshots to eyeball the HUD/layout.
   - **Docs (terse):** update `CLAUDE.md` **Status** (core-loop slice landed: chop→wood→inventory,
     build→wall); tick the relevant items in `docs/GAME-DESIGN.md` **MVP vertical slice**; add a one-line
     note in `docs/WORKFLOW.md` **Code conventions** pointing to the new `src/data/`, `src/systems/`,
-    `UIScene` layout as the pattern to follow. Keep edits high-signal.
+    `UIScene` layout as the pattern to follow — including the two conventions this slice established:
+    world-scene input is gated on a HUD hit-region so overlay taps don't leak, and every `game.events`/
+    cross-scene listener is torn down in `shutdown`. Keep edits high-signal.
   - Side effects: none beyond docs.
   - Docs: as above.
   - Done when: smoke test green (chop adds wood, build spends wood, no errors); docs reflect the slice;
@@ -170,3 +195,19 @@ save persistence, camera/scrolling world, multiple maps.
 Day/night cycle, hunger/survival meters, health & wellbeing view, NPC companions, enemies/combat,
 daily narrative events, base storage/transfer, real pixel art or generated assets, save/load
 persistence, camera-scrolling or multi-map world, a demarcated base zone. These layer on later slices.
+
+## Critique
+
+Fresh-eyes review before execution. **Verdict:** the right plan — pulls toward the documented
+roadmap (data-driven items/nodes/buildables, separate systems, UIScene overlay + event bus,
+mobile-first tap controls) and is correctly sized as a foundation slice; the real risks are all in
+the input/event wiring the UIScene + bus transition introduces, not in strategy. Fixes folded into
+Steps 4–7 below.
+
+| # | Finding | Severity | Fixed in |
+| - | ------- | -------- | -------- |
+| 1 | GameScene's blanket `input.on('pointerdown')` fires for *every* tap, including taps landing on the UIScene Build button above it → tapping Build also routes a world move/chop/place (and exiting build mode also places a wall on that tile). No cross-scene input arbitration. | High | Steps 4–6: world routing gated on `!pointerOverUI` (HUD hit-region guard). |
+| 2 | The existing `pointermove` drag handler (updates `target` while pointer down) is unmentioned — dragging overrides the chop approach and, in build mode, slides the player under the ghost. | Medium | Step 4: consolidate *all* pointer handlers (down + move) into one intent gate. |
+| 3 | `game.events`/`registry` survive scene shutdown; listeners registered in `create()` with no teardown double-register on any future scene restart. | Medium | Steps 4–5 + 7: `this.events.once('shutdown', …)` cleanup in both scenes; baked into the convention note. |
+| 4 | Inventory is shared via `registry` *and* re-emitted onto the bus as `inventory:changed` — UIScene has the instance already and could subscribe to its native `'change'` directly. | Low | Step 5: UIScene listens to the shared Inventory's `'change'` directly; bus reserved for `build:*`. |
+| 5 | Trees spawn at "fixed positions" but build validity uses tile-key occupancy / "overlaps a live tree" — ambiguous if trees aren't grid-aligned. | Low | Step 4: snap tree spawns to tile centres via the Step-3 grid helpers. |

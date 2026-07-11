@@ -1,6 +1,6 @@
 # Basic Combat: Combat Mode, Punch, First Zombie, Stats Inspector
 
-> Status: in review
+> Status: deployed
 
 ## Summary
 

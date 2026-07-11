@@ -22,6 +22,19 @@ Skills come from the `hermes-ai-tooling` repo and are available in-session:
 
 Loop: *plan → critique → (revise) → execute → commit → push*.
 
+### Review checkpoints — STOP for Matt's input (do not run the loop unattended)
+
+Matt reviews the work at the gates, so **do not chain plan → critique → execute → deploy in one
+autonomous sweep.** Stop and hand back for input at each of these points:
+
+1. **After a plan is written** (before running `critique-plan`) — Matt may want to read/adjust it first.
+2. **After the critique** (before executing) — Matt decides whether to accept, revise, or drop findings.
+3. **At the end of every executed plan step** — as the `execute-plan` skill prescribes: report what the
+   step produced and check in before starting the next step (or parallel group).
+
+This holds even when a task says "build it" / "do it": that authorises the *work*, not skipping the
+review gates. When in doubt, stop and ask rather than press on.
+
 > Cross-device note: to make these skills load automatically in a fresh session on another
 > machine, install the `hermes-skills` marketplace / `hermes-dev` plugin per that repo's README,
 > or vendor them into `.claude/skills/`. TODO: decide and wire this up (tracked in DECISIONS.md).

@@ -7,6 +7,14 @@ Format: `YYYY-MM-DD — [DECIDED|PROPOSED|OPEN] Title` then a short rationale.
 
 ---
 
+## 2026-07-11 — [DECIDED] Stop for Matt's review at plan / critique / each step (no unattended sweep)
+
+The plan→critique→execute loop must **pause for Matt's input** at three gates: after a plan is written
+(before critique), after the critique (before executing), and at the end of **every** executed step (per
+the `execute-plan` skill's check-ins). Do not run the whole loop autonomously, even when told to "build
+it" — that authorises the work, not skipping review. Rationale: Matt wants to review/steer before code
+lands; a fully autonomous sweep robbed him of that. Detail in WORKFLOW.md → Review checkpoints.
+
 ## 2026-07-11 — [DECIDED] Genre & platform: browser pixel-art survival base-builder
 
 Single-player, runs in the browser, no server. Themed around Mostowa (camping destination).

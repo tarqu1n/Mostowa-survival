@@ -22,18 +22,23 @@ Loop: *plan → critique → (revise) → execute → commit → push*.
 > machine, install the `hermes-skills` marketplace / `hermes-dev` plugin per that repo's README,
 > or vendor them into `.claude/skills/`. TODO: decide and wire this up (tracked in DECISIONS.md).
 
-## Run / build / deploy
+## Stack
 
-_TBD — filled in once the stack is chosen. Expected shape (Vite):_
+**Phaser 3 + TypeScript + Vite.** Single-page static app, no backend. Client-side saves
+(`localStorage` → IndexedDB later).
+
+## Run / build / deploy
 
 ```bash
 npm install       # install deps
-npm run dev       # local dev server with hot reload
+npm run dev       # local dev server with hot reload (Vite)
 npm run build     # static production build -> dist/
 npm run preview   # serve the production build locally
 ```
 
-Deploy target: _TBD (GitHub Pages via Actions is the leading candidate)._
+**Deploy: GitHub Pages via GitHub Actions.** A workflow builds with `vite build` and publishes
+`dist/` to Pages on push. (Vite `base` must be set to the repo path for Pages to resolve assets —
+wired up when the scaffold lands.) itch.io is a possible later second target for sharing with players.
 
 ## Code conventions
 

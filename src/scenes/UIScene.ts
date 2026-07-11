@@ -26,9 +26,27 @@ export class UIScene extends Phaser.Scene {
   private zoomOutButton!: Phaser.GameObjects.Rectangle;
   private zoomInButton!: Phaser.GameObjects.Rectangle;
   private followButton!: Phaser.GameObjects.Rectangle;
+
+  // Mode toggle (Command/Combat/Inspect — see plan 003). GameScene owns the authoritative mode;
+  // this scene just mirrors it for button highlighting + showing/hiding the Combat-mode controls.
+  private modeCombatButton!: Phaser.GameObjects.Rectangle;
+  private modeInspectButton!: Phaser.GameObjects.Rectangle;
+
+  // Combat mode: virtual movepad (bottom-right) + Punch button (bottom-left). Movepad drag is
+  // tracked here (not GameScene) via a scene-level pointermove/up, gated by which pointer id
+  // pressed the base — mirrors nothing else in this file exactly, but keeps the input arithmetic
+  // out of GameScene, which only needs the resulting normalized {dx, dy}.
+  private movepadBase!: Phaser.GameObjects.Arc;
+  private movepadKnob!: Phaser.GameObjects.Arc;
+  private readonly movepadCenter = { x: 300, y: 540 };
+  private readonly movepadRadius = 40;
+  private movepadPointerId: number | null = null;
+  private combatPunchButton!: Phaser.GameObjects.Rectangle;
+  private combatPunchLabel!: Phaser.GameObjects.Text;
+
   /** Interactive HUD elements GameScene must treat as UI, not world — tested live so a hidden
    * button (Cancel when idle, the indicator outside build mode) never swallows a world tap. */
-  private hudElements: Array<Phaser.GameObjects.Rectangle | Phaser.GameObjects.Text> = [];
+  private hudElements: Array<Phaser.GameObjects.Rectangle | Phaser.GameObjects.Text | Phaser.GameObjects.Arc> = [];
 
   constructor() {
     super('UI');
@@ -131,6 +149,66 @@ export class UIScene extends Phaser.Scene {
     this.followButton.on('pointerdown', () => this.game.events.emit('camera:center'));
     this.hudElements.push(this.followButton);
 
+    // Mode toggle — Command (default, no button needed) / Combat / Inspect, mutually exclusive.
+    // Left side, below the wood/queue readout.
+    const mbw = 64;
+    const mbh = 20;
+    const mby = 48;
+    this.modeCombatButton = this.add
+      .rectangle(8 + mbw / 2, mby, mbw, mbh, 0x3a3730)
+      .setStrokeStyle(1, COLORS.ui, 0.6)
+      .setInteractive({ useHandCursor: true });
+    this.add.text(8 + mbw / 2, mby, 'COMBAT', { fontFamily: 'monospace', fontSize: '9px', color: '#e8dcc0' }).setOrigin(0.5);
+    this.modeInspectButton = this.add
+      .rectangle(8 + mbw + 8 + mbw / 2, mby, mbw, mbh, 0x3a3730)
+      .setStrokeStyle(1, COLORS.ui, 0.6)
+      .setInteractive({ useHandCursor: true });
+    this.add
+      .text(8 + mbw + 8 + mbw / 2, mby, 'INSPECT', { fontFamily: 'monospace', fontSize: '9px', color: '#e8dcc0' })
+      .setOrigin(0.5);
+    this.modeCombatButton.on('pointerdown', () => this.game.events.emit('mode:combatToggle'));
+    this.modeInspectButton.on('pointerdown', () => this.game.events.emit('mode:inspectToggle'));
+    this.hudElements.push(this.modeCombatButton, this.modeInspectButton);
+
+    // Combat mode controls — hidden until mode === 'combat' (see onModeChanged).
+    this.movepadBase = this.add
+      .circle(this.movepadCenter.x, this.movepadCenter.y, this.movepadRadius, 0x3a3730, 0.4)
+      .setStrokeStyle(1, COLORS.ui, 0.6)
+      .setInteractive({ useHandCursor: true })
+      .setVisible(false);
+    this.movepadKnob = this.add.circle(this.movepadCenter.x, this.movepadCenter.y, 14, COLORS.ui, 0.85).setVisible(false);
+    this.movepadBase.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.movepadPointerId = pointer.id;
+      this.updateMovepad(pointer);
+    });
+    this.hudElements.push(this.movepadBase);
+
+    const pbw = 70;
+    const pbh = 40;
+    this.combatPunchButton = this.add
+      .rectangle(8 + pbw / 2, BASE_HEIGHT - 8 - pbh / 2, pbw, pbh, 0x3a2a2a)
+      .setStrokeStyle(1, 0xb23b3b, 0.6)
+      .setInteractive({ useHandCursor: true })
+      .setVisible(false);
+    this.combatPunchLabel = this.add
+      .text(8 + pbw / 2, BASE_HEIGHT - 8 - pbh / 2, 'PUNCH', { fontFamily: 'monospace', fontSize: '12px', color: '#e8c0c0' })
+      .setOrigin(0.5)
+      .setVisible(false);
+    this.combatPunchButton.on('pointerdown', () => this.game.events.emit('combat:punch'));
+    this.hudElements.push(this.combatPunchButton);
+
+    // Movepad drag tracking: scoped to whichever pointer id pressed the base, so a second finger
+    // (e.g. a pinch-zoom on GameScene) doesn't hijack it.
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.id === this.movepadPointerId) this.updateMovepad(pointer);
+    });
+    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.id !== this.movepadPointerId) return;
+      this.movepadPointerId = null;
+      this.movepadKnob.setPosition(this.movepadCenter.x, this.movepadCenter.y);
+      this.game.events.emit('combat:moveEnd');
+    });
+
     // Control hint — moved here from GameScene: a genuinely fixed HUD label belongs on the
     // never-zoomed UI camera, not on the world camera (which now pans/zooms with the player).
     this.add.text(6, BASE_HEIGHT - 30, 'tap: order · hold: queue · Build: walls', {
@@ -161,6 +239,7 @@ export class UIScene extends Phaser.Scene {
     this.game.events.on('tasks:changed', this.onTasks, this);
     this.game.events.on('zoom:changed', this.onZoomChanged, this);
     this.game.events.on('camera:followChanged', this.onFollowChanged, this);
+    this.game.events.on('mode:changed', this.onModeChanged, this);
 
     // Teardown so a future scene restart doesn't double-register on stale listeners.
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -169,6 +248,7 @@ export class UIScene extends Phaser.Scene {
       this.game.events.off('tasks:changed', this.onTasks, this);
       this.game.events.off('zoom:changed', this.onZoomChanged, this);
       this.game.events.off('camera:followChanged', this.onFollowChanged, this);
+      this.game.events.off('mode:changed', this.onModeChanged, this);
     });
   }
 
@@ -210,5 +290,32 @@ export class UIScene extends Phaser.Scene {
 
   private onFollowChanged(following: boolean): void {
     this.followButton.setFillStyle(following ? 0x2f4a45 : 0x3a3730);
+  }
+
+  /** Reflects the authoritative mode from GameScene: button highlight + combat-controls visibility. */
+  private onModeChanged(mode: 'command' | 'combat' | 'inspect'): void {
+    this.modeCombatButton.setFillStyle(mode === 'combat' ? 0x5a5140 : 0x3a3730);
+    this.modeInspectButton.setFillStyle(mode === 'inspect' ? 0x5a5140 : 0x3a3730);
+    const inCombat = mode === 'combat';
+    this.movepadBase.setVisible(inCombat);
+    this.movepadKnob.setVisible(inCombat);
+    this.combatPunchButton.setVisible(inCombat);
+    this.combatPunchLabel.setVisible(inCombat);
+    if (!inCombat) {
+      this.movepadPointerId = null;
+      this.movepadKnob.setPosition(this.movepadCenter.x, this.movepadCenter.y);
+    }
+  }
+
+  /** Drag the movepad knob toward the pointer (clamped to the base radius) and emit the
+   * normalized {dx, dy} vector for GameScene to drive the player's velocity directly. */
+  private updateMovepad(pointer: Phaser.Input.Pointer): void {
+    const dx = pointer.x - this.movepadCenter.x;
+    const dy = pointer.y - this.movepadCenter.y;
+    const dist = Math.min(this.movepadRadius, Math.hypot(dx, dy));
+    const angle = Math.atan2(dy, dx);
+    this.movepadKnob.setPosition(this.movepadCenter.x + Math.cos(angle) * dist, this.movepadCenter.y + Math.sin(angle) * dist);
+    const norm = dist / this.movepadRadius;
+    this.game.events.emit('combat:move', { dx: Math.cos(angle) * norm, dy: Math.sin(angle) * norm });
   }
 }

@@ -96,6 +96,11 @@ export class GameScene extends Phaser.Scene {
   private playerHp = 0;
   private lastFacing = { dCol: 0, dRow: 1 };
 
+  // Input mode: Command (default tap-to-pathfind, unchanged), Combat (movepad drives the player
+  // directly, bypassing the pathfinder), Inspect (tap shows a stats panel — Step 7). Mutually
+  // exclusive; UIScene mirrors this for HUD highlighting/visibility via 'mode:changed'.
+  private mode: 'command' | 'combat' | 'inspect' = 'command';
+
   private inv!: Inventory;
   private trees: TreeNode[] = [];
   private nextTreeId = 0;
@@ -160,6 +165,7 @@ export class GameScene extends Phaser.Scene {
     this.queueMarkers = [];
     this.paintedThisGesture.clear();
     this.lastFacing = { dCol: 0, dRow: 1 };
+    this.mode = 'command';
 
     this.playerStats = {
       maxHp: PLAYER_MAX_HP,
@@ -244,9 +250,12 @@ export class GameScene extends Phaser.Scene {
     // Build ghost — hidden until build mode; recoloured valid/invalid as it tracks the tapped tile.
     this.ghost = this.add.rectangle(0, 0, TILE_SIZE, TILE_SIZE, COLORS.ghostValid, 0.5).setVisible(false).setDepth(6);
 
-    // HUD overlay runs alongside this scene; grab its instance for the UI-tap guard.
+    // HUD overlay runs alongside this scene; grab its instance for the UI-tap guard. UIScene
+    // itself isn't restarted on a death-restart (only 'Game' is), so re-emit mode:changed here to
+    // resync its mode-toggle/movepad visuals in case death happened mid-Combat/Inspect mode.
     this.scene.launch('UI');
     this.ui = this.scene.get('UI') as UIScene;
+    this.game.events.emit('mode:changed', this.mode);
 
     // One unified pointer gate (down + up).
     this.input.on('pointerdown', this.onPointerDown, this);
@@ -259,6 +268,10 @@ export class GameScene extends Phaser.Scene {
     this.game.events.on('zoom:delta', this.adjustZoom, this);
     this.game.events.on('camera:center', this.centerOnPlayer, this);
     this.game.events.on('combat:punch', this.punch, this);
+    this.game.events.on('mode:combatToggle', this.onCombatToggle, this);
+    this.game.events.on('mode:inspectToggle', this.onInspectToggle, this);
+    this.game.events.on('combat:move', this.onCombatMove, this);
+    this.game.events.on('combat:moveEnd', this.onCombatMoveEnd, this);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.game.events.off('build:toggle', this.toggleBuild, this);
@@ -267,6 +280,10 @@ export class GameScene extends Phaser.Scene {
       this.game.events.off('zoom:delta', this.adjustZoom, this);
       this.game.events.off('camera:center', this.centerOnPlayer, this);
       this.game.events.off('combat:punch', this.punch, this);
+      this.game.events.off('mode:combatToggle', this.onCombatToggle, this);
+      this.game.events.off('mode:inspectToggle', this.onInspectToggle, this);
+      this.game.events.off('combat:move', this.onCombatMove, this);
+      this.game.events.off('combat:moveEnd', this.onCombatMoveEnd, this);
     });
 
     this.emitTasks();
@@ -275,7 +292,9 @@ export class GameScene extends Phaser.Scene {
   override update(_time: number, delta: number): void {
     const action = this.queue.current;
     if (!action) {
-      this.player.body.setVelocity(0, 0);
+      // Combat mode drives velocity directly via onCombatMove/onCombatMoveEnd — don't stomp it
+      // here every frame just because the (unused, in Combat mode) task queue is empty.
+      if (this.mode !== 'combat') this.player.body.setVelocity(0, 0);
       this.updatePlayerAnim();
       this.updateVision();
       this.updateZombies();
@@ -528,16 +547,20 @@ export class GameScene extends Phaser.Scene {
     }
     if (!pointer.isDown || this.downOnUI || this.ui.hudHitTest(pointer.x, pointer.y)) return;
 
-    if (this.queuePainting) {
-      this.paintQueueAt(pointer);
-      return;
-    }
-    // A press held roughly still past the long-press threshold enters queue-paint mode (unchanged
-    // behaviour); a press that starts dragging *first* pans the camera instead — see onPointerUp.
-    if (!this.isPanning && this.time.now - this.pressStart >= LONGPRESS_MS) {
-      this.queuePainting = true;
-      this.paintQueueAt(pointer);
-      return;
+    // Command-mode-only: queue-painting (long-press-drag) issues tap-to-pathfind orders, which
+    // would fight Combat mode's direct movepad control and has no meaning in Inspect mode.
+    if (this.mode === 'command') {
+      if (this.queuePainting) {
+        this.paintQueueAt(pointer);
+        return;
+      }
+      // A press held roughly still past the long-press threshold enters queue-paint mode (unchanged
+      // behaviour); a press that starts dragging *first* pans the camera instead — see onPointerUp.
+      if (!this.isPanning && this.time.now - this.pressStart >= LONGPRESS_MS) {
+        this.queuePainting = true;
+        this.paintQueueAt(pointer);
+        return;
+      }
     }
 
     if (!this.isPanning && Phaser.Math.Distance.Between(this.downScreen.x, this.downScreen.y, pointer.x, pointer.y) > DRAG_PX) {
@@ -567,6 +590,9 @@ export class GameScene extends Phaser.Scene {
       this.isPanning = false; // the drag panned the camera — never resolves as a tap
       return;
     }
+    // Combat mode drives the player via the movepad, not taps; Inspect mode issues no commands at
+    // all (Step 7 adds Inspect's own tap-to-view-stats handling in this spot).
+    if (this.mode !== 'command') return;
 
     const action = this.actionAt(pointer.worldX, pointer.worldY);
     if (pointer.getDuration() >= LONGPRESS_MS) this.enqueue(action); // held-still long-press = append one
@@ -615,6 +641,41 @@ export class GameScene extends Phaser.Scene {
       zombie.sprite.destroy();
       this.zombies = this.zombies.filter((z) => z !== zombie);
     }
+  }
+
+  /** Switch input mode (mutually exclusive) and notify UIScene to update its HUD accordingly. */
+  private setMode(next: 'command' | 'combat' | 'inspect'): void {
+    if (this.mode === next) return;
+    this.mode = next;
+    // Entering Combat mode shouldn't fight with an in-flight Command-mode task (treat it like Cancel).
+    if (next === 'combat') this.cancelAll();
+    this.game.events.emit('mode:changed', this.mode);
+  }
+
+  private onCombatToggle(): void {
+    this.setMode(this.mode === 'combat' ? 'command' : 'combat');
+  }
+
+  private onInspectToggle(): void {
+    this.setMode(this.mode === 'inspect' ? 'command' : 'inspect');
+  }
+
+  /** Combat-mode movepad drag: drives the player directly (bypassing the pathfinder/task queue). */
+  private onCombatMove(vec: { dx: number; dy: number }): void {
+    if (this.mode !== 'combat') return;
+    this.player.body.setVelocity(vec.dx * this.playerStats.speed, vec.dy * this.playerStats.speed);
+    // Facing follows the movepad's dominant axis (cardinal, not diagonal): a near-axis-aligned
+    // drag still has a tiny off-axis component, and Math.sign on that noise would otherwise flip
+    // facing diagonal — pointing Punch at an empty tile next to a zombie the player is squarely
+    // facing.
+    if (vec.dx !== 0 || vec.dy !== 0) {
+      this.lastFacing =
+        Math.abs(vec.dx) >= Math.abs(vec.dy) ? { dCol: Math.sign(vec.dx), dRow: 0 } : { dCol: 0, dRow: Math.sign(vec.dy) };
+    }
+  }
+
+  private onCombatMoveEnd(): void {
+    if (this.mode === 'combat') this.player.body.setVelocity(0, 0);
   }
 
   // --- Trees / chopping ----------------------------------------------------

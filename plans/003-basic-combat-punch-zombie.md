@@ -390,7 +390,31 @@ target — this slice deliberately implements only a minimal slice of that (see 
     this is verifiable by manually emitting the event from devtools:
     `window.game.events.emit('combat:punch')`.
 
-- [ ] **Step 6: Combat mode — HUD toggle, movepad, Punch button** `[inline]`
+- [x] **Step 6: Combat mode — HUD toggle, movepad, Punch button** `[inline]`
+  - Outcome: `UIScene` gained COMBAT/INSPECT toggle buttons (left side, below the wood/queue
+    readout) emitting `mode:combatToggle`/`mode:inspectToggle`, a virtual movepad (circle base +
+    knob, bottom-right, drag tracked via a scene-level pointermove/up gated by pointer id) and a
+    Punch button (bottom-left), both hidden outside Combat mode. `GameScene` owns the authoritative
+    `mode` (mirrored back to UIScene via `mode:changed`, re-emitted on death-restart since UIScene
+    itself doesn't restart), drives player velocity directly from `combat:move`/`combat:moveEnd`
+    (bypassing the task queue), and cancels any in-flight Command-mode task on entering Combat.
+    **Judgement calls beyond the plan's literal text** (verified necessary via a real headless-
+    browser run, not just typecheck):
+    1. Gated the existing tap-to-pathfind/queue-paint logic in `onPointerMove`/`onPointerUp`
+       behind `mode === 'command'` — without this, a world tap/drag while in Combat mode still
+       queued Command-mode move orders that fought the movepad's direct velocity control, and
+       Inspect-mode taps fell through to Command-mode move orders too (Step 7 will replace the
+       blanket `if (this.mode !== 'command') return` with an explicit Inspect branch + a
+       combat-only return in that same spot).
+    2. Guarded `update()`'s idle-branch `setVelocity(0,0)` behind `mode !== 'combat'` — otherwise
+       every frame's queue-empty check (Combat mode never populates the queue) stomped the
+       velocity `onCombatMove` had just set, so the player never actually moved.
+    3. Movepad facing snaps to the drag's **dominant axis** (cardinal, not raw per-axis sign) —
+       found via live testing: a near-vertical drag still carries a tiny nonzero horizontal
+       component, and `Math.sign` on that noise flipped `lastFacing` diagonal, so Punch missed a
+       zombie the player was squarely facing. Confirmed fixed: toggled Combat, walked to the
+       zombie via the movepad, Punch landed 3/3 (zombie destroyed on the 3rd), then toggled back
+       through Inspect to Command and confirmed tap-to-move still works unchanged.
   - In `UIScene.ts`, add a small mode-toggle control (two icon-style buttons or a single
     cycle-button — match whatever's visually simplest given the existing HUD button template) that
     tracks a local `mode: 'command' | 'combat' | 'inspect'` and emits `mode:combatToggle` /

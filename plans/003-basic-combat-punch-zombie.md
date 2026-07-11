@@ -104,6 +104,13 @@ target — this slice deliberately implements only a minimal slice of that (see 
   separately on the runtime instance (`TreeNode.hp`, `ZombieUnit.hp`, a new `playerHp`),
   exactly mirroring the existing tree pattern; it is never duplicated onto the stats shape
   itself.
+- **Full schema locked in now, deliberately, even where unused this slice.** A fresh-eyes critique
+  of this plan flagged `dex`/`rangedDamage`, the `dodge`/hit-chance roll, and `activationRange` as
+  premature — nothing this slice's content (one melee enemy, one flat-damage punch) exercises them.
+  That's correct as an observation, but it's an explicit user call to keep the full stat shape now
+  rather than revisit it piecemeal later: the goal is knowing and remembering the whole shape of
+  things once, not minimizing this slice's line count. Recorded here so a future reader doesn't
+  mistake this for an oversight.
 - **Combat resolution formulas (v1, flat, tune-by-feel like everything else)** — new pure
   `src/systems/combat.ts` (Phaser-free, alongside `tasks`/`pathfind`/`grid`):
   - `meleeDamage(attacker: CombatantStats, weaponBaseDamage: number) = weaponBaseDamage + attacker.strength`
@@ -133,10 +140,19 @@ target — this slice deliberately implements only a minimal slice of that (see 
 - **Player stats**: no player stats exist today. This slice adds a `playerStats: CombatantStats`
   bag on `GameScene` (starting values below) plus a separate mutable `playerHp: number` (mirrors the
   def/runtime-hp split used everywhere else). A `damagePlayer(amount: number)` method runs incoming
-  hits through `damageTaken`/clamps at 0. **Death/respawn handling is a stub, not a design**: if
-  `playerHp` hits 0, clamp at 0, log it, and reset to `playerStats.maxHp` at the player's current
-  position (no game-over screen, no penalty) — full death/respawn design is an explicit open
-  question for a later slice, don't expand it here.
+  hits through `damageTaken`/clamps at 0.
+- **Death = restart, not a soft heal.** This is a survival game — death should mean losing the run,
+  not shrugging off a hit. On `playerHp` reaching 0: log it, then call `this.scene.restart()`
+  (Phaser's own scene-restart API) rather than resetting `playerHp` in place. No save/load system
+  exists yet (`docs/GAME-DESIGN.md`'s Persistence section: localStorage saves are explicitly future
+  work), so "restart" for this slice is simply Phaser tearing down and recreating the scene fresh —
+  player back at spawn with full HP, trees/sites/the zombie all back at their initial state too.
+  This is **not** scoped to include a game-over screen/message or any death penalty beyond losing
+  progress made since scene load — just the restart mechanic itself. Once a real save system lands,
+  "restart" should become "reload last save," but that's a future slice's problem, not this one's.
+  (This also resolves the death-loop risk a fresh-eyes critique flagged for the old in-place-heal
+  design — restarting the whole scene means the zombie can't still be standing adjacent to
+  immediately re-damage the player, since its position/state resets too.)
 - **Zombie AI (minimal, not the full roaming/aggro model)**: one state machine, two states —
   `idle` (stationary, does nothing) and `chasing` (re-pathfinds toward the player's current tile
   via `systems/pathfind.ts` every ~300ms and walks it via the same `physics.moveTo` waypoint
@@ -252,11 +268,14 @@ target — this slice deliberately implements only a minimal slice of that (see 
     worth blocking this step on an unrelated refactor).
   - Add a separate mutable `playerHp: number` (starts at `playerStats.maxHp`) — kept apart from
     `playerStats` exactly like `TreeNode.hp` is kept apart from `ResourceNodeDef.maxHp`.
-  - Add a `damagePlayer(amount: number)` method: `playerHp = Math.max(0, playerHp - amount)`; if it
-    hits 0, `console.log` a placeholder message (e.g. `'[stub] player down — resetting HP'`) and
-    reset `playerHp = playerStats.maxHp` (no position/state changes beyond HP — the player stays put).
-    Emit `player:hpChanged` (`{ hp: playerHp, maxHp: playerStats.maxHp }`) whenever `playerHp`
-    changes, following the existing `tasks:changed`/`build:modeChanged` event convention.
+  - Add a `damagePlayer(amount: number)` method: `playerHp = Math.max(0, playerHp - amount)`; emit
+    `player:hpChanged` (`{ hp: playerHp, maxHp: playerStats.maxHp }`) whenever `playerHp` changes,
+    following the existing `tasks:changed`/`build:modeChanged` event convention. If `playerHp` hits
+    0: `console.log` a message (e.g. `'player down — restarting'`), then call `this.scene.restart()`
+    — do this **last**, after the log and event emit, since Phaser tears the scene down immediately
+    on restart. No in-place HP reset — death means starting the scene over (see Context &
+    decisions's "Death = restart" entry): player, trees, sites, and the zombie all return to their
+    initial spawn state for free, since `create()` reruns from scratch.
   - Add a `lastFacing: { dCol: number; dRow: number }` field (defaulting to `{ dCol: 0, dRow: 1 }`,
     facing down), updated: in Combat mode from the movepad's current nonzero vector each frame it's
     active (this step just adds the field/update-hook; Step 6 wires the actual movepad input that
@@ -408,8 +427,11 @@ target — this slice deliberately implements only a minimal slice of that (see 
     (via `window.game` state — however `zombies`/`playerHp` end up exposed for inspection, e.g. a
     debug getter on the scene mirroring however `trees`/`inventory` are currently exposed to the
     smoke script) that the zombie is gone after 3 punches; separately assert standing adjacent long
-    enough ticks `playerHp` down and it resets at 0 rather than going negative; toggle Inspect mode
-    and tap the tree/wall/zombie(if still alive)/spawn a fresh one if needed, asserting a stats
+    enough ticks `playerHp` down and, once it hits 0, the scene restarts (re-query `window.game`
+    state afterward and confirm the player's HP/position and the zombie are back to their initial
+    spawn values, re-`waitForFunction(() => window.game?.isBooted)`-style settling first if the
+    restart needs a beat); toggle Inspect mode and tap the tree/wall/zombie(if still alive)/spawn a
+    fresh one if needed, asserting a stats
     panel appears with expected fields. Keep assertions loose on exact pixel positions/timing the
     same way the existing chop/build assertions already tolerate.
   - Update docs:
@@ -431,6 +453,20 @@ target — this slice deliberately implements only a minimal slice of that (see 
   - Done when: `npm run build && npm run preview` in one terminal, `npm run smoke` in another,
     all assertions pass including the new combat ones; all four doc files updated.
 
+## Critique
+
+Fresh-eyes review verdict: well-researched and accurate about the codebase, but the data/combat
+layer over-builds for a first slice whose only content is one enemy and one flat-damage attack.
+
+| # | Finding | Lens | Severity | Outcome |
+|---|---|---|---|---|
+| 1 | Full stats schema + `combat.ts` (dex, dodge/hit-chance roll, `rangedDamage`, `activationRange`) exercised by nothing this slice actually does | Alternative approaches / Right-sizing | High | **Kept as-is, deliberately** — explicit user call to lock the full shape in now rather than revisit piecemeal later (see Context & decisions) |
+| 2 | 8 steps bundle 3 input modes + combat engine + AI + tileset wiring + inspector + smoke tests + 4 doc updates into one pass — denser than plans 001/002 | Right-sizing / scope discipline | Medium | Not addressed — still open, see below |
+| 3 | Plan pivots to combat while CLAUDE.md's Status line says "Next: survival systems (day/night, hunger)"; Step 8 doesn't reconcile that pointer | Roadmap/strategic fit | Medium | Not addressed — still open, see below |
+| 4 | In-place HP reset on death let an adjacent zombie immediately re-damage the "reset" player (silent death-loop) | Gaps & risks | Low | **Resolved** — death now triggers `scene.restart()` instead of an in-place heal (see Context & decisions's "Death = restart" entry); the whole scene resets, so the zombie can't still be adjacent |
+
+Findings #2 and #3 remain open as of this critique pass — not yet decided with the user.
+
 ## Out of scope
 
 - Ranged weapons/ammo (pistol/shotgun), and any weapon-switching UI.
@@ -449,8 +485,9 @@ target — this slice deliberately implements only a minimal slice of that (see 
   it's defined for schema completeness only).
 - Any UI exposing raw hit-chance/dodge math to the player (e.g. a "% to hit" readout) — the roll
   happens invisibly inside `resolveMeleeAttack`.
-- Real player death/respawn design (game-over state, penalties, position reset) — the HP-hits-0
-  behavior added here is an explicit placeholder stub.
+- A game-over screen/message, death penalties beyond losing the run's progress, and any
+  "reload last save" behavior — no save system exists yet, so `scene.restart()` is the whole
+  mechanic this slice; it just isn't dressed up with UI/messaging.
 - Directional player/zombie sprites or animations — facing is gameplay-logic-only this slice.
 - New placeholder crate/box entity — inspectable objects are trees + walls only.
 - Damage numbers/floating combat text, sound effects, hit-flash VFX, screen shake — purely

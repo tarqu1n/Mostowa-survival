@@ -146,7 +146,7 @@ export class GameScene extends Phaser.Scene {
     this.fogShape = this.add.graphics().setVisible(false);
     const fogMask = this.fogShape.createGeometryMask();
     fogMask.setInvertAlpha(true);
-    this.add.rectangle(BASE_WIDTH / 2, BASE_HEIGHT / 2, BASE_WIDTH, BASE_HEIGHT, 0x000000, 0.65).setDepth(5).setMask(fogMask);
+    this.add.rectangle(BASE_WIDTH / 2, BASE_HEIGHT / 2, BASE_WIDTH, BASE_HEIGHT, 0x000000, 0.2).setDepth(5).setMask(fogMask);
     this.updateVision();
 
     // Walls: static bodies the player collides with (a backstop; pathing already avoids them).

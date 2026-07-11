@@ -44,6 +44,7 @@ export class GameScene extends Phaser.Scene {
 
   private inv!: Inventory;
   private trees: TreeNode[] = [];
+  private nextTreeId = 0;
 
   private readonly queue = new TaskQueue();
   private path: Cell[] = [];
@@ -103,10 +104,12 @@ export class GameScene extends Phaser.Scene {
 
     this.game.events.on('build:toggle', this.toggleBuild, this);
     this.game.events.on('tasks:cancel', this.cancelAll, this);
+    this.game.events.on('debug:regenTrees', this.regenerateTrees, this); // TEMP: movement testing
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.game.events.off('build:toggle', this.toggleBuild, this);
       this.game.events.off('tasks:cancel', this.cancelAll, this);
+      this.game.events.off('debug:regenTrees', this.regenerateTrees, this); // TEMP
     });
 
     this.buildHud();
@@ -310,16 +313,43 @@ export class GameScene extends Phaser.Scene {
   // --- Trees / chopping ----------------------------------------------------
 
   private spawnTrees(): void {
-    const def = NODES.tree;
-    const tiles: Array<[number, number]> = [
+    for (const [col, row] of [
       [5, 8],
       [14, 12],
       [8, 20],
-    ];
-    tiles.forEach(([col, row], i) => {
-      const rect = this.add.rectangle(tileToWorldCenter(col), tileToWorldCenter(row), TILE_SIZE, TILE_SIZE, def.color).setDepth(1);
-      this.trees.push({ id: `tree-${i}`, rect, def, hp: def.maxHp, alive: true, col, row });
-    });
+    ] as Array<[number, number]>) {
+      this.addTree(col, row);
+    }
+  }
+
+  private addTree(col: number, row: number): void {
+    const def = NODES.tree;
+    const rect = this.add.rectangle(tileToWorldCenter(col), tileToWorldCenter(row), TILE_SIZE, TILE_SIZE, def.color).setDepth(1);
+    this.trees.push({ id: `tree-${this.nextTreeId++}`, rect, def, hp: def.maxHp, alive: true, col, row });
+  }
+
+  /**
+   * TEMP (movement testing): clear all trees and scatter a fresh random batch on empty tiles,
+   * avoiding walls, blueprints, and the player's own tile. Wired to a debug HUD button.
+   */
+  private regenerateTrees(): void {
+    this.cancelAll(); // drop harvest orders that reference the trees we're about to destroy
+    for (const t of this.trees) t.rect.destroy();
+    this.trees = [];
+
+    const count = 6 + Math.floor(Math.random() * 9); // 6..14
+    const pt = this.playerTile();
+    const used = new Set<string>([tileKey(pt.col, pt.row)]);
+    let placed = 0;
+    for (let attempt = 0; placed < count && attempt < count * 30; attempt++) {
+      const col = Math.floor(Math.random() * this.gridDims.cols);
+      const row = Math.floor(Math.random() * this.gridDims.rows);
+      const key = tileKey(col, row);
+      if (used.has(key) || this.occupied.has(key) || this.siteTiles.has(key)) continue;
+      used.add(key);
+      this.addTree(col, row);
+      placed += 1;
+    }
   }
 
   private treeById(id: string): TreeNode | undefined {

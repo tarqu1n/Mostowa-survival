@@ -72,10 +72,10 @@ if (w1 >= 3) ok(`chop → wood ${w1}`);
 else fail(`chop did not yield wood (got ${w1}, expected >= 3)`);
 await page.screenshot({ path: `${OUT}-1-chopped.png` });
 
-// 2. Long-press three far tiles → the queue fills (current + 2 pending). (b)
-await longPressBase(...center(20, 38));
-await longPressBase(...center(19, 37));
-await longPressBase(...center(18, 36));
+// 2. Long-press three far tiles (bottom-left, clear of HUD buttons) → queue fills (current + 2). (b)
+await longPressBase(...center(2, 38));
+await longPressBase(...center(3, 36));
+await longPressBase(...center(4, 34));
 const q = await dbg();
 if (q.pending >= 2) ok(`long-press queued orders (pending ${q.pending})`);
 else fail(`queue did not fill via long-press (pending ${q.pending}, current ${q.currentKind})`);

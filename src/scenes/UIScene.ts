@@ -87,6 +87,21 @@ export class UIScene extends Phaser.Scene {
     // Queue indicator — current action + queued count, top-left under the wood counter.
     this.queueText = this.add.text(10, 26, '', { fontFamily: 'monospace', fontSize: '9px', color: '#9a8f74' });
 
+    // TEMP (movement testing): scatter a fresh random batch of trees. Bottom-right, dashed olive.
+    const dbw = 96;
+    const dbh = 24;
+    const dbx = BASE_WIDTH - dbw / 2 - 8;
+    const dby = BASE_HEIGHT - dbh / 2 - 8;
+    const debugButton = this.add
+      .rectangle(dbx, dby, dbw, dbh, 0x2f3b26)
+      .setStrokeStyle(1, 0x6f8a5a, 0.8)
+      .setInteractive({ useHandCursor: true });
+    this.add
+      .text(dbx, dby, '⟳ TREES', { fontFamily: 'monospace', fontSize: '11px', color: '#b9d29a' })
+      .setOrigin(0.5);
+    debugButton.on('pointerdown', () => this.game.events.emit('debug:regenTrees'));
+    this.hudElements.push(debugButton);
+
     // Seed + subscribe: read the shared Inventory's own 'change' directly (no event-bus hop).
     this.refreshWood(this.inv?.snapshot() ?? {});
     this.inv?.on('change', this.refreshWood, this);

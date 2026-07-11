@@ -27,6 +27,15 @@ export const BUILD_MS = 2500;
 /** Pointer travel (px, base res) above which a press is treated as a drag, not an order. */
 export const DRAG_PX = 12;
 
+/** Camera zoom bounds + default. 1 = whole map visible (no camera scroll room); tune to taste. */
+export const MIN_ZOOM = 1;
+export const MAX_ZOOM = 3;
+export const DEFAULT_ZOOM = 2;
+/** Zoom change per UI button press. */
+export const ZOOM_STEP = 0.5;
+/** localStorage key the current zoom is persisted under (best-effort — see GameScene.setZoom). */
+export const ZOOM_STORAGE_KEY = 'mostowa:zoom';
+
 /** Semantic colour palette (dark & grotty). Expand as the art identity firms up. */
 export const COLORS = {
   background: 0x14100f,

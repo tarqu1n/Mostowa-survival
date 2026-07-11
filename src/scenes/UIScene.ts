@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { BASE_WIDTH, BASE_HEIGHT, COLORS } from '../config';
+import { BASE_WIDTH, BASE_HEIGHT, COLORS, DEFAULT_ZOOM, ZOOM_STEP, MIN_ZOOM, MAX_ZOOM } from '../config';
 import { ITEMS } from '../data/items';
 import { BUILDABLES } from '../data/buildables';
 import type { Inventory } from '../systems/Inventory';
@@ -22,6 +22,9 @@ export class UIScene extends Phaser.Scene {
   private cancelButton!: Phaser.GameObjects.Rectangle;
   private cancelLabel!: Phaser.GameObjects.Text;
   private queueText!: Phaser.GameObjects.Text;
+  private zoomText!: Phaser.GameObjects.Text;
+  private zoomOutButton!: Phaser.GameObjects.Rectangle;
+  private zoomInButton!: Phaser.GameObjects.Rectangle;
   /** Interactive HUD elements GameScene must treat as UI, not world — tested live so a hidden
    * button (Cancel when idle, the indicator outside build mode) never swallows a world tap. */
   private hudElements: Array<Phaser.GameObjects.Rectangle | Phaser.GameObjects.Text> = [];
@@ -87,6 +90,38 @@ export class UIScene extends Phaser.Scene {
     // Queue indicator — current action + queued count, top-left under the wood counter.
     this.queueText = this.add.text(10, 26, '', { fontFamily: 'monospace', fontSize: '9px', color: '#9a8f74' });
 
+    // Zoom controls — top-center: [−] 100% [+]. GameScene owns the actual camera zoom (and the
+    // pinch-gesture path to it); this only emits deltas + mirrors the current value back as text.
+    const zbSize = 24;
+    const zGap = 34;
+    const zY = 8 + zbSize / 2;
+    this.zoomOutButton = this.add
+      .rectangle(BASE_WIDTH / 2 - zGap, zY, zbSize, zbSize, 0x3a3730)
+      .setStrokeStyle(1, COLORS.ui, 0.6)
+      .setInteractive({ useHandCursor: true });
+    this.add.text(BASE_WIDTH / 2 - zGap, zY, '−', { fontFamily: 'monospace', fontSize: '16px', color: '#e8dcc0' }).setOrigin(0.5);
+    const initialZoom = (this.registry.get('zoom') as number | undefined) ?? DEFAULT_ZOOM;
+    this.zoomText = this.add
+      .text(BASE_WIDTH / 2, zY, `${Math.round(initialZoom * 100)}%`, { fontFamily: 'monospace', fontSize: '10px', color: '#e8dcc0' })
+      .setOrigin(0.5);
+    this.zoomInButton = this.add
+      .rectangle(BASE_WIDTH / 2 + zGap, zY, zbSize, zbSize, 0x3a3730)
+      .setStrokeStyle(1, COLORS.ui, 0.6)
+      .setInteractive({ useHandCursor: true });
+    this.add.text(BASE_WIDTH / 2 + zGap, zY, '+', { fontFamily: 'monospace', fontSize: '16px', color: '#e8dcc0' }).setOrigin(0.5);
+    this.zoomOutButton.on('pointerdown', () => this.game.events.emit('zoom:delta', -ZOOM_STEP));
+    this.zoomInButton.on('pointerdown', () => this.game.events.emit('zoom:delta', ZOOM_STEP));
+    this.hudElements.push(this.zoomOutButton, this.zoomInButton);
+    this.updateZoomButtons(initialZoom);
+
+    // Control hint — moved here from GameScene: a genuinely fixed HUD label belongs on the
+    // never-zoomed UI camera, not on the world camera (which now pans/zooms with the player).
+    this.add.text(6, BASE_HEIGHT - 30, 'tap: order · hold: queue · Build: walls', {
+      fontFamily: 'monospace',
+      fontSize: '8px',
+      color: '#6f6552',
+    });
+
     // TEMP (movement testing): scatter a fresh random batch of trees. Bottom-right, dashed olive.
     const dbw = 96;
     const dbh = 24;
@@ -107,12 +142,14 @@ export class UIScene extends Phaser.Scene {
     this.inv?.on('change', this.refreshWood, this);
     this.game.events.on('build:modeChanged', this.onBuildMode, this);
     this.game.events.on('tasks:changed', this.onTasks, this);
+    this.game.events.on('zoom:changed', this.onZoomChanged, this);
 
     // Teardown so a future scene restart doesn't double-register on stale listeners.
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.inv?.off('change', this.refreshWood, this);
       this.game.events.off('build:modeChanged', this.onBuildMode, this);
       this.game.events.off('tasks:changed', this.onTasks, this);
+      this.game.events.off('zoom:changed', this.onZoomChanged, this);
     });
   }
 
@@ -139,5 +176,16 @@ export class UIScene extends Phaser.Scene {
     this.queueText.setText(busy ? `▶ ${state.current ?? 'idle'}${state.pending ? ` · +${state.pending} queued` : ''}` : '');
     this.cancelButton.setVisible(busy);
     this.cancelLabel.setVisible(busy);
+  }
+
+  private onZoomChanged(zoom: number): void {
+    this.zoomText.setText(`${Math.round(zoom * 100)}%`);
+    this.updateZoomButtons(zoom);
+  }
+
+  /** Dim a zoom button once its direction is exhausted (mirrors the Build button's afford-dimming). */
+  private updateZoomButtons(zoom: number): void {
+    this.zoomOutButton.setAlpha(zoom <= MIN_ZOOM ? 0.4 : 1);
+    this.zoomInButton.setAlpha(zoom >= MAX_ZOOM ? 0.4 : 1);
   }
 }

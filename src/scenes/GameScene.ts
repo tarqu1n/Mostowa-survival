@@ -1,5 +1,18 @@
 import Phaser from 'phaser';
-import { BASE_WIDTH, BASE_HEIGHT, TILE_SIZE, CHOP_INTERVAL_MS, LONGPRESS_MS, BUILD_MS, DRAG_PX, COLORS } from '../config';
+import {
+  BASE_WIDTH,
+  BASE_HEIGHT,
+  TILE_SIZE,
+  CHOP_INTERVAL_MS,
+  LONGPRESS_MS,
+  BUILD_MS,
+  DRAG_PX,
+  COLORS,
+  MIN_ZOOM,
+  MAX_ZOOM,
+  DEFAULT_ZOOM,
+  ZOOM_STORAGE_KEY,
+} from '../config';
 import { NODES } from '../data/nodes';
 import { BUILDABLES } from '../data/buildables';
 import type { ResourceNodeDef } from '../data/types';
@@ -74,6 +87,8 @@ export class GameScene extends Phaser.Scene {
   private queuePainting = false; // once a hold crosses LONGPRESS_MS, dragging paints queue orders
   private paintedThisGesture = new Set<string>(); // tile keys already queued in the current gesture
   private queueMarkers: Phaser.GameObjects.Rectangle[] = []; // yellow pips over queued move tiles
+  private pinching = false; // a second pointer went down — the gesture is a pinch-zoom, not a tap
+  private pinchDist = 0; // previous frame's inter-pointer distance, for the zoom delta ratio
 
   constructor() {
     super('Game');
@@ -104,6 +119,15 @@ export class GameScene extends Phaser.Scene {
     this.player.body.setCollideWorldBounds(true);
     this.physics.world.setBounds(0, 0, BASE_WIDTH, BASE_HEIGHT);
 
+    // Camera follows the player once zoomed in (at MIN_ZOOM the viewport already covers the whole
+    // map, so bounds leave no scroll room and this is a no-op — see config.ts). Instant (no lerp
+    // smoothing): this is a precision tap-to-target game, so the camera should never lag behind
+    // where the player actually is. centerOn avoids a visible pan-in from (0,0) on the first frame.
+    this.cameras.main.setBounds(0, 0, BASE_WIDTH, BASE_HEIGHT);
+    this.cameras.main.centerOn(this.player.x, this.player.y);
+    this.cameras.main.startFollow(this.player, true);
+    this.setZoom(this.loadStoredZoom());
+
     // Walls: static bodies the player collides with (a backstop; pathing already avoids them).
     this.walls = this.physics.add.staticGroup();
     this.physics.add.collider(this.player, this.walls);
@@ -123,14 +147,15 @@ export class GameScene extends Phaser.Scene {
     this.game.events.on('build:toggle', this.toggleBuild, this);
     this.game.events.on('tasks:cancel', this.cancelAll, this);
     this.game.events.on('debug:regenTrees', this.regenerateTrees, this); // TEMP: movement testing
+    this.game.events.on('zoom:delta', this.adjustZoom, this);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.game.events.off('build:toggle', this.toggleBuild, this);
       this.game.events.off('tasks:cancel', this.cancelAll, this);
       this.game.events.off('debug:regenTrees', this.regenerateTrees, this); // TEMP
+      this.game.events.off('zoom:delta', this.adjustZoom, this);
     });
 
-    this.buildHud();
     this.emitTasks();
   }
 
@@ -345,6 +370,14 @@ export class GameScene extends Phaser.Scene {
   // --- Input gate ----------------------------------------------------------
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
+    if (this.activePointerCount() >= 2) {
+      // A second finger just landed — this gesture is a pinch, not a tap. Abandon anything the
+      // first finger started (build ghost / queue-paint) so the two don't fight over the input.
+      this.pinching = true;
+      this.pinchDist = this.pointerDistance();
+      this.queuePainting = false;
+      return;
+    }
     this.downOnUI = this.ui.hudHitTest(pointer.x, pointer.y);
     if (this.downOnUI) return; // HUD owns this tap
     this.downWorld.set(pointer.worldX, pointer.worldY);
@@ -358,6 +391,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
+    if (this.pinching) {
+      if (this.activePointerCount() < 2) return; // one finger already lifted — wait for pointerup
+      const dist = this.pointerDistance();
+      if (this.pinchDist > 0) this.setZoom(this.cameras.main.zoom * (dist / this.pinchDist));
+      this.pinchDist = dist;
+      return;
+    }
     if (this.buildMode) {
       if (!this.ui.hudHitTest(pointer.x, pointer.y)) this.updateGhost(pointer);
       return;
@@ -370,6 +410,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onPointerUp(pointer: Phaser.Input.Pointer): void {
+    if (this.pinching) {
+      if (this.activePointerCount() < 2) this.pinching = false; // both fingers up — gesture over
+      return; // a pinch never resolves as a tap, however many fingers are still down
+    }
     if (this.buildMode || this.downOnUI || this.ui.hudHitTest(pointer.x, pointer.y)) return;
     if (this.queuePainting) {
       this.queuePainting = false; // the drag already queued its targets
@@ -590,13 +634,48 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private buildHud(): void {
-    this.add
-      .text(6, BASE_HEIGHT - 30, 'tap: order · hold: queue · Build: walls', {
-        fontFamily: 'monospace',
-        fontSize: '8px',
-        color: '#6f6552',
-      })
-      .setScrollFactor(0);
+  // --- Camera zoom -----------------------------------------------------------
+
+  /** Best-effort read of a persisted zoom preference; falls back to the default. */
+  private loadStoredZoom(): number {
+    try {
+      const stored = Number(localStorage.getItem(ZOOM_STORAGE_KEY));
+      if (stored) return stored;
+    } catch {
+      // Private browsing / storage disabled — fall back silently.
+    }
+    return DEFAULT_ZOOM;
+  }
+
+  /** Apply + persist a zoom level, clamped to [MIN_ZOOM, MAX_ZOOM]. Also mirrored onto the
+   * registry (for UIScene's initial readout — see UIScene.create) and broadcast for live updates. */
+  private setZoom(z: number): void {
+    const clamped = Phaser.Math.Clamp(z, MIN_ZOOM, MAX_ZOOM);
+    this.cameras.main.setZoom(clamped);
+    this.registry.set('zoom', clamped);
+    try {
+      localStorage.setItem(ZOOM_STORAGE_KEY, String(clamped));
+    } catch {
+      // Private browsing / storage disabled — the zoom still applies, just won't persist.
+    }
+    this.game.events.emit('zoom:changed', clamped);
+  }
+
+  private adjustZoom(delta: number): void {
+    this.setZoom(this.cameras.main.zoom + delta);
+  }
+
+  /** How many of the tracked pointers (see BootScene's addPointer) are currently held down. */
+  private activePointerCount(): number {
+    return [this.input.pointer1, this.input.pointer2].filter((p) => p.isDown).length;
+  }
+
+  private pointerDistance(): number {
+    return Phaser.Math.Distance.Between(
+      this.input.pointer1.x,
+      this.input.pointer1.y,
+      this.input.pointer2.x,
+      this.input.pointer2.y,
+    );
   }
 }

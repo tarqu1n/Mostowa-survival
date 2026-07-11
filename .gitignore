@@ -15,6 +15,9 @@ pnpm-debug.log*
 # Smoke-test artifacts (screenshots)
 scripts/.smoke*
 
+# gen-art trial outputs (throwaway AI image generations — see scripts/gen-art/README.md)
+scripts/.gen-art/
+
 # Editor / OS
 .DS_Store
 .idea/

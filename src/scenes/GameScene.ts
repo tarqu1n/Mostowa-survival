@@ -94,8 +94,9 @@ export class GameScene extends Phaser.Scene {
   private lastPanX = 0; // previous frame's screen-space pointer position, for the pan delta
   private lastPanY = 0;
   private following = true; // camera auto-follows the player until a manual pan breaks the lock
-  private fog!: Phaser.GameObjects.Rectangle;
-  private fogShape!: Phaser.GameObjects.Graphics; // invisible — its shape is only a mask source
+  // Fog of war (see create() + updateVision()) — fogShape is never rendered directly, just the
+  // vision-radius mask's shape source, redrawn each frame to track the character.
+  private fogShape!: Phaser.GameObjects.Graphics;
 
   constructor() {
     super('Game');
@@ -137,14 +138,16 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true);
     this.setZoom(this.loadStoredZoom());
 
-    // Fog of war: a full-map dark overlay with a hole (inverted geometry mask) tracking the
-    // character's vision radius, redrawn each frame in update() as the character moves.
+    // Fog of war: a semi-transparent overlay (inverted geometry mask — a hole at the vision
+    // radius) dims static world content (ground/trees/walls, depths 0-4) but sits below the ghost
+    // (6) and player (10), so they're unaffected by it. Dynamic actors instead hide themselves
+    // entirely outside vision — see updateVision() — since a second full-screen overlay can't
+    // selectively cover "just the actors" without also re-covering the static content underneath.
     this.fogShape = this.add.graphics().setVisible(false);
-    this.fog = this.add.rectangle(BASE_WIDTH / 2, BASE_HEIGHT / 2, BASE_WIDTH, BASE_HEIGHT, 0x000000, 1).setDepth(50);
     const fogMask = this.fogShape.createGeometryMask();
     fogMask.setInvertAlpha(true);
-    this.fog.setMask(fogMask);
-    this.updateFog();
+    this.add.rectangle(BASE_WIDTH / 2, BASE_HEIGHT / 2, BASE_WIDTH, BASE_HEIGHT, 0x000000, 0.65).setDepth(5).setMask(fogMask);
+    this.updateVision();
 
     // Walls: static bodies the player collides with (a backstop; pathing already avoids them).
     this.walls = this.physics.add.staticGroup();
@@ -184,7 +187,7 @@ export class GameScene extends Phaser.Scene {
     if (!action) {
       this.player.body.setVelocity(0, 0);
       this.updatePlayerAnim();
-      this.updateFog();
+      this.updateVision();
       return;
     }
     switch (action.kind) {
@@ -199,7 +202,7 @@ export class GameScene extends Phaser.Scene {
         break;
     }
     this.updatePlayerAnim();
-    this.updateFog();
+    this.updateVision();
   }
 
   // --- Obstacle grid + path following -------------------------------------
@@ -736,10 +739,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Redraw the vision-radius mask shape at the character's current position. */
-  private updateFog(): void {
+  /** Redraws the vision-radius mask shape, and hides/shows dynamic actors by distance to it —
+   * unlike static world content (dimmed by the terrain fog above), an actor outside vision is
+   * fully invisible. Only the player exists to apply this to today; the same one-line check is
+   * the pattern for any future monster/NPC sprite. */
+  private updateVision(): void {
     this.fogShape.clear();
     this.fogShape.fillStyle(0xffffff);
     this.fogShape.fillCircle(this.player.x, this.player.y, VISION_RADIUS);
+    this.player.setVisible(this.inVisionRange(this.player.x, this.player.y));
+  }
+
+  /** True if a world point is within the character's vision radius (see fog of war above). */
+  private inVisionRange(x: number, y: number): boolean {
+    return Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y) <= VISION_RADIUS;
   }
 
   /** How many of the tracked pointers (see BootScene's addPointer) are currently held down. */

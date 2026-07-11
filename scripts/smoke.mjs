@@ -97,8 +97,10 @@ else fail(`queue did not fill via long-press (pending ${q.pending}, current ${q.
 await tapBase(...center(2, 2)); // act-now move busies the worker so queued items don't drain
 await longPressBase(...center(8, 20)); // append a harvest of a still-live tree (5,8 was felled above)
 await page.waitForTimeout(120);
+// Trees are sprites (not Rectangles, see docs/ASSETS.md) — queued harvest is outlined via a
+// stroke-only marker rect over the tile rather than a stroke on the tree itself.
 const outlined = await page.evaluate(() =>
-  window.game.scene.getScene('Game').trees.some((t) => t.rect.isStroked && t.rect.strokeColor === 0xffd500),
+  window.game.scene.getScene('Game').queueMarkers.some((m) => m.isStroked && m.strokeColor === 0xffd500),
 );
 if (outlined) ok('queued harvest target is outlined yellow');
 else fail('queued harvest target was not outlined yellow');

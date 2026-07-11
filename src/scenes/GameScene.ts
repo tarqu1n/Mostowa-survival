@@ -8,11 +8,12 @@ import { worldToTile, tileToWorldCenter, snapToTileCenter, tileKey } from '../sy
 import { findPath, reachableAdjacent, type Cell } from '../systems/pathfind';
 import { TaskQueue, type Action } from '../systems/tasks';
 import type { UIScene } from './UIScene';
+import { ACTIVE_TILESET, dirtKey, playerFrameKey, pickWeighted } from '../data/tileset';
 
-/** A live/stump resource node instance in the world (placeholder rect + its data + state). */
+/** A live/stump resource node instance in the world (tree sprite + its data + state). */
 interface TreeNode {
   id: string;
-  rect: Phaser.GameObjects.Rectangle;
+  sprite: Phaser.GameObjects.Image;
   def: ResourceNodeDef;
   hp: number;
   alive: boolean;
@@ -20,12 +21,17 @@ interface TreeNode {
   row: number;
 }
 
-/** A placed-but-not-yet-built wall: a passable blueprint the worker builds on site over time. */
+/**
+ * A placed-but-not-yet-built wall: a passable blueprint the worker builds on site over time.
+ * `rect` stays the physics/collision + blueprint-progress visual throughout; once built it's
+ * hidden and `visual` (the wall sprite) is shown on top instead.
+ */
 interface BuildSite {
   id: string;
   col: number;
   row: number;
   rect: Phaser.GameObjects.Rectangle;
+  visual: Phaser.GameObjects.Image | null;
   progress: number;
   done: boolean;
 }
@@ -39,7 +45,7 @@ interface BuildSite {
  * placement resolves on `pointerdown`; move/harvest orders resolve on `pointerup` (long-press = queue).
  */
 export class GameScene extends Phaser.Scene {
-  private player!: Phaser.GameObjects.Rectangle & { body: Phaser.Physics.Arcade.Body };
+  private player!: Phaser.GameObjects.Sprite & { body: Phaser.Physics.Arcade.Body };
   private readonly speed = 90;
 
   private inv!: Inventory;
@@ -74,7 +80,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.drawPlaceholderGround();
+    this.drawGround();
 
     // Shared character inventory — stored in the registry so the UIScene reads the same instance.
     this.inv = new Inventory();
@@ -82,8 +88,16 @@ export class GameScene extends Phaser.Scene {
 
     this.spawnTrees();
 
-    // Placeholder player: a lantern-lit square you order around with taps.
-    const p = this.add.rectangle(BASE_WIDTH / 2, BASE_HEIGHT / 2, TILE_SIZE - 2, TILE_SIZE - 2, COLORS.player);
+    // The player you order around with taps — the pack's walk-cycle frames, idle on frame 0.
+    if (!this.anims.exists('player-walk')) {
+      this.anims.create({
+        key: 'player-walk',
+        frames: ACTIVE_TILESET.actors.player.map((_, i) => ({ key: playerFrameKey(i) })),
+        frameRate: 10,
+        repeat: -1,
+      });
+    }
+    const p = this.add.sprite(BASE_WIDTH / 2, BASE_HEIGHT / 2, playerFrameKey(0));
     this.physics.add.existing(p);
     this.player = p as typeof this.player;
     this.player.setDepth(10);
@@ -124,6 +138,7 @@ export class GameScene extends Phaser.Scene {
     const action = this.queue.current;
     if (!action) {
       this.player.body.setVelocity(0, 0);
+      this.updatePlayerAnim();
       return;
     }
     switch (action.kind) {
@@ -137,6 +152,7 @@ export class GameScene extends Phaser.Scene {
         this.runBuild(action, delta);
         break;
     }
+    this.updatePlayerAnim();
   }
 
   // --- Obstacle grid + path following -------------------------------------
@@ -175,6 +191,16 @@ export class GameScene extends Phaser.Scene {
     }
     this.physics.moveTo(this.player, wx, wy, this.speed);
     return false;
+  }
+
+  /** Walk-cycle while actually translating (moving between tiles); idle frame otherwise (e.g. chopping in place). */
+  private updatePlayerAnim(): void {
+    if (this.player.body.velocity.lengthSq() > 1) {
+      this.player.anims.play('player-walk', true);
+    } else {
+      this.player.anims.stop();
+      this.player.setTexture(playerFrameKey(0));
+    }
   }
 
   /** Recompute the path to the active goal after the world changed (wall built / tree regrew). */
@@ -259,7 +285,6 @@ export class GameScene extends Phaser.Scene {
 
   /** Outline every queued target in yellow (trees to harvest, sites to build) + pip queued move tiles. */
   private refreshQueueHighlights(): void {
-    for (const t of this.trees) t.rect.isStroked = false;
     for (const s of this.sites) s.rect.isStroked = false;
     for (const m of this.queueMarkers) m.destroy();
     this.queueMarkers = [];
@@ -267,7 +292,16 @@ export class GameScene extends Phaser.Scene {
     for (const a of this.queue.all()) {
       if (a.kind === 'harvest') {
         const tree = this.treeById(a.treeId);
-        if (tree?.alive) tree.rect.setStrokeStyle(2, COLORS.queued, 1);
+        // Trees are sprites now (not Rectangles, see docs/ASSETS.md) — can't be stroked directly,
+        // so outline with a stroke-only marker rect over the tile instead.
+        if (tree?.alive) {
+          this.queueMarkers.push(
+            this.add
+              .rectangle(tree.sprite.x, tree.sprite.y, TILE_SIZE, TILE_SIZE, 0, 0)
+              .setStrokeStyle(2, COLORS.queued, 1)
+              .setDepth(4),
+          );
+        }
       } else if (a.kind === 'build') {
         const site = this.siteById(a.siteId);
         if (site && !site.done) site.rect.setStrokeStyle(2, COLORS.queued, 1);
@@ -377,8 +411,8 @@ export class GameScene extends Phaser.Scene {
 
   private addTree(col: number, row: number): void {
     const def = NODES.tree;
-    const rect = this.add.rectangle(tileToWorldCenter(col), tileToWorldCenter(row), TILE_SIZE, TILE_SIZE, def.color).setDepth(1);
-    this.trees.push({ id: `tree-${this.nextTreeId++}`, rect, def, hp: def.maxHp, alive: true, col, row });
+    const sprite = this.add.image(tileToWorldCenter(col), tileToWorldCenter(row), 'tree').setDepth(1);
+    this.trees.push({ id: `tree-${this.nextTreeId++}`, sprite, def, hp: def.maxHp, alive: true, col, row });
   }
 
   /**
@@ -387,7 +421,7 @@ export class GameScene extends Phaser.Scene {
    */
   private regenerateTrees(): void {
     this.cancelAll(); // drop harvest orders that reference the trees we're about to destroy
-    for (const t of this.trees) t.rect.destroy();
+    for (const t of this.trees) t.sprite.destroy();
     this.trees = [];
 
     const count = 6 + Math.floor(Math.random() * 9); // 6..14
@@ -412,7 +446,7 @@ export class GameScene extends Phaser.Scene {
   /** The live tree under a world point, if any (within ~one tile). */
   private treeAt(x: number, y: number): TreeNode | null {
     for (const tree of this.trees) {
-      if (tree.alive && Phaser.Math.Distance.Between(x, y, tree.rect.x, tree.rect.y) <= TILE_SIZE) return tree;
+      if (tree.alive && Phaser.Math.Distance.Between(x, y, tree.sprite.x, tree.sprite.y) <= TILE_SIZE) return tree;
     }
     return null;
   }
@@ -420,14 +454,16 @@ export class GameScene extends Phaser.Scene {
   private chop(tree: TreeNode): void {
     tree.hp -= 1;
     this.inv.add(tree.def.woodItemId, tree.def.woodPerHit);
-    this.tweens.add({ targets: tree.rect, scale: 1.18, duration: 80, yoyo: true });
+    this.tweens.add({ targets: tree.sprite, scale: 1.18, duration: 80, yoyo: true });
     if (tree.hp <= 0) {
       tree.alive = false;
-      tree.rect.setScale(1).setFillStyle(tree.def.stumpColor);
+      // No dedicated stump sprite in the pack yet (see docs/ASSETS.md) — tint the felled tree
+      // brown as a stand-in "stump" state rather than mixing in a mismatched placeholder rect.
+      tree.sprite.setScale(1).setTint(tree.def.stumpColor);
       this.time.delayedCall(tree.def.regrowMs, () => {
         tree.hp = tree.def.maxHp;
         tree.alive = true;
-        tree.rect.setFillStyle(tree.def.color);
+        tree.sprite.clearTint();
         this.repath(); // regrown tree may now block the active route
       });
     }
@@ -487,7 +523,7 @@ export class GameScene extends Phaser.Scene {
     const rect = this.add
       .rectangle(tileToWorldCenter(col), tileToWorldCenter(row), TILE_SIZE, TILE_SIZE, COLORS.blueprint, 0.35)
       .setDepth(1);
-    const site: BuildSite = { id: `site-${this.nextSiteId++}`, col, row, rect, progress: 0, done: false };
+    const site: BuildSite = { id: `site-${this.nextSiteId++}`, col, row, rect, visual: null, progress: 0, done: false };
     this.sites.push(site);
     this.siteTiles.add(key);
     this.enqueue({ kind: 'build', siteId: site.id });
@@ -496,7 +532,9 @@ export class GameScene extends Phaser.Scene {
   /** Complete a blueprint into a solid, blocking wall (materialises on the worker-vacated tile). */
   private finishSite(site: BuildSite): void {
     site.done = true;
-    site.rect.setAlpha(1).setFillStyle(BUILDABLES.wall.color);
+    // Physics body stays on the (now-hidden) rect; the pack's wall sprite renders on top of it.
+    site.rect.setAlpha(0);
+    site.visual = this.add.image(site.rect.x, site.rect.y, 'wall').setDepth(1);
     this.walls.add(site.rect);
     const body = site.rect.body as Phaser.Physics.Arcade.StaticBody;
     body.setSize(TILE_SIZE, TILE_SIZE);
@@ -538,13 +576,16 @@ export class GameScene extends Phaser.Scene {
 
   // --- Rendering -----------------------------------------------------------
 
-  private drawPlaceholderGround(): void {
-    const g = this.add.graphics();
-    for (let y = 0; y < BASE_HEIGHT; y += TILE_SIZE) {
-      for (let x = 0; x < BASE_WIDTH; x += TILE_SIZE) {
-        const grass = ((x / TILE_SIZE) + (y / TILE_SIZE)) % 2 === 0;
-        g.fillStyle(grass ? COLORS.grass : COLORS.dirt, 1);
-        g.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+  /**
+   * Ground pass using the active pack's dirt variants (still eval-stage, see docs/ASSETS.md) —
+   * weighted-random per tile so the common plain variants dominate and the rarer debris variants
+   * just sprinkle in, instead of either a flat placeholder or an obvious repeating checkerboard.
+   */
+  private drawGround(): void {
+    const dirtVariants = ACTIVE_TILESET.tiles.dirt.map((variant, i) => ({ ...variant, key: dirtKey(i) }));
+    for (let row = 0; row * TILE_SIZE < BASE_HEIGHT; row++) {
+      for (let col = 0; col * TILE_SIZE < BASE_WIDTH; col++) {
+        this.add.image(tileToWorldCenter(col), tileToWorldCenter(row), pickWeighted(dirtVariants).key).setDepth(0);
       }
     }
   }

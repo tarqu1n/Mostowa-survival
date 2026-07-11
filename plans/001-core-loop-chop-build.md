@@ -52,7 +52,8 @@ save persistence, camera/scrolling world, multiple maps.
 
 ## Steps
 
-- [ ] **Step 1: Data-driven definitions (items, nodes, buildables)** `[delegate]` (parallel: A)
+- [x] **Step 1: Data-driven definitions (items, nodes, buildables)** `[delegate]` (parallel: A)
+  - Outcome: created `src/data/{types,items,nodes,buildables}.ts` (ITEMS.wood, NODES.tree, BUILDABLES.wall) exactly per spec; `import type` pattern; typecheck green. No importers yet.
   - Create `src/data/types.ts` with interfaces: `ItemDef { id: string; name: string; color: number }`
     (`color` = placeholder icon colour); `ResourceNodeDef { id: string; name: string; maxHp: number;
     woodItemId: string; woodPerHit: number; regrowMs: number; color: number; stumpColor: number }`;
@@ -68,7 +69,8 @@ save persistence, camera/scrolling world, multiple maps.
   - Docs: none.
   - Done when: `npm run typecheck` passes; the four modules export the typed records above.
 
-- [ ] **Step 2: Inventory system** `[delegate]` (parallel: A)
+- [x] **Step 2: Inventory system** `[delegate]` (parallel: A)
+  - Outcome: created `src/systems/Inventory.ts` (`extends Phaser.Events.EventEmitter`, Map-backed); all six methods; `spend` guards on `canAfford` before mutating/emitting; `add`/successful `spend` emit `'change'` with `snapshot()`. Typecheck green.
   - Create `src/systems/Inventory.ts` — class `Inventory extends Phaser.Events.EventEmitter`.
     Internal `Map<string, number>`. Methods: `get(id): number`, `add(id, n=1): void`,
     `has(id, n=1): boolean`, `canAfford(cost: Record<string,number>): boolean`,
@@ -79,7 +81,8 @@ save persistence, camera/scrolling world, multiple maps.
   - Docs: none.
   - Done when: `npm run typecheck` passes; `spend` rejects unaffordable costs; `add`/`spend` emit `change`.
 
-- [ ] **Step 3: Tile-grid utilities** `[delegate haiku]` (parallel: A)
+- [x] **Step 3: Tile-grid utilities** `[delegate haiku]` (parallel: A)
+  - Outcome: created `src/systems/grid.ts` with `worldToTile`/`tileToWorldCenter`/`snapToTileCenter`/`tileKey`. Verified `snapToTileCenter(20)===24` at `TILE_SIZE=16`. Typecheck green.
   - Create `src/systems/grid.ts` — pure helpers over `TILE_SIZE` from `config.ts`:
     `worldToTile(px: number): number` → `Math.floor(px / TILE_SIZE)`;
     `tileToWorldCenter(tile: number): number` → `tile * TILE_SIZE + TILE_SIZE / 2`;

@@ -16,27 +16,62 @@ visual gags. Readable at small pixel sizes. Consistent base resolution + nearest
 3. **Gemini-generated bespoke assets** for characterful, on-theme items/enemies where stock art
    doesn't fit the dark-comic identity.
 
-## Free tileset shortlist (to evaluate)
+## Base tileset — chosen (2026-07-11)
 
-Prefer **CC0 / Creative Commons Zero** (free commercial use, no attribution needed). On itch.io,
-filter by CC0 + tags `tileset`, `top-down`, `zombies`, `pixel-art`. Candidates to review:
+**[Zombie Apocalypse Tileset](https://ittaimanero.itch.io/zombie-apocalypse-tileset)** by Ittai
+Manero, staged at
+[`public/assets/tilesets/zombie-apocalypse/`](../public/assets/tilesets/zombie-apocalypse/) (see
+that folder's own `README.md` for the category index + Phaser loading notes). 16×16, matches
+`TILE_SIZE`, on-theme (post-apoc scenery, zombies, weapons, UI). Beat the CC-BY-SA OpenGameArt
+alternative on content breadth (environment + characters + items in one coherent pack vs.
+terrain-only).
 
-- **Kenney** ([kenney.nl](https://kenney.nl)) — huge library of CC0 pixel/top-down packs, animated
-  characters, tilesets, UI, weapons. Reliable, consistent, genuinely free. First stop.
-- itch.io CC0 top-down / post-apocalyptic **16×16 tilesets** with scenery + animated characters.
-- itch.io **Zombie Apocalypse** packs (tilesets + animated zombies + weapons/UI/FX).
-- **RGS_Dev** CC0 top-down tileset template (16×16, colour variants) — good for prototyping.
+**Licence is not CC0** — free for personal + commercial use, credit appreciated, no redistributing
+the assets themselves standalone. Full terms in that folder's `LICENSE.md`; keep it alongside the
+assets if this repo or a build ever goes public.
 
-> Action: when we move past placeholders, pick ONE base tileset for world tiles to keep a coherent
-> look, then layer bespoke Gemini items/enemies on top. Record the chosen pack + its licence here.
-> Keep a `LICENSES.md` / per-pack licence note alongside any downloaded assets.
+Still evaluation-stage: staged in the repo, not yet wired into the Phaser loader (that's the next
+step, once we're past placeholders per the phased approach below).
 
-Sources for the shortlist:
-[itch.io CC0 assets](https://itch.io/game-assets/assets-cc0) ·
+<details>
+<summary>Other candidates considered</summary>
+
+Prefer **CC0 / Creative Commons Zero** (free commercial use, no attribution needed) where content
+needs are equal. On itch.io, filter by CC0 + tags `tileset`, `top-down`, `zombies`, `pixel-art`.
+
+- **Kenney** ([kenney.nl](https://kenney.nl)) — huge library of CC0 pixel/top-down packs. Reliable,
+  consistent, genuinely free, but skews clean/colourful (tanks, shooters) rather than the grimy
+  survival-horror mood — good CC0 fallback for UI/generic props, not the base environment look.
+- **[Post-Apocalyptic 16×16 Tileset](https://opengameart.org/content/post-apocalyptic-16x16-tileset-update1)**
+  (OpenGameArt, CC-BY-SA 3.0) — right mood, true open licence, but terrain-only (single PNG, no
+  buildings/props/characters) — would need pairing with another pack.
+- **RGS_Dev** CC0 top-down tileset template (16×16, colour variants) — good for prototyping, not
+  evaluated in depth once Zombie Apocalypse covered the need.
+
+Sources: [itch.io CC0 assets](https://itch.io/game-assets/assets-cc0) ·
 [itch.io CC0 tilesets](https://itch.io/game-assets/assets-cc0/tag-tileset) ·
 [itch.io free zombie assets](https://itch.io/game-assets/free/tag-zombies) ·
 [itch.io pixel-art + zombies](https://itch.io/game-assets/tag-pixel-art/tag-zombies) ·
 [Kenney](https://kenney.nl)
+
+</details>
+
+## AI pixel-art trials — Retro Diffusion & PixelLab
+
+Two free-tier AI pixel-art services worth trialling alongside/against Gemini, since both are
+purpose-built for pixel art (unlike a general image model, which needs heavy downscale/quantise
+post-processing to look right). CLI wrappers + full API details:
+[`scripts/gen-art/`](../scripts/gen-art/README.md).
+
+- **Retro Diffusion** — has dedicated *tile* styles (`rd_tile__single_tile`, `rd_tile__tileset`,
+  seamless `tile_x`/`tile_y` options) purpose-built for environment art, a real advantage over
+  PixelLab for this pack's use case.
+- **PixelLab** — `bitforge` model takes a `style_image` reference, potentially useful for matching
+  new bespoke sprites to the Zombie Apocalypse pack's existing look. No dedicated tileset endpoint
+  despite the marketing — same pixflux/bitforge endpoints, just prompted for tile-shaped subjects.
+
+Compare a few equivalent prompts across both (+ Gemini) before settling on a default; see the
+gen-art README's "What to compare" section.
 
 ## Gemini asset generation (via guppi)
 

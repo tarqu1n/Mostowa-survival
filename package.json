@@ -9,7 +9,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "gen:retrodiffusion": "node scripts/gen-art/retrodiffusion.mjs",
+    "gen:pixellab": "node scripts/gen-art/pixellab.mjs"
   },
   "dependencies": {
     "phaser": "^3.88.0"

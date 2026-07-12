@@ -7,6 +7,26 @@ Format: `YYYY-MM-DD — [DECIDED|PROPOSED|OPEN] Title` then a short rationale.
 
 ---
 
+## 2026-07-12 — [DECIDED] Data-driven hurtbox (footprint ≠ hurtbox); world props sized to the actor
+
+Follow-on from the native-scale decision below. With the character now ~2 tiles tall, two problems
+surfaced: (1) it dwarfed the trees, and (2) tall sprites + single-tile hit-testing meant you could be
+next to an enemy's *drawn* torso yet whiff, because targeting only matched its feet tile.
+
+**Decided:** separate a creature's **footprint** (movement/occupancy — always the single feet tile,
+unchanged) from its **hurtbox** (combat targeting — a data-driven tile extent). `Hurtbox { width,
+height }` on `CombatantStats` (`src/data/types.ts`), anchored at the feet tile, centred horizontally
+and rising upward to match the drawn silhouette; pure helpers in `src/systems/hurtbox.ts`
+(`hurtboxContains`/`hurtboxTiles`, `DEFAULT_HURTBOX = {1,1}`). Player and kid-zombie both declare
+`{1,2}`. Consumed by `GameScene.zombieAt` (Punch + Inspect hit-tests) and by contact damage (a zombie
+in melee reach of any player-body tile connects). For a `{1,1}` hurtbox every path reduces to the old
+exact-tile behaviour, so it's a clean generalisation. Chosen over hardcoding "+1 tile" so future large
+(`{2,3}` ogre) or small (`{1,1}` critter) monsters just declare their size — no targeting-code change.
+
+Also bumped `TREE_TILES_TALL` 2.6 → 5 so a pine towers over the ~2-tile character (scaling the *world*
+up, never the crisp actor down). Rule captured in [CONVENTIONS.md](CONVENTIONS.md) ("Footprint vs
+hurtbox"). Verified: 8 new Tier-1 hurtbox unit tests + a Tier-2 "punch the overhang tile" regression.
+
 ## 2026-07-12 — [DECIDED] Actors render at native 1:1; camera zoom is integer-only
 
 Reported: the player sprite looked "slightly stretched / pixels clipping" at 300% zoom. Cause: actors

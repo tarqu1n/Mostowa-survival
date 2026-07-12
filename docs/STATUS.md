@@ -52,6 +52,13 @@ rendered at `scale 0.5`, crisp only at the even default 200% and stretched/clipp
 (`0.5 × 3 = 1.5`). See [RENDERING.md](RENDERING.md) ("Pixel-art scale must be integer") and
 [DECISIONS.md](DECISIONS.md) (2026-07-12).
 
+The larger character then drove two follow-ups: trees scaled up (`TREE_TILES_TALL` 2.6 → 5) so a pine
+towers over it, and a **data-driven hurtbox** so tall sprites are hittable by their drawn torso, not
+only their feet tile — a creature's *footprint* (occupancy, one tile) is now separate from its
+*hurtbox* (targeting extent; `Hurtbox` in `src/data/types.ts`, `src/systems/hurtbox.ts`). Both the
+player and kid-zombie use `{width:1,height:2}`; future large/small monsters just declare their own.
+See [CONVENTIONS.md](CONVENTIONS.md) ("Footprint vs hurtbox").
+
 ## Three-tier test harness landed (plan 007)
 
 The fragile live-game smoke is retired for **Tier 1** Vitest unit tests over the pure systems + data

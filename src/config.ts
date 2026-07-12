@@ -2,6 +2,8 @@
  * Global game constants. Keep tunables here so they're easy to find and change from any device.
  */
 
+import type { Hurtbox } from './data/types';
+
 /**
  * Base render resolution. Mobile-first: a portrait canvas (9:16-ish) that Phaser's Scale.FIT
  * scales up to fill any screen (letterboxing on wider desktop displays). Design at this size.
@@ -55,6 +57,13 @@ export const VISION_RADIUS = TILE_SIZE * 5;
 export const PLAYER_MAX_HP = 10;
 export const PLAYER_START_SPEED = 90;
 export const PLAYER_START_VISION = VISION_RADIUS;
+
+/**
+ * Player body extent for combat targeting (see `Hurtbox` in data/types). The character sprite is
+ * ~1 tile wide and ~2 tall, so its torso occupies the tile above its feet — a zombie touching that
+ * tile still connects. Footprint/occupancy stays the single feet tile.
+ */
+export const PLAYER_HURTBOX: Hurtbox = { width: 1, height: 2 };
 
 /** Base damage of an unarmed hit — shared by Punch and a zombie's bite via resolveMeleeAttack. */
 export const UNARMED_BASE_DAMAGE = 1;

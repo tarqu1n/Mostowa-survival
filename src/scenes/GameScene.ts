@@ -18,6 +18,7 @@ import {
   PLAYER_START_VISION,
   UNARMED_BASE_DAMAGE,
   CONTACT_DAMAGE_COOLDOWN_MS,
+  PLAYER_HURTBOX,
 } from '../config';
 import { NODES } from '../data/nodes';
 import { BUILDABLES } from '../data/buildables';
@@ -28,6 +29,7 @@ import { worldToTile, tileToWorldCenter, snapToTileCenter, tileKey } from '../sy
 import { findPath, reachableAdjacent, type Cell } from '../systems/pathfind';
 import { TaskQueue, type Action } from '../systems/tasks';
 import { resolveMeleeAttack } from '../systems/combat';
+import { hurtboxContains, hurtboxTiles, DEFAULT_HURTBOX } from '../systems/hurtbox';
 import { bakeGlowTexture } from '../render/glowTexture';
 import { treeStats, wallStats, zombieStats } from '../systems/stats';
 import type { UIScene } from './UIScene';
@@ -42,8 +44,9 @@ import {
   type ActorRender,
 } from '../data/tileset';
 
-/** Height (in tiles) the tree image is scaled to stand — big pine on a 16px tile, canopy overhangs up. */
-const TREE_TILES_TALL = 2.6;
+/** Height (in tiles) the tree image is scaled to stand — big pine on a 16px tile, canopy overhangs up.
+ *  Sized so a pine towers over the ~2-tile-tall character (see DECISIONS.md 2026-07-12). */
+const TREE_TILES_TALL = 5;
 
 /** Queued-tree glow reach on screen (px). Converted to source texels per species so the baked halo
  *  reads the same regardless of a sprite's source resolution — see refreshQueueHighlights. */
@@ -271,6 +274,7 @@ export class GameScene extends Phaser.Scene {
       strength: 0,
       dex: 0,
       dodge: 0,
+      hurtbox: PLAYER_HURTBOX,
     };
     this.playerHp = this.playerStats.maxHp;
 
@@ -872,14 +876,24 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Punch the facing-adjacent tile: flat damage via the shared combat formula, no range/arc
-   * beyond that one tile. Only affects zombies — trees keep using chop(). */
+  /** The live zombie whose body (hurtbox, anchored at its feet tile) covers tile (col,row) — so a
+   * tall enemy is hit/inspected by its drawn torso, not only its feet tile. Footprint is unchanged. */
+  private zombieAt(col: number, row: number): ZombieUnit | undefined {
+    const target = { col, row };
+    return this.zombies.find(
+      (z) => z.alive && hurtboxContains({ col: z.col, row: z.row }, z.def.hurtbox ?? DEFAULT_HURTBOX, target),
+    );
+  }
+
+  /** Punch the facing tile: flat damage via the shared combat formula, no range/arc beyond that
+   * tile — but an enemy is hit anywhere its hurtbox reaches it (see zombieAt). Zombies only; trees
+   * keep using chop(). */
   private punch(): void {
     this.playPunchSwing(); // swing on every press, even a whiff, so the input always feels heard
     const pt = this.playerTile();
     const col = pt.col + this.lastFacing.dCol;
     const row = pt.row + this.lastFacing.dRow;
-    const zombie = this.zombies.find((z) => z.alive && z.col === col && z.row === row);
+    const zombie = this.zombieAt(col, row);
     if (!zombie) return;
     zombie.hp -= resolveMeleeAttack(this.playerStats, zombie.def, UNARMED_BASE_DAMAGE, this.rng);
     if (zombie.hp <= 0) {
@@ -930,7 +944,7 @@ export class GameScene extends Phaser.Scene {
     const col = worldToTile(x);
     const row = worldToTile(y);
 
-    const zombie = this.zombies.find((z) => z.alive && z.col === col && z.row === row);
+    const zombie = this.zombieAt(col, row);
     if (zombie) {
       this.game.events.emit('inspect:show', zombieStats(zombie));
       return;
@@ -1102,6 +1116,9 @@ export class GameScene extends Phaser.Scene {
   private updateZombies(): void {
     const now = this.time.now;
     const pt = this.playerTile();
+    // The player's body tiles (feet + torso overhang); a zombie in melee contact with ANY of them
+    // lands its bite, so a tall player is reachable by its drawn torso, not only its feet tile.
+    const playerBody = hurtboxTiles(pt, this.playerStats.hurtbox ?? DEFAULT_HURTBOX);
     for (const z of this.zombies) {
       if (!z.alive) continue;
 
@@ -1111,8 +1128,10 @@ export class GameScene extends Phaser.Scene {
       }
 
       if (z.state === 'chasing') {
-        const tileDist = Math.max(Math.abs(pt.col - z.col), Math.abs(pt.row - z.row));
-        if (tileDist <= 1) {
+        const inContact = playerBody.some(
+          (t) => Math.max(Math.abs(t.col - z.col), Math.abs(t.row - z.row)) <= 1,
+        );
+        if (inContact) {
           z.sprite.body.setVelocity(0, 0);
           if (now - z.lastContactAt >= CONTACT_DAMAGE_COOLDOWN_MS) {
             z.lastContactAt = now;

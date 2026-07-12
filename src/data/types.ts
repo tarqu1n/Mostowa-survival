@@ -18,11 +18,26 @@ export interface BaseStats {
   vision?: number; // world-px sight/detection radius; omit if not applicable
 }
 
+/**
+ * A combatant's body extent **in tiles**, for combat targeting (Punch/Inspect hit-tests, contact
+ * reach) — NOT collision/occupancy, which stays a single tile (the feet). Anchored at the feet tile,
+ * centred horizontally on the feet column and rising **upward** (lower rows), matching how actors are
+ * drawn: feet at the bottom, body/head above. So a ~2-tile-tall sprite uses `{ width: 1, height: 2 }`
+ * — its torso tile is hittable even though it logically stands on one tile. Sizes are data so a small
+ * critter (`{1,1}`) or a large ogre (`{2,3}`) each declare their own. Even widths extend one to the
+ * right of centre. See `src/systems/hurtbox.ts` (`DEFAULT_HURTBOX` = `{1,1}`).
+ */
+export interface Hurtbox {
+  width: number; // tiles wide, centred on the feet column
+  height: number; // tiles tall, counted up from the feet row (1 = feet tile only)
+}
+
 /** Stats for things that fight (player, enemies). */
 export interface CombatantStats extends BaseStats {
   strength: number; // flat bonus to melee damage dealt
   dex: number; // flat bonus to ranged damage dealt (unused this slice, no ranged weapon)
   dodge: number; // % subtracted from attacker's hit chance
+  hurtbox?: Hurtbox; // body extent for targeting; omit → DEFAULT_HURTBOX (single feet tile)
 }
 
 /** Stats for inspectable-but-inert world objects (trees, walls). */

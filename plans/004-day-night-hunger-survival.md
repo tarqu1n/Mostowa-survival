@@ -175,6 +175,22 @@ trunk-based on `master`, programmatic/placeholder art first. Hunger is a **core*
 pressure (constant, punishes hoarding); the Health & Wellbeing screen + "what's available to eat" are
 stated design intent — this slice builds the first cut of both.
 
+## Critique
+
+> Fresh-eyes review (`critique-plan`, 2026-07-12, uncontaminated sub-agent). No High findings — plan
+> cleared to execute. **Finding 1 has been folded into the Step 6 rewrite above.**
+
+**Verdict:** A well-aligned, well-sequenced slice that faithfully builds the day/night + hunger pillar
+the design doc calls for — proceed, but fix one stale anchor: the plan's animation-wiring (Step 6) was
+written against a `chopping` boolean and 4-state `PlayerState` that no longer exist, so its proposed
+mechanism fought the code that's actually there.
+
+| # | Finding | Lens | Severity | Suggested action |
+| - | ------- | ---- | -------- | ---------------- |
+| 1 | Step 6's anim wiring was mis-anchored: it said mirror a `chopping` boolean (`:201`/`:415`) and a 4-state `PlayerState`, but the code uses `harvestSwing:'chop'\|'mine'\|null` (`:202`/`:416`/`:495`) selected by node type (`:748`) and a 5-state enum incl. `mine` (`tileset.ts:22`). **Resolved:** Step 6 rewritten to extend the `harvestSwing` union with `'gather'`. | Cross-cutting consistency / Alt approaches | Medium | ✅ Done — Step 6 now extends `harvestSwing`; `updatePlayerAnim` (`:495`) unchanged. |
+| 2 | `harvestAnim?:'chop'\|'gather'` node-def flag (Step 5) partly duplicates the existing tile-based anim selection — `mine` already keys off `tile==='rock'`. | Right-sizing | Low | Optional: could key gather off `tile==='bush'` instead of a new field. Kept the field (Step 6 reads it) — deferred, not blocking. |
+| 3 | The Wellbeing screen's full combat-stats block (Step 8) duplicates Inspect-mode's player stats and exceeds GAME-DESIGN's description (meters + eat list). Explicitly locked with Matt — deliberate. | Right-sizing | Low | Kept as a deliberate superset per Matt's locked decision. No change. |
+
 ## Steps
 
 - [ ] **Step 1: Day/night pure system + config + unit tests** `[delegate sonnet]`
@@ -275,22 +291,38 @@ stated design intent — this slice builds the first cut of both.
     bush tile is permitted; `berries.png` loads without a console error.
 
 - [ ] **Step 6: Player gathering animation (`Collect_Base`)** `[inline]`
-  - `tileset.ts`: add `'gather'` to `PlayerState` (`:21`); add `gather: Record<Facing, StripAnim>` to
-    the player actor pointing at `Entities/Characters/Body_A/Animations/Collect_Base/Collect_{Down,
-    Side,Up}-Sheet.png`, `frameSize:64, frames:8` (verified) — mirror the `chop` block exactly. Update
-    the `PlayerState` doc comment to note gather = in-place forage loop.
-  - `GameScene.ts`: the anim-create loop (`:295-305`) iterates `PlayerState`, so `gather` anims build
-    automatically — confirm its frameRate: treat it as a locomotion-style loop (`frameRate 10`) or a
-    calmer action; pick one and keep it looping while foraging. Add a `gathering` flag mirroring
-    `chopping` (`:201`, reset each frame `:415`): in `runHarvest`, set `this.gathering = true` (instead
-    of `chopping`) when `action`'s node `def.harvestAnim === 'gather'`, else `this.chopping = true`.
-    In `updatePlayerAnim` (`:490-493`), pick the in-place state: `gathering ? 'gather' : chopping ?
-    'chop' : moving ? 'walk' : 'idle'` (gather/chop are mutually exclusive per frame).
-  - Side effects: only the player render/anim path; trees/rocks keep chopping (`harvestAnim` defaults
-    `'chop'`). Verify facing (Down/Side/Up + left-mirror via `flipX`) matches the chop path.
+  > **Anim seam corrected 2026-07-12 (critique Finding 1).** The player no longer uses a `chopping`
+  > boolean + 4-state `PlayerState`. In-place harvest anim is now a **`harvestSwing` STATE**
+  > (`'chop' | 'mine' | null`, `GameScene.ts:202`, doc `:198-199`), reset each frame (`:416`), selected
+  > by node type in `runHarvest` (`this.harvestSwing = tree.def.tile === 'rock' ? 'mine' : 'chop'`,
+  > `:748`) and consumed by `updatePlayerAnim` (`state = this.harvestSwing ?? (moving ? 'walk' :
+  > 'idle')`, `:495`). Gather **extends that union** — no new boolean. `PlayerState` is now the 5-state
+  > `idle|walk|chop|mine|punch` (`tileset.ts:22`); the anim-create loop lists those states explicitly
+  > (`:297`) with an `isAction` framerate test (`:298`).
+  - `tileset.ts`: add `'gather'` to `PlayerState` (`:22`); add a `gather: Record<Facing, StripAnim>`
+    block to the player actor pointing at `Entities/Characters/Body_A/Animations/Collect_Base/
+    Collect_{Down,Side,Up}-Sheet.png`, `frameSize:64, frames:8` (verified) — mirror the `chop`/`mine`
+    blocks exactly. Extend the action-strip doc comment (`:113-117`) to note gather = `Collect_Base`
+    in-place forage loop.
+  - `GameScene.ts`:
+    - Widen the `harvestSwing` field type (`:202`) to `'chop' | 'mine' | 'gather' | null` and update its
+      doc comment (`:198-199`).
+    - Add `'gather'` to the anim-create state list (`:297`). Keep it **looping** (falls in the
+      `repeat: -1` bucket — only `punch` is the one-shot). For frameRate, treat gather as a calmer
+      forage loop: **leave it out of the `isAction` test** (`:298`) so it runs at the locomotion
+      `frameRate 10` while chop/mine stay at `ACTION_ANIM_FRAMERATE` (either rate works — pick the
+      calmer one).
+    - At the swing-selection line in `runHarvest` (`:748`), pick gather for a bush **ahead of** the
+      rock/tree split: `this.harvestSwing = tree.def.harvestAnim === 'gather' ? 'gather' :
+      tree.def.tile === 'rock' ? 'mine' : 'chop'` — reads Step 5's `harvestAnim` node-def field;
+      trees/rocks keep chop/mine because their `harvestAnim` is absent (⇒ not `'gather'`).
+    - `updatePlayerAnim` (`:495`) needs **no change** — it already renders whatever `harvestSwing` holds.
+  - Side effects: only the player render/anim path; trees/rocks keep chop/mine (`harvestAnim` absent ⇒
+    never `'gather'`). Verify facing (Down/Side/Up + left-mirror via `flipX`) matches the chop/mine path.
   - Docs: none (Step 11).
-  - Done when: build green; foraging a bush plays the gather animation in the correct facing while the
-    worker picks in place; chopping a tree/rock still plays the chop swing.
+  - Done when: build green; foraging a bush plays the gather (`Collect`) animation in the correct facing
+    while the worker picks in place; chopping a tree still plays the chop swing and mining a rock the
+    mine swing.
 
 - [ ] **Step 7: Hunger wiring in GameScene (drain, starvation→health cascade, eat, stats registry)** `[inline]`
   - Fields: `private hunger = HUNGER_MAX`, `private starveElapsed = 0`. Seed `registry.set('hunger',

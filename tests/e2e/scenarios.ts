@@ -19,6 +19,11 @@ export function twoTrees(): ScenarioSpec {
   return { player: [3, 3], trees: [[5, 3], [8, 3]], wood: 0 };
 }
 
+/** Player at [3,3], three live trees in a row to the east — for exercising queue re-ordering. */
+export function threeTrees(): ScenarioSpec {
+  return { player: [3, 3], trees: [[5, 3], [8, 3], [11, 3]], wood: 0 };
+}
+
 /** Player at [3,3], one rock one tile to the right — the minimal mining world. */
 export function justARock(): ScenarioSpec {
   return { player: [3, 3], rocks: [[5, 3]], inventory: {} };

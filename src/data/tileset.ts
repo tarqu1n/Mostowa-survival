@@ -215,14 +215,17 @@ export const PIXEL_CRAWLER_TILESET: TilesetManifest = {
       // Native 1:1 like the player (crisp at integer zoom). The skeleton's feet reach the frame
       // bottom (content bbox ≈ y34–64), so originY 0.96 grounds it on the tile.
       render: { scale: 1, originX: 0.5, originY: 0.96 },
-      // Idle bob: a 128×32 sheet = 4 frames of 32px, half the 64px Run canvas — so it carries its OWN
-      // footprint (scale 2 → matches the Run's on-screen size; integer, stays crisp) with a low origin
-      // to keep the feet on the tile. render origin + anchors are rough first-pass, hand-tuned in B4/B5.
+      // Idle bob: a 128×32 sheet = 4 frames of 32px. The 32px canvas is just TIGHTER PADDING than the
+      // 64px Run canvas — the skeleton CONTENT is the same ~30px tall in both sheets (measured). So the
+      // idle strip renders at scale 1 like the Run; a scale of 2 (matching the 32→64 canvas ratio) drew
+      // the character at ~2× and it visibly ballooned whenever a wanderer paused to idle. Content is
+      // bottom-aligned like the Run, so originY 0.92 grounds the feet identically (32·0.08 = 2.56px
+      // below tile, == the Run's 64·0.04). anchors are frame-px; weaponTransform rescales them per strip.
       idle: {
         path: 'Entities/Mobs/Skeleton Crew/Skeleton - Base/Idle/Idle-Sheet.png',
         frameSize: 32,
         frames: 4,
-        render: { scale: 2, originX: 0.5, originY: 0.95 },
+        render: { scale: 1, originX: 0.5, originY: 0.92 },
         anchors: { mainHand: [{ x: 20, y: 18 }, { x: 20, y: 19 }, { x: 20, y: 18 }, { x: 20, y: 17 }] },
       },
       // Run strip (frame 0 doubles as the Phase-A frozen idle). Per-frame mainHand grip points (frame-px

@@ -553,7 +553,10 @@ export class GameScene extends Phaser.Scene {
     // handful of glow sprites is cheap, unlike the old per-frame PostFX pass this replaced.
     this.glowPulse?.remove();
     this.glowPulse = undefined;
-    for (const g of this.glowSprites.values()) g.destroy();
+    for (const g of this.glowSprites.values()) {
+      this.tweens.killTweensOf(g); // drop any live pulse/chop-bounce tween before destroying its target
+      g.destroy();
+    }
     this.glowSprites.clear();
     this.outlinedTreeIds.clear();
 
@@ -917,8 +920,13 @@ export class GameScene extends Phaser.Scene {
     tree.hp -= 1;
     this.inv.add(tree.def.woodItemId, tree.def.woodPerHit);
     // Bump relative to the tree's fitted base scale (not an absolute 1 — the pine is scaled down).
+    // The queued glow (if any) shares the tree's scale + origin, so bounce it on the same tween so the
+    // halo tracks the tree through the chop animation instead of hanging at the un-bumped size.
     const base = this.treeScale(tree.sprite);
-    this.tweens.add({ targets: tree.sprite, scale: base * 1.18, duration: 80, yoyo: true });
+    const targets: Phaser.GameObjects.GameObject[] = [tree.sprite];
+    const glow = this.glowSprites.get(tree.id);
+    if (glow) targets.push(glow);
+    this.tweens.add({ targets, scale: base * 1.18, duration: 80, yoyo: true });
     if (tree.hp <= 0) {
       tree.alive = false;
       // No dedicated stump sprite in the pack yet (see docs/ASSETS.md) — tint the felled tree

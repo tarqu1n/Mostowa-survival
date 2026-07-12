@@ -19,6 +19,11 @@ import {
   PLAYER_START_VISION,
   UNARMED_BASE_DAMAGE,
   CONTACT_DAMAGE_COOLDOWN_MS,
+  HIT_FLASH_MS,
+  HIT_FLASH_PEAK,
+  HIT_FLASH_TINT,
+  ZOMBIE_LUNGE_PX,
+  ZOMBIE_LUNGE_MS,
   INVENTORY_SLOTS,
   DEFAULT_MAX_STACK,
   PLAYER_HURTBOX,
@@ -42,6 +47,7 @@ import { drainHunger, feed, isStarving } from '../systems/needs';
 import { resolveMeleeAttack } from '../systems/combat';
 import { hurtboxContains, hurtboxTiles, DEFAULT_HURTBOX } from '../systems/hurtbox';
 import { bakeGlowTexture } from '../render/glowTexture';
+import { HIT_FLASH_KEY, type HitFlashPipeline } from '../render/hitFlashPipeline';
 import { treeStats, wallStats, zombieStats } from '../systems/stats';
 import type { UIScene } from './UIScene';
 import {
@@ -219,6 +225,21 @@ export class GameScene extends Phaser.Scene {
   private harvestSwing: 'chop' | 'mine' | 'gather' | null = null;
   private punchLockUntil = 0;
 
+  // Combat hit feedback (see flashHit / zombieLungeAt). Actors flash red + squash-flinch on a landed
+  // hit, and a zombie lunges toward its target when it bites (no attack strip ships for the skeleton).
+  // Tweens are tracked per actor sprite so a rapid re-hit restarts cleanly and a killed/destroyed
+  // sprite can be torn down (its tweens target plain objects but poke the sprite, so they must stop
+  // before destroy). `hitFlashOn` is the set of sprites currently carrying the WebGL flash pipeline.
+  private readonly hitFlashTweens = new Map<Phaser.GameObjects.Sprite, Phaser.Tweens.Tween>();
+  private readonly lungeTweens = new Map<Phaser.GameObjects.Sprite, Phaser.Tweens.Tween>();
+  private readonly hitFlashOn = new Set<Phaser.GameObjects.Sprite>();
+  // Live player flash intensity (0..1) + cumulative FX counters, surfaced via debugState so Tier-2
+  // scenarios can assert hit/attack feedback fired without inspecting the (shader-driven) sprite.
+  private playerFlash = 0;
+  private playerHitFlashes = 0;
+  private zombieHitFlashes = 0;
+  private zombieAttacks = 0;
+
   // Day/night clock: `clockMs` auto-advances every frame (see update()); `dayPhase`/`dayCount` are the
   // derived, queryable state (also mirrored to the registry + emitted as 'time:changed'). The
   // `nightOverlay` is a map-sized dark rect whose alpha the clock drives to darken the world at night.
@@ -363,6 +384,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.existing(p);
     this.player = p as typeof this.player;
     this.player.setDepth(10).setScale(playerActor.render.scale).setOrigin(playerActor.render.originX, playerActor.render.originY);
+    this.player.setData('baseScale', playerActor.render.scale); // rest scale the flinch squash returns to
     this.player.body.setCollideWorldBounds(true);
     this.fitActorBody(this.player, playerActor.render);
     this.physics.world.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
@@ -1069,12 +1091,126 @@ export class GameScene extends Phaser.Scene {
     const row = pt.row + this.lastFacing.dRow;
     const zombie = this.zombieAt(col, row);
     if (!zombie) return;
-    zombie.hp -= resolveMeleeAttack(this.playerStats, zombie.def, UNARMED_BASE_DAMAGE, this.rng);
+    const dmg = resolveMeleeAttack(this.playerStats, zombie.def, UNARMED_BASE_DAMAGE, this.rng);
+    zombie.hp -= dmg;
     if (zombie.hp <= 0) {
       zombie.alive = false;
+      this.cleanupActorFx(zombie.sprite); // stop any in-flight flash/lunge before the sprite goes away
       zombie.sprite.destroy();
       this.zombies = this.zombies.filter((z) => z !== zombie);
+    } else if (dmg > 0) {
+      this.flashHit(zombie.sprite); // red flash + flinch on a hit it survived
     }
+  }
+
+  /** This sprite's live HitFlash pipeline instance (WebGL only), or null. `getPostPipeline` may hand
+   * back a single instance or an array depending on the query — normalise to the first. */
+  private hitPipeline(sprite: Phaser.GameObjects.Sprite): HitFlashPipeline | null {
+    const p = sprite.getPostPipeline(HIT_FLASH_KEY);
+    return ((Array.isArray(p) ? p[0] : p) as HitFlashPipeline | undefined) ?? null;
+  }
+
+  /**
+   * Damage reaction shared by the player and zombies: a red flash (the HitFlash PostFX on WebGL, a
+   * solid fill-tint on Canvas) plus a quick squash "flinch". Both are driven off ONE tween over a
+   * plain `{ t }` object (1 → 0), so the flash intensity and the squash decay in lockstep from the
+   * moment of impact and settle back to rest — no yoyo needed, the impact is instantaneous and the
+   * recovery is the ease-out. The squash animates *scale only*, never position, so it can't fight the
+   * actor's Arcade body (game logic stays keyed to col/row per docs/RENDERING.md). Re-hitting mid-flash
+   * restarts cleanly (the prior tween is stopped, not completed, so it won't tear down the pipeline).
+   */
+  private flashHit(sprite: Phaser.GameObjects.Sprite): void {
+    const isPlayer = sprite === this.player;
+    if (isPlayer) this.playerHitFlashes += 1;
+    else this.zombieHitFlashes += 1;
+
+    const webgl = this.game.renderer.type === Phaser.WEBGL;
+    if (webgl) {
+      if (!this.hitFlashOn.has(sprite)) {
+        sprite.setPostPipeline(HIT_FLASH_KEY);
+        this.hitFlashOn.add(sprite);
+      }
+    } else {
+      sprite.setTintFill(HIT_FLASH_TINT); // Canvas fallback: a plain solid-red fill, cleared on completion
+    }
+    const pipe = webgl ? this.hitPipeline(sprite) : null;
+    const base = (sprite.getData('baseScale') as number | undefined) ?? 1;
+
+    this.hitFlashTweens.get(sprite)?.stop(); // stop() (not remove()) so the old onComplete never runs
+    const fx = { t: 1 };
+    const tween = this.tweens.add({
+      targets: fx,
+      t: 0,
+      duration: HIT_FLASH_MS,
+      ease: 'Expo.easeOut', // punch hard on impact, fade fast
+      onUpdate: () => {
+        const t = fx.t;
+        if (pipe) pipe.flash = t * HIT_FLASH_PEAK;
+        // squash: widest+shortest at impact (t=1), easing back to the rest scale (t=0).
+        sprite.setScale(base * (1 + 0.15 * t), base * (1 - 0.12 * t));
+        if (isPlayer) this.playerFlash = t;
+      },
+      onComplete: () => {
+        this.hitFlashTweens.delete(sprite);
+        sprite.setScale(base);
+        if (webgl) {
+          sprite.removePostPipeline(HIT_FLASH_KEY);
+          this.hitFlashOn.delete(sprite);
+        } else {
+          sprite.clearTint();
+        }
+        if (isPlayer) this.playerFlash = 0;
+      },
+    });
+    this.hitFlashTweens.set(sprite, tween);
+  }
+
+  /**
+   * A zombie's attack "tell": a quick out-and-back lunge toward its target. The skeleton sheet ships
+   * no attack strip, so without this a bite is invisible — the zombie just stands on the player. We
+   * move the Arcade **body** (via `body.reset`), not the sprite transform: Arcade writes the body's
+   * position back onto the sprite every step, so a `sprite.x` tween would be stomped each frame. The
+   * lunge only runs during the stationary contact phase (velocity 0, no active path) and snaps back to
+   * the origin on completion, and its total time stays under the contact cooldown so it always settles
+   * before the next bite. Logic (contact, pathing) keys off z.col/z.row, so this stays purely visual.
+   */
+  private zombieLungeAt(z: ZombieUnit, targetX: number, targetY: number): void {
+    this.zombieAttacks += 1;
+    const sprite = z.sprite;
+    if (this.lungeTweens.has(sprite)) return; // already lunging — don't stack
+    const ox = sprite.x;
+    const oy = sprite.y;
+    const dx = targetX - ox;
+    const dy = targetY - oy;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = (dx / len) * ZOMBIE_LUNGE_PX;
+    const uy = (dy / len) * ZOMBIE_LUNGE_PX;
+    if (dx !== 0) sprite.setFlipX(dx < 0); // face the target across the lunge (velocity is 0, so updateZombieAnim won't reflip)
+
+    const tween = this.tweens.add({
+      targets: { p: 0 },
+      p: 1,
+      duration: ZOMBIE_LUNGE_MS,
+      yoyo: true, // out to the target, then back
+      ease: 'Quad.easeOut',
+      onUpdate: (_tw, tgt: { p: number }) => sprite.body.reset(ox + ux * tgt.p, oy + uy * tgt.p),
+      onComplete: () => {
+        this.lungeTweens.delete(sprite);
+        sprite.body.reset(ox, oy); // guarantee it lands exactly back home
+      },
+    });
+    this.lungeTweens.set(sprite, tween);
+  }
+
+  /** Stop and forget any in-flight hit-flash/lunge tweens for a sprite about to be destroyed — those
+   * tweens target plain objects but poke the sprite (scale / body.reset), so they'd throw once it's
+   * gone. Called before a punched-dead zombie's sprite is destroyed. */
+  private cleanupActorFx(sprite: Phaser.GameObjects.Sprite): void {
+    this.hitFlashTweens.get(sprite)?.stop();
+    this.hitFlashTweens.delete(sprite);
+    this.lungeTweens.get(sprite)?.stop();
+    this.lungeTweens.delete(sprite);
+    this.hitFlashOn.delete(sprite);
   }
 
   /** Switch input mode (mutually exclusive) and notify UIScene to update its HUD accordingly. */
@@ -1305,6 +1441,7 @@ export class GameScene extends Phaser.Scene {
     const { render } = ACTIVE_TILESET.actors.enemy;
     const sprite = this.add.sprite(tileToWorldCenter(col), tileToWorldCenter(row), enemyWalkKey).setDepth(9);
     sprite.setScale(render.scale).setOrigin(render.originX, render.originY);
+    sprite.setData('baseScale', render.scale); // rest scale the flinch squash returns to
     this.physics.add.existing(sprite);
     const zsprite = sprite as ZombieUnit['sprite'];
     zsprite.body.setCollideWorldBounds(true);
@@ -1381,7 +1518,10 @@ export class GameScene extends Phaser.Scene {
           z.sprite.body.setVelocity(0, 0);
           if (now - z.lastContactAt >= CONTACT_DAMAGE_COOLDOWN_MS) {
             z.lastContactAt = now;
-            this.damagePlayer(resolveMeleeAttack(z.def, this.playerStats, UNARMED_BASE_DAMAGE, this.rng));
+            this.zombieLungeAt(z, this.player.x, this.player.y); // visible attack tell (no attack strip ships)
+            const dmg = resolveMeleeAttack(z.def, this.playerStats, UNARMED_BASE_DAMAGE, this.rng);
+            if (dmg > 0) this.flashHit(this.player); // hit reaction only when the bite lands
+            this.damagePlayer(dmg);
           }
         } else {
           if (now - z.lastRepathAt >= 300) {
@@ -1647,6 +1787,10 @@ export class GameScene extends Phaser.Scene {
     prow: number;
     zombies: number;
     playerHp: number;
+    playerFlash: number;
+    playerHitFlashes: number;
+    zombieHitFlashes: number;
+    zombieAttacks: number;
     mode: 'command' | 'combat' | 'inspect';
     hunger: number;
     dayPhase: DayPhase;
@@ -1669,6 +1813,10 @@ export class GameScene extends Phaser.Scene {
       prow: t.row,
       zombies: this.zombies.filter((z) => z.alive).length,
       playerHp: this.playerHp,
+      playerFlash: this.playerFlash,
+      playerHitFlashes: this.playerHitFlashes,
+      zombieHitFlashes: this.zombieHitFlashes,
+      zombieAttacks: this.zombieAttacks,
       mode: this.mode,
       hunger: this.hunger,
       dayPhase: this.dayPhase,

@@ -116,3 +116,17 @@ Wellbeing** screen (STATUS button → Panel) shows hunger/health meters, read-on
 008's existing panel (no throwaway "Equipped" shell — deferred to plan 010). Survival state is **not
 persisted**. New Tier-1 `daynight`/`needs` unit tests + three Tier-2 scenarios
 (`survival-{daynight,hunger,forage}`).
+
+## Combat hit feedback + enemy attack tell
+
+Combat now *reads*. On a landed hit, both the player and a zombie **flash red and squash-"flinch"**:
+one tween over a plain `{ t }` object (1→0) drives a live **`HitFlashPipeline`** PostFX (WebGL; a
+`setTintFill` fallback on Canvas — see [render/hitFlashPipeline.ts](../src/render/hitFlashPipeline.ts)
++ docs/RENDERING.md) *and* a scale-only squash, so flash and flinch decay in lockstep and the squash
+never fights the actor's Arcade body. The skeleton ships **no attack strip**, so a zombie's bite is a
+coded **lunge** toward its target (`GameScene.zombieLungeAt`) — it moves the Arcade **body** via
+`body.reset` (a `sprite.x` tween would be stomped by physics each frame) out-and-back, only during the
+stationary contact phase, settling well inside the contact cooldown. All feedback is purely visual:
+logic stays keyed to `col`/`row`. Tuning lives in `config.ts` (`HIT_FLASH_*`, `ZOMBIE_LUNGE_*`);
+`debugState` surfaces `playerFlash` + `{player,zombie}HitFlashes`/`zombieAttacks` counters, asserted by
+two new Tier-2 `combat` scenarios (the boot canary's real-WebGL run compiles the shader as a free check).

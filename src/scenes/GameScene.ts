@@ -18,7 +18,10 @@ import {
   PLAYER_START_VISION,
   UNARMED_BASE_DAMAGE,
   CONTACT_DAMAGE_COOLDOWN_MS,
+  INVENTORY_SLOTS,
+  DEFAULT_MAX_STACK,
 } from '../config';
+import { ITEMS } from '../data/items';
 import { NODES } from '../data/nodes';
 import { BUILDABLES } from '../data/buildables';
 import { ENEMIES } from '../data/enemies';
@@ -261,7 +264,10 @@ export class GameScene extends Phaser.Scene {
     this.drawGround();
 
     // Shared character inventory — stored in the registry so the UIScene reads the same instance.
-    this.inv = new Inventory();
+    this.inv = new Inventory({
+      capacity: INVENTORY_SLOTS,
+      maxStackOf: (id) => ITEMS[id]?.maxStack ?? DEFAULT_MAX_STACK,
+    });
     this.registry.set('inventory', this.inv);
 
     this.spawnTrees();
@@ -551,6 +557,11 @@ export class GameScene extends Phaser.Scene {
     if (a.kind === 'harvest') {
       const tree = this.treeById(a.treeId);
       if (!tree || !tree.alive) return this.completeCurrent();
+      // Bag can't accept this node's yield → don't even start the walk-and-swing; abort the order.
+      if (!this.inv.canAccept(tree.def.yieldItemId, tree.def.yieldPerHit)) {
+        this.flashBagFull(tree);
+        return this.completeCurrent();
+      }
       const target = { col: tree.col, row: tree.row };
       // Prefer this species' stand tiles (a tall tree restricts to its base, never up in the canopy);
       // fall back to any adjacent tile if those are walled off. A rock omits standOffsets → all-adjacent.
@@ -705,6 +716,13 @@ export class GameScene extends Phaser.Scene {
   private runHarvest(a: Extract<Action, { kind: 'harvest' }>, delta: number): void {
     const tree = this.treeById(a.treeId);
     if (!tree || !tree.alive) return this.completeCurrent();
+    // If the bag can no longer accept this node's yield, abort the order rather than swing forever on
+    // a node we can never fell (critique #1): the task only completes at hp<=0, so skipping the hit
+    // alone would jam the queue head. Aborting clears it and frees any orders queued behind it.
+    if (!this.inv.canAccept(tree.def.yieldItemId, tree.def.yieldPerHit)) {
+      this.flashBagFull(tree);
+      return this.completeCurrent();
+    }
     if (this.advancePath()) {
       this.player.body.setVelocity(0, 0);
       this.faceTile(tree.col, tree.row); // swing toward the trunk, whatever side we stood on
@@ -1003,6 +1021,15 @@ export class GameScene extends Phaser.Scene {
       if (tree.alive && Phaser.Math.Distance.Between(x, y, tree.sprite.x, tree.sprite.y) <= TILE_SIZE) return tree;
     }
     return null;
+  }
+
+  /** Light "bag full" feedback: a brief warning tint on the node (no new HUD text). */
+  private flashBagFull(tree: TreeNode): void {
+    if (!tree.alive) return;
+    tree.sprite.setTint(COLORS.ghostInvalid);
+    this.time.delayedCall(150, () => {
+      if (tree.alive) tree.sprite.clearTint();
+    });
   }
 
   private chop(tree: TreeNode): void {

@@ -12,6 +12,29 @@ export const BASE_WIDTH = 360;
 export const BASE_HEIGHT = 640;
 
 /**
+ * Device-pixel render scale — an integer supersample factor for the canvas backing store.
+ *
+ * The game is authored in the fixed BASE_WIDTH×BASE_HEIGHT design space above. On a high-DPI screen
+ * the browser stretches that small backing store up to the physical display by a *fractional* factor,
+ * and a NEAREST-sampled fractional upscale drops/doubles whole pixel rows — thin crawling seams along
+ * tile edges (worst on mobile GPUs; this is what put the black lines on the doubled map). Rendering
+ * the backing store at ~device density makes that final upscale ~1:1, so the seams vanish and
+ * everything is sharper. Kept an integer so sprite pixels stay uniform (same reason zoom is integer —
+ * see ZOOM_STEP). World and HUD stay authored in design units; each scene's camera zoom absorbs this
+ * factor (see GameScene.setZoom and UIScene.create). Override for tuning/tests with `?ss=N`.
+ */
+export const RENDER_SCALE: number = (() => {
+  if (typeof window === 'undefined') return 1; // unit tests run in plain Node — no DOM, no scaling
+  try {
+    const forced = Number(new URLSearchParams(window.location.search).get('ss'));
+    if (Number.isFinite(forced) && forced >= 1 && forced <= 4) return Math.round(forced);
+  } catch {
+    // location unavailable — fall through to the DPR-derived default
+  }
+  return Math.min(3, Math.max(1, Math.ceil(window.devicePixelRatio || 1)));
+})();
+
+/**
  * World (map) size in pixels — the playable area, larger than the render viewport (BASE_*). The
  * camera scrolls/follows within it. Held at 2× the base in each dimension (a 45×80-tile map) so the
  * room to roam and build scales with the larger native-scale actors (see DECISIONS.md 2026-07-12);

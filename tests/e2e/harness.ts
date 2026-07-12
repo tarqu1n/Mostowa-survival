@@ -113,12 +113,11 @@ export function held(page: Page, id: string): Promise<number> {
 
 /** Map a world tile (col,row) to a client (screen) pixel through the live camera zoom/scroll, for
  * real-pointer gesture specs. Mirrors scripts/smoke.mjs's worldToClient (camera worldView + the
- * Scale.FIT canvas scale from BASE_WIDTH 360). */
+ * Scale.FIT canvas scale from the backing-store width, i.e. BASE_WIDTH × RENDER_SCALE). */
 export function tileToClient(page: Page, col: number, row: number): Promise<{ x: number; y: number }> {
   return page.evaluate(
     ([col, row]) => {
       const TILE = 16;
-      const BASE_WIDTH = 360;
       const wx = col * TILE + TILE / 2;
       const wy = row * TILE + TILE / 2;
       const cam = (window as any).game.scene.getScene('Game').cameras.main;
@@ -126,7 +125,8 @@ export function tileToClient(page: Page, col: number, row: number): Promise<{ x:
       const baseX = ((wx - wv.x) / wv.width) * cam.width;
       const baseY = ((wy - wv.y) / wv.height) * cam.height;
       const rect = document.querySelector('canvas')!.getBoundingClientRect();
-      const s = rect.width / BASE_WIDTH;
+      // baseX/baseY are in backing-store px (cam.width = BASE_WIDTH × RENDER_SCALE); map to CSS px.
+      const s = rect.width / cam.width;
       return { x: rect.left + baseX * s, y: rect.top + baseY * s };
     },
     [col, row] as const,

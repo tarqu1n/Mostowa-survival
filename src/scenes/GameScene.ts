@@ -8,6 +8,7 @@ import {
   LONGPRESS_MS,
   BUILD_MS,
   DRAG_PX,
+  RENDER_SCALE,
   COLORS,
   MIN_ZOOM,
   MAX_ZOOM,
@@ -209,6 +210,7 @@ export class GameScene extends Phaser.Scene {
   private nextSiteId = 0;
 
   private ui!: UIScene;
+  private userZoom = DEFAULT_ZOOM; // the user-facing zoom level (100/200/300%); camera scale is this × RENDER_SCALE
   private gridDims = { cols: Math.floor(MAP_WIDTH / TILE_SIZE), rows: Math.floor(MAP_HEIGHT / TILE_SIZE) };
   private downScreen = new Phaser.Math.Vector2(); // pointerdown position in screen/base-canvas px
   private downOnUI = false;
@@ -765,6 +767,12 @@ export class GameScene extends Phaser.Scene {
 
   // --- Input gate ----------------------------------------------------------
 
+  /** HUD hit-test in design space. Raw pointer coords live in the device-scaled backing store, but
+   * the HUD is authored in BASE_WIDTH×BASE_HEIGHT units — divide by RENDER_SCALE to line them up. */
+  private pointerOnHud(pointer: Phaser.Input.Pointer): boolean {
+    return this.ui.hudHitTest(pointer.x / RENDER_SCALE, pointer.y / RENDER_SCALE);
+  }
+
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
     if (this.activePointerCount() >= 2) {
       // A second finger just landed — this gesture is a pinch, not a tap. Abandon anything the
@@ -775,7 +783,7 @@ export class GameScene extends Phaser.Scene {
       this.isPanning = false;
       return;
     }
-    this.downOnUI = this.ui.hudHitTest(pointer.x, pointer.y);
+    this.downOnUI = this.pointerOnHud(pointer);
     if (this.downOnUI) return; // HUD owns this tap
     this.downScreen.set(pointer.x, pointer.y);
     this.lastPanX = pointer.x;
@@ -794,15 +802,15 @@ export class GameScene extends Phaser.Scene {
     if (this.pinching) {
       if (this.activePointerCount() < 2) return; // one finger already lifted — wait for pointerup
       const dist = this.pointerDistance();
-      if (this.pinchDist > 0) this.setZoom(this.cameras.main.zoom * (dist / this.pinchDist));
+      if (this.pinchDist > 0) this.setZoom(this.userZoom * (dist / this.pinchDist));
       this.pinchDist = dist;
       return;
     }
     if (this.buildMode) {
-      if (!this.ui.hudHitTest(pointer.x, pointer.y)) this.updateGhost(pointer);
+      if (!this.pointerOnHud(pointer)) this.updateGhost(pointer);
       return;
     }
-    if (!pointer.isDown || this.downOnUI || this.ui.hudHitTest(pointer.x, pointer.y)) return;
+    if (!pointer.isDown || this.downOnUI || this.pointerOnHud(pointer)) return;
 
     // Command-mode-only: queue-painting (long-press-drag) issues tap-to-pathfind orders, which
     // would fight Combat mode's direct movepad control and has no meaning in Inspect mode.
@@ -820,7 +828,8 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    if (!this.isPanning && Phaser.Math.Distance.Between(this.downScreen.x, this.downScreen.y, pointer.x, pointer.y) > DRAG_PX) {
+    // downScreen and pointer are backing-store px (device-scaled); DRAG_PX is a design-space distance.
+    if (!this.isPanning && Phaser.Math.Distance.Between(this.downScreen.x, this.downScreen.y, pointer.x, pointer.y) > DRAG_PX * RENDER_SCALE) {
       this.isPanning = true;
       this.setFollowing(false); // manual pan always breaks the follow-lock
     }
@@ -838,7 +847,7 @@ export class GameScene extends Phaser.Scene {
       if (this.activePointerCount() < 2) this.pinching = false; // both fingers up — gesture over
       return; // a pinch never resolves as a tap, however many fingers are still down
     }
-    if (this.buildMode || this.downOnUI || this.ui.hudHitTest(pointer.x, pointer.y)) return;
+    if (this.buildMode || this.downOnUI || this.pointerOnHud(pointer)) return;
     if (this.queuePainting) {
       this.queuePainting = false; // the drag already queued its targets
       return;
@@ -1524,7 +1533,11 @@ export class GameScene extends Phaser.Scene {
     // Snap to an integer level: pixel-art sprites only stay crisp at integer camera scale (see
     // config.ts ZOOM_STEP). This gates *every* zoom source — buttons, pinch, restored preference.
     const clamped = Phaser.Math.Clamp(Math.round(z), MIN_ZOOM, MAX_ZOOM);
-    this.cameras.main.setZoom(clamped);
+    this.userZoom = clamped;
+    // Camera scale = the user's (integer) zoom × the device render scale, so the world is drawn at
+    // device density (a crisp ~1:1 final upscale, no seams) while the user still zooms in integer
+    // steps. Everything else — the registry mirror, persistence, the HUD %readout — is the *user* zoom.
+    this.cameras.main.setZoom(clamped * RENDER_SCALE);
     this.registry.set('zoom', clamped);
     try {
       localStorage.setItem(ZOOM_STORAGE_KEY, String(clamped));
@@ -1535,7 +1548,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private adjustZoom(delta: number): void {
-    this.setZoom(this.cameras.main.zoom + delta);
+    this.setZoom(this.userZoom + delta);
   }
 
   // --- Camera pan / follow-lock -----------------------------------------------

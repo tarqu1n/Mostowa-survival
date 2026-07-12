@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import {
   BASE_WIDTH,
   BASE_HEIGHT,
+  RENDER_SCALE,
   COLORS,
   DEFAULT_ZOOM,
   ZOOM_STEP,
@@ -85,6 +86,15 @@ export class UIScene extends Phaser.Scene {
 
   create(): void {
     this.inv = this.registry.get('inventory') as Inventory | undefined;
+
+    // The backing store is BASE×RENDER_SCALE (rendered at device density to kill tile-edge seams —
+    // see config RENDER_SCALE). Zoom the HUD camera by that factor and recentre it on the design-space
+    // midpoint, so every widget below stays authored in plain BASE_WIDTH×BASE_HEIGHT units yet renders
+    // crisply at device resolution. (No-op at RENDER_SCALE 1.)
+    if (RENDER_SCALE !== 1) {
+      this.cameras.main.setZoom(RENDER_SCALE);
+      this.cameras.main.centerOn(BASE_WIDTH / 2, BASE_HEIGHT / 2);
+    }
 
     // Build toggle — a touch-sized button, top-right.
     const bw = 76;
@@ -407,8 +417,9 @@ export class UIScene extends Phaser.Scene {
   /** Drag the movepad knob toward the pointer (clamped to the base radius) and emit the
    * normalized {dx, dy} vector for GameScene to drive the player's velocity directly. */
   private updateMovepad(pointer: Phaser.Input.Pointer): void {
-    const dx = pointer.x - this.movepadCenter.x;
-    const dy = pointer.y - this.movepadCenter.y;
+    // Raw pointer coords are backing-store px (device-scaled); the movepad geometry is design-space.
+    const dx = pointer.x / RENDER_SCALE - this.movepadCenter.x;
+    const dy = pointer.y / RENDER_SCALE - this.movepadCenter.y;
     const dist = Math.min(this.movepadRadius, Math.hypot(dx, dy));
     const angle = Math.atan2(dy, dx);
     this.movepadKnob.setPosition(this.movepadCenter.x + Math.cos(angle) * dist, this.movepadCenter.y + Math.sin(angle) * dist);

@@ -7,6 +7,34 @@ Format: `YYYY-MM-DD — [DECIDED|PROPOSED|OPEN] Title` then a short rationale.
 
 ---
 
+## 2026-07-12 — [DECIDED] Render the backing store at device resolution (RENDER_SCALE) to kill tile seams
+
+The "black lines on the doubled map" (reported on-device, Android/Brave) turned out **not** to be the
+ground bake: a snapshot of the baked `RenderTexture` was pixel-perfect (0 gaps, fully opaque), and the
+WebGL framebuffer was clean at every integer zoom. The seams were a **display-time** artifact — the
+game rendered into a fixed `BASE_WIDTH×BASE_HEIGHT` (360×640) backing store and let the browser stretch
+that to the physical screen by a *fractional* factor (~2.5× on the phone). A NEAREST-sampled fractional
+upscale drops/doubles whole pixel rows on a beat (~every 3 tiles), reading as thin black lines on the
+darker fogged ground. It only surfaced after the map doubling because the camera now scrolls, so the
+beat crawls instead of sitting still off-screen. (Doesn't reproduce in headless Chromium — its
+compositor resamples cleanly — so this class of bug needs on-device eyes.)
+
+**Decided:** render the backing store at ~device density. New `RENDER_SCALE` (config) = an *integer*
+supersample factor derived from `devicePixelRatio` (`ceil`, capped at 3; `?ss=N` overrides for
+tuning/tests; 1 in headless/Node so the whole existing test path is unchanged). The game config size
+becomes `BASE_* × RENDER_SCALE`, so FIT's final upscale is ~1:1 — no fractional beat, and everything is
+sharper. Kept **integer** for the same reason zoom is integer: sprite pixels must stay uniform. The
+**design space stays 360×640** — each scene's camera zoom absorbs the factor: `GameScene` camera scale =
+`userZoom × RENDER_SCALE` (a new `userZoom` field is the source of truth for the HUD %/persistence, not
+`cameras.main.zoom`), and `UIScene` zooms its camera by `RENDER_SCALE` and recentres on the design
+midpoint. Raw-pointer math that compares against design-space UI (HUD hit-tests, movepad, the drag
+threshold) divides by `RENDER_SCALE`; everything on `pointer.worldX/worldY` is already camera-correct.
+
+Chosen over the two alternatives: **integer-only scaling** (letterbox) would also fix it but wastes
+~90px each side on a phone (rejected — mobile-first); **softening grass contrast** is a band-aid that
+leaves the root cause. Lesson: a fixed low-res backing store + fractional browser upscale = seams on
+mobile GPUs, independent of the bake or camera; render at device density.
+
 ## 2026-07-12 — [DECIDED] Map decoupled from viewport, doubled to offset the larger actors
 
 The world was exactly one base-screen (camera bounds = `BASE_WIDTH×BASE_HEIGHT`), so the larger

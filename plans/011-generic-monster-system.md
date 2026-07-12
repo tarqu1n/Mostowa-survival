@@ -10,9 +10,9 @@
 - `ca30c55` — Phase A (A1–A4): monster AI FSM + wiring + tests.
 - `5e5a2d4` — Phase B substrate (B1–B3): data/manifest schema, extracted club/knife art (pre-downscale),
   pure `weaponTransform`.
-- `a8e4445` — idle bob (32px footprint swap), weapon pin/swing/combat, Phase-B test coverage, the
-  club/knife downscale, + the teardown tween-stop bug fix. All green (`tsc`/`npm test` 128/`npm run
-  smoke`; `monster.spec` 5/5).
+- latest `feat(monster): idle bob + held weapon … B4–B6` commit (HEAD) — idle bob (32px footprint
+  swap), weapon pin/swing/combat, Phase-B test coverage, the club/knife downscale, + the teardown
+  tween-stop bug fix. All green (`tsc`/`npm test` 128/`npm run smoke`; `monster.spec` 5/5).
 
 **Remaining:**
 1. **B7 (docs)** `[delegate sonnet]` — ASSETS.md pin note, DECISIONS.md (pinning supersedes 010's

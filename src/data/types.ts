@@ -12,6 +12,8 @@ export interface ItemDef {
   maxStack: number;
   /** Icon filename relative to `public/assets/icons/` (e.g. `wood.png`); loaded as `icon:<id>`. */
   icon: string;
+  /** Hunger restored per unit when eaten. Present ⇒ the item is edible; omit for inedible items. */
+  nutrition?: number;
 }
 
 /** Stats every world thing (mover or object) shares. */
@@ -66,8 +68,16 @@ export interface ResourceNodeDef extends ObjectStats {
   regrowMs: number;
   color: number;
   stumpColor: number;
+  /**
+   * Whether this node blocks its tile for routing and build-placement. Trees/rocks are `true`
+   * (obstacles the worker paths around and can't build over); a low bush is `false` — the worker
+   * walks *through* it and may build over it, yet still harvests from an adjacent tile.
+   */
+  blocksPath: boolean;
+  /** In-place harvest animation the player plays (default `'chop'`); a bush uses `'gather'` (forage). */
+  harvestAnim?: 'chop' | 'gather';
   /** Tileset sprite role this node renders as (`ACTIVE_TILESET.tiles[tile]`). */
-  tile: 'tree' | 'rock';
+  tile: 'tree' | 'rock' | 'bush';
   /** Height (in tiles) the sprite is scaled to stand. */
   tilesTall: number;
   /** Sprite anchor — trees anchor near their base so the canopy overhangs up; a rock sits centred. */

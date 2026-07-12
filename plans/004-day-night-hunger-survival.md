@@ -283,7 +283,19 @@ mechanism fought the code that's actually there.
   - Docs: none (Step 11).
   - Done when: `npm test` green with the new needs specs.
 
-- [ ] **Step 5: Forageable food — `berries` item + berry-bush node** `[inline]`
+- [x] **Step 5: Forageable food — `berries` item + berry-bush node** `[inline]`
+  - Outcome: `types.ts` — `ItemDef.nutrition?`, `ResourceNodeDef.blocksPath` (required) + `harvestAnim?`,
+    `tile` union widened to `'tree'|'rock'|'bush'`. `items.ts` — `berries` (nutrition 25). `nodes.ts` —
+    `blocksPath:true` on tree/rock, new `berryBush` (`yieldItemId:'berries'`, `yieldPerHit:2`, `maxHp:1`,
+    `regrowMs:20_000`, `blocksPath:false`, `harvestAnim:'gather'`, `tile:'bush'`). `tileset.ts` — `bush`
+    added to manifest interface + pack (`_derived/bush.png`). `PreloadScene.ts` — bush added to the tile
+    load loop. `GameScene.ts` — `isBlocked` and `tilePlaceable` now gate node-block on `t.def.blocksPath`
+    (bush blocks neither routing nor build-placement; the tap hit-test stays ungated so bushes are still
+    harvestable); 3 fixed berry bushes spawned near camp (21,43)/(24,38)/(17,41). Placeholder art baked
+    by new `scripts/placeholder-art.mjs` (zlib PNG encoder — no image deps): `icons/berries.png` (32×32)
+    + `_derived/bush.png` (28×24), both render-verified. `npm run build` green; boot canary clean (both
+    assets load, no console error). Behavioral forage (route-through/adjacent-harvest/regrow/eat) is
+    asserted deterministically in Step 9's `survival-forage.spec.ts`.
   - **Item:** `types.ts` — add `nutrition?: number` to `ItemDef` (optional, so `wood`/`stone` stay
     valid). `items.ts` — add `berries: { id:'berries', name:'Berries', color:0x7a2f4a, maxStack:50,
     icon:'berries.png', nutrition:25 }`. Add a **32×32 placeholder `berries.png`** under the same icons

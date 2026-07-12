@@ -479,9 +479,13 @@ export class GameScene extends Phaser.Scene {
 
   // --- Obstacle grid + path following -------------------------------------
 
-  /** Walkability for the pathfinder: completed walls and live trees block; blueprints are passable. */
+  /**
+   * Walkability for the pathfinder: completed walls and live *blocking* nodes (trees/rocks) block;
+   * blueprints and non-blocking nodes (bushes, `def.blocksPath === false`) are passable.
+   */
   private readonly isBlocked = (col: number, row: number): boolean =>
-    this.occupied.has(tileKey(col, row)) || this.trees.some((t) => t.alive && t.col === col && t.row === row);
+    this.occupied.has(tileKey(col, row)) ||
+    this.trees.some((t) => t.alive && t.def.blocksPath && t.col === col && t.row === row);
 
   private playerTile(): Cell {
     return { col: worldToTile(this.player.x), row: worldToTile(this.player.y) };
@@ -1097,6 +1101,15 @@ export class GameScene extends Phaser.Scene {
     ] as Array<[number, number]>) {
       this.addNode(NODES.rock, col, row);
     }
+    // Berry bushes near the camp — the starting food source. Non-blocking, so the worker walks through
+    // them (unlike trees/rocks) and forages from an adjacent tile. Fixed tiles so tests can rely on them.
+    for (const [col, row] of [
+      [21, 43],
+      [24, 38],
+      [17, 41],
+    ] as Array<[number, number]>) {
+      this.addNode(NODES.berryBush, col, row);
+    }
   }
 
   /** Spawn one resource node of `def` (tree, rock, …) at a tile; sized/anchored from its own data. */
@@ -1294,12 +1307,13 @@ export class GameScene extends Phaser.Scene {
     return this.sites.find((s) => !s.done && s.col === col && s.row === row);
   }
 
-  /** True if a wall can be blueprinted here: in bounds, empty, off live trees, and reachable. */
+  /** True if a wall can be blueprinted here: in bounds, empty, off live blocking nodes, and reachable. */
   private tilePlaceable(col: number, row: number): boolean {
     const key = tileKey(col, row);
     if (col < 0 || row < 0 || col >= this.gridDims.cols || row >= this.gridDims.rows) return false;
     if (this.occupied.has(key) || this.siteTiles.has(key)) return false;
-    if (this.trees.some((t) => t.alive && t.col === col && t.row === row)) return false;
+    // Only blocking nodes (trees/rocks) veto placement — a non-blocking bush can be built over.
+    if (this.trees.some((t) => t.alive && t.def.blocksPath && t.col === col && t.row === row)) return false;
     // Must have a tile the worker can stand on to build it (Finding 4 — no stranded blueprints).
     return reachableAdjacent(this.playerTile(), { col, row }, this.isBlocked, this.gridDims) !== null;
   }

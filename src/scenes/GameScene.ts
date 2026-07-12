@@ -31,6 +31,14 @@ import {
   ENEMY_HIT_SHAKE_INTENSITY,
   ZOMBIE_LUNGE_PX,
   ZOMBIE_LUNGE_MS,
+  MONSTER_CHASE_DROP_RADIUS_PX,
+  MONSTER_VEER_BAND_PX,
+  MONSTER_VEER_MAX_TILES,
+  MONSTER_REPATH_MS,
+  MONSTER_IDLE_MS_MIN,
+  MONSTER_IDLE_MS_MAX,
+  MONSTER_WANDER_RADIUS_TILES,
+  MONSTER_PATROL_PAUSE_MS,
   DEATH_ANIM_FRAMERATE,
   DEATH_HOLD_MS,
   INVENTORY_SLOTS,
@@ -55,6 +63,7 @@ import { TaskQueue, type Action } from '../systems/tasks';
 import { cycleLengthMs, phaseAt, tintAlphaAt, dayCountForTotal, type DayPhase } from '../systems/daynight';
 import { drainHunger, feed, isStarving } from '../systems/needs';
 import { resolveMeleeAttack } from '../systems/combat';
+import { stepMonster, initialMonsterState, type MonsterState, type MonsterMode } from '../systems/monsterAI';
 import { hurtboxContains, hurtboxTiles, DEFAULT_HURTBOX } from '../systems/hurtbox';
 import { bakeGlowTexture } from '../render/glowTexture';
 import { HIT_FLASH_KEY, type HitFlashPipeline } from '../render/hitFlashPipeline';
@@ -102,7 +111,7 @@ export interface BuildSite {
   done: boolean;
 }
 
-/** A live enemy instance in the world — minimal idle/chasing AI (see plan 003). */
+/** A live enemy instance in the world — driven by the pure FSM in systems/monsterAI (plans 003, 011). */
 export interface ZombieUnit {
   id: string;
   sprite: Phaser.GameObjects.Sprite & { body: Phaser.Physics.Arcade.Body };
@@ -111,9 +120,9 @@ export interface ZombieUnit {
   alive: boolean;
   col: number;
   row: number;
-  state: 'idle' | 'chasing';
+  /** Persisted AI state — read+returned by stepMonster each tick (repath timing lives inside it). */
+  ai: MonsterState;
   lastContactAt: number;
-  lastRepathAt: number;
   path: Cell[];
   pathIndex: number;
 }
@@ -156,7 +165,10 @@ export interface ScenarioSpec {
   trees?: Array<[number, number]>;
   rocks?: Array<[number, number]>;
   bushes?: Array<[number, number]>;
-  zombies?: Array<[number, number] | { at: [number, number]; id?: string }>;
+  zombies?: Array<
+    | [number, number]
+    | { at: [number, number]; id?: string; patrolRoute?: Array<[number, number]>; mode?: MonsterMode }
+  >;
   walls?: Array<[number, number]>;
   blueprints?: Array<[number, number]>;
   rng?: () => number;
@@ -287,6 +299,7 @@ export class GameScene extends Phaser.Scene {
   private gridDims = { cols: Math.floor(MAP_WIDTH / TILE_SIZE), rows: Math.floor(MAP_HEIGHT / TILE_SIZE) };
   private downScreen = new Phaser.Math.Vector2(); // pointerdown position in screen/base-canvas px
   private downOnUI = false;
+  private sawPointerDown = false; // this scene observed the press; guards against a leaked pointerup (see onPointerUp)
   private pressStart = 0; // scene-clock time of the current pointer press (for hold detection)
   private queuePainting = false; // once a hold crosses LONGPRESS_MS, dragging paints queue orders
   private paintedThisGesture = new Set<string>(); // tile keys already queued in the current gesture
@@ -334,6 +347,7 @@ export class GameScene extends Phaser.Scene {
     // must reset or the fresh player would stay frozen from the previous death (see killPlayer/update).
     this.resetCombatFx();
     this.buildMode = false;
+    this.sawPointerDown = false; // fields persist across scene.restart(); clear so a press interrupted by death can't resolve post-restart
     this.queueMarkers = [];
     this.outlinedTreeIds.clear();
     this.glowSprites.clear(); // scene teardown destroys the GameObjects; drop our stale references
@@ -991,6 +1005,7 @@ export class GameScene extends Phaser.Scene {
       this.isPanning = false;
       return;
     }
+    this.sawPointerDown = true; // a genuine press this scene owns — its paired pointerup may now resolve
     this.downOnUI = this.pointerOnHud(pointer);
     if (this.downOnUI) return; // HUD owns this tap
     this.downScreen.set(pointer.x, pointer.y);
@@ -1060,6 +1075,12 @@ export class GameScene extends Phaser.Scene {
       if (this.activePointerCount() < 2) this.pinching = false; // both fingers up — gesture over
       return; // a pinch never resolves as a tap, however many fingers are still down
     }
+    // A pointerup with no matching pointerdown seen by this scene is a foreign/leaked event: MainMenu
+    // starts the Game scene on pointerdown, so the paired release lands on this freshly-created scene
+    // and would otherwise resolve as a stray move order on the map. Never act on it. (Reset so a second
+    // leaked release also no-ops.)
+    if (!this.sawPointerDown) return;
+    this.sawPointerDown = false;
     if (this.buildMode || this.downOnUI || this.pointerOnHud(pointer)) return;
     if (this.queuePainting) {
       this.queuePainting = false; // the drag already queued its targets
@@ -1627,7 +1648,12 @@ export class GameScene extends Phaser.Scene {
     this.addZombie('kidZombie', 22, 50); // ~10 tiles below the map-centre spawn, as before the resize
   }
 
-  private addZombie(enemyId: string, col: number, row: number): void {
+  private addZombie(
+    enemyId: string,
+    col: number,
+    row: number,
+    opts?: { patrolRoute?: Cell[]; mode?: MonsterMode },
+  ): void {
     const def = ENEMIES[enemyId];
     const { render } = ACTIVE_TILESET.actors.enemy;
     const sprite = this.add.sprite(tileToWorldCenter(col), tileToWorldCenter(row), enemyWalkKey).setDepth(9);
@@ -1637,6 +1663,8 @@ export class GameScene extends Phaser.Scene {
     const zsprite = sprite as ZombieUnit['sprite'];
     zsprite.body.setCollideWorldBounds(true);
     this.fitActorBody(zsprite, render);
+    const ai = initialMonsterState(opts?.patrolRoute);
+    if (opts?.mode) ai.mode = opts.mode; // scenario override (e.g. spawn already chasing)
     this.zombies.push({
       id: `zombie-${this.nextZombieId++}`,
       sprite: zsprite,
@@ -1645,9 +1673,8 @@ export class GameScene extends Phaser.Scene {
       alive: true,
       col,
       row,
-      state: 'idle',
+      ai,
       lastContactAt: 0,
-      lastRepathAt: 0,
       path: [],
       pathIndex: 0,
     });
@@ -1686,7 +1713,9 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Per-frame idle→chasing aggro check + chase/contact-damage for every live zombie. */
+  /** Per-frame AI tick (pure FSM in systems/monsterAI) + chase/contact-damage for every live zombie.
+   *  The scene owns the *effects*: A* repath, `advanceZombie`, the contact bite; the FSM owns the
+   *  *decision* (mode, where to move, whether to repath). */
   private updateZombies(): void {
     const now = this.time.now;
     const pt = this.playerTile();
@@ -1696,12 +1725,32 @@ export class GameScene extends Phaser.Scene {
     for (const z of this.zombies) {
       if (!z.alive) continue;
 
-      if (z.state === 'idle') {
-        const dist = Phaser.Math.Distance.Between(z.sprite.x, z.sprite.y, this.player.x, this.player.y);
-        if (dist <= (z.def.vision ?? 0)) z.state = 'chasing';
-      }
+      const decision = stepMonster(
+        z.ai,
+        {
+          nowMs: now,
+          monster: { col: z.col, row: z.row },
+          monsterPos: { x: z.sprite.x, y: z.sprite.y },
+          playerPos: { x: this.player.x, y: this.player.y },
+          playerTile: pt,
+          acquireRadiusPx: z.def.vision ?? 0,
+          chaseDropRadiusPx: MONSTER_CHASE_DROP_RADIUS_PX,
+          veerBandPx: MONSTER_VEER_BAND_PX,
+          veerMaxTiles: MONSTER_VEER_MAX_TILES,
+          repathMs: MONSTER_REPATH_MS,
+          idleMsMin: MONSTER_IDLE_MS_MIN,
+          idleMsMax: MONSTER_IDLE_MS_MAX,
+          wanderRadiusTiles: MONSTER_WANDER_RADIUS_TILES,
+          patrolPauseMs: MONSTER_PATROL_PAUSE_MS,
+          dims: this.gridDims,
+          isBlocked: this.isBlocked,
+        },
+        this.rng,
+      );
+      z.ai = decision.state;
 
-      if (z.state === 'chasing') {
+      // Chase + in melee contact: stand and bite on the cadence (skip movement).
+      if (z.ai.mode === 'chase') {
         const inContact = playerBody.some(
           (t) => Math.max(Math.abs(t.col - z.col), Math.abs(t.row - z.row)) <= 1,
         );
@@ -1714,15 +1763,26 @@ export class GameScene extends Phaser.Scene {
             if (dmg > 0) this.onPlayerHurt(); // flash + camera kick + damage vignette when the bite lands
             this.damagePlayer(dmg);
           }
-        } else {
-          if (now - z.lastRepathAt >= 300) {
-            z.lastRepathAt = now;
-            z.path = findPath({ col: z.col, row: z.row }, pt, this.isBlocked, this.gridDims) ?? [];
-            z.pathIndex = 0;
-          }
-          this.advanceZombie(z);
+          this.updateZombieAnim(z);
+          continue;
         }
       }
+
+      // Otherwise honour the FSM's move command: repath when asked, then walk (or stand if no target).
+      if (decision.repath && decision.targetTile) {
+        const path = findPath({ col: z.col, row: z.row }, decision.targetTile, this.isBlocked, this.gridDims);
+        z.path = path ?? [];
+        z.pathIndex = 0;
+        // Only a truly UNREACHABLE calm-mode pick (findPath → null) strands the monster — drop to idle
+        // so it re-picks next beat. An empty path ([]) is "already on the target" (e.g. a patroller
+        // sitting on its first waypoint): keep the mode so the FSM's arrival logic (pause → next
+        // waypoint) runs. Chase keeps trying regardless (the player may be briefly unreachable).
+        if (path === null && z.ai.mode !== 'chase') {
+          z.ai = { ...z.ai, mode: 'idle', goalTile: null, timerMs: now + MONSTER_IDLE_MS_MIN };
+        }
+      }
+      if (decision.targetTile) this.advanceZombie(z);
+      else z.sprite.body.setVelocity(0, 0);
 
       this.updateZombieAnim(z);
     }
@@ -1915,7 +1975,10 @@ export class GameScene extends Phaser.Scene {
     for (const z of spec.zombies ?? []) {
       const at = Array.isArray(z) ? z : z.at;
       const id = Array.isArray(z) ? 'kidZombie' : z.id ?? 'kidZombie';
-      this.addZombie(id, at[0], at[1]);
+      const opts = Array.isArray(z)
+        ? undefined
+        : { patrolRoute: z.patrolRoute?.map(([c, r]) => ({ col: c, row: r })), mode: z.mode };
+      this.addZombie(id, at[0], at[1], opts);
       zombieIds.push(this.zombies[this.zombies.length - 1].id);
     }
 
@@ -1981,6 +2044,8 @@ export class GameScene extends Phaser.Scene {
     px: number;
     py: number;
     zombies: number;
+    zombieModes: MonsterMode[];
+    zombieTiles: { col: number; row: number }[];
     corpses: number;
     playerHp: number;
     playerDying: boolean;
@@ -2011,6 +2076,10 @@ export class GameScene extends Phaser.Scene {
       px: this.player.x,
       py: this.player.y,
       zombies: this.zombies.filter((z) => z.alive).length,
+      zombieModes: this.zombies.filter((z) => z.alive).map((z) => z.ai.mode),
+      // Live zombie tiles (spec order) — patrol mode never leaves 'patrol', so waypoint cycling is
+      // only observable via position; the monster.spec patrol test reads this.
+      zombieTiles: this.zombies.filter((z) => z.alive).map((z) => ({ col: z.col, row: z.row })),
       corpses: this.corpses.size,
       playerHp: this.playerHp,
       playerDying: this.playerDying,

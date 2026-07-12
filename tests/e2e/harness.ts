@@ -19,6 +19,8 @@ export interface DebugState {
   px: number;
   py: number;
   zombies: number;
+  zombieModes: Array<'idle' | 'wander' | 'patrol' | 'chase'>;
+  zombieTiles: Array<{ col: number; row: number }>;
   corpses: number;
   playerHp: number;
   playerDying: boolean;

@@ -164,6 +164,30 @@ export const ZOMBIE_LUNGE_PX = 7;
 export const ZOMBIE_LUNGE_MS = 120;
 
 /**
+ * Monster AI tuning (see systems/monsterAI.ts). The FSM is idle → wander|patrol → chase.
+ * Aggro is radius-only, using the enemy's own `EnemyDef.vision` as the acquire radius (no separate
+ * const). De-aggro is distance-only: as the player nears the outer edge of chase range the monster
+ * keeps chasing but veers off (path noise ramping with distance) as if losing the scent, then gives
+ * up past the hard drop radius.
+ *
+ * `MONSTER_CHASE_DROP_RADIUS_PX` — hard de-aggro distance; past it the monster returns to a calm state.
+ * `MONSTER_VEER_BAND_PX` — width of the outer band (just inside the drop radius) where chase degrades.
+ * `MONSTER_VEER_MAX_TILES` — max tiles the chase target is perturbed by at the band's outer edge.
+ * `MONSTER_REPATH_MS` — min time between A* repaths while chasing (replaces the old inline `300`).
+ * `MONSTER_IDLE_MS_MIN`/`MAX` — random pause length in the `idle` state before the next roam.
+ * `MONSTER_WANDER_RADIUS_TILES` — how far a wander picks its next random reachable tile.
+ * `MONSTER_PATROL_PAUSE_MS` — pause at each patrol waypoint before advancing to the next.
+ */
+export const MONSTER_CHASE_DROP_RADIUS_PX = 200;
+export const MONSTER_VEER_BAND_PX = 60;
+export const MONSTER_VEER_MAX_TILES = 3;
+export const MONSTER_REPATH_MS = 300;
+export const MONSTER_IDLE_MS_MIN = 700;
+export const MONSTER_IDLE_MS_MAX = 2000;
+export const MONSTER_WANDER_RADIUS_TILES = 4;
+export const MONSTER_PATROL_PAUSE_MS = 1000;
+
+/**
  * Death animation timing (see GameScene.killPlayer / killZombie). Both actors play a one-shot
  * collapse strip on death: `DEATH_ANIM_FRAMERATE` is slower than an action swing so the collapse
  * reads as a fall, not a twitch (player 8f ≈ 0.67s, skeleton 12f ≈ 1.0s). `DEATH_HOLD_MS` is the

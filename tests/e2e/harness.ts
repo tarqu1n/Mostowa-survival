@@ -19,6 +19,11 @@ export interface DebugState {
   zombies: number;
   playerHp: number;
   mode: 'command' | 'combat' | 'inspect';
+  hunger: number;
+  dayPhase: 'day' | 'night';
+  dayCount: number;
+  clockMs: number;
+  nightAlpha: number;
   outlinedTreeIds: string[];
   pulsingTreeId: string | null;
   queuedTreeIds: string[];

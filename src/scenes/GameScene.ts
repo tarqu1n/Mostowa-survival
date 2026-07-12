@@ -22,6 +22,7 @@ import {
   INVENTORY_SLOTS,
   DEFAULT_MAX_STACK,
   PLAYER_HURTBOX,
+  DAY_MS,
   HUNGER_MAX,
   HUNGER_DRAIN_PER_SEC,
   STARVE_DAMAGE,
@@ -124,7 +125,10 @@ const FACING_DELTAS: Record<FacingSpec, { dCol: number; dRow: number }> = {
  * Declarative world spec for the test-only scenario API (plan 007). Every field is optional so a
  * test constructs only what it needs (`{ player:[3,3], trees:[[5,3]] }`). Coordinates are tile
  * (col,row). `zombies` entries default to `kidZombie`; `walls` are built solid, `blueprints`
- * passable-and-unbuilt. `rng`/`wood` pin combat + inventory determinism. See __test.applyScenario.
+ * passable-and-unbuilt. `rng`/`wood` pin combat + inventory determinism. `hunger`/`clockMs`/
+ * `startPhase` seed the survival state (plan 004) so day/night + hunger scenarios start at a known
+ * point (`clockMs` wins over `startPhase`; `startPhase:'night'` = start of night, i.e. `clockMs=DAY_MS`).
+ * `bushes` are forageable, non-blocking berry bushes. See __test.applyScenario.
  */
 export interface ScenarioSpec {
   player?: [number, number];
@@ -134,16 +138,21 @@ export interface ScenarioSpec {
   inventory?: Record<string, number>;
   trees?: Array<[number, number]>;
   rocks?: Array<[number, number]>;
+  bushes?: Array<[number, number]>;
   zombies?: Array<[number, number] | { at: [number, number]; id?: string }>;
   walls?: Array<[number, number]>;
   blueprints?: Array<[number, number]>;
   rng?: () => number;
+  hunger?: number;
+  clockMs?: number;
+  startPhase?: DayPhase;
 }
 
 /** Ids of the entities {@link ScenarioSpec} placed, in spec order, so a test can reference them. */
 export interface ScenarioResult {
   treeIds: string[];
   rockIds: string[];
+  bushIds: string[];
   zombieIds: string[];
   siteIds: string[];
 }
@@ -1515,6 +1524,14 @@ export class GameScene extends Phaser.Scene {
     this.paintedThisGesture.clear();
     this.rng = Math.random;
 
+    // Reset survival state so a scenario never inherits a prior run's clock/hunger (testApplyScenario
+    // may then re-seed via spec.clockMs/startPhase/hunger). Mirrors create()'s death-restart reset.
+    this.clockMs = 0;
+    this.dayPhase = 'day';
+    this.dayCount = 1;
+    this.hunger = HUNGER_MAX;
+    this.starveElapsed = 0;
+
     // Zero the shared Inventory in place (keep the same instance so UIScene's 'change' binding holds).
     const snap = this.inv.snapshot();
     if (Object.keys(snap).length) this.inv.spend(snap);
@@ -1550,6 +1567,12 @@ export class GameScene extends Phaser.Scene {
       rockIds.push(this.trees[this.trees.length - 1].id);
     }
 
+    const bushIds: string[] = [];
+    for (const [c, r] of spec.bushes ?? []) {
+      this.addNode(NODES.berryBush, c, r);
+      bushIds.push(this.trees[this.trees.length - 1].id);
+    }
+
     for (const [c, r] of spec.walls ?? []) this.finishSite(this.createBlueprint(c, r));
 
     const siteIds: string[] = [];
@@ -1565,9 +1588,27 @@ export class GameScene extends Phaser.Scene {
 
     if (spec.rng) this.rng = spec.rng;
 
+    // Seed survival state (plan 004). clockMs wins over startPhase; both drive the derived phase/day
+    // + the night-overlay alpha so a pre-step debugState() reflects the seed (update() reconciles the
+    // rest on the first driven step). hunger is clamped into [0, HUNGER_MAX].
+    if (spec.clockMs != null) this.clockMs = spec.clockMs;
+    else if (spec.startPhase != null) this.clockMs = spec.startPhase === 'night' ? DAY_MS : 0;
+    if (spec.clockMs != null || spec.startPhase != null) {
+      const cycleMs = this.clockMs % cycleLengthMs();
+      this.dayPhase = phaseAt(cycleMs);
+      this.dayCount = dayCountForTotal(this.clockMs);
+      this.nightOverlay.setAlpha(tintAlphaAt(cycleMs));
+      this.registry.set('dayPhase', this.dayPhase);
+      this.registry.set('dayCount', this.dayCount);
+    }
+    if (spec.hunger != null) {
+      this.hunger = Math.max(0, Math.min(HUNGER_MAX, spec.hunger));
+      this.registry.set('hunger', this.hunger);
+    }
+
     this.updateVision();
     this.emitTasks();
-    return { treeIds, rockIds, zombieIds, siteIds };
+    return { treeIds, rockIds, bushIds, zombieIds, siteIds };
   }
 
   /**
@@ -1607,6 +1648,11 @@ export class GameScene extends Phaser.Scene {
     zombies: number;
     playerHp: number;
     mode: 'command' | 'combat' | 'inspect';
+    hunger: number;
+    dayPhase: DayPhase;
+    dayCount: number;
+    clockMs: number;
+    nightAlpha: number;
     outlinedTreeIds: string[];
     pulsingTreeId: string | null;
     queuedTreeIds: string[];
@@ -1624,6 +1670,11 @@ export class GameScene extends Phaser.Scene {
       zombies: this.zombies.filter((z) => z.alive).length,
       playerHp: this.playerHp,
       mode: this.mode,
+      hunger: this.hunger,
+      dayPhase: this.dayPhase,
+      dayCount: this.dayCount,
+      clockMs: this.clockMs,
+      nightAlpha: this.nightOverlay.alpha,
       outlinedTreeIds: [...this.outlinedTreeIds],
       pulsingTreeId: this.headHarvestTreeId(),
       queuedTreeIds: this.queue

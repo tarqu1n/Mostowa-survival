@@ -454,7 +454,19 @@ mechanism fought the code that's actually there.
     an edible list; tapping Berries (count>0) decrements the count, raises the hunger bar; bars track
     live as hunger drains and HP changes.
 
-- [ ] **Step 9: Debug hooks + deterministic Tier-1/Tier-2 test coverage** `[inline]`
+- [x] **Step 9: Debug hooks + deterministic Tier-1/Tier-2 test coverage** `[inline]`
+  - Outcome: `GameScene.ts` — `debugState()` now returns `hunger`, `dayPhase`, `dayCount`, `clockMs`
+    and `nightAlpha` (the overlay's live alpha, so the day/night spec asserts the tint rose without a
+    render read); `ScenarioSpec` gained `hunger?`, `clockMs?`, `startPhase?` (clockMs wins;
+    `startPhase:'night'`→`clockMs=DAY_MS`) and `bushes?`, with `ScenarioResult.bushIds`; `testResetWorld`
+    now resets the survival fields (clock/phase/day/hunger/starveElapsed) so scenarios start clean, and
+    `testApplyScenario` seeds the survival state (syncing overlay alpha + registry immediately so a
+    pre-step `state()` reflects the seed) and spawns bushes via the existing `addNode(NODES.berryBush,…)`.
+    Imported `DAY_MS`. `harness.ts` `DebugState` mirrors the five new fields. Added three Tier-2 specs
+    (`tests/e2e/survival-{daynight,hunger,forage}.spec.ts`): day→night flip + overlay darkening + day
+    increment; hunger drain + starvation→HP loss; forage-a-bush→berries→eat→hunger-rise. `npm run build`
+    + `npm test` (105) + `npm run e2e` (27, 5 new) + `npm run smoke` all green. No `debugState` alpha
+    read was needed beyond `nightAlpha`; no temporary skip-to-night HUD button added (optional, skipped).
   - **`debugState()`** (`:1447-1478`): add `hunger`, `dayPhase`, `dayCount`, `clockMs` to the returned
     snapshot (leave `playerHp` — already there).
   - **Scenario API for deterministic drive:** extend `ScenarioSpec` (`:123-135`) with `hunger?: number`,

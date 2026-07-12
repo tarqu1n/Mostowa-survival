@@ -47,6 +47,21 @@ Two guard-rails so it doesn't rot into a pile of bespoke maps:
   (e.g. 5×5) inline; Tier 2 keeps the real Phaser world but places entities adjacent so there's no
   multi-second walk to assert through.
 
+**Two-speed dev loop (the real goal — run only what you touch, full sweep before wrap-up):** the
+whole point is speed, so both tiers must be **selectively runnable**, not all-or-nothing like the
+current smoke:
+- **Inner loop (sub-second, on save):** `vitest` watch reruns *only the unit tests whose module graph
+  touches the changed file* (edit `combat.ts` → only combat tests run). Targeted forms:
+  `vitest run <name>` and `vitest related $(git diff --name-only)` (run exactly what the working-tree
+  changes affect). No browser. This covers the bulk of iteration.
+- **Feature-level check:** when a change needs browser fidelity, run **just that one scenario**
+  (seconds), not the suite — which requires each scenario to be an independently runnable/filterable
+  file (see Step 5; this is why Tier 2 should use the Playwright **test runner** for native
+  `--grep`/per-file selection rather than one hand-rolled monolith).
+- **Wrap-up gate (before finishing a feature):** `npm test` (all unit) + `npm run e2e` (all scenarios)
+  + `npm run smoke` (boot canary) — the full sweep. Fast enough to run often *because* the heavy work
+  moved to Tier 1 and the browser tier is a handful of adjacent-entity scenarios, not a playthrough.
+
 **Harness shape — recommended (decide at critique):** a **hybrid**, *not* a single mechanism —
 - **Tier 1 = Vitest**, chosen because the project is already Vite (`vite@6`, `vitest` is the native
   fit, shares `tsconfig`/resolution). Pure systems import no Phaser (verified — only `Inventory.ts`
@@ -111,9 +126,12 @@ Two guard-rails so it doesn't rot into a pile of bespoke maps:
   - Add `vitest` to `devDependencies`. Add `vitest.config.ts` (reuse Vite resolution; default
     `environment: 'node'`; a second project/override with `environment: 'jsdom'` for any Phaser-
     touching test file, e.g. by glob `**/*.jsdom.test.ts`).
-  - `package.json` scripts: `"test": "vitest run"`, `"test:watch": "vitest"`. Leave `smoke` for now
-    (Step 5 slims it). Consider a `"check": "npm run typecheck && npm run test"` convenience.
-  - Done when: `npm test` runs Vitest with zero test files failing (an empty run is fine at this step).
+  - `package.json` scripts — support the two-speed loop from the start: `"test": "vitest run"` (full,
+    for the wrap-up gate), `"test:watch": "vitest"` (inner loop — reruns only affected tests on save).
+    Targeted runs need no extra script (`npx vitest run <name>`, `npx vitest related <files>` work out
+    of the box). A `"check": "npm run typecheck && npm run test"` convenience is fine.
+  - Done when: `npm test` runs Vitest with zero failures (empty run OK here); `npm run test:watch`
+    watches; `npx vitest run <name>` runs a single file — confirm the selective forms work.
 
 - [ ] **Step 2: Unit-test the Phaser-free pure systems** `[delegate sonnet]` (parallel: A)
   - New `src/systems/__tests__/` (or `*.test.ts` beside each). Cover, from the coverage map:
@@ -161,16 +179,24 @@ Two guard-rails so it doesn't rot into a pile of bespoke maps:
     deterministically; the API is absent from a plain `npm run build` bundle (grep the output).
 
 - [ ] **Step 5: Port the integration/input/render assertions to deterministic scenarios** `[delegate sonnet]`
-  - New `scripts/scenarios/` (or `tests/e2e/`) Playwright runner mirroring `smoke.mjs`'s browser
-    launch (honour `SMOKE_CHROMIUM_PATH`, viewport, zero-console-error listener). One file per concern,
-    each: load → `applyScenario(...)` → do the ONE action → `step()` if time-based → assert via
+  - **One independently runnable file per concern** (`tests/e2e/{chop,combat,build,inspect,zoom,...}.spec.ts`)
+    — this is what lets you run *only* the scenario for the feature you're touching during dev.
+    **Recommended: use the Playwright test runner (`@playwright/test`)** rather than extending the
+    hand-rolled `smoke.mjs` node script, because it gives per-file selection, `--grep` by test name,
+    parallelism, and retries for free (`npx playwright test chop`, `npx playwright test -g "routes around"`).
+    Tradeoff to weigh at execute: one new devDep + a `playwright.config.ts` (set `executablePath` from
+    `SMOKE_CHROMIUM_PATH`, webServer = `vite preview`) vs. keeping raw `playwright` with a manual
+    file-arg. Lean toward the test runner — selective running *is* the goal.
+  - Each spec: load → `applyScenario(...)` → do the ONE action → `step()` if time-based → assert via
     `debugState()`/inspect state. Port only the **Tier-2** rows: zoom clamp/readout, pan/follow,
     input-mode toggles, Inspect panels (zombie/tree/wall/empty), queued-tree **glow attaches**
     (`outlinedTreeIds`/`pulsingTreeId`), build→wall→pathfinding-on-real-grid, death→restart. No
     multi-second walks — place entities adjacent and `step()`.
-  - Wire `npm run e2e` (or fold into `test`). Keep honouring the pre-installed Chromium path.
-  - Done when: each scenario passes **repeatably** (run the suite ≥5× — the bar the current smoke
-    fails); no `waitForTimeout`-based gameplay assertions remain.
+  - `package.json`: `"e2e": "playwright test"` (full, wrap-up gate). A single scenario is just
+    `npx playwright test <file>` — no extra script needed. Keep honouring the pre-installed Chromium path.
+  - Done when: `npx playwright test chop` runs **only** the chop scenario (proves selective running);
+    the full `npm run e2e` passes **repeatably** (≥5× — the bar the current smoke fails); no
+    `waitForTimeout`-based gameplay assertions remain.
 
 - [ ] **Step 6: Slim `smoke.mjs` to a boot canary + retire the playthrough** `[inline]`
   - Reduce `scripts/smoke.mjs` to: boot, reach `Game`+`UI` active, assert **zero console/page errors**
@@ -182,13 +208,16 @@ Two guard-rails so it doesn't rot into a pile of bespoke maps:
     playthrough is gone.
 
 - [ ] **Step 7: Document + update CI/workflow references** `[delegate sonnet]` (parallel: B)
-  - `docs/WORKFLOW.md`: the test story is now `npm test` (fast, pre-commit) + `npm run e2e` (scenario)
-    + `npm run smoke` (boot canary); how to add a unit test and a scenario. `docs/DECISIONS.md`: dated
-    entry resolving the harness-shape open question (Vitest + scenario API + fixed-step; why the live
-    playthrough was retired). Flip the `docs/DECISIONS.md` "isolated test setups" **[OPEN]** to
-    **[DECIDED]**. `CLAUDE.md`: refresh the "Testing direction" note. If a GitHub Actions workflow runs
-    the smoke, point it at `npm test` (+ e2e) too.
-  - Done when: docs describe the three tiers and how to extend them; the open question is closed.
+  - `docs/WORKFLOW.md`: document the **two-speed loop** as the day-to-day workflow, not just the script
+    list — *inner loop:* `npm run test:watch` (auto-scoped to changed files) + `npx playwright test
+    <the-one-scenario>` when you need browser fidelity; *wrap-up gate:* `npm test` + `npm run e2e` +
+    `npm run smoke`. Include how to add a unit test and a scenario, and the `vitest related` /
+    per-file forms. `docs/DECISIONS.md`: dated entry resolving the harness-shape open question (Vitest
+    + scenario API + fixed-step; per-behaviour minimal scenarios; why the live playthrough was retired)
+    and flip the "isolated test setups" **[OPEN]** → **[DECIDED]**. `CLAUDE.md`: refresh the "Testing
+    direction" note. If a GitHub Actions workflow runs the smoke, point it at `npm test` (+ e2e) too.
+  - Done when: docs describe the three tiers, the two-speed run-only-what-you-touch workflow, and how
+    to extend them; the open question is closed.
 
 ## Out of scope
 - Rewriting game systems for testability **beyond** at most decoupling `Inventory`'s emitter (only if

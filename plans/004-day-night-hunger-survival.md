@@ -193,7 +193,15 @@ mechanism fought the code that's actually there.
 
 ## Steps
 
-- [ ] **Step 1: Day/night pure system + config + unit tests** `[delegate sonnet]`
+- [x] **Step 1: Day/night pure system + config + unit tests** `[delegate sonnet]`
+  - Outcome: added `src/systems/daynight.ts` (`DayPhase`, `cycleLengthMs`, `phaseAt`, `tintAlphaAt`,
+    `dayCountForTotal` — pure, no Phaser, reads config constants) + `src/systems/__tests__/daynight.test.ts`
+    (6 tests). `config.ts`: `DAY_MS=120_000`, `NIGHT_MS=90_000`, `TWILIGHT_MS=8_000`,
+    `NIGHT_MAX_ALPHA=0.55`, `COLORS.night=0x0a1020`. Tint modelled as 4 boundary-continuous segments
+    (dawn ramp-down `[0,TWILIGHT_MS)` / mid-day flat 0 / dusk ramp-up / night flat `NIGHT_MAX_ALPHA`).
+    `npm test` green (9 files, 93 tests); typecheck clean. Note: cycle starts at `cycleMs=0` inside the
+    dawn ramp, so the world boots at `NIGHT_MAX_ALPHA` and brightens over the first 8s — faithful to the
+    plan's "dawn = first TWILIGHT_MS of day" model; tunable later if a bright boot is preferred.
   - New Phaser-free module `src/systems/daynight.ts` (alongside `tasks`/`pathfind`/`grid`):
     `export type DayPhase = 'day' | 'night'`; `cycleLengthMs()` = `DAY_MS + NIGHT_MS`;
     `phaseAt(cycleMs)` → `day` while `cycleMs < DAY_MS`, else `night`; `tintAlphaAt(cycleMs)` → `0`

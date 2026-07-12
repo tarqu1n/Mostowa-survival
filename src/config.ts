@@ -111,6 +111,17 @@ export const UNARMED_BASE_DAMAGE = 1;
 /** Minimum time (ms) between a zombie's contact-damage attempts on the player. */
 export const CONTACT_DAMAGE_COOLDOWN_MS = 1000;
 
+/**
+ * Day/night cycle timing (see systems/daynight.ts). A full cycle is DAY_MS + NIGHT_MS of real time,
+ * looping continuously. TWILIGHT_MS is the length of the dusk/dawn cross-fade at each boundary —
+ * kept short relative to DAY_MS/NIGHT_MS so full day and full night both read as distinct plateaus.
+ */
+export const DAY_MS = 120_000;
+export const NIGHT_MS = 90_000;
+export const TWILIGHT_MS = 8_000;
+/** Darkest the night tint gets (alpha of COLORS.night overlay) — never fully opaque so play stays visible. */
+export const NIGHT_MAX_ALPHA = 0.55;
+
 /** Semantic colour palette (dark & grotty). Expand as the art identity firms up. */
 export const COLORS = {
   background: 0x14100f,
@@ -120,4 +131,5 @@ export const COLORS = {
   ghostInvalid: 0xb23b3b, // build ghost when blocked or unaffordable
   blueprint: 0x5a7a9a, // placed-but-unbuilt construction site (drawn translucent)
   queued: 0xffd500, // outline / marker for targets currently in the worker's task queue
+  night: 0x0a1020, // full-screen overlay tint during the day/night cycle's dark hours
 } as const;

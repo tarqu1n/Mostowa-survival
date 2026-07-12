@@ -28,7 +28,7 @@ import { worldToTile, tileToWorldCenter, snapToTileCenter, tileKey } from '../sy
 import { findPath, reachableAdjacent, type Cell } from '../systems/pathfind';
 import { TaskQueue, type Action } from '../systems/tasks';
 import { resolveMeleeAttack } from '../systems/combat';
-import { OUTLINE_PIPELINE_KEY, type OutlinePipeline } from '../render/OutlinePipeline';
+import { bakeGlowTexture } from '../render/glowTexture';
 import { treeStats, wallStats, zombieStats } from '../systems/stats';
 import type { UIScene } from './UIScene';
 import {
@@ -44,6 +44,10 @@ import {
 
 /** Height (in tiles) the tree image is scaled to stand — big pine on a 16px tile, canopy overhangs up. */
 const TREE_TILES_TALL = 2.6;
+
+/** Queued-tree glow reach on screen (px). Converted to source texels per species so the baked halo
+ *  reads the same regardless of a sprite's source resolution — see refreshQueueHighlights. */
+const GLOW_SCREEN_PX = 5;
 
 /**
  * Neighbour offsets the worker may stand on to chop a tree: the trunk row (sides) and the row below,
@@ -157,7 +161,9 @@ export class GameScene extends Phaser.Scene {
   private queuePainting = false; // once a hold crosses LONGPRESS_MS, dragging paints queue orders
   private paintedThisGesture = new Set<string>(); // tile keys already queued in the current gesture
   private queueMarkers: Phaser.GameObjects.Rectangle[] = []; // yellow pips over queued move tiles
-  private outlinedTreeIds = new Set<string>(); // trees currently wearing the OutlineFX PostFX (WebGL)
+  private outlinedTreeIds = new Set<string>(); // trees currently showing a queued-glow sprite
+  private glowSprites = new Map<string, Phaser.GameObjects.Image>(); // treeId → its baked glow halo image
+  private glowPulse?: Phaser.Tweens.Tween; // breathing alpha tween on the head-of-queue glow
   private pinching = false; // a second pointer went down — the gesture is a pinch-zoom, not a tap
   private pinchDist = 0; // previous frame's inter-pointer distance, for the zoom delta ratio
   private isPanning = false; // this gesture dragged the camera rather than issuing an order
@@ -195,6 +201,8 @@ export class GameScene extends Phaser.Scene {
     this.buildMode = false;
     this.queueMarkers = [];
     this.outlinedTreeIds.clear();
+    this.glowSprites.clear(); // scene teardown destroys the GameObjects; drop our stale references
+    this.glowPulse = undefined;
     this.paintedThisGesture.clear();
     this.lastFacing = { dCol: 0, dRow: 1 };
     this.mode = 'command';
@@ -537,12 +545,16 @@ export class GameScene extends Phaser.Scene {
 
   /** Outline every queued target in yellow (trees to harvest, sites to build) + pip queued move tiles. */
   private refreshQueueHighlights(): void {
-    const webgl = this.game.renderer.type === Phaser.WEBGL;
     for (const s of this.sites) s.rect.isStroked = false;
     for (const m of this.queueMarkers) m.destroy();
     this.queueMarkers = [];
-    // Detach the outline PostFX from every tree that had it; we re-attach below for the live queue.
-    for (const id of this.outlinedTreeIds) this.treeById(id)?.sprite.removePostPipeline(OUTLINE_PIPELINE_KEY);
+    // Tear down last refresh's glow halos + their pulse tween; we rebuild them below for the live
+    // queue. This runs only on queue changes (a tap/long-press), never per frame — so recreating the
+    // handful of glow sprites is cheap, unlike the old per-frame PostFX pass this replaced.
+    this.glowPulse?.remove();
+    this.glowPulse = undefined;
+    for (const g of this.glowSprites.values()) g.destroy();
+    this.glowSprites.clear();
     this.outlinedTreeIds.clear();
 
     // The head-of-queue harvest (first alive tree in queue order) pulses; the rest are static.
@@ -552,22 +564,8 @@ export class GameScene extends Phaser.Scene {
       if (a.kind === 'harvest') {
         const tree = this.treeById(a.treeId);
         if (tree?.alive) {
-          if (webgl) {
-            // Crisp silhouette outline that hugs the sprite (see src/render/OutlinePipeline.ts).
-            tree.sprite.setPostPipeline(OUTLINE_PIPELINE_KEY);
-            const fx = tree.sprite.getPostPipeline(OUTLINE_PIPELINE_KEY) as OutlinePipeline | OutlinePipeline[];
-            const pipeline = Array.isArray(fx) ? fx[0] : fx;
-            if (pipeline) pipeline.pulse = tree.id === headId;
-            this.outlinedTreeIds.add(tree.id);
-          } else {
-            // Canvas fallback (no WebGL pipelines): keep the stroke-only marker rect over the tile.
-            this.queueMarkers.push(
-              this.add
-                .rectangle(tree.sprite.x, tree.sprite.y, TILE_SIZE, TILE_SIZE, 0, 0)
-                .setStrokeStyle(2, COLORS.queued, 1)
-                .setDepth(4),
-            );
-          }
+          this.addTreeGlow(tree, tree.id === headId);
+          this.outlinedTreeIds.add(tree.id);
         }
       } else if (a.kind === 'build') {
         const site = this.siteById(a.siteId);
@@ -577,6 +575,36 @@ export class GameScene extends Phaser.Scene {
           this.add.rectangle(tileToWorldCenter(a.col), tileToWorldCenter(a.row), 6, 6, COLORS.queued, 0.85).setDepth(4),
         );
       }
+    }
+  }
+
+  /**
+   * Draw a queued tree's soft silhouette glow: a baked halo texture (generated once per species, see
+   * src/render/glowTexture.ts) placed behind the tree, aligned to the same origin + scale. `pulse`
+   * (the head of queue) breathes via an alpha tween; the rest hold a static glow. Replaces the old
+   * per-frame OutlineFX PostFX — no shader runs in the frame loop.
+   */
+  private addTreeGlow(tree: TreeNode, pulse: boolean): void {
+    const radius = Phaser.Math.Clamp(Math.round(GLOW_SCREEN_PX / this.treeScale(tree.sprite)), 2, 16);
+    const glow = bakeGlowTexture(this, tree.sprite.texture.key, COLORS.queued, radius);
+    // Align the padded halo canvas onto the tree: its content sits `pad` texels in from every edge,
+    // so the tree's display origin shifts by `pad` and the scale matches.
+    const img = this.add
+      .image(tree.sprite.x, tree.sprite.y, glow.key)
+      .setDisplayOrigin(tree.sprite.displayOriginX + glow.pad, tree.sprite.displayOriginY + glow.pad)
+      .setScale(tree.sprite.scaleX, tree.sprite.scaleY)
+      .setDepth(tree.sprite.depth - 0.5); // between the ground (0) and the tree (1)
+    this.glowSprites.set(tree.id, img);
+    if (pulse) {
+      img.setAlpha(0.65);
+      this.glowPulse = this.tweens.add({
+        targets: img,
+        alpha: 1,
+        duration: 620,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.InOut',
+      });
     }
   }
 

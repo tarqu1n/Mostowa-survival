@@ -58,9 +58,11 @@ unchanged); the player has full 3-way directional facing (enemy flips by movemen
 **Post-005 polish:** player **chop** (Slice) + **punch** (Crush) directional action swings; ground
 baked into one `RenderTexture` to kill the fractional-zoom (150%) tile-seam bleed; workers chop/build
 from a resource's **base** tile and **face** the target (`faceTile`, `TREE_BASE_STAND_OFFSETS`).
-Queued trees now wear a **soft silhouette glow** from a reusable custom WebGL PostFX pipeline
-(plan 006; `src/render/OutlinePipeline.ts`) — head-of-queue pulses, Canvas degrades to the old marker;
-see [docs/RENDERING.md](docs/RENDERING.md). See
+Queued trees now wear a **soft silhouette glow** — a **baked** halo texture (`src/render/glowTexture.ts`)
+drawn behind the tree, head-of-queue pulses via an alpha tween. This replaced the plan-006 per-frame
+WebGL PostFX pipeline (`OutlinePipeline`, retired): a tree's silhouette is static, so the halo is baked
+once per species instead of shaded every frame — same look on WebGL *and* Canvas (no fallback fork), no
+shader in the frame loop; see [docs/RENDERING.md](docs/RENDERING.md). See
 [docs/DECISIONS.md](docs/DECISIONS.md) (2026-07-12). **Testing direction:** move to isolated,
 deterministic scenario setups rather than one live-game end-to-end smoke (decision logged).
 

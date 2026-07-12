@@ -7,6 +7,34 @@ Format: `YYYY-MM-DD — [DECIDED|PROPOSED|OPEN] Title` then a short rationale.
 
 ---
 
+## 2026-07-12 — [DECIDED] Queued-tree glow: bake once, don't shade every frame (supersedes the PostFX pipeline)
+
+The plan-006 glow (below) worked but wasn't cheap, for an architectural reason, not a kernel one: a
+Phaser `PostFXPipeline` runs a **full-screen fragment pass per attached sprite, every frame** — our
+36-tap dilation over a canvas-sized render target, N times per frame for N queued trees, forever. Yet a
+tree is a static `Image`: its silhouette never changes, so the halo is a per-species **constant**. We
+were recomputing a constant 60×/sec, N times over.
+
+Fix: **bake the halo once into a cached canvas texture** (`src/render/glowTexture.ts`,
+`bakeGlowTexture`) and draw it as a plain `Image` behind the tree; the **pulse** is now an alpha
+**tween** on that sprite (reusing the tween pattern already in `chop()`), so *no shader runs in the
+frame loop at all*. The bake is a one-time CPU dilation of the sprite's alpha (same linear-falloff +
+smoothstep shoulder the shader used), cached per `(srcKey,color,radius)` — one texture shared by every
+tree of a species, surviving death-restarts with the global `TextureManager`. Per-frame cost drops from
+*N full-screen 36-tap passes + N render-target copies* to *N textured quads + one tween*, and it scales
+to a big queue without touching frame time.
+
+Bonus: a baked texture isn't WebGL-only, so the **Canvas fallback and its feature-detect fork are
+gone** — both renderers now show the identical soft glow (Canvas previously got a plain stroke-rect).
+`OutlinePipeline.ts` and its `BootScene` registration were **retired**. The
+`debugState().outlinedTreeIds`/`pulsingTreeId` seam is unchanged, so the smoke assertions still hold;
+the zero-console-error gate now catches a bake/canvas failure instead of a shader-compile one.
+
+*General lesson (folded into `docs/RENDERING.md`):* a PostFX pipeline is the right tool to **generate**
+a per-pixel effect, but the wrong tool to **re-run** one whose inputs are static — bake it. Reach for a
+live per-frame shader only when the effect genuinely changes every frame (animated silhouettes,
+screen-space grading, time-varying distortion).
+
 ## 2026-07-12 — [DECIDED] Queued-tree highlight via a custom WebGL PostFX glow pipeline (plan 006)
 
 Replaced the tile-sized stroked-rectangle marker on queued harvest targets with a **soft silhouette

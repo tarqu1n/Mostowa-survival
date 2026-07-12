@@ -193,9 +193,9 @@ else fail(`queue did not fill via long-press (pending ${q.pending}, current ${q.
 await tapWorld(...center(2, 6)); // act-now move busies the worker so queued items don't drain (row 2 would land under the plan-003 mode-toggle HUD buttons)
 await longPressWorld(...center(8, 20)); // append a harvest of a still-live tree (5,8 was felled above)
 await page.waitForTimeout(120);
-// Queued harvest targets wear a WebGL PostFX silhouette outline (src/render/OutlinePipeline.ts);
-// the head-of-queue tree pulses. Under headless WebGL, assert via the debug accessor rather than
-// the old marker rect. (The zero-console-error gate below doubles as the shader-compile check.)
+// Queued harvest targets wear a soft silhouette glow — a baked halo sprite (src/render/glowTexture.ts),
+// no per-frame shader; the head-of-queue tree's glow pulses. Assert via the debug accessor rather than
+// the sprite itself. (The zero-console-error gate below catches a bake/canvas failure.)
 const q2 = await dbg();
 if (q2.outlinedTreeIds.length >= 1 && q2.pulsingTreeId) ok('queued harvest target is outlined (pulsing head)');
 else fail(`queued harvest target not outlined (outlined ${q2.outlinedTreeIds.length}, head ${q2.pulsingTreeId})`);

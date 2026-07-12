@@ -27,6 +27,16 @@ only the small framed actors were visibly affected. History: the player rendered
 was crisp only at the even default zoom (200%) and broke at 300% (`0.5 × 3 = 1.5`). See the 2026-07-12
 "Actors render at native 1:1; zoom is integer-only" entry in [DECISIONS.md](DECISIONS.md).
 
+**…but not an unbounded *height*.** A big continuous texture is fine until it gets tall: NEAREST
+sampling on a mobile GPU running fragment shaders at `mediump` rounds the texel coordinate with an
+absolute error that **grows with the texture's V extent**, so past a certain height it lands on the
+wrong row toward the bottom — faint, evenly-spaced dark horizontal lines that worsen downward (only
+on-device; desktop/headless run `highp` and stay clean). The ground bake is therefore split into
+vertical chunks ≤ `GROUND_CHUNK_ROWS` (see `GameScene.drawGround` + `config.ts`), each well under the
+height that was seam-free before the map doubled. Rule of thumb for any full-map baked layer: **cap
+the chunk height**, don't bake one map-tall texture. Full write-up: the 2026-07-12 "Bake the ground in
+bounded vertical chunks" entry in [DECISIONS.md](DECISIONS.md).
+
 ## Generate once, or shade every frame? (read this first)
 
 A shader is the right way to *generate* a per-pixel effect that a GameObject can't express (a

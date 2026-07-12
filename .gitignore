@@ -34,3 +34,6 @@ scripts/.gen-art/
 .env
 .env.*
 !.env.example
+
+# throwaway local screenshot scripts
+_shot.mjs

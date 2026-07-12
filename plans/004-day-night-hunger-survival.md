@@ -1,8 +1,6 @@
 # Day/Night Cycle + Hunger (Survival Slice)
 
-> Status: **replanned 2026-07-12** (plan-feature rerun) — anchors re-verified against current
-> `master`; scope updated for plans 005–010 landing since the first draft. Gate 1: Matt reviews this
-> before `/critique-plan`. Do NOT execute yet.
+> Status: in review
 
 ## Replan note — what changed since the first draft (why this was re-planned)
 
@@ -492,7 +490,17 @@ mechanism fought the code that's actually there.
   - Docs: none (Step 11).
   - Done when: `npm test` + `npm run e2e` + `npm run smoke` all green with the new specs passing.
 
-- [ ] **Step 10: Docs** `[delegate sonnet]`
+- [x] **Step 10: Docs** `[delegate sonnet]`
+  - Outcome: all six target docs updated (commit `f1ed62f`). `docs/STATUS.md` — new "Day/night +
+    hunger survival slice (plan 004)" block. `CLAUDE.md` — Status lists the slice as landed; **Next**
+    moved to "enemy night-waves + the equipment queue". `docs/GAME-DESIGN.md` — MVP item 4's "day/night
+    tint + a survival meter" struck through + ticked ✅, leaving the timed wave + traps as todo.
+    `docs/DECISIONS.md` — dated `2026-07-12 [DECIDED]` entry (real-time loop, night=tint+phase only,
+    hunger→`playerHp` cascade, not persisted, Wellbeing-screen eat + inventory reuse w/ Equipped
+    deferred to 010, bush gather + `blocksPath`). `docs/ASSETS.md` — `gather`/`Collect_Base` wired +
+    bush/berries placeholder note (real art → plan 009). `docs/CONVENTIONS.md` — `daynight`/`needs` pure
+    systems + `blocksPath`/`harvestAnim` node-def flags folded into existing bullets. No markdownlint
+    config/script exists in this repo (that's the hermes repo, not mostowo); rules verified manually.
   - `docs/STATUS.md`: add a **plan 004** block — day/night tint+phase, hunger core + starvation→health
     cascade (via combat's `damagePlayer`/`playerHp`), forageable berry bush + `berries` (gather anim),
     Health & Wellbeing screen (meters + stats + eat list), inventory reuses plan 008's panel; night =

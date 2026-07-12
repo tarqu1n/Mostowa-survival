@@ -66,6 +66,11 @@ shader in the frame loop; see [docs/RENDERING.md](docs/RENDERING.md). See
 [docs/DECISIONS.md](docs/DECISIONS.md) (2026-07-12). **Testing direction:** move to isolated,
 deterministic scenario setups rather than one live-game end-to-end smoke (decision logged).
 
+**Menu UI stays in Phaser (no DOM overlay), on a small Container-based UI kit** (`src/ui/`:
+`Button`, `Panel`, `arrangeRow/Column/Grid`, shared `theme`). The HUD (`UIScene`) is refactored onto
+it; build inventory/build-menu panels from these primitives. Rationale in
+[docs/DECISIONS.md](docs/DECISIONS.md) (2026-07-12).
+
 Next: survival systems (day/night, hunger) — see [docs/GAME-DESIGN.md](docs/GAME-DESIGN.md) MVP
 slice; [docs/DECISIONS.md](docs/DECISIONS.md) for settled vs open.
 

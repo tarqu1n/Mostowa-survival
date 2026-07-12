@@ -7,6 +7,37 @@ Format: `YYYY-MM-DD — [DECIDED|PROPOSED|OPEN] Title` then a short rationale.
 
 ---
 
+## 2026-07-12 — [DECIDED] Menus stay in Phaser (canvas), built on a Container-based UI kit — no DOM overlay
+
+Considered a DOM/HTML overlay for the heavier menus (inventory, build palette) vs building them in
+Phaser like the existing HUD. **Decided: keep everything in Phaser.** The deciding factors for *this*
+project: (1) we run `Phaser.Scale.FIT` over a fixed 360×640 base canvas (letterboxed) — a DOM overlay
+lives in CSS pixels and would need continuous `scaleManager` re-transforms to track the letterbox +
+scale, pure overhead the canvas path doesn't have; (2) pixel-art identity — HTML drags in the browser
+box model/fonts we'd only have to style back down; (3) the HUD already has clean seams (event bus +
+registry Inventory + `hudHitTest` input arbitration) that a second UI paradigm would fork; (4) world-
+anchored interactions (drag item→tile, tooltips on a tree/zombie) stay in one coordinate system.
+*Escape hatch if a genuinely form-heavy panel ever appears:* Phaser's `dom.createContainer` +
+`this.add.dom(...)` positions DOM elements **in the scaled game space for you**, so one DOM element
+can drop into `UIScene` as a targeted exception without abandoning the architecture.
+
+The real pain wasn't canvas-vs-DOM, it was that `UIScene` hand-placed every rectangle + text with
+inline x/y math. Fixed with a **small Container-based UI kit** in `src/ui/`:
+- `theme.ts` — shared tokens (the colours/fonts the HUD repeated inline; a lift-and-name, not a restyle).
+- `Button.ts` — a Container (bg rect + centred label). Centre-origin; input on the bg child, so a whole
+  Button drops into `hudElements` and `hudHitTest`'s `getBounds()` union still works. `setToggled`
+  (swap fill), `setDimmed`, `setLabel`; `default`/`danger`/`olive` variants + `activeFill` override.
+- `Panel.ts` — a Container (bg + `addText` rows). Hidden by default; `show()/hide()` toggle the
+  *container's* `visible`, so `panel.visible` reflects open/closed and it's a UI-tap region only while open.
+- `layout.ts` — pure `arrangeRow/Column/Grid` helpers so menus stop hand-computing x/y.
+
+First consumer is the HUD itself: every hand-rolled button (Build, Cancel, zoom ±, Follow, Combat/
+Inspect, Punch, debug) and the Inspect panel now come from the kit. Button **screen coordinates and the
+smoke-read public fields were preserved exactly** (`zoomText`, `inspectPanelBg/Title/Hp/Extra` — the
+last four now back onto the Panel + its rows), so `npm run smoke` stays green unchanged, which also
+confirms interactive children inside Containers work in the real WebGL runtime. The combat movepad
+stays bespoke (a joystick, not a button). Build inventory/build-menu panels from these primitives next.
+
 ## 2026-07-12 — [DECIDED] Queued-tree glow: bake once, don't shade every frame (supersedes the PostFX pipeline)
 
 The plan-006 glow (below) worked but wasn't cheap, for an architectural reason, not a kernel one: a

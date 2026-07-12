@@ -4,6 +4,7 @@ import { ITEMS } from '../data/items';
 import { BUILDABLES } from '../data/buildables';
 import type { Inventory } from '../systems/Inventory';
 import type { InspectableStats } from '../data/types';
+import { Button, Panel, arrangeRow } from '../ui';
 
 /**
  * HUD overlay, run in parallel over GameScene (never replaces it). Renders the wood counter, a
@@ -11,50 +12,54 @@ import type { InspectableStats } from '../data/types';
  * decoupled from world logic: it reads the shared Inventory (via the registry) and talks to GameScene
  * only over `this.game.events` (`build:*`, `tasks:*`).
  *
+ * Buttons and the inspect panel are built from the reusable {@link ../ui} kit (Button/Panel) rather
+ * than hand-placed rectangles + text, so styling stays consistent and future menus (inventory, build
+ * palette) reuse the same primitives. Bespoke widgets (the combat movepad joystick) stay inline.
+ *
  * Cross-scene input arbitration: GameScene's world tap handler ignores pointers inside the HUD
  * hit-region ({@link hudHitTest}) so tapping a button never also moves/chops/places underneath.
  */
 export class UIScene extends Phaser.Scene {
   private inv?: Inventory;
   private woodText!: Phaser.GameObjects.Text;
-  private buildButton!: Phaser.GameObjects.Rectangle;
-  private buildLabel!: Phaser.GameObjects.Text;
+  private buildButton!: Button;
   private modeIndicator!: Phaser.GameObjects.Text;
-  private cancelButton!: Phaser.GameObjects.Rectangle;
-  private cancelLabel!: Phaser.GameObjects.Text;
+  private cancelButton!: Button;
   private queueText!: Phaser.GameObjects.Text;
   private zoomText!: Phaser.GameObjects.Text;
-  private zoomOutButton!: Phaser.GameObjects.Rectangle;
-  private zoomInButton!: Phaser.GameObjects.Rectangle;
-  private followButton!: Phaser.GameObjects.Rectangle;
+  private zoomOutButton!: Button;
+  private zoomInButton!: Button;
+  private followButton!: Button;
 
   // Mode toggle (Command/Combat/Inspect — see plan 003). GameScene owns the authoritative mode;
   // this scene just mirrors it for button highlighting + showing/hiding the Combat-mode controls.
-  private modeCombatButton!: Phaser.GameObjects.Rectangle;
-  private modeInspectButton!: Phaser.GameObjects.Rectangle;
+  private modeCombatButton!: Button;
+  private modeInspectButton!: Button;
 
-  // Combat mode: virtual movepad (bottom-right) + Punch button (bottom-left). Movepad drag is
-  // tracked here (not GameScene) via a scene-level pointermove/up, gated by which pointer id
-  // pressed the base — mirrors nothing else in this file exactly, but keeps the input arithmetic
-  // out of GameScene, which only needs the resulting normalized {dx, dy}.
+  // Combat mode: virtual movepad (bottom-right) + Punch button (bottom-left). The movepad is a
+  // bespoke joystick (drag tracking below), not a kit widget; the Punch button is a kit Button.
+  // Drag is tracked here (not GameScene) via a scene-level pointermove/up, gated by which pointer id
+  // pressed the base — keeps the input arithmetic out of GameScene, which only needs the resulting
+  // normalized {dx, dy}.
   private movepadBase!: Phaser.GameObjects.Arc;
   private movepadKnob!: Phaser.GameObjects.Arc;
   private readonly movepadCenter = { x: 300, y: 540 };
   private readonly movepadRadius = 40;
   private movepadPointerId: number | null = null;
-  private combatPunchButton!: Phaser.GameObjects.Rectangle;
-  private combatPunchLabel!: Phaser.GameObjects.Text;
+  private combatPunchButton!: Button;
 
   // Inspect mode: a simple stats panel, centered, shown on 'inspect:show' / hidden on
-  // 'inspect:hide' or leaving Inspect mode.
-  private inspectPanelBg!: Phaser.GameObjects.Rectangle;
+  // 'inspect:hide' or leaving Inspect mode. `inspectPanelBg` is the Panel container itself, so its
+  // `visible` reflects open/closed; the three text rows live inside it.
+  private inspectPanelBg!: Panel;
   private inspectPanelTitle!: Phaser.GameObjects.Text;
   private inspectPanelHp!: Phaser.GameObjects.Text;
   private inspectPanelExtra!: Phaser.GameObjects.Text;
 
   /** Interactive HUD elements GameScene must treat as UI, not world — tested live so a hidden
-   * button (Cancel when idle, the indicator outside build mode) never swallows a world tap. */
-  private hudElements: Array<Phaser.GameObjects.Rectangle | Phaser.GameObjects.Text | Phaser.GameObjects.Arc> = [];
+   * button (Cancel when idle, the panel when closed) never swallows a world tap. Kit widgets are
+   * Containers; a Container's getBounds() is the union of its children's bounds. */
+  private hudElements: Array<Phaser.GameObjects.Container | Phaser.GameObjects.Text | Phaser.GameObjects.Arc> = [];
 
   constructor() {
     super('UI');
@@ -74,16 +79,12 @@ export class UIScene extends Phaser.Scene {
     // Build toggle — a touch-sized button, top-right.
     const bw = 76;
     const bh = 26;
-    const bx = BASE_WIDTH - bw / 2 - 8;
-    const by = 8 + bh / 2;
-    this.buildButton = this.add
-      .rectangle(bx, by, bw, bh, 0x3a3730)
-      .setStrokeStyle(1, COLORS.ui, 0.6)
-      .setInteractive({ useHandCursor: true });
-    this.buildLabel = this.add
-      .text(bx, by, 'BUILD', { fontFamily: 'monospace', fontSize: '12px', color: '#e8dcc0' })
-      .setOrigin(0.5);
-    this.buildButton.on('pointerdown', () => this.game.events.emit('build:toggle'));
+    this.buildButton = new Button(this, BASE_WIDTH - bw / 2 - 8, 8 + bh / 2, {
+      width: bw,
+      height: bh,
+      label: 'BUILD',
+      onDown: () => this.game.events.emit('build:toggle'),
+    });
     this.hudElements.push(this.buildButton);
 
     // Build-mode indicator — only visible while building.
@@ -100,18 +101,14 @@ export class UIScene extends Phaser.Scene {
     // Cancel button — clears the worker's task queue. Sits under the Build button, top-right.
     const cbw = 60;
     const cbh = 22;
-    const cbx = BASE_WIDTH - cbw / 2 - 8;
-    const cby = by + bh / 2 + cbh / 2 + 6;
-    this.cancelButton = this.add
-      .rectangle(cbx, cby, cbw, cbh, 0x3a2a2a)
-      .setStrokeStyle(1, 0xb23b3b, 0.6)
-      .setInteractive({ useHandCursor: true })
-      .setVisible(false);
-    this.cancelLabel = this.add
-      .text(cbx, cby, 'CANCEL', { fontFamily: 'monospace', fontSize: '10px', color: '#e8c0c0' })
-      .setOrigin(0.5)
-      .setVisible(false);
-    this.cancelButton.on('pointerdown', () => this.game.events.emit('tasks:cancel'));
+    this.cancelButton = new Button(this, BASE_WIDTH - cbw / 2 - 8, 8 + bh / 2 + bh / 2 + cbh / 2 + 6, {
+      width: cbw,
+      height: cbh,
+      label: 'CANCEL',
+      variant: 'danger',
+      fontSize: 10,
+      onDown: () => this.game.events.emit('tasks:cancel'),
+    }).setVisible(false);
     this.hudElements.push(this.cancelButton);
 
     // Queue indicator — current action + queued count, top-left under the wood counter.
@@ -122,63 +119,65 @@ export class UIScene extends Phaser.Scene {
     const zbSize = 24;
     const zGap = 34;
     const zY = 8 + zbSize / 2;
-    this.zoomOutButton = this.add
-      .rectangle(BASE_WIDTH / 2 - zGap, zY, zbSize, zbSize, 0x3a3730)
-      .setStrokeStyle(1, COLORS.ui, 0.6)
-      .setInteractive({ useHandCursor: true });
-    this.add.text(BASE_WIDTH / 2 - zGap, zY, '−', { fontFamily: 'monospace', fontSize: '16px', color: '#e8dcc0' }).setOrigin(0.5);
+    this.zoomOutButton = new Button(this, BASE_WIDTH / 2 - zGap, zY, {
+      width: zbSize,
+      height: zbSize,
+      label: '−',
+      fontSize: 16,
+      onDown: () => this.game.events.emit('zoom:delta', -ZOOM_STEP),
+    });
     const initialZoom = (this.registry.get('zoom') as number | undefined) ?? DEFAULT_ZOOM;
     this.zoomText = this.add
       .text(BASE_WIDTH / 2, zY, `${Math.round(initialZoom * 100)}%`, { fontFamily: 'monospace', fontSize: '10px', color: '#e8dcc0' })
       .setOrigin(0.5);
-    this.zoomInButton = this.add
-      .rectangle(BASE_WIDTH / 2 + zGap, zY, zbSize, zbSize, 0x3a3730)
-      .setStrokeStyle(1, COLORS.ui, 0.6)
-      .setInteractive({ useHandCursor: true });
-    this.add.text(BASE_WIDTH / 2 + zGap, zY, '+', { fontFamily: 'monospace', fontSize: '16px', color: '#e8dcc0' }).setOrigin(0.5);
-    this.zoomOutButton.on('pointerdown', () => this.game.events.emit('zoom:delta', -ZOOM_STEP));
-    this.zoomInButton.on('pointerdown', () => this.game.events.emit('zoom:delta', ZOOM_STEP));
+    this.zoomInButton = new Button(this, BASE_WIDTH / 2 + zGap, zY, {
+      width: zbSize,
+      height: zbSize,
+      label: '+',
+      fontSize: 16,
+      onDown: () => this.game.events.emit('zoom:delta', ZOOM_STEP),
+    });
     this.hudElements.push(this.zoomOutButton, this.zoomInButton);
     this.updateZoomButtons(initialZoom);
 
     // Follow button — grouped with zoom (top-center, just below it): snaps the camera back to the
     // player and re-engages the follow-lock a manual drag (GameScene.onPointerMove) breaks. Teal
     // fill while locked on.
-    const fbw = 64;
     const fbh = 22;
-    const fbx = BASE_WIDTH / 2;
-    const fby = zY + zbSize / 2 + 6 + fbh / 2;
     const initialFollowing = (this.registry.get('following') as boolean | undefined) ?? true;
-    this.followButton = this.add
-      .rectangle(fbx, fby, fbw, fbh, initialFollowing ? 0x2f4a45 : 0x3a3730)
-      .setStrokeStyle(1, COLORS.ui, 0.6)
-      .setInteractive({ useHandCursor: true });
-    this.add.text(fbx, fby, 'FOLLOW', { fontFamily: 'monospace', fontSize: '10px', color: '#e8dcc0' }).setOrigin(0.5);
-    this.followButton.on('pointerdown', () => this.game.events.emit('camera:center'));
+    this.followButton = new Button(this, BASE_WIDTH / 2, zY + zbSize / 2 + 6 + fbh / 2, {
+      width: 64,
+      height: fbh,
+      label: 'FOLLOW',
+      fontSize: 10,
+      activeFill: 0x2f4a45,
+      onDown: () => this.game.events.emit('camera:center'),
+    }).setToggled(initialFollowing);
     this.hudElements.push(this.followButton);
 
     // Mode toggle — Command (default, no button needed) / Combat / Inspect, mutually exclusive.
-    // Left side, below the wood/queue readout.
+    // Left side, below the wood/queue readout. Laid out in a row via the kit's arrangeRow helper.
     const mbw = 64;
     const mbh = 20;
-    const mby = 48;
-    this.modeCombatButton = this.add
-      .rectangle(8 + mbw / 2, mby, mbw, mbh, 0x3a3730)
-      .setStrokeStyle(1, COLORS.ui, 0.6)
-      .setInteractive({ useHandCursor: true });
-    this.add.text(8 + mbw / 2, mby, 'COMBAT', { fontFamily: 'monospace', fontSize: '9px', color: '#e8dcc0' }).setOrigin(0.5);
-    this.modeInspectButton = this.add
-      .rectangle(8 + mbw + 8 + mbw / 2, mby, mbw, mbh, 0x3a3730)
-      .setStrokeStyle(1, COLORS.ui, 0.6)
-      .setInteractive({ useHandCursor: true });
-    this.add
-      .text(8 + mbw + 8 + mbw / 2, mby, 'INSPECT', { fontFamily: 'monospace', fontSize: '9px', color: '#e8dcc0' })
-      .setOrigin(0.5);
-    this.modeCombatButton.on('pointerdown', () => this.game.events.emit('mode:combatToggle'));
-    this.modeInspectButton.on('pointerdown', () => this.game.events.emit('mode:inspectToggle'));
+    this.modeCombatButton = new Button(this, 0, 0, {
+      width: mbw,
+      height: mbh,
+      label: 'COMBAT',
+      fontSize: 9,
+      onDown: () => this.game.events.emit('mode:combatToggle'),
+    });
+    this.modeInspectButton = new Button(this, 0, 0, {
+      width: mbw,
+      height: mbh,
+      label: 'INSPECT',
+      fontSize: 9,
+      onDown: () => this.game.events.emit('mode:inspectToggle'),
+    });
+    arrangeRow([this.modeCombatButton, this.modeInspectButton], { startX: 8, y: 48, width: mbw, gap: 8 });
     this.hudElements.push(this.modeCombatButton, this.modeInspectButton);
 
-    // Combat mode controls — hidden until mode === 'combat' (see onModeChanged).
+    // Combat mode controls — hidden until mode === 'combat' (see onModeChanged). The movepad stays
+    // a bespoke joystick; only the Punch button comes from the kit.
     this.movepadBase = this.add
       .circle(this.movepadCenter.x, this.movepadCenter.y, this.movepadRadius, 0x3a3730, 0.4)
       .setStrokeStyle(1, COLORS.ui, 0.6)
@@ -193,47 +192,28 @@ export class UIScene extends Phaser.Scene {
 
     const pbw = 70;
     const pbh = 40;
-    this.combatPunchButton = this.add
-      .rectangle(8 + pbw / 2, BASE_HEIGHT - 8 - pbh / 2, pbw, pbh, 0x3a2a2a)
-      .setStrokeStyle(1, 0xb23b3b, 0.6)
-      .setInteractive({ useHandCursor: true })
-      .setVisible(false);
-    this.combatPunchLabel = this.add
-      .text(8 + pbw / 2, BASE_HEIGHT - 8 - pbh / 2, 'PUNCH', { fontFamily: 'monospace', fontSize: '12px', color: '#e8c0c0' })
-      .setOrigin(0.5)
-      .setVisible(false);
-    this.combatPunchButton.on('pointerdown', () => this.game.events.emit('combat:punch'));
+    this.combatPunchButton = new Button(this, 8 + pbw / 2, BASE_HEIGHT - 8 - pbh / 2, {
+      width: pbw,
+      height: pbh,
+      label: 'PUNCH',
+      variant: 'danger',
+      onDown: () => this.game.events.emit('combat:punch'),
+    }).setVisible(false);
     this.hudElements.push(this.combatPunchButton);
 
     // Inspect-mode stats panel — centered, clear of the always-on HUD zones. Hidden until
-    // 'inspect:show'; tapping the panel itself dismisses it (mirrors the Cancel/Build buttons'
-    // pointerdown-emits-an-event style).
-    const ipw = 200;
+    // 'inspect:show'; tapping the panel itself dismisses it (dismissible Panel → 'inspect:hide').
     const iph = 150;
-    const ipx = BASE_WIDTH / 2;
-    const ipy = BASE_HEIGHT / 2 - 40;
-    this.inspectPanelBg = this.add
-      .rectangle(ipx, ipy, ipw, iph, 0x1c1815, 0.92)
-      .setStrokeStyle(1, COLORS.ui, 0.8)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(20)
-      .setVisible(false);
-    this.inspectPanelTitle = this.add
-      .text(ipx, ipy - iph / 2 + 16, '', { fontFamily: 'monospace', fontSize: '13px', color: '#e8dcc0' })
-      .setOrigin(0.5)
-      .setDepth(21)
-      .setVisible(false);
-    this.inspectPanelHp = this.add
-      .text(ipx, ipy - iph / 2 + 38, '', { fontFamily: 'monospace', fontSize: '11px', color: '#e8dcc0' })
-      .setOrigin(0.5)
-      .setDepth(21)
-      .setVisible(false);
-    this.inspectPanelExtra = this.add
-      .text(ipx, ipy - iph / 2 + 58, '', { fontFamily: 'monospace', fontSize: '10px', color: '#9a8f74', align: 'center' })
-      .setOrigin(0.5, 0)
-      .setDepth(21)
-      .setVisible(false);
-    this.inspectPanelBg.on('pointerdown', () => this.game.events.emit('inspect:hide'));
+    this.inspectPanelBg = new Panel(this, BASE_WIDTH / 2, BASE_HEIGHT / 2 - 40, {
+      width: 200,
+      height: iph,
+      depth: 20,
+      dismissible: true,
+      onDismiss: () => this.game.events.emit('inspect:hide'),
+    });
+    this.inspectPanelTitle = this.inspectPanelBg.addText(16, { fontSize: '13px', color: '#e8dcc0' });
+    this.inspectPanelHp = this.inspectPanelBg.addText(38, { fontSize: '11px', color: '#e8dcc0' });
+    this.inspectPanelExtra = this.inspectPanelBg.addText(58, { fontSize: '10px', color: '#9a8f74', align: 'center' }, 0);
     this.hudElements.push(this.inspectPanelBg);
 
     // Movepad drag tracking: scoped to whichever pointer id pressed the base, so a second finger
@@ -248,8 +228,8 @@ export class UIScene extends Phaser.Scene {
       this.game.events.emit('combat:moveEnd');
     });
 
-    // Control hint — moved here from GameScene: a genuinely fixed HUD label belongs on the
-    // never-zoomed UI camera, not on the world camera (which now pans/zooms with the player).
+    // Control hint — a genuinely fixed HUD label belongs on the never-zoomed UI camera, not on the
+    // world camera (which now pans/zooms with the player).
     this.add.text(6, BASE_HEIGHT - 30, 'tap: order · hold: queue · Build: walls', {
       fontFamily: 'monospace',
       fontSize: '8px',
@@ -259,16 +239,14 @@ export class UIScene extends Phaser.Scene {
     // TEMP (movement testing): scatter a fresh random batch of trees. Bottom-right, dashed olive.
     const dbw = 96;
     const dbh = 24;
-    const dbx = BASE_WIDTH - dbw / 2 - 8;
-    const dby = BASE_HEIGHT - dbh / 2 - 8;
-    const debugButton = this.add
-      .rectangle(dbx, dby, dbw, dbh, 0x2f3b26)
-      .setStrokeStyle(1, 0x6f8a5a, 0.8)
-      .setInteractive({ useHandCursor: true });
-    this.add
-      .text(dbx, dby, '⟳ TREES', { fontFamily: 'monospace', fontSize: '11px', color: '#b9d29a' })
-      .setOrigin(0.5);
-    debugButton.on('pointerdown', () => this.game.events.emit('debug:regenTrees'));
+    const debugButton = new Button(this, BASE_WIDTH - dbw / 2 - 8, BASE_HEIGHT - dbh / 2 - 8, {
+      width: dbw,
+      height: dbh,
+      label: '⟳ TREES',
+      variant: 'olive',
+      fontSize: 11,
+      onDown: () => this.game.events.emit('debug:regenTrees'),
+    });
     this.hudElements.push(debugButton);
 
     // Seed + subscribe: read the shared Inventory's own 'change' directly (no event-bus hop).
@@ -302,14 +280,14 @@ export class UIScene extends Phaser.Scene {
 
   private refreshWood(snapshot: Record<string, number>): void {
     this.woodText.setText(String(snapshot[ITEMS.wood.id] ?? 0));
-    // Reflect affordability of a wall on the button (dim when you can't afford it).
+    // Reflect affordability of a wall on the button (dim the label when you can't afford it).
     const affordable = (snapshot[ITEMS.wood.id] ?? 0) >= (BUILDABLES.wall.cost.wood ?? 0);
-    this.buildLabel.setAlpha(affordable ? 1 : 0.4);
+    this.buildButton.label.setAlpha(affordable ? 1 : 0.4);
   }
 
   private onBuildMode(active: boolean): void {
     this.modeIndicator.setVisible(active);
-    this.buildButton.setFillStyle(active ? 0x5a5140 : 0x3a3730);
+    this.buildButton.setToggled(active);
   }
 
   /** Reflect the worker's live task state: current action label + queued count, and Cancel visibility. */
@@ -317,7 +295,6 @@ export class UIScene extends Phaser.Scene {
     const busy = state.current !== null || state.pending > 0;
     this.queueText.setText(busy ? `▶ ${state.current ?? 'idle'}${state.pending ? ` · +${state.pending} queued` : ''}` : '');
     this.cancelButton.setVisible(busy);
-    this.cancelLabel.setVisible(busy);
   }
 
   private onZoomChanged(zoom: number): void {
@@ -327,23 +304,22 @@ export class UIScene extends Phaser.Scene {
 
   /** Dim a zoom button once its direction is exhausted (mirrors the Build button's afford-dimming). */
   private updateZoomButtons(zoom: number): void {
-    this.zoomOutButton.setAlpha(zoom <= MIN_ZOOM ? 0.4 : 1);
-    this.zoomInButton.setAlpha(zoom >= MAX_ZOOM ? 0.4 : 1);
+    this.zoomOutButton.setDimmed(zoom <= MIN_ZOOM);
+    this.zoomInButton.setDimmed(zoom >= MAX_ZOOM);
   }
 
   private onFollowChanged(following: boolean): void {
-    this.followButton.setFillStyle(following ? 0x2f4a45 : 0x3a3730);
+    this.followButton.setToggled(following);
   }
 
   /** Reflects the authoritative mode from GameScene: button highlight + combat-controls visibility. */
   private onModeChanged(mode: 'command' | 'combat' | 'inspect'): void {
-    this.modeCombatButton.setFillStyle(mode === 'combat' ? 0x5a5140 : 0x3a3730);
-    this.modeInspectButton.setFillStyle(mode === 'inspect' ? 0x5a5140 : 0x3a3730);
+    this.modeCombatButton.setToggled(mode === 'combat');
+    this.modeInspectButton.setToggled(mode === 'inspect');
     const inCombat = mode === 'combat';
     this.movepadBase.setVisible(inCombat);
     this.movepadKnob.setVisible(inCombat);
     this.combatPunchButton.setVisible(inCombat);
-    this.combatPunchLabel.setVisible(inCombat);
     if (!inCombat) {
       this.movepadPointerId = null;
       this.movepadKnob.setPosition(this.movepadCenter.x, this.movepadCenter.y);
@@ -355,17 +331,11 @@ export class UIScene extends Phaser.Scene {
     this.inspectPanelTitle.setText(stats.name);
     this.inspectPanelHp.setText(stats.currentHp !== undefined ? `HP: ${stats.currentHp}/${stats.maxHp}` : `Max HP: ${stats.maxHp}`);
     this.inspectPanelExtra.setText((stats.extra ?? []).map((e) => `${e.label}: ${e.value}`).join('\n'));
-    this.inspectPanelBg.setVisible(true);
-    this.inspectPanelTitle.setVisible(true);
-    this.inspectPanelHp.setVisible(true);
-    this.inspectPanelExtra.setVisible((stats.extra ?? []).length > 0);
+    this.inspectPanelBg.show();
   }
 
   private hideInspectPanel(): void {
-    this.inspectPanelBg.setVisible(false);
-    this.inspectPanelTitle.setVisible(false);
-    this.inspectPanelHp.setVisible(false);
-    this.inspectPanelExtra.setVisible(false);
+    this.inspectPanelBg.hide();
   }
 
   /** Drag the movepad knob toward the pointer (clamped to the base radius) and emit the

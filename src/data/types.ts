@@ -8,6 +8,10 @@ export interface ItemDef {
   id: string;
   name: string;
   color: number;
+  /** Max units that fit in one inventory slot; overflow spills into the next free slot. */
+  maxStack: number;
+  /** Icon filename relative to `public/assets/icons/` (e.g. `wood.png`); loaded as `icon:<id>`. */
+  icon: string;
 }
 
 /** Stats every world thing (mover or object) shares. */

@@ -5,5 +5,6 @@
 import type { ItemDef } from './types';
 
 export const ITEMS: Record<string, ItemDef> = {
-  wood: { id: 'wood', name: 'Wood', color: 0x8a5a2b },
+  wood: { id: 'wood', name: 'Wood', color: 0x8a5a2b, maxStack: 50, icon: 'wood.png' },
+  stone: { id: 'stone', name: 'Stone', color: 0x8a8a8a, maxStack: 50, icon: 'stone.png' },
 };

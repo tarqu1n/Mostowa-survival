@@ -14,6 +14,20 @@ describe('ITEMS', () => {
       expect(item.id).toBe(key);
     }
   });
+
+  it('every maxStack is a positive integer', () => {
+    for (const item of Object.values(ITEMS)) {
+      expect(Number.isInteger(item.maxStack)).toBe(true);
+      expect(item.maxStack).toBeGreaterThan(0);
+    }
+  });
+
+  it('every icon is a non-empty filename', () => {
+    for (const item of Object.values(ITEMS)) {
+      expect(typeof item.icon).toBe('string');
+      expect(item.icon.length).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe('NODES', () => {

@@ -447,11 +447,16 @@ export class GameScene extends Phaser.Scene {
     this.updateVision();
 
     // Night overlay — mirrors the fog rect's map size/centre but unmasked (a global dim, not a vision
-    // hole) and at a higher depth (15, above the player at 10) so it darkens actors too. Alpha starts
-    // at 0 (full day) and is driven each frame from the day/night clock (see update()). Non-interactive
+    // hole) and at a higher depth (15, above the player at 10) so it darkens actors too. Non-interactive
     // (plain rects don't eat pointers) and below UIScene, so the HUD stays bright above it.
+    //
+    // Opacity is driven via the GameObject alpha (setAlpha) each frame from the day/night clock (see
+    // update()/applyClock()). The fill alpha MUST stay 1: Phaser renders a shape's fill at
+    // fillAlpha × gameObjectAlpha, so a fillAlpha of 0 would pin the overlay invisible no matter what
+    // setAlpha does. We start it transparent with setAlpha(0) (full day) rather than a 0 fill alpha.
     this.nightOverlay = this.add
-      .rectangle(MAP_WIDTH / 2, MAP_HEIGHT / 2, MAP_WIDTH, MAP_HEIGHT, COLORS.night, 0)
+      .rectangle(MAP_WIDTH / 2, MAP_HEIGHT / 2, MAP_WIDTH, MAP_HEIGHT, COLORS.night, 1)
+      .setAlpha(0)
       .setDepth(15);
     this.registry.set('dayPhase', 'day');
     this.registry.set('dayCount', 1);

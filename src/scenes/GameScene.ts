@@ -1257,7 +1257,6 @@ export class GameScene extends Phaser.Scene {
       sprite.setTintFill(HIT_FLASH_TINT); // Canvas fallback: a plain solid-red fill, cleared on completion
     }
     const pipe = webgl ? this.hitPipeline(sprite) : null;
-    const base = (sprite.getData('baseScale') as number | undefined) ?? 1;
 
     this.hitFlashTweens.get(sprite)?.stop(); // stop() (not remove()) so the old onComplete never runs
     const fx = { t: 1 };
@@ -1269,12 +1268,17 @@ export class GameScene extends Phaser.Scene {
       onUpdate: () => {
         const t = fx.t;
         if (pipe) pipe.flash = t * HIT_FLASH_PEAK;
+        // Read baseScale LIVE, not captured once: a footprint swap (idle 32px@2 ↔ walk 64px@1,
+        // setZombieFootprint) can fire mid-flash, and a stale base would stretch the new strip to the
+        // old scale — e.g. the 64px Run drawn at the Idle's scale 2 → the sprite visibly doubles.
+        const base = (sprite.getData('baseScale') as number | undefined) ?? 1;
         // squash: widest+shortest at impact (t=1), easing back to the rest scale (t=0).
         sprite.setScale(base * (1 + HIT_FLASH_SQUASH * t), base * (1 - HIT_FLASH_SQUASH * 0.8 * t));
         if (isPlayer) this.playerFlash = t;
       },
       onComplete: () => {
         this.hitFlashTweens.delete(sprite);
+        const base = (sprite.getData('baseScale') as number | undefined) ?? 1;
         sprite.setScale(base);
         if (webgl) {
           sprite.removePostPipeline(HIT_FLASH_KEY);

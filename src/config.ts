@@ -12,6 +12,13 @@ export const BASE_HEIGHT = 640;
 /** Pixel size of a world tile at base resolution. */
 export const TILE_SIZE = 16;
 
+/** Total inventory slots (the full grid panel). */
+export const INVENTORY_SLOTS = 20;
+/** Slots surfaced on the always-visible hotbar (the first N inventory slots). Must be ≤ INVENTORY_SLOTS. */
+export const HOTBAR_SLOTS = 5;
+/** Fallback per-slot stack size for any item whose def omits `maxStack`. */
+export const DEFAULT_MAX_STACK = 50;
+
 /** How close (px) the player must be to a node to interact (chop). */
 export const INTERACT_RANGE = TILE_SIZE * 1.4;
 

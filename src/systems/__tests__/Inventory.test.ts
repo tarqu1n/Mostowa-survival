@@ -115,6 +115,67 @@ describe('Inventory', () => {
     });
   });
 
+  describe('slots, stacking & capacity', () => {
+    it('fills a partial stack before opening a new slot, spilling past maxStack', () => {
+      const inv = new Inventory({ capacity: 4, maxStackOf: () => 10 });
+      expect(inv.add('wood', 8)).toBe(8);
+      expect(inv.slots()[0]).toEqual({ id: 'wood', count: 8 });
+      expect(inv.slots()[1]).toBeNull();
+
+      // 5 more: 2 top up slot 0 to its max of 10, remaining 3 spill into slot 1.
+      expect(inv.add('wood', 5)).toBe(5);
+      expect(inv.slots()[0]).toEqual({ id: 'wood', count: 10 });
+      expect(inv.slots()[1]).toEqual({ id: 'wood', count: 3 });
+      expect(inv.get('wood')).toBe(13);
+    });
+
+    it('add returns the amount actually added and leaves leftover when the bag is full', () => {
+      const inv = new Inventory({ capacity: 2, maxStackOf: () => 10 });
+      expect(inv.add('wood', 25)).toBe(20); // only 2 slots × 10 fit
+      expect(inv.get('wood')).toBe(20);
+      expect(inv.add('wood', 1)).toBe(0); // nothing fits now
+      expect(inv.get('wood')).toBe(20);
+    });
+
+    it('canAccept reflects remaining room across partial stacks and empty slots', () => {
+      const inv = new Inventory({ capacity: 2, maxStackOf: () => 10 });
+      inv.add('wood', 15); // slot0=10, slot1=5 → 5 room left in slot1
+      expect(inv.canAccept('wood', 5)).toBe(true);
+      expect(inv.canAccept('wood', 6)).toBe(false);
+      // A different id can't use wood's partial stack, and both slots are occupied.
+      expect(inv.canAccept('stone', 1)).toBe(false);
+    });
+
+    it('does not add (and returns 0) when there is no room, without emitting', () => {
+      const inv = new Inventory({ capacity: 1, maxStackOf: () => 5 });
+      inv.add('wood', 5);
+      const listener = vi.fn();
+      inv.on('change', listener);
+      expect(inv.add('stone', 1)).toBe(0);
+      expect(inv.get('stone')).toBe(0);
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('spend deducts across multiple slots and clears emptied ones', () => {
+      const inv = new Inventory({ capacity: 4, maxStackOf: () => 10 });
+      inv.add('wood', 23); // slots: 10,10,3
+      expect(inv.spend({ wood: 15 })).toBe(true);
+      expect(inv.get('wood')).toBe(8);
+      // Two full slots consumed first (10+5 taken) — layout compacts as stacks empty.
+      const nonEmpty = inv.slots().filter((s): s is { id: string; count: number } => s !== null);
+      expect(nonEmpty.reduce((sum, s) => sum + s.count, 0)).toBe(8);
+    });
+
+    it('snapshot and get aggregate the same total across slots', () => {
+      const inv = new Inventory({ capacity: 4, maxStackOf: () => 10 });
+      inv.add('wood', 12);
+      inv.add('stone', 3);
+      expect(inv.snapshot()).toEqual({ wood: 12, stone: 3 });
+      expect(inv.get('wood')).toBe(12);
+      expect(inv.get('stone')).toBe(3);
+    });
+  });
+
   describe("'change' event", () => {
     it('fires on add, with the snapshot as payload', () => {
       const inv = new Inventory();

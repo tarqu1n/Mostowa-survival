@@ -7,6 +7,36 @@ Format: `YYYY-MM-DD — [DECIDED|PROPOSED|OPEN] Title` then a short rationale.
 
 ---
 
+## 2026-07-12 — [DECIDED] Bake the ground in bounded vertical chunks to kill the residual dark horizontal lines
+
+The RENDER_SCALE fix below **helped but didn't fully land it** — faint, evenly-spaced *horizontal*
+lines still showed on-device (Android/Brave), and crucially they were **world-locked**: pinned to map
+rows, only appearing toward the **bottom** of the map, and only after the map was doubled to 1280px
+tall. That's a different artifact from the earlier vertical seams.
+
+Evidence (this session): a snapshot of the baked ground `RenderTexture` pulled from the running game
+is **uniform top-to-bottom** — per-row green sd 0.44 on a mean of 118.6, and top/mid/bottom thirds are
+equally flat (0.443/0.436/0.447), fully opaque, no periodic dips. A *uniform* texture can't grow dark
+lines under any sampling/composite artifact, so the lines aren't baked content — they're introduced
+when a real mobile GPU **samples the one over-tall (1280px) ground texture**. Root cause: NEAREST
+sampling at reduced fragment precision (`mediump`, where the GPU lacks `GL_FRAGMENT_PRECISION_HIGH`;
+varying interpolation is hardware-dependent regardless) rounds the texel coordinate to the wrong row,
+and the **absolute error grows with the texture's V extent** — so the taller the texture, the further
+down (and more often) a row is mis-sampled. Fits every symptom: world-locked, worse toward the bottom,
+absent before the doubling (the old 640px map stayed under the error threshold), invisible on
+desktop/headless (highp / clean resample) — which is exactly why neither this nor the prior seam
+reproduced in CI.
+
+**Decided:** split the ground bake into vertically-stacked `RenderTexture` chunks of
+`GROUND_CHUNK_ROWS` (32 rows / 512px) each — under the 640px height that was seam-free pre-doubling, so
+the per-texel error stays sub-half-texel and no row flips. Chunks are tile-aligned and drawn 1:1, so
+their shared edges are just adjacent grass (verified: full 1280-row coverage, no boundary seam, same
+uniform luminance as the single bake). Keeps NEAREST — the ground stays crisp pixel art, unlike the
+LINEAR-filter alternative (would blur it) — and the single-flush `beginDraw…endDraw` batching per
+chunk, so bake cost is unchanged. Lesson: **one big continuous texture beats fractional zoom, but not
+an unbounded height** — a NEAREST texture sampled on a mediump mobile GPU degrades toward its far edge;
+cap the dimension.
+
 ## 2026-07-12 — [DECIDED] Day/night + hunger survival slice (plan 004): real-time cycle, hunger→health cascade, inventory reuse defers "Equipped"
 
 **Day/night** is a continuous real-time clock (not tied to player action), driving a smooth tint

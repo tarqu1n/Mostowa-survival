@@ -46,6 +46,19 @@ export const MAP_HEIGHT = BASE_HEIGHT * 2;
 /** Pixel size of a world tile at base resolution. */
 export const TILE_SIZE = 16;
 
+/**
+ * Ground is baked into RenderTextures stacked vertically, this many tile-rows tall each (see
+ * GameScene.drawGround). One map-tall texture (80 rows = 1280px after the map doubled) developed
+ * faint, evenly-spaced dark horizontal lines that worsened toward the bottom — only on real mobile
+ * GPUs, never on desktop/headless. Cause: NEAREST sampling of a tall texture at reduced fragment
+ * precision (`mediump` where the GPU lacks `GL_FRAGMENT_PRECISION_HIGH`) rounds the texel coordinate
+ * to the wrong row, and the absolute error grows with the texture's V extent — so the taller the
+ * texture, the lower down (and more often) a row gets mis-sampled. Capping each chunk's height keeps
+ * that error below half a texel (a 40-row/640px map showed no lines pre-doubling), so no row flips.
+ * Chunks are tile-aligned and drawn 1:1, so their shared edges are just adjacent grass — no seam.
+ */
+export const GROUND_CHUNK_ROWS = 32;
+
 /** Total inventory slots (the full grid panel). */
 export const INVENTORY_SLOTS = 20;
 /** Slots surfaced on the always-visible hotbar (the first N inventory slots). Must be ≤ INVENTORY_SLOTS. */

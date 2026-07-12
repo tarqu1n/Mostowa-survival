@@ -265,7 +265,12 @@ mechanism fought the code that's actually there.
   - Docs: none (Step 11).
   - Done when: build green; the readout flips day→night→day and increments the day each full cycle.
 
-- [ ] **Step 4: Hunger pure system (needs.ts) + config + unit tests** `[delegate sonnet]`
+- [x] **Step 4: Hunger pure system (needs.ts) + config + unit tests** `[delegate sonnet]`
+  - Outcome: added `src/systems/needs.ts` (`drainHunger` clamped to `[0,max]` large-delta guard, `feed`
+    capped at max, `isStarving` = `<=0`; pure, no Phaser) + `src/systems/__tests__/needs.test.ts`
+    (8 tests). `config.ts`: `HUNGER_MAX=100`, `HUNGER_DRAIN_PER_SEC=0.4` (≈250s full→empty),
+    `STARVE_DAMAGE=1`, `STARVE_DAMAGE_INTERVAL_MS=2_000`. `npm test` green (10 files, 101 tests);
+    typecheck clean. No caller yet (wired Step 7).
   - New Phaser-free module `src/systems/needs.ts`: `drainHunger(current, deltaMs, drainPerSec, max)` →
     `clamp(current - drainPerSec*deltaMs/1000, 0, max)`; `feed(current, nutrition, max)` →
     `Math.min(max, current + nutrition)`; `isStarving(hunger)` → `hunger <= 0`.

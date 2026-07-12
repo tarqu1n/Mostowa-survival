@@ -122,6 +122,16 @@ export const TWILIGHT_MS = 8_000;
 /** Darkest the night tint gets (alpha of COLORS.night overlay) — never fully opaque so play stays visible. */
 export const NIGHT_MAX_ALPHA = 0.55;
 
+/**
+ * Hunger (see systems/needs.ts). HUNGER_DRAIN_PER_SEC empties a full HUNGER_MAX in ~250s (~1.5
+ * day/night cycles at current DAY_MS/NIGHT_MS) — tune by feel. While starving (hunger <= 0), the
+ * player takes STARVE_DAMAGE every STARVE_DAMAGE_INTERVAL_MS (1 HP / 2s).
+ */
+export const HUNGER_MAX = 100;
+export const HUNGER_DRAIN_PER_SEC = 0.4;
+export const STARVE_DAMAGE = 1;
+export const STARVE_DAMAGE_INTERVAL_MS = 2_000;
+
 /** Semantic colour palette (dark & grotty). Expand as the art identity firms up. */
 export const COLORS = {
   background: 0x14100f,

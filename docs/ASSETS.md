@@ -149,9 +149,9 @@ check of grass/tree/wall/directional-player/skeleton.
 > (Retro Diffusion / PixelLab), and the Gemini bespoke-asset pipeline live in the R&D log:
 > [ASSET-EXPERIMENTS.md](ASSET-EXPERIMENTS.md).
 
-## Where assets live (proposed)
+## Where assets live
 
-- `public/assets/` (or `src/assets/`) — sprites/tilesets/atlases the game loads (path finalised with
-  the Vite scaffold).
+- `public/assets/` — sprites/tilesets/atlases the game loads (Vite serves it from the site root;
+  packs are staged under `public/assets/tilesets/<pack>/`, pipeline-derived PNGs under `_derived/`).
 - `docs/assets/reference/` — reference material (e.g. the Google Maps screenshot of Mostowo).
 - Licence notes travel with any third-party pack.

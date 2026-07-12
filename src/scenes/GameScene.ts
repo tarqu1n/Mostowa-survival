@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import {
-  BASE_WIDTH,
-  BASE_HEIGHT,
+  MAP_WIDTH,
+  MAP_HEIGHT,
   TILE_SIZE,
   CHOP_INTERVAL_MS,
   ACTION_ANIM_FRAMERATE,
@@ -213,7 +213,7 @@ export class GameScene extends Phaser.Scene {
   private nextSiteId = 0;
 
   private ui!: UIScene;
-  private gridDims = { cols: Math.floor(BASE_WIDTH / TILE_SIZE), rows: Math.floor(BASE_HEIGHT / TILE_SIZE) };
+  private gridDims = { cols: Math.floor(MAP_WIDTH / TILE_SIZE), rows: Math.floor(MAP_HEIGHT / TILE_SIZE) };
   private downScreen = new Phaser.Math.Vector2(); // pointerdown position in screen/base-canvas px
   private downOnUI = false;
   private pressStart = 0; // scene-clock time of the current pointer press (for hold detection)
@@ -315,20 +315,20 @@ export class GameScene extends Phaser.Scene {
         repeat: -1,
       });
     }
-    const p = this.add.sprite(BASE_WIDTH / 2, BASE_HEIGHT / 2, playerAnimKey('idle', 'down'));
+    const p = this.add.sprite(MAP_WIDTH / 2, MAP_HEIGHT / 2, playerAnimKey('idle', 'down'));
     this.physics.add.existing(p);
     this.player = p as typeof this.player;
     this.player.setDepth(10).setScale(playerActor.render.scale).setOrigin(playerActor.render.originX, playerActor.render.originY);
     this.player.body.setCollideWorldBounds(true);
     this.fitActorBody(this.player, playerActor.render);
-    this.physics.world.setBounds(0, 0, BASE_WIDTH, BASE_HEIGHT);
+    this.physics.world.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
 
-    // Camera follows the player once zoomed in (at MIN_ZOOM the viewport already covers the whole
-    // map, so bounds leave no scroll room and this is a no-op — see config.ts). Instant (no lerp
-    // smoothing): this is a precision tap-to-target game, so the camera should never lag behind
-    // where the player actually is. centerOn avoids a visible pan-in from (0,0) on the first frame.
-    // A manual drag breaks this lock (free look); the HUD's FOLLOW button re-engages it.
-    this.cameras.main.setBounds(0, 0, BASE_WIDTH, BASE_HEIGHT);
+    // Camera follows the player. The map is larger than the viewport at every zoom, so the camera
+    // always has scroll room and tracks the player. Instant (no lerp smoothing): this is a precision
+    // tap-to-target game, so the camera should never lag behind where the player actually is.
+    // centerOn avoids a visible pan-in from (0,0) on the first frame. A manual drag breaks this lock
+    // (free look); the HUD's FOLLOW button re-engages it.
+    this.cameras.main.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
     this.cameras.main.centerOn(this.player.x, this.player.y);
     this.registry.set('following', true);
     this.cameras.main.startFollow(this.player, true);
@@ -342,7 +342,7 @@ export class GameScene extends Phaser.Scene {
     this.fogShape = this.add.graphics().setVisible(false);
     const fogMask = this.fogShape.createGeometryMask();
     fogMask.setInvertAlpha(true);
-    this.add.rectangle(BASE_WIDTH / 2, BASE_HEIGHT / 2, BASE_WIDTH, BASE_HEIGHT, 0x000000, 0.2).setDepth(5).setMask(fogMask);
+    this.add.rectangle(MAP_WIDTH / 2, MAP_HEIGHT / 2, MAP_WIDTH, MAP_HEIGHT, 0x000000, 0.2).setDepth(5).setMask(fogMask);
     this.updateVision();
 
     // Walls: static bodies the player collides with (a backstop; pathing already avoids them).
@@ -965,10 +965,12 @@ export class GameScene extends Phaser.Scene {
   // --- Trees / chopping ----------------------------------------------------
 
   private spawnTrees(): void {
+    // Positioned around the map centre (~22,40) where the player spawns — same layout relative to the
+    // player as before the map doubled, so the starting scene stays familiar with room to roam beyond.
     for (const [col, row] of [
-      [5, 8],
-      [14, 12],
-      [8, 20],
+      [16, 28],
+      [25, 32],
+      [19, 40],
     ] as Array<[number, number]>) {
       this.addTree(col, row);
     }
@@ -1051,7 +1053,7 @@ export class GameScene extends Phaser.Scene {
   // --- Zombies (minimal idle/chasing AI — see plan 003) ---------------------
 
   private spawnZombies(): void {
-    this.addZombie('kidZombie', 11, 30);
+    this.addZombie('kidZombie', 22, 50); // ~10 tiles below the map-centre spawn, as before the resize
   }
 
   private addZombie(enemyId: string, col: number, row: number): void {
@@ -1404,15 +1406,20 @@ export class GameScene extends Phaser.Scene {
    */
   private drawGround(): void {
     const groundVariants = ACTIVE_TILESET.tiles.ground.map((g) => ({ ...resolveTile(g.source), weight: g.weight }));
-    const cols = Math.ceil(BASE_WIDTH / TILE_SIZE);
-    const rows = Math.ceil(BASE_HEIGHT / TILE_SIZE);
+    const cols = Math.ceil(MAP_WIDTH / TILE_SIZE);
+    const rows = Math.ceil(MAP_HEIGHT / TILE_SIZE);
     const rt = this.add.renderTexture(0, 0, cols * TILE_SIZE, rows * TILE_SIZE).setOrigin(0, 0).setDepth(0);
+    // Batch all tile draws into ONE flush (beginDraw…endDraw). A per-tile drawFrame() flushes the GPU
+    // each call — fine at ~900 tiles, but the doubled map is cols*rows ≈ 3600, and per-call flushes
+    // on the headless software renderer took ~25s. Batched, it's a single pass.
+    rt.beginDraw();
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const pick = pickWeighted(groundVariants);
-        rt.drawFrame(pick.key, pick.frame, col * TILE_SIZE, row * TILE_SIZE);
+        rt.batchDrawFrame(pick.key, pick.frame, col * TILE_SIZE, row * TILE_SIZE);
       }
     }
+    rt.endDraw();
     rt.texture.setFilter(Phaser.Textures.FilterMode.NEAREST); // crisp pixels when the camera scales it
   }
 

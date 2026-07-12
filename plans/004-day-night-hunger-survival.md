@@ -1,6 +1,6 @@
 # Day/Night Cycle + Hunger (Survival Slice)
 
-> Status: in review
+> Status: deployed
 
 ## Replan note — what changed since the first draft (why this was re-planned)
 

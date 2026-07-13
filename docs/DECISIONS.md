@@ -7,6 +7,31 @@ Format: `YYYY-MM-DD — [DECIDED|PROPOSED|OPEN] Title` then a short rationale.
 
 ---
 
+## 2026-07-13 — [DECIDED] GameScene decomposition part 2: 5 world-subsystem boundary rulings (plan 015)
+
+Continuing plan 013's manager extraction, plan 015 pulled the remaining state-owning world
+subsystems out of `GameScene` (1385→~877 lines). Five boundary calls made along the way:
+
+- **`nightOverlay` → `SurvivalClock`, not `VisionController`.** Ownership follows the sole
+  alpha-writer — the clock is the only thing that ever mutates the overlay's alpha, so vision (fog of
+  war) stays a separate, narrower concern.
+- **`isBlocked` stays a scene `private readonly` arrow-field composite**, not extracted. It's an
+  occupancy-first short-circuit passed by-ref into `MonsterTickEnv`/`testApi`, and it feeds the
+  pathfinding spine directly — extracting it would add an indirection hop to the hottest per-tile check.
+- **`ScenePicker` is a stateless class with deps but NO `SHUTDOWN` teardown** — unlike every other
+  manager, it owns nothing (no tweens/sets/sprites), so there's nothing to tear down.
+- **`resetTreesAndEnemies`/`randomiseWorld` stay thin scene orchestrators**, not manager methods —
+  they're cross-manager transactions (clear + respawn across both `ResourceNodeManager` and
+  `EnemyManager`), so each manager exposes a `clearAll({resetIds})` primitive and the scene composes
+  the transaction.
+- **Manager extraction order: `ResourceNodeManager` → `EnemyManager` → `SurvivalClock` →
+  `VisionController` → `ScenePicker`** — `ScenePicker` last so its deps close over the *real* manager
+  references rather than placeholders.
+
+`world/actorAnims.ts` (`registerActorAnims`) and `world/groundRenderer.ts` (`drawGround`) also moved
+out as plain free functions (not managers — one-shot `Phaser.Scene` setup, no deps object, no
+teardown). No gameplay change; the `refactor-tripwire` golden `debugState()` snapshot still holds.
+
 ## 2026-07-13 — [DECIDED] GameScene decomposed into an entities layer + scene managers (plan 013); behaviour classes yes, data hierarchy no
 
 `src/scenes/GameScene.ts` (2,448 lines, a third of all source at the plan's start) is now a

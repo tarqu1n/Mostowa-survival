@@ -198,3 +198,13 @@ Run frame 0. See [ASSETS.md](ASSETS.md#weapon-attachment-runtime-pinning-plan-01
 spawning/world-gen + mode/inspect glue remain (1,385 lines); no gameplay change, pinned by a new
 `refactor-tripwire` Tier-2 spec. Landed alongside the project's first lint/format/markdownlint +
 pre-commit hook tooling. See [DECISIONS.md](DECISIONS.md) (2026-07-13).
+
+## GameScene decomposition part 2 (plan 015)
+
+Extracted the 5 state-owning world subsystems (`ResourceNodeManager`/`EnemyManager`/`SurvivalClock`/
+`VisionController`/`ScenePicker`, all under `src/scenes/world/` + `fx/`/`input/`) + 2 free-fn setup
+helpers (`world/actorAnims.ts`'s `registerActorAnims`, `world/groundRenderer.ts`'s `drawGround`) out
+of `GameScene`; 1385→~877 lines. The task-loop/combat spine (order/enqueue/beginCurrent/
+completeCurrent/runHarvest/runBuild/repath, ~260 lines) is a deliberate keep, not a miss — see
+[DECISIONS.md](DECISIONS.md) (2026-07-13). No gameplay change; the `refactor-tripwire` golden
+snapshot still holds.

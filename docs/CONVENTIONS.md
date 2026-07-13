@@ -64,13 +64,20 @@ _To be firmed up as we go. Starting position:_
   2026-07-11 and 2026-07-13: behaviour classes yes, data hierarchy no). Decision/effect split
   preserved: a pure system (`monsterAI`, `attachment`) _decides_; the entity _executes_ (e.g.
   `MonsterCharacter.update` runs the FSM's decision, never re-derives it).
-- **Manager pattern (`src/scenes/{build,fx,input}/`, `src/scenes/testApi.ts`, plan 013).**
-  Self-contained scene concerns (build placement, queue-glow rendering, combat FX, pointer/camera
-  gestures, the DEV test API) extract into managers, not a growing GameScene: scene→manager is always
-  a **direct method call**, never a `game.events` round-trip (the bus stays reserved for
+- **Manager pattern (`src/scenes/{build,fx,input,world}/`, `src/scenes/testApi.ts`, plans 013/015).**
+  Self-contained scene concerns — build placement (`BuildManager`), queue-glow rendering
+  (`TaskGlowRenderer`), combat FX (`CombatFxManager`), pointer/camera gestures
+  (`PointerInputController`), the DEV test API (`testApi.ts`), resource-node spawn/harvest/regrow
+  (`ResourceNodeManager`), enemy spawn/AI-tick/kill (`EnemyManager`), the day/night+hunger clock
+  (`SurvivalClock`), fog-of-war/vision (`VisionController`), and pointer-pick + tap-intent
+  (`ScenePicker`) — extract into managers, not a growing GameScene: scene→manager is always a
+  **direct method call**, never a `game.events` round-trip (the bus stays reserved for
   scene↔UIScene); a manager's constructor takes the scene plus a **narrow deps object of closures**
   over exactly the scene state/methods it needs, never raw field access; there is **no
   manager↔manager coupling** — if two managers need each other's data, the scene mediates. Every
   manager registers its own `destroy()` on `Phaser.Scenes.Events.SHUTDOWN` (tween Maps/Sets are the
-  known restart-leak hazard). `GameScene` stays the composition root and keeps the task-execution loop.
+  known restart-leak hazard) — **except `ScenePicker`**, which owns nothing to tear down. `GameScene`
+  stays the composition root and keeps the task-execution loop. One-shot setup that isn't stateful
+  (no deps object, no teardown) stays a plain free function instead — e.g. `world/actorAnims.ts`'s
+  `registerActorAnims` and `world/groundRenderer.ts`'s `drawGround`.
 - Keep functions small; name for the domain (resource, node, recipe, stockpile), not the framework.

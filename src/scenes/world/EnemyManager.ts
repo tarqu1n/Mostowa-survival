@@ -1,0 +1,220 @@
+import Phaser from 'phaser';
+import { ENEMIES } from '../../data/enemies';
+import type { CombatantStats } from '../../data/types';
+import { enemyDeathKey } from '../../data/tileset';
+import { hurtboxContains, hurtboxTiles, DEFAULT_HURTBOX } from '../../systems/hurtbox';
+import type { Cell, Dims } from '../../systems/pathfind';
+import {
+  MonsterCharacter,
+  type MonsterSpawnOpts,
+  type MonsterTickEnv,
+} from '../../entities/MonsterCharacter';
+import type { CharacterSprite } from '../../entities/Character';
+import type { GameScene } from '../GameScene';
+
+/**
+ * Narrow scene state {@link EnemyManager} needs but doesn't own — GameScene supplies these as
+ * closures over its own private fields/methods at construction (plan 013 Step 6 coupling rules,
+ * carried into plan 015: managers get narrow interfaces, not raw field access, and never a direct
+ * manager↔manager edge — the scene mediates). `isBlocked` is the scene's own composite predicate
+ * (occupancy + live blocking node); this manager receives it by reference and folds it into the
+ * {@link MonsterTickEnv} it builds each tick — see GameScene's own doc for why that composite can't
+ * live in either manager. `rng` is threaded into both `addEnemy` (per-spawn weapon roll) and the tick
+ * env (per-bite hit rolls) so the DEV-only test API's pinned rng reaches both.
+ */
+export interface EnemyManagerDeps {
+  /** The worker's current tile — the tick env's `playerTile` (also derives `playerBodyTiles`). */
+  playerTile(): Cell;
+  /** The player sprite's world position — the tick env's `playerPos` (chase/lunge targeting). */
+  playerPos(): { x: number; y: number };
+  /** The player's stat bag — hurtbox for `playerBodyTiles`, plus armour/dodge for bite resolution. */
+  playerStats(): CombatantStats;
+  /** Grid bounds for pathing/placement checks. */
+  dims(): Dims;
+  /** Pathfinding walkability predicate (the scene's `isBlocked`) — passed through into the tick env. */
+  isBlocked(col: number, row: number): boolean;
+  /** Injectable combat/weapon-roll rng (the scene's `this.rng`) — threaded into `addEnemy` AND the
+   *  tick env so the DEV-only test API's pinned rng reaches every roll a monster makes. */
+  rng(): number;
+  /** Landed-bite feedback — flash + camera kick + damage vignette (scene-owned bus emission). */
+  onPlayerHurt(): void;
+  /** Apply bite damage to the player (scene-owned: emits hp events / triggers the death path). */
+  damagePlayer(amount: number): void;
+  /** Visible attack tell + weapon swing (routes to CombatFxManager.lungeAt). */
+  lungeAt(monster: MonsterCharacter, targetX: number, targetY: number): void;
+  /** Stop any in-flight hit-flash/lunge/weapon-swing tween before a sprite is destroyed. */
+  cleanupActorFx(sprite: CharacterSprite): void;
+  /** Track a corpse sprite lingering after death (see killEnemy's delayedCall). */
+  addCorpse(sprite: CharacterSprite): void;
+  /** Drop a corpse once its lingering removal fires. */
+  removeCorpse(sprite: CharacterSprite): void;
+}
+
+/**
+ * Enemies — spawn, per-frame AI tick, attack/kill, and the DEV-menu scatter (plan 015 Step 2). Moved
+ * verbatim out of GameScene, which still owns the *decision* of when to attack/kill (`attack()` reads
+ * {@link enemyAt}/calls {@link killEnemy}) — this manager only owns the collection, the FSM-tick
+ * plumbing, and the enemy-half of a full world reset.
+ *
+ * Constructed fresh in `buildWorld()` each (re)start, at the exact point the old inline
+ * `spawnEnemies()` call used to run — **before** the player exists (`buildWorld()`'s construction
+ * order is load-bearing; see GameScene). The constructor itself must never reach for player state;
+ * only call-time closures (the `deps` above) may. It also does NOT auto-spawn — `spawnEnemies()` is a
+ * separate call right after construction — so construction stays side-effect-free, matching the
+ * "constructor must not touch player" rule with zero risk of the ordering mattering later.
+ *
+ * **`all()` returns the raw backing array — alive AND dead monsters alike.** `pickSpriteAt` (still
+ * scene-resident until plan 015 Step 5) and this manager's own {@link update} each do their own
+ * `if (!z.alive) continue` filtering on top, so filtering inside `all()` would silently change what
+ * those callers see (a dead-but-lingering corpse would vanish from hit-testing entirely instead of
+ * just being un-targetable-while-dead).
+ *
+ * **SHUTDOWN vs Arcade physics — the trap for this manager.** Monster sprites carry Arcade physics
+ * bodies (`scene.physics.add.existing(sprite)` in MonsterCharacter's constructor). Phaser's own scene
+ * teardown destroys every GameObject AND tears down the Arcade physics World's own bookkeeping BEFORE
+ * this manager's SHUTDOWN listener runs (Arcade's World registers its own SHUTDOWN handler once, when
+ * the physics plugin boots — long before this manager's, re-added fresh every `buildWorld()` — so
+ * Arcade's handler always runs first). By the time `destroy()` below fires, every enemy sprite/body is
+ * already gone. So `destroy()` may **ONLY drop references / reset plain data** — it must **NEVER**
+ * call `sprite.destroy()`, touch `body`/physics teardown, or call `deps.cleanupActorFx` on the
+ * SHUTDOWN path: those all poke an already-destroyed sprite/body and throw. This is DIFFERENT from
+ * {@link clearAll}, which runs at RUNTIME (physics alive) where `sprite.destroy()` IS correct — that's
+ * the DEV-only scenario reset and the dev-menu world randomiser, both called with the scene very much
+ * alive.
+ */
+export class EnemyManager {
+  private enemies: MonsterCharacter[] = [];
+  private nextEnemyId = 0;
+
+  constructor(
+    private readonly scene: GameScene,
+    private readonly deps: EnemyManagerDeps,
+  ) {
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
+  }
+
+  // --- Spawning ----------------------------------------------------------------
+
+  spawnEnemies(): void {
+    this.addEnemy('kidZombie', 22, 50); // ~10 tiles below the map-centre spawn, as before the resize
+  }
+
+  addEnemy(enemyId: string, col: number, row: number, opts?: MonsterSpawnOpts): void {
+    this.enemies.push(
+      new MonsterCharacter(
+        this.scene,
+        `enemy-${this.nextEnemyId++}`,
+        ENEMIES[enemyId],
+        col,
+        row,
+        () => this.deps.rng(),
+        opts,
+      ),
+    );
+  }
+
+  // --- Queries -------------------------------------------------------------------
+
+  /** Every enemy, alive AND dead (see class doc) — callers filter `alive` themselves. Returns the raw
+   *  backing array, not a copy. */
+  all(): MonsterCharacter[] {
+    return this.enemies;
+  }
+
+  /** The live enemy whose body (hurtbox, anchored at its feet tile) covers tile (col,row) — so a
+   *  tall enemy is hit/inspected by its drawn torso, not only its feet tile. Footprint is unchanged. */
+  enemyAt(col: number, row: number): MonsterCharacter | undefined {
+    const target = { col, row };
+    return this.enemies.find(
+      (z) =>
+        z.alive &&
+        hurtboxContains({ col: z.col, row: z.row }, z.def.hurtbox ?? DEFAULT_HURTBOX, target),
+    );
+  }
+
+  // --- Per-frame tick --------------------------------------------------------------
+
+  /** Per-frame AI tick for every live monster. Builds the shared {@link MonsterTickEnv} world
+   *  snapshot + effect callbacks (FX/damage/bus emissions all route back through `deps`); each
+   *  MonsterCharacter *executes* its FSM decision (repath/move/contact-bite) — see
+   *  MonsterCharacter.update. */
+  update(): void {
+    const pt = this.deps.playerTile();
+    const env: MonsterTickEnv = {
+      nowMs: this.scene.time.now,
+      playerTile: pt,
+      playerPos: this.deps.playerPos(),
+      playerBodyTiles: hurtboxTiles(pt, this.deps.playerStats().hurtbox ?? DEFAULT_HURTBOX),
+      playerStats: this.deps.playerStats(),
+      dims: this.deps.dims(),
+      isBlocked: (col, row) => this.deps.isBlocked(col, row),
+      rng: () => this.deps.rng(),
+      lungeAt: (m, x, y) => this.deps.lungeAt(m, x, y),
+      onPlayerHurt: () => this.deps.onPlayerHurt(),
+      damagePlayer: (amount) => this.deps.damagePlayer(amount),
+    };
+    for (const z of this.enemies) {
+      if (!z.alive) continue;
+      z.update(env);
+    }
+  }
+
+  // --- Combat ----------------------------------------------------------------------
+
+  /**
+   * Kill an enemy: pull it out of the AI/debugState set immediately (so nothing chases or counts it),
+   * then let its sprite linger just long enough to play the one-shot Death collapse before removing
+   * the corpse. The body is disabled so a corpse isn't a physics obstacle mid-animation, and any
+   * in-flight flash/lunge is stopped first (those tweens poke the sprite, which is about to go away).
+   */
+  killEnemy(z: MonsterCharacter): void {
+    this.enemies = this.enemies.filter((x) => x !== z);
+    this.deps.cleanupActorFx(z.sprite); // also stops an in-flight weapon swing before the image goes away
+    z.die(); // character-side collapse: alive=false, weapon/fists gone, body off, Death strip playing
+    const sprite = z.sprite;
+    this.deps.addCorpse(sprite);
+    const dur = this.scene.anims.get(enemyDeathKey)?.duration ?? 600;
+    // TEMP: hold the settled final frame for 5 minutes so the death anim can be observed on the corpse
+    // (instead of the brief DEATH_HOLD_MS beat). Revisit once the skeleton death look is dialled in.
+    const CORPSE_LINGER_MS = 5 * 60_000;
+    this.scene.time.delayedCall(dur + CORPSE_LINGER_MS, () => {
+      this.deps.removeCorpse(sprite);
+      sprite.destroy();
+    });
+  }
+
+  // --- Reset / teardown --------------------------------------------------------------
+
+  /**
+   * Destroy every enemy's sprite/weapon/fists and drop it. Called at RUNTIME (the scene/physics world
+   * is alive), so `sprite.destroy()` is correct here — this is NOT the SHUTDOWN path (see class doc).
+   * `resetIds` governs whether the id counter also resets: the DEV-only scenario reset
+   * (`resetTreesAndEnemies` → `clearAll({ resetIds: true })`) wants fresh `enemy-0`-style ids each
+   * scenario, while the dev-menu world randomiser (`randomiseWorld` → `clearAll({ resetIds: false })`)
+   * deliberately keeps the counter running — pre-existing behaviour, preserved as-is.
+   */
+  clearAll(opts: { resetIds: boolean }): void {
+    for (const z of this.enemies) {
+      this.deps.cleanupActorFx(z.sprite);
+      z.weapon?.sprite.destroy();
+      z.hands?.main.destroy();
+      z.hands?.off.destroy();
+      z.sprite.destroy();
+    }
+    this.enemies = [];
+    if (opts.resetIds) this.nextEnemyId = 0;
+  }
+
+  /**
+   * SHUTDOWN: this run's enemies are going away with the rest of this manager instance (a fresh
+   * EnemyManager is constructed by the next `buildWorld()`) — Phaser's own scene teardown, PLUS
+   * Arcade's own SHUTDOWN-triggered World teardown, have already destroyed every sprite/body by the
+   * time this fires (see class doc's SHUTDOWN-vs-Arcade-physics note). So this just drops the stale
+   * references. Deliberately does NOT call {@link clearAll} here: that method's `sprite.destroy()` /
+   * `deps.cleanupActorFx` calls are only safe while the scene/physics world is alive, which it no
+   * longer is by the time SHUTDOWN fires.
+   */
+  private destroy(): void {
+    this.enemies = [];
+  }
+}

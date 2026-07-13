@@ -6,7 +6,8 @@
 
 import { BUILDABLES } from '../data/buildables';
 import type { CombatantStats, InspectableStats } from '../data/types';
-import type { TreeNode, BuildSite, EnemyUnit } from '../entities/types';
+import type { TreeNode, BuildSite } from '../entities/types';
+import type { MonsterCharacter } from '../entities/MonsterCharacter';
 
 export function treeStats(node: TreeNode): InspectableStats {
   return { name: 'Tree', maxHp: node.def.maxHp, currentHp: node.hp };
@@ -30,7 +31,7 @@ function combatantExtra(stats: CombatantStats): { label: string; value: string }
   ];
 }
 
-export function enemyStats(unit: EnemyUnit): InspectableStats {
+export function enemyStats(unit: MonsterCharacter): InspectableStats {
   return {
     name: unit.def.name,
     maxHp: unit.def.maxHp,

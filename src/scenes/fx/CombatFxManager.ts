@@ -12,7 +12,7 @@ import {
 } from '../../config';
 import { HIT_FLASH_KEY, type HitFlashPipeline } from '../../render/hitFlashPipeline';
 import { playerAnimKey, type Facing } from '../../data/tileset';
-import type { EnemyUnit } from '../../entities/types';
+import type { MonsterCharacter } from '../../entities/MonsterCharacter';
 import type { GameScene } from '../GameScene';
 
 /**
@@ -177,7 +177,7 @@ export class CombatFxManager {
    * the origin on completion, and its total time stays under the contact cooldown so it always settles
    * before the next bite. Logic (contact, pathing) keys off z.col/z.row, so this stays purely visual.
    */
-  lungeAt(z: EnemyUnit, targetX: number, targetY: number): void {
+  lungeAt(z: MonsterCharacter, targetX: number, targetY: number): void {
     this.enemyAttacks += 1;
     const sprite = z.sprite;
     if (this.lungeTweens.has(sprite)) return; // already lunging — don't stack

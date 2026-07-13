@@ -36,6 +36,9 @@ export default tseslint.config(
     rules: {
       // Same pragmatic posture, but this rule is non-type-aware so it's safe to set globally.
       '@typescript-eslint/no-explicit-any': 'warn', // 23 hits, mostly untyped test-harness plumbing
+      // `_`-prefix marks a deliberately-unused arg (e.g. a template-method hook default ignoring
+      // its param) — the standard typescript-eslint convention.
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
   prettier,

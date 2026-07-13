@@ -3,7 +3,8 @@ import { treeStats, wallStats, enemyStats, playerCombatStats } from '../stats';
 import { BUILDABLES } from '../../data/buildables';
 import { ENEMIES } from '../../data/enemies';
 import { NODES } from '../../data/nodes';
-import type { TreeNode, BuildSite, EnemyUnit } from '../../entities/types';
+import type { TreeNode, BuildSite } from '../../entities/types';
+import type { MonsterCharacter } from '../../entities/MonsterCharacter';
 import type { CombatantStats } from '../../data/types';
 
 describe('treeStats', () => {
@@ -67,7 +68,7 @@ describe('enemyStats', () => {
       state: 'chasing' as const,
       lastContactAt: 0,
       lastRepathAt: 0,
-    } as unknown as EnemyUnit;
+    } as unknown as MonsterCharacter;
 
     const result = enemyStats(unit);
     expect(result.name).toBe(ENEMIES.kidZombie.name);

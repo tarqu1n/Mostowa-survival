@@ -15,29 +15,16 @@ import {
   MAX_ZOOM,
   DEFAULT_ZOOM,
   ZOOM_STORAGE_KEY,
-  PLAYER_MAX_HP,
-  PLAYER_START_SPEED,
   PLAYER_START_VISION,
   UNARMED_BASE_DAMAGE,
-  ATTACK_MOVE_SLOW,
-  CONTACT_DAMAGE_COOLDOWN_MS,
   PLAYER_HIT_SHAKE_MS,
   PLAYER_HIT_SHAKE_INTENSITY,
   ENEMY_HIT_SHAKE_MS,
   ENEMY_HIT_SHAKE_INTENSITY,
-  MONSTER_CHASE_DROP_RADIUS_PX,
-  MONSTER_VEER_BAND_PX,
-  MONSTER_VEER_MAX_TILES,
-  MONSTER_REPATH_MS,
-  MONSTER_IDLE_MS_MIN,
-  MONSTER_IDLE_MS_MAX,
-  MONSTER_WANDER_RADIUS_TILES,
-  MONSTER_PATROL_PAUSE_MS,
   DEATH_ANIM_FRAMERATE,
   DEATH_HOLD_MS,
   INVENTORY_SLOTS,
   DEFAULT_MAX_STACK,
-  PLAYER_HURTBOX,
   DAY_MS,
   TWILIGHT_MS,
   HUNGER_MAX,
@@ -49,8 +36,7 @@ import { ITEMS } from '../data/items';
 import { NODES } from '../data/nodes';
 import { BUILDABLES } from '../data/buildables';
 import { ENEMIES } from '../data/enemies';
-import { MONSTER_WEAPONS } from '../data/weapons';
-import type { ResourceNodeDef, CombatantStats } from '../data/types';
+import type { ResourceNodeDef } from '../data/types';
 import { Inventory } from '../systems/Inventory';
 import { worldToTile, tileToWorldCenter, snapToTileCenter, tileKey } from '../systems/grid';
 import { findPath, reachableAdjacent, type Cell } from '../systems/pathfind';
@@ -64,15 +50,21 @@ import {
 } from '../systems/daynight';
 import { drainHunger, feed, isStarving } from '../systems/needs';
 import { resolveMeleeAttack } from '../systems/combat';
-import { stepMonster, initialMonsterState, type MonsterMode } from '../systems/monsterAI';
-import { weaponTransform } from '../systems/attachment';
+import type { MonsterMode } from '../systems/monsterAI';
 import { hurtboxContains, hurtboxTiles, DEFAULT_HURTBOX } from '../systems/hurtbox';
 import { bakeGlowTexture } from '../render/glowTexture';
 import { treeStats, wallStats, enemyStats } from '../systems/stats';
 import type { UIScene } from './UIScene';
 import { FACING_DELTAS } from '../entities/types';
-import type { TreeNode, BuildSite, EnemyUnit, PointerPick } from '../entities/types';
+import type { TreeNode, BuildSite, PointerPick } from '../entities/types';
 import type { ScenarioSpec, ScenarioResult, GameTestApi } from '../entities/testTypes';
+import type { CharacterSprite } from '../entities/Character';
+import { PlayerCharacter } from '../entities/PlayerCharacter';
+import {
+  MonsterCharacter,
+  type MonsterSpawnOpts,
+  type MonsterTickEnv,
+} from '../entities/MonsterCharacter';
 import { CombatFxManager } from './fx/CombatFxManager';
 import {
   ACTIVE_TILESET,
@@ -84,8 +76,6 @@ import {
   pickWeighted,
   type Facing,
   type PlayerState,
-  type ActorRender,
-  type AttachPoint,
 } from '../data/tileset';
 
 /** Queued-node glow reach on screen (px). Converted to source texels per species so the baked halo
@@ -102,13 +92,14 @@ const GLOW_SCREEN_PX = 5;
  * placement resolves on `pointerdown`; move/harvest orders resolve on `pointerup` (long-press = queue).
  */
 export class GameScene extends Phaser.Scene {
-  private player!: Phaser.GameObjects.Sprite & { body: Phaser.Physics.Arcade.Body };
+  // The player-controlled worker (plan 013 Step 4): owns its sprite, stats/hp, facing, path state,
+  // anim + death collapse. Recreated every create() (a death-restart), so all its state starts fresh.
+  private playerChar!: PlayerCharacter;
 
-  // Combat: stats bag + separate runtime HP (mirrors the def/runtime-hp split used for trees),
-  // facing (for the attack — see Step 5/6), reset in create() so a death-restart starts fresh.
-  private playerStats!: CombatantStats;
-  private playerHp = 0;
-  private lastFacing = { dCol: 0, dRow: 1 };
+  /** The player's sprite — camera/fog/pointer code addresses the display object this way. */
+  private get player(): CharacterSprite {
+    return this.playerChar.sprite;
+  }
 
   // Injectable RNG for combat hit-rolls (default Math.random). Threaded into every
   // resolveMeleeAttack call site so the DEV-only test API can pin it — combat scenarios then stay
@@ -126,21 +117,17 @@ export class GameScene extends Phaser.Scene {
   private inv!: Inventory;
   private trees: TreeNode[] = [];
   private nextTreeId = 0;
-  private enemies: EnemyUnit[] = [];
+  private enemies: MonsterCharacter[] = [];
   private nextEnemyId = 0;
 
   private readonly queue = new TaskQueue();
-  private path: Cell[] = [];
-  private pathIndex = 0;
   private actionGoal: Cell | null = null; // the tile we're currently pathing to (for re-pathing)
   private chopElapsed = 0;
   // Action-swing anim state: `harvestSwing` is set each frame the worker is harvesting in place —
   // 'chop' (axe) for a tree, 'mine' (pickaxe) for a rock, 'gather' (Collect forage) for a bush — and
-  // drives that looping animation; null when not harvesting. `attackLockUntil` is the scene-clock time
-  // until which the one-shot attack (sword) swing owns the sprite (updatePlayerAnim yields to it — see
-  // attack()).
+  // drives that looping animation; null when not harvesting. Passed into playerChar.updateAnim each
+  // frame (the attack-lock that yields to a sword swing lives on PlayerCharacter — see attack()).
   private harvestSwing: 'chop' | 'mine' | 'gather' | null = null;
-  private attackLockUntil = 0;
   // Latest Combat-mode movepad vector (analog: |v| ≤ 1). The movepad only emits on press/drag, not per
   // frame, so update() re-applies velocity from this each frame — that's what lets the attack-slow
   // (see effectiveMoveSpeed) take hold and release mid-hold without the player needing to nudge the pad.
@@ -152,15 +139,12 @@ export class GameScene extends Phaser.Scene {
   // fx.armShutdown() + fx.resetCombatFx() each (re)start — see there for why arming is split out.
   private readonly fx = new CombatFxManager(this, {
     getPlayerSprite: () => this.player,
-    getFacing: () => this.facingDir(),
-    getLastFacingDCol: () => this.lastFacing.dCol,
+    getFacing: () => this.playerChar.facingDir(),
+    getLastFacingDCol: () => this.playerChar.lastFacing.dCol,
     setAttackLockUntil: (t) => {
-      this.attackLockUntil = t;
+      this.playerChar.attackLockUntil = t;
     },
   });
-  // True from the moment the player's HP hits 0 until the death-anim beat ends and the scene restarts.
-  // Freezes the world (see update()) and swallows further damage so a crowd can't re-trigger death.
-  private playerDying = false;
 
   // Day/night clock: `clockMs` auto-advances every frame (see update()); `dayPhase`/`dayCount` are the
   // derived, queryable state (also mirrored to the registry + emitted as 'time:changed'). The
@@ -227,20 +211,16 @@ export class GameScene extends Phaser.Scene {
     this.siteTiles.clear();
     this.occupied.clear();
     this.nextSiteId = 0;
-    this.path = [];
-    this.pathIndex = 0;
     this.actionGoal = null;
     this.chopElapsed = 0;
     this.harvestSwing = null;
-    this.attackLockUntil = 0;
     this.combatMoveVec = { dx: 0, dy: 0 };
     // Combat-FX state — (re-)arm the SHUTDOWN flush (see CombatFxManager.armShutdown) then clear so a
     // death-restart starts clean: the maps/set held tweens+sprites from the dead run (Phaser destroyed
-    // them on teardown, so drop the stale references), and `playerDying` must reset or the fresh player
-    // would stay frozen from the previous death (see killPlayer/update).
+    // them on teardown, so drop the stale references). Player-side state (hp/facing/path/attack-lock/
+    // dying) needs no reset here — a fresh PlayerCharacter is constructed below each (re)start.
     this.fx.armShutdown();
     this.fx.resetCombatFx();
-    this.playerDying = false;
     this.buildMode = false;
     this.sawPointerDown = false; // fields persist across scene.restart(); clear so a press interrupted by death can't resolve post-restart
     this.queueMarkers = [];
@@ -248,7 +228,6 @@ export class GameScene extends Phaser.Scene {
     this.glowSprites.clear(); // scene teardown destroys the GameObjects; drop our stale references
     this.glowPulse = undefined;
     this.paintedThisGesture.clear();
-    this.lastFacing = { dCol: 0, dRow: 1 };
     this.mode = 'command';
     // Survival state — reset so a death-restart begins a fresh Day 1 at full hunger (these are plain-data
     // fields; without an explicit reset they'd carry the dead run's values, e.g. hunger stuck at 0).
@@ -258,21 +237,9 @@ export class GameScene extends Phaser.Scene {
     this.hunger = HUNGER_MAX;
     this.starveElapsed = 0;
 
-    this.playerStats = {
-      maxHp: PLAYER_MAX_HP,
-      armour: 0,
-      speed: PLAYER_START_SPEED,
-      vision: PLAYER_START_VISION,
-      strength: 0,
-      dex: 0,
-      dodge: 0,
-      hurtbox: PLAYER_HURTBOX,
-    };
-    this.playerHp = this.playerStats.maxHp;
     // Seed survival state onto the registry so UIScene (Wellbeing screen) re-reads it on a scene
-    // restart. playerStats is combat's private stat bag surfaced here for the Wellbeing stat rows.
+    // restart (playerStats follows below, once the fresh PlayerCharacter has built its stat bag).
     this.registry.set('hunger', this.hunger);
-    this.registry.set('playerStats', this.playerStats);
 
     this.drawGround();
 
@@ -347,16 +314,9 @@ export class GameScene extends Phaser.Scene {
         repeat: 0,
       });
     }
-    const p = this.add.sprite(MAP_WIDTH / 2, MAP_HEIGHT / 2, playerAnimKey('idle', 'down'));
-    this.physics.add.existing(p);
-    this.player = p as typeof this.player;
-    this.player
-      .setDepth(10)
-      .setScale(playerActor.render.scale)
-      .setOrigin(playerActor.render.originX, playerActor.render.originY);
-    this.player.setData('baseScale', playerActor.render.scale); // rest scale the flinch squash returns to
-    this.player.body.setCollideWorldBounds(true);
-    this.fitActorBody(this.player, playerActor.render);
+    this.playerChar = new PlayerCharacter(this);
+    // playerStats is the player's stat bag surfaced for the Wellbeing screen's stat rows.
+    this.registry.set('playerStats', this.playerChar.stats);
     this.physics.world.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
 
     // Camera follows the player. The map is larger than the viewport at every zoom, so the camera
@@ -478,7 +438,7 @@ export class GameScene extends Phaser.Scene {
     // Player is collapsing: freeze the world on the death anim (which advances on its own via Phaser's
     // anim system) until the scheduled scene.restart() fires. No clock/hunger tick, no input, no AI —
     // a clean death beat. The sprite's velocity is pinned to 0 so nothing drifts under the animation.
-    if (this.playerDying) {
+    if (this.playerChar.dying) {
       this.player.body.setVelocity(0, 0);
       return;
     }
@@ -531,19 +491,19 @@ export class GameScene extends Phaser.Scene {
       // press/drag), scaled by effectiveMoveSpeed so an in-progress swing slows the player — that
       // re-evaluation each frame is what lets the attack-slow engage/release without a fresh pad input.
       if (this.mode === 'combat') {
-        const speed = this.effectiveMoveSpeed();
+        const speed = this.playerChar.effectiveMoveSpeed();
         this.player.body.setVelocity(this.combatMoveVec.dx * speed, this.combatMoveVec.dy * speed);
       } else {
         this.player.body.setVelocity(0, 0);
       }
-      this.updatePlayerAnim();
+      this.playerChar.updateAnim(this.harvestSwing);
       this.updateVision();
       this.updateEnemies();
       return;
     }
     switch (action.kind) {
       case 'move':
-        if (this.advancePath()) this.completeCurrent();
+        if (this.playerChar.advancePath()) this.completeCurrent();
         break;
       case 'harvest':
         this.runHarvest(action, delta);
@@ -552,7 +512,7 @@ export class GameScene extends Phaser.Scene {
         this.runBuild(action, delta);
         break;
     }
-    this.updatePlayerAnim();
+    this.playerChar.updateAnim(this.harvestSwing);
     this.updateVision();
     this.updateEnemies();
   }
@@ -567,111 +527,26 @@ export class GameScene extends Phaser.Scene {
     this.occupied.has(tileKey(col, row)) ||
     this.trees.some((t) => t.alive && t.def.blocksPath && t.col === col && t.row === row);
 
-  private playerTile(): Cell {
-    return { col: worldToTile(this.player.x), row: worldToTile(this.player.y) };
-  }
-
   /** Path the worker toward `goal`; returns false if unreachable (`null` path). `[]` = already there. */
   private pathTo(goal: Cell): boolean {
-    const path = findPath(this.playerTile(), goal, this.isBlocked, this.gridDims);
+    const path = findPath(this.playerChar.tile(), goal, this.isBlocked, this.gridDims);
     if (path === null) return false;
-    this.path = path;
-    this.pathIndex = 0;
+    this.playerChar.path = path;
+    this.playerChar.pathIndex = 0;
     this.actionGoal = goal;
     return true;
-  }
-
-  /** Step along the current path; returns true once the worker has reached the final waypoint. */
-  private advancePath(): boolean {
-    if (this.pathIndex >= this.path.length) {
-      this.player.body.setVelocity(0, 0);
-      return true;
-    }
-    const wp = this.path[this.pathIndex];
-    const wx = tileToWorldCenter(wp.col);
-    const wy = tileToWorldCenter(wp.row);
-    const dCol = Math.sign(wp.col - worldToTile(this.player.x));
-    const dRow = Math.sign(wp.row - worldToTile(this.player.y));
-    if (dCol !== 0 || dRow !== 0) this.lastFacing = { dCol, dRow };
-    if (Phaser.Math.Distance.Between(this.player.x, this.player.y, wx, wy) <= 2) {
-      this.player.body.reset(wx, wy);
-      this.pathIndex += 1;
-      return this.pathIndex >= this.path.length;
-    }
-    this.physics.moveTo(this.player, wx, wy, this.effectiveMoveSpeed());
-    return false;
-  }
-
-  /** The player's current move speed, cut to {@link ATTACK_MOVE_SLOW} of `playerStats.speed` while a
-   * swing is in progress (the attack-lock window) so attacking commits you in place. Drives both the
-   * pathfinder ({@link advancePath}) and the Combat-mode movepad ({@link update}). */
-  private effectiveMoveSpeed(): number {
-    const attacking = this.time.now < this.attackLockUntil;
-    return this.playerStats.speed * (attacking ? ATTACK_MOVE_SLOW : 1);
-  }
-
-  /**
-   * Directional player animation from `lastFacing`. Priority: a one-shot attack (sword) swing owns
-   * the sprite until it finishes (we yield, leaving its frames to play); else the looping harvest
-   * swing (`harvestSwing`: chop/axe on a tree, mine/pickaxe on a rock) while working in place; else
-   * walk while translating / idle when still. Side art faces right, so left is the same strip
-   * mirrored with flipX; down/up clear flipX.
-   */
-  private updatePlayerAnim(): void {
-    if (this.playerDying) return; // death collapse owns the sprite until the restart
-    if (this.time.now < this.attackLockUntil) return; // attack swing in progress — don't stomp it
-    const facing = this.facingDir();
-    const state: PlayerState =
-      this.harvestSwing ?? (this.player.body.velocity.lengthSq() > 1 ? 'walk' : 'idle');
-    this.player.setFlipX(facing === 'side' && this.lastFacing.dCol < 0);
-    this.player.anims.play(playerAnimKey(state, facing), true);
-  }
-
-  /** Map `lastFacing` (dCol/dRow) to a directional strip: side when horizontal dominates, else up/down. */
-  private facingDir(): Facing {
-    const { dCol, dRow } = this.lastFacing;
-    if (dCol !== 0 && Math.abs(dCol) >= Math.abs(dRow)) return 'side';
-    return dRow < 0 ? 'up' : 'down';
-  }
-
-  /**
-   * Turn the worker to face a target tile. Called while working in place (chop/build) so the swing
-   * points at the thing being worked — independent of the approach direction or a stale `lastFacing`
-   * (fixes chopping while facing away when already stood next to the target).
-   */
-  private faceTile(col: number, row: number): void {
-    const pt = this.playerTile();
-    const dCol = Math.sign(col - pt.col);
-    const dRow = Math.sign(row - pt.row);
-    if (dCol !== 0 || dRow !== 0) this.lastFacing = { dCol, dRow };
-  }
-
-  /**
-   * Give a scaled actor a roughly tile-sized physics body at its feet. Size/offset are in source-
-   * frame px (Arcade scales the body by the sprite's scale), so a padded 64px canvas gets a ~1-tile
-   * world body centred on the character's feet. Low-stakes: player↔wall collision is a pathfinding
-   * backstop and enemy contact damage is tile-based (z.col/row), not physics.
-   */
-  private fitActorBody(
-    sprite: Phaser.GameObjects.Sprite & { body: Phaser.Physics.Arcade.Body },
-    render: ActorRender,
-  ): void {
-    const frame = sprite.frame.width; // square source canvas (px)
-    const bodyPx = Math.min(frame, Math.round(TILE_SIZE / render.scale)); // → ≈ one tile in world
-    sprite.body.setSize(bodyPx, bodyPx);
-    sprite.body.setOffset((frame - bodyPx) / 2, frame - bodyPx); // centred horizontally, at the canvas bottom
   }
 
   /** Recompute the path to the active goal after the world changed (wall built / tree regrew). */
   private repath(): void {
     if (!this.actionGoal || !this.queue.current) return;
-    const path = findPath(this.playerTile(), this.actionGoal, this.isBlocked, this.gridDims);
+    const path = findPath(this.playerChar.tile(), this.actionGoal, this.isBlocked, this.gridDims);
     if (path === null) {
       this.completeCurrent(); // goal got walled off — drop it, don't stall
       return;
     }
-    this.path = path;
-    this.pathIndex = 0;
+    this.playerChar.path = path;
+    this.playerChar.pathIndex = 0;
   }
 
   // --- Task queue lifecycle ------------------------------------------------
@@ -679,8 +554,8 @@ export class GameScene extends Phaser.Scene {
   /** Begin executing whatever is `current` — compute its path / stand tile, or skip if impossible. */
   private beginCurrent(): void {
     this.chopElapsed = 0;
-    this.path = [];
-    this.pathIndex = 0;
+    this.playerChar.path = [];
+    this.playerChar.pathIndex = 0;
     this.actionGoal = null;
     const a = this.queue.current;
     if (!a) {
@@ -704,12 +579,12 @@ export class GameScene extends Phaser.Scene {
       // fall back to any adjacent tile if those are walled off. A rock omits standOffsets → all-adjacent.
       const stand =
         reachableAdjacent(
-          this.playerTile(),
+          this.playerChar.tile(),
           target,
           this.isBlocked,
           this.gridDims,
           tree.def.standOffsets,
-        ) ?? reachableAdjacent(this.playerTile(), target, this.isBlocked, this.gridDims);
+        ) ?? reachableAdjacent(this.playerChar.tile(), target, this.isBlocked, this.gridDims);
       if (!stand || !this.pathTo(stand)) this.completeCurrent();
       return;
     }
@@ -717,7 +592,7 @@ export class GameScene extends Phaser.Scene {
     const site = this.siteById(a.siteId);
     if (!site || site.done) return this.completeCurrent();
     const stand = reachableAdjacent(
-      this.playerTile(),
+      this.playerChar.tile(),
       { col: site.col, row: site.row },
       this.isBlocked,
       this.gridDims,
@@ -769,8 +644,8 @@ export class GameScene extends Phaser.Scene {
 
   private cancelAll(): void {
     this.queue.clear();
-    this.path = [];
-    this.pathIndex = 0;
+    this.playerChar.path = [];
+    this.playerChar.pathIndex = 0;
     this.actionGoal = null;
     this.player.body.setVelocity(0, 0);
     this.emitTasks();
@@ -908,9 +783,9 @@ export class GameScene extends Phaser.Scene {
       this.flashBagFull(tree);
       return this.completeCurrent();
     }
-    if (this.advancePath()) {
+    if (this.playerChar.advancePath()) {
       this.player.body.setVelocity(0, 0);
-      this.faceTile(tree.col, tree.row); // swing toward the node, whatever side we stood on
+      this.playerChar.faceTile(tree.col, tree.row); // swing toward the node, whatever side we stood on
       // Standing at the node → updatePlayerAnim plays the matching harvest anim: a bush is foraged
       // (gather/Collect), a rock is mined (pickaxe), everything else is chopped (axe). Bush wins ahead
       // of the rock/tree split via its `harvestAnim` def flag. See ResourceNodeDef.tile/harvestAnim.
@@ -927,9 +802,9 @@ export class GameScene extends Phaser.Scene {
   private runBuild(a: Extract<Action, { kind: 'build' }>, delta: number): void {
     const site = this.siteById(a.siteId);
     if (!site || site.done) return this.completeCurrent();
-    if (this.advancePath()) {
+    if (this.playerChar.advancePath()) {
       this.player.body.setVelocity(0, 0);
-      this.faceTile(site.col, site.row); // face the blueprint while building it
+      this.playerChar.faceTile(site.col, site.row); // face the blueprint while building it
       site.progress += delta;
       site.rect.setAlpha(0.35 + 0.55 * Math.min(1, site.progress / BUILD_MS));
       if (site.progress >= BUILD_MS) {
@@ -1086,10 +961,13 @@ export class GameScene extends Phaser.Scene {
    * "Death = restart" — no in-place heal, since that let an adjacent enemy immediately re-hit a
    * "reset" player). */
   private damagePlayer(amount: number): void {
-    if (this.playerDying) return; // already collapsing — ignore further bites/starve ticks until restart
-    this.playerHp = Math.max(0, this.playerHp - amount);
-    this.game.events.emit('player:hpChanged', { hp: this.playerHp, maxHp: this.playerStats.maxHp });
-    if (this.playerHp <= 0) this.killPlayer();
+    if (this.playerChar.dying) return; // already collapsing — ignore further bites/starve ticks until restart
+    this.playerChar.takeDamage(amount);
+    this.game.events.emit('player:hpChanged', {
+      hp: this.playerChar.hp,
+      maxHp: this.playerChar.stats.maxHp,
+    });
+    if (this.playerChar.hp <= 0) this.killPlayer();
   }
 
   /**
@@ -1114,7 +992,7 @@ export class GameScene extends Phaser.Scene {
 
   /** The live enemy whose body (hurtbox, anchored at its feet tile) covers tile (col,row) — so a
    * tall enemy is hit/inspected by its drawn torso, not only its feet tile. Footprint is unchanged. */
-  private enemyAt(col: number, row: number): EnemyUnit | undefined {
+  private enemyAt(col: number, row: number): MonsterCharacter | undefined {
     const target = { col, row };
     return this.enemies.find(
       (z) =>
@@ -1128,13 +1006,13 @@ export class GameScene extends Phaser.Scene {
    * keep using chop(). */
   private attack(): void {
     this.fx.playAttackSwing(); // swing on every press, even a whiff, so the input always feels heard
-    const pt = this.playerTile();
-    const col = pt.col + this.lastFacing.dCol;
-    const row = pt.row + this.lastFacing.dRow;
+    const pt = this.playerChar.tile();
+    const col = pt.col + this.playerChar.lastFacing.dCol;
+    const row = pt.row + this.playerChar.lastFacing.dRow;
     const enemy = this.enemyAt(col, row);
     if (!enemy) return;
-    const dmg = resolveMeleeAttack(this.playerStats, enemy.def, UNARMED_BASE_DAMAGE, this.rng);
-    enemy.hp -= dmg;
+    const dmg = resolveMeleeAttack(this.playerChar.stats, enemy.def, UNARMED_BASE_DAMAGE, this.rng);
+    enemy.takeDamage(dmg);
     if (enemy.hp <= 0) {
       this.killEnemy(enemy); // play the death collapse, then remove the corpse
     } else if (dmg > 0) {
@@ -1159,29 +1037,11 @@ export class GameScene extends Phaser.Scene {
    * the corpse. The body is disabled so a corpse isn't a physics obstacle mid-animation, and any
    * in-flight flash/lunge is stopped first (those tweens poke the sprite, which is about to go away).
    */
-  private killEnemy(z: EnemyUnit): void {
-    z.alive = false;
+  private killEnemy(z: MonsterCharacter): void {
     this.enemies = this.enemies.filter((x) => x !== z);
     this.fx.cleanupActorFx(z.sprite); // also stops an in-flight weapon swing before the image goes away
-    if (z.weapon) {
-      z.weapon.sprite.destroy(); // weapon hides on death (no loot/drop — see plan Out of scope)
-      z.weapon = undefined;
-    }
-    if (z.hands) {
-      // Fists go with the weapon — the Death collapse (96px frames) carries no anchors, so a pinned
-      // fist would freeze mid-air over the corpse.
-      z.hands.main.destroy();
-      z.hands.off.destroy();
-      z.hands = undefined;
-    }
+    z.die(); // character-side collapse: alive=false, weapon/fists gone, body off, Death strip playing
     const sprite = z.sprite;
-    sprite.body.setVelocity(0, 0);
-    sprite.body.enable = false;
-    // Reset to the default 64px footprint before the collapse — undoes any flinch squash AND the 32px
-    // Idle bob's scale:2/origin (dying mid-bob would otherwise play the Death strip double-size, off-tile).
-    const { render } = ACTIVE_TILESET.actors.enemy;
-    sprite.setScale(render.scale).setOrigin(render.originX, render.originY);
-    sprite.anims.play(enemyDeathKey); // keeps its current flipX — collapses facing the way it ran
     this.fx.addCorpse(sprite);
     const dur = this.anims.get(enemyDeathKey)?.duration ?? 600;
     // TEMP: hold the settled final frame for 5 minutes so the death anim can be observed on the corpse
@@ -1195,24 +1055,16 @@ export class GameScene extends Phaser.Scene {
 
   /**
    * Player death: freeze the world on a one-shot Death collapse, then restart the scene (the existing
-   * "Death = restart" reset — see damagePlayer). Guarded by `playerDying` so a crowd of enemies can't
-   * re-enter this each frame. We cancel any active order, stop movement, and clear an in-flight
-   * hit-flash so the corpse isn't left mid-squash; update() then holds everything still until the
+   * "Death = restart" reset — see damagePlayer). Guarded by `playerChar.dying` so a crowd of enemies
+   * can't re-enter this each frame. We cancel any active order and clear an in-flight hit-flash, then
+   * `playerChar.die()` freezes + plays the collapse; update() holds everything still until the
    * scheduled restart fires (the delayedCall runs on the scene clock, which the test harness drives).
    */
   private killPlayer(): void {
-    this.playerDying = true;
     console.log('player down — restarting'); // the death→restart signal the death spec asserts
     this.cancelAll();
-    this.player.body.setVelocity(0, 0);
-    this.attackLockUntil = 0;
-    this.fx.cleanupActorFx(this.player);
-    const facing = this.facingDir();
-    this.player.setScale((this.player.getData('baseScale') as number | undefined) ?? 1);
-    this.player.setFlipX(facing === 'side' && this.lastFacing.dCol < 0);
-    const key = playerAnimKey('death', facing);
-    this.player.anims.play(key);
-    const dur = this.anims.get(key)?.duration ?? 600;
+    this.fx.cleanupActorFx(this.player); // clear an in-flight hit-flash so the corpse isn't left mid-squash
+    const dur = this.playerChar.die(); // freezes + plays the collapse; returns its duration
     this.time.delayedCall(dur + DEATH_HOLD_MS, () => this.scene.restart());
   }
 
@@ -1243,7 +1095,7 @@ export class GameScene extends Phaser.Scene {
     // facing diagonal — pointing the attack at an empty tile next to an enemy the player is squarely
     // facing.
     if (vec.dx !== 0 || vec.dy !== 0) {
-      this.lastFacing =
+      this.playerChar.lastFacing =
         Math.abs(vec.dx) >= Math.abs(vec.dy)
           ? { dCol: Math.sign(vec.dx), dRow: 0 }
           : { dCol: 0, dRow: Math.sign(vec.dy) };
@@ -1428,7 +1280,7 @@ export class GameScene extends Phaser.Scene {
     this.trees = [];
     this.enemies = [];
 
-    const pt = this.playerTile();
+    const pt = this.playerChar.tile();
     const used = new Set<string>([tileKey(pt.col, pt.row)]);
     // Pick a random empty tile (in bounds, not a wall/blueprint/already-used), at least `minPlayerDist`
     // tiles (Chebyshev) from the player. Returns null if it can't find one within the attempt budget.
@@ -1535,271 +1387,41 @@ export class GameScene extends Phaser.Scene {
     this.addEnemy('kidZombie', 22, 50); // ~10 tiles below the map-centre spawn, as before the resize
   }
 
-  private addEnemy(
-    enemyId: string,
-    col: number,
-    row: number,
-    opts?: { patrolRoute?: Cell[]; mode?: MonsterMode; weaponId?: string },
-  ): void {
-    const def = ENEMIES[enemyId];
-    const enemyActor = ACTIVE_TILESET.actors.enemy;
-    const { render } = enemyActor;
-    const sprite = this.add
-      .sprite(tileToWorldCenter(col), tileToWorldCenter(row), enemyWalkKey)
-      .setDepth(9);
-    sprite.setScale(render.scale).setOrigin(render.originX, render.originY);
-    sprite.setData('baseScale', render.scale); // rest scale the flinch squash returns to
-    this.physics.add.existing(sprite);
-    const enemySprite = sprite as EnemyUnit['sprite'];
-    enemySprite.body.setCollideWorldBounds(true);
-    this.fitActorBody(enemySprite, render);
-    const ai = initialMonsterState(opts?.patrolRoute);
-    if (opts?.mode) ai.mode = opts.mode; // scenario override (e.g. spawn already chasing)
-
-    // Roll a held weapon from the enemy's pool (Phase B) — or take a scenario-forced id. The weapon is
-    // a plain image (no physics body); it's pinned to the hand each tick in syncEnemyAttachments.
-    const pool = def.weaponPool ?? [];
-    const weaponId =
-      opts?.weaponId ?? (pool.length ? pool[Math.floor(this.rng() * pool.length)] : undefined);
-    let weapon: EnemyUnit['weapon'];
-    const art = weaponId ? enemyActor.weapons[weaponId] : undefined;
-    const stats = weaponId ? MONSTER_WEAPONS[weaponId] : undefined;
-    if (weaponId && art && stats) {
-      const wsprite = this.add.image(sprite.x, sprite.y, resolveTile(art.source).key);
-      wsprite
-        .setOrigin(art.pivot[0], art.pivot[1])
-        .setScale(art.scale ?? 1)
-        .setDepth(sprite.depth + art.z);
-      weapon = { id: weaponId, sprite: wsprite, def: stats, swingRot: 0 };
-    }
-
-    // Both fists — always (the skeleton has hands whether or not it's armed). The gripping hand draws
-    // over the weapon, the free hand beside the body; both pinned each tick in syncEnemyAttachments.
-    const handArt = enemyActor.hand;
-    const handKey = resolveTile(handArt.source).key;
-    const mkHand = (z: number) =>
-      this.add
-        .image(sprite.x, sprite.y, handKey)
-        .setOrigin(handArt.pivot[0], handArt.pivot[1])
-        .setDepth(sprite.depth + z);
-    const hands = { main: mkHand(handArt.mainZ), off: mkHand(handArt.offZ) };
-
-    this.enemies.push({
-      id: `enemy-${this.nextEnemyId++}`,
-      sprite: enemySprite,
-      def,
-      hp: def.maxHp,
-      alive: true,
-      col,
-      row,
-      ai,
-      lastContactAt: 0,
-      path: [],
-      pathIndex: 0,
-      activeStrip: 'walk', // addEnemy set up the 64px Walk footprint above
-      weapon,
-      hands,
-    });
-    this.syncEnemyAttachments(this.enemies[this.enemies.length - 1]); // place weapon + fists on frame 0
+  private addEnemy(enemyId: string, col: number, row: number, opts?: MonsterSpawnOpts): void {
+    this.enemies.push(
+      new MonsterCharacter(
+        this,
+        `enemy-${this.nextEnemyId++}`,
+        ENEMIES[enemyId],
+        col,
+        row,
+        this.rng,
+        opts,
+      ),
+    );
   }
 
-  /** Step an enemy toward its next waypoint (mirrors advancePath's approach); true once its
-   * current path is exhausted. */
-  private advanceEnemy(z: EnemyUnit): boolean {
-    if (z.pathIndex >= z.path.length) {
-      z.sprite.body.setVelocity(0, 0);
-      return true;
-    }
-    const wp = z.path[z.pathIndex];
-    const wx = tileToWorldCenter(wp.col);
-    const wy = tileToWorldCenter(wp.row);
-    if (Phaser.Math.Distance.Between(z.sprite.x, z.sprite.y, wx, wy) <= 2) {
-      z.sprite.body.reset(wx, wy);
-      z.col = wp.col;
-      z.row = wp.row;
-      z.pathIndex += 1;
-      return z.pathIndex >= z.path.length;
-    }
-    this.physics.moveTo(z.sprite, wx, wy, z.def.speed);
-    return false;
-  }
-
-  /**
-   * Enemy animation each tick: the Run cycle while moving (flipped by movement-x — art faces right),
-   * the real 4-frame Idle bob when stationary in a calm mode (its own 32px footprint, Phase B), or a
-   * held Run frame-0 pose when stalled in melee while chasing (the lunge is the attack tell — no bob
-   * mid-bite). The footprint (scale/origin/body) is swapped only on a state change (setEnemyFootprint).
-   */
-  private updateEnemyAnim(z: EnemyUnit): void {
-    const moving = z.sprite.body.velocity.lengthSq() > 1;
-    const calmIdle = !moving && z.ai.mode !== 'chase';
-    this.setEnemyFootprint(z, calmIdle ? 'idle' : 'walk');
-
-    if (calmIdle) {
-      z.sprite.anims.play(enemyIdleKey, true); // looping gentle bob
-    } else if (moving) {
-      const vx = z.sprite.body.velocity.x;
-      if (vx !== 0) z.sprite.setFlipX(vx < 0);
-      z.sprite.anims.play(enemyWalkKey, true);
-    } else {
-      z.sprite.anims.stop();
-      z.sprite.setFrame(0); // chasing but stalled in melee → hold the Run frame-0 pose
-    }
-
-    this.syncEnemyAttachments(z); // pin the weapon (if any) + both fists to this frame's hand anchors
-  }
-
-  /**
-   * Pin the held weapon to the wielder's hand for the CURRENT animation frame — called every tick (not
-   * on `animationupdate`, so the lunge/swing slide between frame changes without the pin going stale).
-   * Reads the active strip's per-frame `mainHand` anchor, runs the pure {@link weaponTransform} with the
-   * live flipX + swing angle, and writes the result onto the weapon image (position/flip/angle). Scale
-   * is owned by the swing tween, so it's untouched here.
-   */
-  private syncEnemyAttachments(z: EnemyUnit): void {
-    const enemy = ACTIVE_TILESET.actors.enemy;
-    const strip = z.activeStrip === 'idle' ? enemy.idle : enemy.walk;
-    const frameW = strip.frameWidth ?? strip.frameSize;
-    const frameH = strip.frameSize;
-    const frame = Number(z.sprite.frame.name); // spritesheet frame index (0-based) == anchor index
-
-    // Resolve a slot's anchor for THIS frame into a world offset/angle, or undefined if the strip
-    // carries no anchors for it (→ caller hides that attachment).
-    const pin = (anchors: AttachPoint[] | undefined, extraRot: number) => {
-      if (!anchors || anchors.length === 0) return undefined;
-      const index = Math.max(0, Math.min(anchors.length - 1, Number.isFinite(frame) ? frame : 0));
-      return weaponTransform({
-        anchor: anchors[index],
-        actorRender: enemy.render,
-        stripRender: strip.render,
-        frameW,
-        frameH,
-        flipX: z.sprite.flipX,
-        extraRot,
-      });
-    };
-
-    // Weapon at the main-hand grip: resting `rot` + the live coded swing (about its grip = this anchor).
-    if (z.weapon) {
-      const t = pin(strip.anchors?.mainHand, z.weapon.swingRot);
-      if (t)
-        z.weapon.sprite
-          .setPosition(z.sprite.x + t.x, z.sprite.y + t.y)
-          .setFlipX(t.flipX)
-          .setAngle(t.rotation);
-    }
-    // Fists: a fist doesn't rotate, so pin position + mirror only (angle stays 0). The gripping hand
-    // sits at the SAME anchor as the weapon, so it stays put while the weapon arcs about it.
-    if (z.hands) {
-      const m = pin(strip.anchors?.mainHand, 0);
-      z.hands.main.setVisible(!!m);
-      if (m) z.hands.main.setPosition(z.sprite.x + m.x, z.sprite.y + m.y).setFlipX(m.flipX);
-      const o = pin(strip.anchors?.offHand, 0);
-      z.hands.off.setVisible(!!o);
-      if (o) z.hands.off.setPosition(z.sprite.x + o.x, z.sprite.y + o.y).setFlipX(o.flipX);
-    }
-  }
-
-  /**
-   * Swap the enemy sprite between its Walk (64px) and Idle (32px) footprints — on an actual change
-   * only. Applies the target strip's render (scale/origin) and re-fits the Arcade body so its WORLD
-   * footprint (a ~1-tile box at the feet) is identical in both states: the display size matches (32px
-   * Idle @scale 2 == 64px Run @scale 1) and the contact tile is unchanged (critique #3). `sprite.x/y`
-   * is untouched, so there's no positional jump — only the drawn pixels reflow around the same anchor.
-   */
-  private setEnemyFootprint(z: EnemyUnit, which: 'idle' | 'walk'): void {
-    if (z.activeStrip === which) return;
-    z.activeStrip = which;
-    const enemy = ACTIVE_TILESET.actors.enemy;
-    const render = which === 'idle' ? (enemy.idle.render ?? enemy.render) : enemy.render;
-    // Base frame of the target strip first, so fitActorBody reads the right frame size below.
-    z.sprite.setTexture(which === 'idle' ? enemyIdleKey : enemyWalkKey, 0);
-    z.sprite.setScale(render.scale).setOrigin(render.originX, render.originY);
-    z.sprite.setData('baseScale', render.scale); // flinch-squash rest scale follows the active footprint
-    this.fitActorBody(z.sprite, render);
-  }
-
-  /** Per-frame AI tick (pure FSM in systems/monsterAI) + chase/contact-damage for every live enemy.
-   *  The scene owns the *effects*: A* repath, `advanceEnemy`, the contact bite; the FSM owns the
-   *  *decision* (mode, where to move, whether to repath). */
+  /** Per-frame AI tick for every live monster. The scene builds the shared world snapshot + effect
+   *  callbacks (FX via the manager, damage/bus emissions via its own seams); each MonsterCharacter
+   *  *executes* its FSM decision (repath/move/contact-bite) — see MonsterCharacter.update. */
   private updateEnemies(): void {
-    const now = this.time.now;
-    const pt = this.playerTile();
-    // The player's body tiles (feet + torso overhang); an enemy in melee contact with ANY of them
-    // lands its bite, so a tall player is reachable by its drawn torso, not only its feet tile.
-    const playerBody = hurtboxTiles(pt, this.playerStats.hurtbox ?? DEFAULT_HURTBOX);
+    const pt = this.playerChar.tile();
+    const env: MonsterTickEnv = {
+      nowMs: this.time.now,
+      playerTile: pt,
+      playerPos: { x: this.player.x, y: this.player.y },
+      playerBodyTiles: hurtboxTiles(pt, this.playerChar.stats.hurtbox ?? DEFAULT_HURTBOX),
+      playerStats: this.playerChar.stats,
+      dims: this.gridDims,
+      isBlocked: this.isBlocked,
+      rng: this.rng,
+      lungeAt: (m, x, y) => this.fx.lungeAt(m, x, y),
+      onPlayerHurt: () => this.onPlayerHurt(),
+      damagePlayer: (amount) => this.damagePlayer(amount),
+    };
     for (const z of this.enemies) {
       if (!z.alive) continue;
-
-      const decision = stepMonster(
-        z.ai,
-        {
-          nowMs: now,
-          monster: { col: z.col, row: z.row },
-          monsterPos: { x: z.sprite.x, y: z.sprite.y },
-          playerPos: { x: this.player.x, y: this.player.y },
-          playerTile: pt,
-          acquireRadiusPx: z.def.vision ?? 0,
-          chaseDropRadiusPx: MONSTER_CHASE_DROP_RADIUS_PX,
-          veerBandPx: MONSTER_VEER_BAND_PX,
-          veerMaxTiles: MONSTER_VEER_MAX_TILES,
-          repathMs: MONSTER_REPATH_MS,
-          idleMsMin: MONSTER_IDLE_MS_MIN,
-          idleMsMax: MONSTER_IDLE_MS_MAX,
-          wanderRadiusTiles: MONSTER_WANDER_RADIUS_TILES,
-          patrolPauseMs: MONSTER_PATROL_PAUSE_MS,
-          dims: this.gridDims,
-          isBlocked: this.isBlocked,
-        },
-        this.rng,
-      );
-      z.ai = decision.state;
-
-      // Chase + in melee contact: stand and bite on the cadence (skip movement).
-      if (z.ai.mode === 'chase') {
-        const inContact = playerBody.some(
-          (t) => Math.max(Math.abs(t.col - z.col), Math.abs(t.row - z.row)) <= 1,
-        );
-        if (inContact) {
-          z.sprite.body.setVelocity(0, 0);
-          // The equipped weapon sets the base damage + the attack cadence (a knife bites ~2× as often
-          // as a club); an unarmed monster falls back to the shared unarmed damage + contact cooldown.
-          const baseDmg = z.weapon ? z.weapon.def.damage : UNARMED_BASE_DAMAGE;
-          const cooldown = z.weapon ? z.weapon.def.attackMs : CONTACT_DAMAGE_COOLDOWN_MS;
-          if (now - z.lastContactAt >= cooldown) {
-            z.lastContactAt = now;
-            this.fx.lungeAt(z, this.player.x, this.player.y); // visible attack tell + weapon swing
-            const dmg = resolveMeleeAttack(z.def, this.playerStats, baseDmg, this.rng);
-            if (dmg > 0) this.onPlayerHurt(); // flash + camera kick + damage vignette when the bite lands
-            this.damagePlayer(dmg);
-          }
-          this.updateEnemyAnim(z);
-          continue;
-        }
-      }
-
-      // Otherwise honour the FSM's move command: repath when asked, then walk (or stand if no target).
-      if (decision.repath && decision.targetTile) {
-        const path = findPath(
-          { col: z.col, row: z.row },
-          decision.targetTile,
-          this.isBlocked,
-          this.gridDims,
-        );
-        z.path = path ?? [];
-        z.pathIndex = 0;
-        // Only a truly UNREACHABLE calm-mode pick (findPath → null) strands the monster — drop to idle
-        // so it re-picks next beat. An empty path ([]) is "already on the target" (e.g. a patroller
-        // sitting on its first waypoint): keep the mode so the FSM's arrival logic (pause → next
-        // waypoint) runs. Chase keeps trying regardless (the player may be briefly unreachable).
-        if (path === null && z.ai.mode !== 'chase') {
-          z.ai = { ...z.ai, mode: 'idle', goalTile: null, timerMs: now + MONSTER_IDLE_MS_MIN };
-        }
-      }
-      if (decision.targetTile) this.advanceEnemy(z);
-      else z.sprite.body.setVelocity(0, 0);
-
-      this.updateEnemyAnim(z);
+      z.update(env);
     }
   }
 
@@ -1829,7 +1451,8 @@ export class GameScene extends Phaser.Scene {
       return false;
     // Must have a tile the worker can stand on to build it (Finding 4 — no stranded blueprints).
     return (
-      reachableAdjacent(this.playerTile(), { col, row }, this.isBlocked, this.gridDims) !== null
+      reachableAdjacent(this.playerChar.tile(), { col, row }, this.isBlocked, this.gridDims) !==
+      null
     );
   }
 
@@ -1942,15 +1565,15 @@ export class GameScene extends Phaser.Scene {
     this.siteTiles.clear();
     this.occupied.clear();
     this.nextSiteId = 0;
-    this.path = [];
-    this.pathIndex = 0;
+    this.playerChar.path = [];
+    this.playerChar.pathIndex = 0;
     this.actionGoal = null;
     this.chopElapsed = 0;
     this.harvestSwing = null;
-    this.attackLockUntil = 0;
+    this.playerChar.attackLockUntil = 0;
     this.combatMoveVec = { dx: 0, dy: 0 };
     this.fx.resetCombatFx(); // start each scenario with clean FX counters/flags (see create())
-    this.playerDying = false;
+    this.playerChar.dying = false;
     this.buildMode = false;
     this.queueMarkers = [];
     this.outlinedTreeIds.clear();
@@ -1969,8 +1592,11 @@ export class GameScene extends Phaser.Scene {
     const snap = this.inv.snapshot();
     if (Object.keys(snap).length) this.inv.spend(snap);
 
-    this.playerHp = this.playerStats.maxHp;
-    this.game.events.emit('player:hpChanged', { hp: this.playerHp, maxHp: this.playerStats.maxHp });
+    this.playerChar.hp = this.playerChar.stats.maxHp;
+    this.game.events.emit('player:hpChanged', {
+      hp: this.playerChar.hp,
+      maxHp: this.playerChar.stats.maxHp,
+    });
   }
 
   /** Construct the world declared by `spec` (see {@link ScenarioSpec}) and return the placed ids. */
@@ -1983,7 +1609,9 @@ export class GameScene extends Phaser.Scene {
     ];
     this.player.body.reset(tileToWorldCenter(pcol), tileToWorldCenter(prow));
     this.player.body.setVelocity(0, 0);
-    this.lastFacing = spec.facing ? { ...FACING_DELTAS[spec.facing] } : { dCol: 0, dRow: 1 };
+    this.playerChar.lastFacing = spec.facing
+      ? { ...FACING_DELTAS[spec.facing] }
+      : { dCol: 0, dRow: 1 };
 
     this.mode = spec.mode ?? 'command';
     this.game.events.emit('mode:changed', this.mode);
@@ -2111,11 +1739,11 @@ export class GameScene extends Phaser.Scene {
     pulsingTreeId: string | null;
     queuedTreeIds: string[];
   } {
-    const t = this.playerTile();
+    const t = this.playerChar.tile();
     return {
       currentKind: this.queue.current?.kind ?? null,
       pending: this.queue.pending,
-      pathLen: Math.max(0, this.path.length - this.pathIndex),
+      pathLen: Math.max(0, this.playerChar.path.length - this.playerChar.pathIndex),
       sites: this.sites.length,
       buildMode: this.buildMode,
       occupied: this.occupied.size,
@@ -2131,8 +1759,8 @@ export class GameScene extends Phaser.Scene {
       // Equipped weapon id per live enemy (null = unarmed) — lets a combat spec confirm the rolled/forced weapon.
       enemyWeapons: this.enemies.filter((z) => z.alive).map((z) => z.weapon?.id ?? null),
       corpses: this.fx.getCorpseCount(),
-      playerHp: this.playerHp,
-      playerDying: this.playerDying,
+      playerHp: this.playerChar.hp,
+      playerDying: this.playerChar.dying,
       playerFlash: this.fx.getPlayerFlash(),
       playerHitFlashes: this.fx.getPlayerHitFlashes(),
       enemyHitFlashes: this.fx.getEnemyHitFlashes(),
@@ -2274,7 +1902,7 @@ export class GameScene extends Phaser.Scene {
     this.fogShape.fillCircle(
       this.player.x,
       this.player.y,
-      this.playerStats.vision ?? PLAYER_START_VISION,
+      this.playerChar.stats.vision ?? PLAYER_START_VISION,
     );
     this.player.setVisible(this.inVisionRange(this.player.x, this.player.y));
   }
@@ -2283,7 +1911,7 @@ export class GameScene extends Phaser.Scene {
   private inVisionRange(x: number, y: number): boolean {
     return (
       Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y) <=
-      (this.playerStats.vision ?? PLAYER_START_VISION)
+      (this.playerChar.stats.vision ?? PLAYER_START_VISION)
     );
   }
 

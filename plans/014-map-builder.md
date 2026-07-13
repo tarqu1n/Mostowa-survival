@@ -434,7 +434,7 @@ free values render nearest-neighbour and are the author's aesthetic call.
     earlier clean `npm run typecheck` run before that edit landed, and by `git status` showing
     those files modified mid-session, not by this step). No files this step owns are implicated.
 
-- [ ] **Step 5: Editor store, history, and the Phaser viewport** `[delegate opus]`
+- [x] **Step 5: Editor store, history, and the Phaser viewport** `[delegate opus]`
   - `src/editor/store/history.ts` (pure, unit-testable): generic command stack —
     `apply(cmd)`, `undo()`, `redo()`, commands carry `do`/`undo` closures or patch pairs; coalesce
     consecutive paint strokes into one entry (stroke id). Tests in
@@ -468,6 +468,30 @@ free values render nearest-neighbour and are the author's aesthetic call.
     with a few palette entries, a shaped (non-rectangular) mask, and one decor object renders
     correctly in the viewport (void hatched); pan/zoom feel right; history tests green;
     `npm run check` green.
+  - Outcome: all in `src/editor/`. New: `store/history.ts` (pure generic command stack —
+    `apply/undo/redo/clear/canUndo/canRedo`, `Command{do,undo,strokeId?}`, consecutive same-`strokeId`
+    coalesce) + `store/__tests__/history.test.ts` (12 tests: apply/undo/redo, redo-invalidation,
+    coalescing, 25-op unwind); `store/editorStore.ts` (zustand `subscribeWithSelector` — the single
+    React↔Phaser bridge; all fields from the plan incl. full `activeTool` enum + `overlays`, plus
+    `mapEpoch`/`docRevision` signals; `catalog` stubbed null till step 6; all doc mutations route
+    through the history stack); `textureLoading.ts` (`tilesetAssetUrl` encodeURI mirror of
+    PreloadScene + `parseAssetId`); `EditorScene.ts` (per-layer 32-row-chunked RenderTexture bake via
+    batch API through `resolveTile`/`sheetKey`/`tileImageKey`; decor images; node/portal = labelled
+    markers for now; void = dark checker+hatch, rejects hover; grid+hover overlays; wheel zoom ×1–×4
+    around cursor, middle/space-drag pan, fit-on-load; failed textures logged+skipped);
+    `PhaserViewport.tsx` (mounts Phaser.Game pixelArt/transparent/AUTO into centre div,
+    StrictMode-safe destroy); `Toolbar.tsx`/`NewMapDialog.tsx`/`OpenMapDialog.tsx`/`Toast.tsx`/
+    `EditorApp.tsx` (New→`createEmptyMap`, Open via `GET /__editor/maps`, Save serialize→`parseMap`→
+    `putMap`+error toast, Undo/Redo buttons + Ctrl/Cmd+Z / Shift+Z keys, dirty dot, Map/World switch
+    with World = step-9 placeholder). Modified: `main.tsx` (renders `EditorApp`), `editor.css`.
+    Verified: history 12/12; programmatic save→reopen round-trip through the REAL middleware
+    (createEmptyMap 45×80 → serialize → PUT → GET → parse, byte-identical + fixed-point, manifest
+    regenerated), cleaned up to zero `src/data/maps/` diff; dev-server transforms the editor entry
+    (React+Phaser+zustand) 200 OK; scoped gate green — `tsc --noEmit` exit 0, `eslint src/editor` 0
+    errors (5 sanctioned Phaser-`on` warnings), `prettier --check src/editor` clean, `vitest` 207/207.
+    ⚠ VISUAL acceptance (shaped map w/ palette+decor renders, void hatched, pan/zoom feel) NOT
+    machine-verified — needs a human at `npm run editor`. Painting/dirty-chunk narrowing is stubbed
+    for step 6 (`onDocEdited` full-rebakes with a seam comment).
 
 - [ ] **Step 6: Asset library panel + tile painting** `[delegate sonnet]`
   - `src/editor/panels/LibraryPanel.tsx`: loads `asset-catalog.json`; pack + category tree,

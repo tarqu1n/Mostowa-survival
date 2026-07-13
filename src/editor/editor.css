@@ -1,4 +1,4 @@
-/* Map Builder editor shell styles (plan 014 step 4) — plain CSS, dark theme, no framework. */
+/* Map Builder editor styles (plan 014) — plain CSS, dark theme, no framework. */
 
 :root {
   color-scheme: dark;
@@ -22,11 +22,80 @@ body {
   height: 100vh;
 }
 
+button {
+  font: inherit;
+  color: #e8e0d8;
+  background: #2c2420;
+  border: 1px solid #3a2f2a;
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: #3a2f2a;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button.is-active {
+  background: #5a4632;
+  border-color: #7a5c3c;
+}
+
+/* ---- Shell: toolbar over a three-pane body ---- */
+
 .editor-shell {
-  display: grid;
-  grid-template-columns: 240px 1fr 280px;
+  display: flex;
+  flex-direction: column;
   height: 100vh;
 }
+
+.editor-body {
+  display: grid;
+  grid-template-columns: 240px 1fr 280px;
+  flex: 1;
+  min-height: 0; /* let the viewport pane shrink instead of overflowing the shell */
+}
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 12px;
+  background: #1b1614;
+  border-bottom: 1px solid #2c2420;
+}
+
+.editor-toolbar-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.editor-toolbar-title {
+  flex: 1;
+  justify-content: center;
+  font-size: 0.9rem;
+}
+
+.editor-mapid {
+  color: #8a7f76;
+  font-size: 0.8rem;
+}
+
+.editor-dirty {
+  color: #e0b020;
+}
+
+.editor-toolbar-view {
+  margin-left: auto;
+}
+
+/* ---- Panes ---- */
 
 .editor-pane {
   overflow: auto;
@@ -48,10 +117,10 @@ body {
 }
 
 .editor-pane--viewport {
+  position: relative;
   background: #0e0b0a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 0;
+  overflow: hidden;
 }
 
 .editor-pane--inspector {
@@ -64,10 +133,121 @@ body {
   font-size: 0.9rem;
 }
 
-.editor-viewport-placeholder {
-  color: #554942;
-  border: 1px dashed #3a2f2a;
-  padding: 40px;
+/* The Phaser canvas host fills the centre pane; Scale.RESIZE tracks its size. */
+.editor-viewport-host {
+  width: 100%;
+  height: 100%;
+}
+
+.editor-empty-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6a5d54;
+  font-size: 0.95rem;
+  pointer-events: none;
+}
+
+/* ---- Modals (New / Open) ---- */
+
+.editor-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.editor-modal {
+  background: #1b1614;
+  border: 1px solid #3a2f2a;
+  border-radius: 6px;
+  padding: 16px 18px;
+  min-width: 280px;
+  max-width: 360px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.editor-modal h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.editor-modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+  color: #a99a8c;
+}
+
+.editor-modal input {
+  font: inherit;
+  color: #e8e0d8;
+  background: #0e0b0a;
+  border: 1px solid #3a2f2a;
+  border-radius: 4px;
+  padding: 5px 8px;
+}
+
+.editor-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.editor-map-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.editor-map-list li {
+  margin-bottom: 4px;
+}
+
+.editor-map-list button {
+  width: 100%;
+  text-align: left;
+}
+
+.editor-error-text {
+  color: #e07a6a;
+  font-size: 0.8rem;
+  margin: -4px 0 8px;
+}
+
+/* ---- Toast ---- */
+
+.editor-toast {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border-radius: 5px;
+  font-size: 0.85rem;
+  z-index: 200;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.editor-toast--ok {
+  background: #2f4632;
+  border: 1px solid #46703c;
+}
+
+.editor-toast--error {
+  background: #4a2420;
+  border: 1px solid #b23b3b;
+  color: #f4d0c8;
 }
 
 /* Apply to any pixel-art image/canvas the editor renders (asset previews, the Phaser viewport). */

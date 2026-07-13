@@ -1,6 +1,6 @@
 # GameScene OOP Refactor (tooling + entities layer + scene decomposition)
 
-> Status: in review
+> Status: deployed
 
 ## Summary
 Two-part hardening pass. **Part one (Step 1):** land the project's code-quality tooling — a coding

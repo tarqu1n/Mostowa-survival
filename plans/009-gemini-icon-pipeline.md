@@ -1,7 +1,7 @@
 # Gemini Item-Icon Generation Pipeline
 
-> Status: in review — pipeline built (Step 1) + real icons generated & verified (Step 2). Both steps
-> committed locally to `master` (plan-009 files only; push held pending concurrent plan-014 WIP).
+> Status: deployed — pipeline (Step 1) + real `wood`/`stone`/`berries` icons (Step 2) committed,
+> pushed, and live on GitHub Pages (verified: deployed icons served at 1949/2101/2118 B, 2026-07-13).
 
 ## Summary
 

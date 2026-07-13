@@ -1,0 +1,15 @@
+{
+  "id": "mostowo-custom",
+  "name": "Mostowo Custom (self-made art)",
+  "author": "Mostowo Survival",
+  "sourceUrl": "",
+  "licence": "original",
+  "tileSize": 16,
+  "rules": {
+    "tile": ["Environment/Tilesets/**"],
+    "strip": ["**/*-Sheet.png"],
+    "selfMade": ["**"]
+  },
+  "overrides": {},
+  "exclude": []
+}

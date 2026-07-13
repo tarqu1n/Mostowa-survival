@@ -1,0 +1,4253 @@
+{
+  "generatedFrom": [
+    "mostowo-custom",
+    "pixel-crawler"
+  ],
+  "packs": [
+    {
+      "id": "mostowo-custom",
+      "name": "Mostowo Custom (self-made art)",
+      "licence": "original",
+      "tileSize": 16
+    },
+    {
+      "id": "pixel-crawler",
+      "name": "Pixel Crawler - Free Pack (v2.11)",
+      "licence": "Free for commercial/study use, alter freely, credit optional, no reselling standalone (see Terms.txt)",
+      "tileSize": 16
+    }
+  ],
+  "assets": [
+    {
+      "id": "pixel-crawler/_derived/bush.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "_derived/bush.png"
+      },
+      "w": 28,
+      "h": 24,
+      "category": "_derived",
+      "tags": [
+        "bush",
+        "derived"
+      ],
+      "origin": "self-made"
+    },
+    {
+      "id": "pixel-crawler/_derived/hand.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "_derived/hand.png"
+      },
+      "w": 7,
+      "h": 7,
+      "category": "_derived",
+      "tags": [
+        "derived",
+        "hand"
+      ],
+      "origin": "self-made"
+    },
+    {
+      "id": "pixel-crawler/_derived/rock.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "_derived/rock.png"
+      },
+      "w": 26,
+      "h": 27,
+      "category": "_derived",
+      "tags": [
+        "derived",
+        "rock"
+      ],
+      "origin": "self-made"
+    },
+    {
+      "id": "pixel-crawler/_derived/tree_pine.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "_derived/tree_pine.png"
+      },
+      "w": 37,
+      "h": 76,
+      "category": "_derived",
+      "tags": [
+        "derived",
+        "pine",
+        "tree"
+      ],
+      "origin": "self-made"
+    },
+    {
+      "id": "pixel-crawler/_derived/weapons/club.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "_derived/weapons/club.png"
+      },
+      "w": 7,
+      "h": 40,
+      "category": "_derived/weapons",
+      "tags": [
+        "club",
+        "derived",
+        "weapons"
+      ],
+      "origin": "self-made"
+    },
+    {
+      "id": "pixel-crawler/_derived/weapons/knife.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "_derived/weapons/knife.png"
+      },
+      "w": 4,
+      "h": 18,
+      "category": "_derived/weapons",
+      "tags": [
+        "derived",
+        "knife",
+        "weapons"
+      ],
+      "origin": "self-made"
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Idle/Carry_Idle_Down-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Carry_Idle/Carry_Idle_Down-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Carry_Idle",
+      "tags": [
+        "a",
+        "animations",
+        "body",
+        "carry",
+        "characters",
+        "down",
+        "entities",
+        "idle",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Idle/Carry_Idle_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Carry_Idle/Carry_Idle_Side-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Carry_Idle",
+      "tags": [
+        "a",
+        "animations",
+        "body",
+        "carry",
+        "characters",
+        "entities",
+        "idle",
+        "sheet",
+        "side"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Idle/Carry_Idle_Up-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Carry_Idle/Carry_Idle_Up-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Carry_Idle",
+      "tags": [
+        "a",
+        "animations",
+        "body",
+        "carry",
+        "characters",
+        "entities",
+        "idle",
+        "sheet",
+        "up"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Run/Carry_Run_Down-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Carry_Run/Carry_Run_Down-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Carry_Run",
+      "tags": [
+        "a",
+        "animations",
+        "body",
+        "carry",
+        "characters",
+        "down",
+        "entities",
+        "run",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Run/Carry_Run_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Carry_Run/Carry_Run_Side-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Carry_Run",
+      "tags": [
+        "a",
+        "animations",
+        "body",
+        "carry",
+        "characters",
+        "entities",
+        "run",
+        "sheet",
+        "side"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Run/Carry_Run_Up-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Carry_Run/Carry_Run_Up-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Carry_Run",
+      "tags": [
+        "a",
+        "animations",
+        "body",
+        "carry",
+        "characters",
+        "entities",
+        "run",
+        "sheet",
+        "up"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Walk/Carry_Walk_Down-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Carry_Walk/Carry_Walk_Down-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Carry_Walk",
+      "tags": [
+        "a",
+        "animations",
+        "body",
+        "carry",
+        "characters",
+        "down",
+        "entities",
+        "sheet",
+        "walk"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Walk/Carry_Walk_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Carry_Walk/Carry_Walk_Side-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Carry_Walk",
+      "tags": [
+        "a",
+        "animations",
+        "body",
+        "carry",
+        "characters",
+        "entities",
+        "sheet",
+        "side",
+        "walk"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Walk/Carry_Walk_Up-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Carry_Walk/Carry_Walk_Up-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Carry_Walk",
+      "tags": [
+        "a",
+        "animations",
+        "body",
+        "carry",
+        "characters",
+        "entities",
+        "sheet",
+        "up",
+        "walk"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Collect_Base/Collect_Down-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Collect_Base/Collect_Down-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Collect_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "collect",
+        "down",
+        "entities",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Collect_Base/Collect_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Collect_Base/Collect_Side-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Collect_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "collect",
+        "entities",
+        "sheet",
+        "side"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Collect_Base/Collect_Up-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Collect_Base/Collect_Up-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Collect_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "collect",
+        "entities",
+        "sheet",
+        "up"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Crush_Base/Crush_Down-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Crush_Base/Crush_Down-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Crush_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "crush",
+        "down",
+        "entities",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Crush_Base/Crush_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Crush_Base/Crush_Side-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Crush_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "crush",
+        "entities",
+        "sheet",
+        "side"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Crush_Base/Crush_Up-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Crush_Base/Crush_Up-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Crush_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "crush",
+        "entities",
+        "sheet",
+        "up"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Death_Base/Death_Down-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Death_Base/Death_Down-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Death_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "death",
+        "down",
+        "entities",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Death_Base/Death_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Death_Base/Death_Side-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Death_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "death",
+        "entities",
+        "sheet",
+        "side"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Death_Base/Death_Up-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Death_Base/Death_Up-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Death_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "death",
+        "entities",
+        "sheet",
+        "up"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Fishing_Base/Fishing_Down-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Fishing_Base/Fishing_Down-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Fishing_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "down",
+        "entities",
+        "fishing",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Fishing_Base/Fishing_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Fishing_Base/Fishing_Side-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Fishing_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "fishing",
+        "sheet",
+        "side"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Fishing_Base/Fishing_Up-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Fishing_Base/Fishing_Up-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Fishing_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "fishing",
+        "sheet",
+        "up"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Hit_Base/Hit_Down-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Hit_Base/Hit_Down-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Hit_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "down",
+        "entities",
+        "hit",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Hit_Base/Hit_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Hit_Base/Hit_Side-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Hit_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "hit",
+        "sheet",
+        "side"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Hit_Base/Hit_Up-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Hit_Base/Hit_Up-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Hit_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "hit",
+        "sheet",
+        "up"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Idle_Base/Idle_Down-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Idle_Base/Idle_Down-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Idle_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "down",
+        "entities",
+        "idle",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Idle_Base/Idle_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Idle_Base/Idle_Side-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Idle_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "idle",
+        "sheet",
+        "side"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Idle_Base/Idle_Up-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Idle_Base/Idle_Up-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Idle_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "idle",
+        "sheet",
+        "up"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Pierce_Base/Pierce_Down-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Pierce_Base/Pierce_Down-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Pierce_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "down",
+        "entities",
+        "pierce",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Pierce_Base/Pierce_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Pierce_Base/Pierce_Side-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Pierce_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "pierce",
+        "sheet",
+        "side"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Pierce_Base/Pierce_Top-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Pierce_Base/Pierce_Top-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Pierce_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "pierce",
+        "sheet",
+        "top"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Run_Base/Run_Down-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Run_Base/Run_Down-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Run_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "down",
+        "entities",
+        "run",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Run_Base/Run_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Run_Base/Run_Side-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Run_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "run",
+        "sheet",
+        "side"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Run_Base/Run_Up-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Run_Base/Run_Up-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Run_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "run",
+        "sheet",
+        "up"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Slice_Base/Slice_Down-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Slice_Base/Slice_Down-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Slice_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "down",
+        "entities",
+        "sheet",
+        "slice"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Slice_Base/Slice_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Slice_Base/Slice_Side-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Slice_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "sheet",
+        "side",
+        "slice"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Slice_Base/Slice_Up-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Slice_Base/Slice_Up-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Slice_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "sheet",
+        "slice",
+        "up"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Walk_Base/Walk_Down-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Walk_Base/Walk_Down-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Walk_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "down",
+        "entities",
+        "sheet",
+        "walk"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Walk_Base/Walk_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Walk_Base/Walk_Side-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Walk_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "sheet",
+        "side",
+        "walk"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Walk_Base/Walk_Up-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Walk_Base/Walk_Up-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Walk_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "sheet",
+        "up",
+        "walk"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Watering_Base/Watering_Down-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Watering_Base/Watering_Down-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Watering_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "down",
+        "entities",
+        "sheet",
+        "watering"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Watering_Base/Watering_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Watering_Base/Watering_Side-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Watering_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "sheet",
+        "side",
+        "watering"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Watering_Base/Watering_Up-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Characters/Body_A/Animations/Watering_Base/Watering_Up-Sheet.png"
+      },
+      "w": 512,
+      "h": 64,
+      "category": "Entities/Characters/Body_A/Animations/Watering_Base",
+      "tags": [
+        "a",
+        "animations",
+        "base",
+        "body",
+        "characters",
+        "entities",
+        "sheet",
+        "up",
+        "watering"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Rogue/Death/Death-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Orc Crew/Orc - Rogue/Death/Death-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Mobs/Orc Crew/Orc - Rogue/Death",
+      "tags": [
+        "crew",
+        "death",
+        "entities",
+        "mobs",
+        "orc",
+        "rogue",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Rogue/Idle/Idle-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Orc Crew/Orc - Rogue/Idle/Idle-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Entities/Mobs/Orc Crew/Orc - Rogue/Idle",
+      "tags": [
+        "crew",
+        "entities",
+        "idle",
+        "mobs",
+        "orc",
+        "rogue",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Rogue/Run/Run-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Orc Crew/Orc - Rogue/Run/Run-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Mobs/Orc Crew/Orc - Rogue/Run",
+      "tags": [
+        "crew",
+        "entities",
+        "mobs",
+        "orc",
+        "rogue",
+        "run",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Shaman/Death/Death-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Orc Crew/Orc - Shaman/Death/Death-Sheet.png"
+      },
+      "w": 448,
+      "h": 64,
+      "category": "Entities/Mobs/Orc Crew/Orc - Shaman/Death",
+      "tags": [
+        "crew",
+        "death",
+        "entities",
+        "mobs",
+        "orc",
+        "shaman",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 7
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Shaman/Idle/Idle-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Orc Crew/Orc - Shaman/Idle/Idle-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Entities/Mobs/Orc Crew/Orc - Shaman/Idle",
+      "tags": [
+        "crew",
+        "entities",
+        "idle",
+        "mobs",
+        "orc",
+        "shaman",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Shaman/Run/Run-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Orc Crew/Orc - Shaman/Run/Run-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Mobs/Orc Crew/Orc - Shaman/Run",
+      "tags": [
+        "crew",
+        "entities",
+        "mobs",
+        "orc",
+        "run",
+        "shaman",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Warrior/Death/Death-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Orc Crew/Orc - Warrior/Death/Death-Sheet.png"
+      },
+      "w": 576,
+      "h": 80,
+      "category": "Entities/Mobs/Orc Crew/Orc - Warrior/Death",
+      "tags": [
+        "crew",
+        "death",
+        "entities",
+        "mobs",
+        "orc",
+        "sheet",
+        "warrior"
+      ],
+      "origin": "pack",
+      "frames": 7
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Warrior/Idle/Idle-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Orc Crew/Orc - Warrior/Idle/Idle-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Entities/Mobs/Orc Crew/Orc - Warrior/Idle",
+      "tags": [
+        "crew",
+        "entities",
+        "idle",
+        "mobs",
+        "orc",
+        "sheet",
+        "warrior"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Warrior/Run/Run-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Orc Crew/Orc - Warrior/Run/Run-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Mobs/Orc Crew/Orc - Warrior/Run",
+      "tags": [
+        "crew",
+        "entities",
+        "mobs",
+        "orc",
+        "run",
+        "sheet",
+        "warrior"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc/Death/Death-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Orc Crew/Orc/Death/Death-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Mobs/Orc Crew/Orc/Death",
+      "tags": [
+        "crew",
+        "death",
+        "entities",
+        "mobs",
+        "orc",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc/Idle/Idle-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Orc Crew/Orc/Idle/Idle-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Entities/Mobs/Orc Crew/Orc/Idle",
+      "tags": [
+        "crew",
+        "entities",
+        "idle",
+        "mobs",
+        "orc",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc/Run/Run-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Orc Crew/Orc/Run/Run-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Mobs/Orc Crew/Orc/Run",
+      "tags": [
+        "crew",
+        "entities",
+        "mobs",
+        "orc",
+        "run",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Base/Death/Death-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Skeleton Crew/Skeleton - Base/Death/Death-Sheet.png"
+      },
+      "w": 768,
+      "h": 64,
+      "category": "Entities/Mobs/Skeleton Crew/Skeleton - Base/Death",
+      "tags": [
+        "base",
+        "crew",
+        "death",
+        "entities",
+        "mobs",
+        "sheet",
+        "skeleton"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Base/Idle/Idle-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Skeleton Crew/Skeleton - Base/Idle/Idle-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Entities/Mobs/Skeleton Crew/Skeleton - Base/Idle",
+      "tags": [
+        "base",
+        "crew",
+        "entities",
+        "idle",
+        "mobs",
+        "sheet",
+        "skeleton"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Base/Run/Run-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Skeleton Crew/Skeleton - Base/Run/Run-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Mobs/Skeleton Crew/Skeleton - Base/Run",
+      "tags": [
+        "base",
+        "crew",
+        "entities",
+        "mobs",
+        "run",
+        "sheet",
+        "skeleton"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Mage/Death/Death-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Skeleton Crew/Skeleton - Mage/Death/Death-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Mobs/Skeleton Crew/Skeleton - Mage/Death",
+      "tags": [
+        "crew",
+        "death",
+        "entities",
+        "mage",
+        "mobs",
+        "sheet",
+        "skeleton"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Mage/Idle/Idle-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Skeleton Crew/Skeleton - Mage/Idle/Idle-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Entities/Mobs/Skeleton Crew/Skeleton - Mage/Idle",
+      "tags": [
+        "crew",
+        "entities",
+        "idle",
+        "mage",
+        "mobs",
+        "sheet",
+        "skeleton"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Mage/Run/Run-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Skeleton Crew/Skeleton - Mage/Run/Run-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Mobs/Skeleton Crew/Skeleton - Mage/Run",
+      "tags": [
+        "crew",
+        "entities",
+        "mage",
+        "mobs",
+        "run",
+        "sheet",
+        "skeleton"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Rogue/Death/Death-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Skeleton Crew/Skeleton - Rogue/Death/Death-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Mobs/Skeleton Crew/Skeleton - Rogue/Death",
+      "tags": [
+        "crew",
+        "death",
+        "entities",
+        "mobs",
+        "rogue",
+        "sheet",
+        "skeleton"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Rogue/Idle/Idle-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Skeleton Crew/Skeleton - Rogue/Idle/Idle-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Entities/Mobs/Skeleton Crew/Skeleton - Rogue/Idle",
+      "tags": [
+        "crew",
+        "entities",
+        "idle",
+        "mobs",
+        "rogue",
+        "sheet",
+        "skeleton"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Rogue/Run/Run-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Skeleton Crew/Skeleton - Rogue/Run/Run-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Mobs/Skeleton Crew/Skeleton - Rogue/Run",
+      "tags": [
+        "crew",
+        "entities",
+        "mobs",
+        "rogue",
+        "run",
+        "sheet",
+        "skeleton"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Warrior/Death/Death-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Skeleton Crew/Skeleton - Warrior/Death/Death-Sheet.png"
+      },
+      "w": 384,
+      "h": 48,
+      "category": "Entities/Mobs/Skeleton Crew/Skeleton - Warrior/Death",
+      "tags": [
+        "crew",
+        "death",
+        "entities",
+        "mobs",
+        "sheet",
+        "skeleton",
+        "warrior"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Warrior/Idle/Idle-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Skeleton Crew/Skeleton - Warrior/Idle/Idle-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Entities/Mobs/Skeleton Crew/Skeleton - Warrior/Idle",
+      "tags": [
+        "crew",
+        "entities",
+        "idle",
+        "mobs",
+        "sheet",
+        "skeleton",
+        "warrior"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Warrior/Run/Run-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Mobs/Skeleton Crew/Skeleton - Warrior/Run/Run-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Mobs/Skeleton Crew/Skeleton - Warrior/Run",
+      "tags": [
+        "crew",
+        "entities",
+        "mobs",
+        "run",
+        "sheet",
+        "skeleton",
+        "warrior"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Citizen_F/Peasant_A/Idle/Idle-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Citizen_F/Peasant_A/Idle/Idle-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Entities/Npc's/Citizen_F/Peasant_A/Idle",
+      "tags": [
+        "a",
+        "citizen",
+        "entities",
+        "f",
+        "idle",
+        "npc",
+        "peasant",
+        "s",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Citizen_F/Peasant_A/Walk/Walk-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Citizen_F/Peasant_A/Walk/Walk-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Npc's/Citizen_F/Peasant_A/Walk",
+      "tags": [
+        "a",
+        "citizen",
+        "entities",
+        "f",
+        "npc",
+        "peasant",
+        "s",
+        "sheet",
+        "walk"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_A/Idle_Hold/Idle_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Citizen_F/Tavern_A/Idle_Hold/Idle_Side-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Entities/Npc's/Citizen_F/Tavern_A/Idle_Hold",
+      "tags": [
+        "a",
+        "citizen",
+        "entities",
+        "f",
+        "hold",
+        "idle",
+        "npc",
+        "s",
+        "sheet",
+        "side",
+        "tavern"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_A/Idle/Idle_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Citizen_F/Tavern_A/Idle/Idle_Side-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Entities/Npc's/Citizen_F/Tavern_A/Idle",
+      "tags": [
+        "a",
+        "citizen",
+        "entities",
+        "f",
+        "idle",
+        "npc",
+        "s",
+        "sheet",
+        "side",
+        "tavern"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_A/Walk_Hold/Walk_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Citizen_F/Tavern_A/Walk_Hold/Walk_Side-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Npc's/Citizen_F/Tavern_A/Walk_Hold",
+      "tags": [
+        "a",
+        "citizen",
+        "entities",
+        "f",
+        "hold",
+        "npc",
+        "s",
+        "sheet",
+        "side",
+        "tavern",
+        "walk"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_A/Walk/Walk_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Citizen_F/Tavern_A/Walk/Walk_Side-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Npc's/Citizen_F/Tavern_A/Walk",
+      "tags": [
+        "a",
+        "citizen",
+        "entities",
+        "f",
+        "npc",
+        "s",
+        "sheet",
+        "side",
+        "tavern",
+        "walk"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_B/Idle_Hold/Idle_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Citizen_F/Tavern_B/Idle_Hold/Idle_Side-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Entities/Npc's/Citizen_F/Tavern_B/Idle_Hold",
+      "tags": [
+        "b",
+        "citizen",
+        "entities",
+        "f",
+        "hold",
+        "idle",
+        "npc",
+        "s",
+        "sheet",
+        "side",
+        "tavern"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_B/Idle/Idle_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Citizen_F/Tavern_B/Idle/Idle_Side-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Entities/Npc's/Citizen_F/Tavern_B/Idle",
+      "tags": [
+        "b",
+        "citizen",
+        "entities",
+        "f",
+        "idle",
+        "npc",
+        "s",
+        "sheet",
+        "side",
+        "tavern"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_B/Walk_Hold/Walk_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Citizen_F/Tavern_B/Walk_Hold/Walk_Side-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Npc's/Citizen_F/Tavern_B/Walk_Hold",
+      "tags": [
+        "b",
+        "citizen",
+        "entities",
+        "f",
+        "hold",
+        "npc",
+        "s",
+        "sheet",
+        "side",
+        "tavern",
+        "walk"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_B/Walk/Walk_Side-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Citizen_F/Tavern_B/Walk/Walk_Side-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Npc's/Citizen_F/Tavern_B/Walk",
+      "tags": [
+        "b",
+        "citizen",
+        "entities",
+        "f",
+        "npc",
+        "s",
+        "sheet",
+        "side",
+        "tavern",
+        "walk"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Knight/Death/Death-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Knight/Death/Death-Sheet.png"
+      },
+      "w": 288,
+      "h": 32,
+      "category": "Entities/Npc's/Knight/Death",
+      "tags": [
+        "death",
+        "entities",
+        "knight",
+        "npc",
+        "s",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 9
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Knight/Idle/Idle-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Knight/Idle/Idle-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Entities/Npc's/Knight/Idle",
+      "tags": [
+        "entities",
+        "idle",
+        "knight",
+        "npc",
+        "s",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Knight/Run/Run-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Knight/Run/Run-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Npc's/Knight/Run",
+      "tags": [
+        "entities",
+        "knight",
+        "npc",
+        "run",
+        "s",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Rogue/Death/Death-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Rogue/Death/Death-Sheet.png"
+      },
+      "w": 384,
+      "h": 32,
+      "category": "Entities/Npc's/Rogue/Death",
+      "tags": [
+        "death",
+        "entities",
+        "npc",
+        "rogue",
+        "s",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 12
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Rogue/Idle/Idle-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Rogue/Idle/Idle-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Entities/Npc's/Rogue/Idle",
+      "tags": [
+        "entities",
+        "idle",
+        "npc",
+        "rogue",
+        "s",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Rogue/Run/Run-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Rogue/Run/Run-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Npc's/Rogue/Run",
+      "tags": [
+        "entities",
+        "npc",
+        "rogue",
+        "run",
+        "s",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Wizzard/Death/Death-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Wizzard/Death/Death-Sheet.png"
+      },
+      "w": 384,
+      "h": 32,
+      "category": "Entities/Npc's/Wizzard/Death",
+      "tags": [
+        "death",
+        "entities",
+        "npc",
+        "s",
+        "sheet",
+        "wizzard"
+      ],
+      "origin": "pack",
+      "frames": 12
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Wizzard/Idle/Idle-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Wizzard/Idle/Idle-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Entities/Npc's/Wizzard/Idle",
+      "tags": [
+        "entities",
+        "idle",
+        "npc",
+        "s",
+        "sheet",
+        "wizzard"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Entities/Npc's/Wizzard/Run/Run-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Entities/Npc's/Wizzard/Run/Run-Sheet.png"
+      },
+      "w": 384,
+      "h": 64,
+      "category": "Entities/Npc's/Wizzard/Run",
+      "tags": [
+        "entities",
+        "npc",
+        "run",
+        "s",
+        "sheet",
+        "wizzard"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Animated/Pan_01-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Animated/Pan_01-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Environment/Props/Animated",
+      "tags": [
+        "01",
+        "animated",
+        "environment",
+        "pan",
+        "props",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Animated/Pan_02-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Animated/Pan_02-Sheet.png"
+      },
+      "w": 64,
+      "h": 32,
+      "category": "Environment/Props/Animated",
+      "tags": [
+        "02",
+        "animated",
+        "environment",
+        "pan",
+        "props",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 2
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Animated/Pan_03-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Animated/Pan_03-Sheet.png"
+      },
+      "w": 384,
+      "h": 32,
+      "category": "Environment/Props/Animated",
+      "tags": [
+        "03",
+        "animated",
+        "environment",
+        "pan",
+        "props",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 12
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Animated/Pan_04-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Animated/Pan_04-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Environment/Props/Animated",
+      "tags": [
+        "04",
+        "animated",
+        "environment",
+        "pan",
+        "props",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Animated/Pan_05-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Animated/Pan_05-Sheet.png"
+      },
+      "w": 256,
+      "h": 32,
+      "category": "Environment/Props/Animated",
+      "tags": [
+        "05",
+        "animated",
+        "environment",
+        "pan",
+        "props",
+        "sheet"
+      ],
+      "origin": "pack",
+      "frames": 8
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Dungeon_Props.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Dungeon_Props.png"
+      },
+      "w": 400,
+      "h": 400,
+      "category": "Environment/Props/Static",
+      "tags": [
+        "dungeon",
+        "environment",
+        "props",
+        "static"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Esoteric.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Esoteric.png"
+      },
+      "w": 400,
+      "h": 400,
+      "category": "Environment/Props/Static",
+      "tags": [
+        "environment",
+        "esoteric",
+        "props",
+        "static"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Farm.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Farm.png"
+      },
+      "w": 400,
+      "h": 400,
+      "category": "Environment/Props/Static",
+      "tags": [
+        "environment",
+        "farm",
+        "props",
+        "static"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Furniture.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Furniture.png"
+      },
+      "w": 800,
+      "h": 864,
+      "category": "Environment/Props/Static",
+      "tags": [
+        "environment",
+        "furniture",
+        "props",
+        "static"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Meat.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Meat.png"
+      },
+      "w": 192,
+      "h": 144,
+      "category": "Environment/Props/Static",
+      "tags": [
+        "environment",
+        "meat",
+        "props",
+        "static"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Pan.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Pan.png"
+      },
+      "w": 160,
+      "h": 176,
+      "category": "Environment/Props/Static",
+      "tags": [
+        "environment",
+        "pan",
+        "props",
+        "static"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Resources.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Resources.png"
+      },
+      "w": 400,
+      "h": 400,
+      "category": "Environment/Props/Static",
+      "tags": [
+        "environment",
+        "props",
+        "resources",
+        "static"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Rocks.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Rocks.png"
+      },
+      "w": 208,
+      "h": 304,
+      "category": "Environment/Props/Static",
+      "tags": [
+        "environment",
+        "props",
+        "rocks",
+        "static"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Shadows.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Shadows.png"
+      },
+      "w": 400,
+      "h": 400,
+      "category": "Environment/Props/Static",
+      "tags": [
+        "environment",
+        "props",
+        "shadows",
+        "static"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Tools.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Tools.png"
+      },
+      "w": 400,
+      "h": 400,
+      "category": "Environment/Props/Static",
+      "tags": [
+        "environment",
+        "props",
+        "static",
+        "tools"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Trees/Model_01/Size_02.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Trees/Model_01/Size_02.png"
+      },
+      "w": 256,
+      "h": 128,
+      "category": "Environment/Props/Static/Trees/Model_01",
+      "tags": [
+        "01",
+        "02",
+        "environment",
+        "model",
+        "props",
+        "size",
+        "static",
+        "trees"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Trees/Model_01/Size_03.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Trees/Model_01/Size_03.png"
+      },
+      "w": 208,
+      "h": 192,
+      "category": "Environment/Props/Static/Trees/Model_01",
+      "tags": [
+        "01",
+        "03",
+        "environment",
+        "model",
+        "props",
+        "size",
+        "static",
+        "trees"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Trees/Model_01/Size_04.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Trees/Model_01/Size_04.png"
+      },
+      "w": 368,
+      "h": 256,
+      "category": "Environment/Props/Static/Trees/Model_01",
+      "tags": [
+        "01",
+        "04",
+        "environment",
+        "model",
+        "props",
+        "size",
+        "static",
+        "trees"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Trees/Model_01/Size_05.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Trees/Model_01/Size_05.png"
+      },
+      "w": 448,
+      "h": 368,
+      "category": "Environment/Props/Static/Trees/Model_01",
+      "tags": [
+        "01",
+        "05",
+        "environment",
+        "model",
+        "props",
+        "size",
+        "static",
+        "trees"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Trees/Model_02/Size_02.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Trees/Model_02/Size_02.png"
+      },
+      "w": 128,
+      "h": 96,
+      "category": "Environment/Props/Static/Trees/Model_02",
+      "tags": [
+        "02",
+        "environment",
+        "model",
+        "props",
+        "size",
+        "static",
+        "trees"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Trees/Model_02/Size_03.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Trees/Model_02/Size_03.png"
+      },
+      "w": 144,
+      "h": 160,
+      "category": "Environment/Props/Static/Trees/Model_02",
+      "tags": [
+        "02",
+        "03",
+        "environment",
+        "model",
+        "props",
+        "size",
+        "static",
+        "trees"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Trees/Model_02/Size_04.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Trees/Model_02/Size_04.png"
+      },
+      "w": 192,
+      "h": 224,
+      "category": "Environment/Props/Static/Trees/Model_02",
+      "tags": [
+        "02",
+        "04",
+        "environment",
+        "model",
+        "props",
+        "size",
+        "static",
+        "trees"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Trees/Model_02/Size_05.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Trees/Model_02/Size_05.png"
+      },
+      "w": 288,
+      "h": 320,
+      "category": "Environment/Props/Static/Trees/Model_02",
+      "tags": [
+        "02",
+        "05",
+        "environment",
+        "model",
+        "props",
+        "size",
+        "static",
+        "trees"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_02.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Trees/Model_03/Size_02.png"
+      },
+      "w": 128,
+      "h": 160,
+      "category": "Environment/Props/Static/Trees/Model_03",
+      "tags": [
+        "02",
+        "03",
+        "environment",
+        "model",
+        "props",
+        "size",
+        "static",
+        "trees"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_03-export.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Trees/Model_03/Size_03-export.png"
+      },
+      "w": 192,
+      "h": 288,
+      "category": "Environment/Props/Static/Trees/Model_03",
+      "tags": [
+        "03",
+        "environment",
+        "export",
+        "model",
+        "props",
+        "size",
+        "static",
+        "trees"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_03.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Trees/Model_03/Size_03.png"
+      },
+      "w": 192,
+      "h": 288,
+      "category": "Environment/Props/Static/Trees/Model_03",
+      "tags": [
+        "03",
+        "environment",
+        "model",
+        "props",
+        "size",
+        "static",
+        "trees"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_04-export-export.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Trees/Model_03/Size_04-export-export.png"
+      },
+      "w": 288,
+      "h": 416,
+      "category": "Environment/Props/Static/Trees/Model_03",
+      "tags": [
+        "03",
+        "04",
+        "environment",
+        "export",
+        "model",
+        "props",
+        "size",
+        "static",
+        "trees"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_04-export.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Trees/Model_03/Size_04-export.png"
+      },
+      "w": 288,
+      "h": 416,
+      "category": "Environment/Props/Static/Trees/Model_03",
+      "tags": [
+        "03",
+        "04",
+        "environment",
+        "export",
+        "model",
+        "props",
+        "size",
+        "static",
+        "trees"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_04.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Trees/Model_03/Size_04.png"
+      },
+      "w": 400,
+      "h": 416,
+      "category": "Environment/Props/Static/Trees/Model_03",
+      "tags": [
+        "03",
+        "04",
+        "environment",
+        "model",
+        "props",
+        "size",
+        "static",
+        "trees"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_05.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Trees/Model_03/Size_05.png"
+      },
+      "w": 384,
+      "h": 512,
+      "category": "Environment/Props/Static/Trees/Model_03",
+      "tags": [
+        "03",
+        "05",
+        "environment",
+        "model",
+        "props",
+        "size",
+        "static",
+        "trees"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Props/Static/Vegetation.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/Vegetation.png"
+      },
+      "w": 400,
+      "h": 432,
+      "category": "Environment/Props/Static",
+      "tags": [
+        "environment",
+        "props",
+        "static",
+        "vegetation"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Buildings/Interior/Interior_Props_01.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Buildings/Interior/Interior_Props_01.png"
+      },
+      "w": 608,
+      "h": 384,
+      "category": "Environment/Structures/Buildings/Interior",
+      "tags": [
+        "01",
+        "buildings",
+        "environment",
+        "interior",
+        "props",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Buildings/Interior/Interior_Walls_01.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Buildings/Interior/Interior_Walls_01.png"
+      },
+      "w": 656,
+      "h": 400,
+      "category": "Environment/Structures/Buildings/Interior",
+      "tags": [
+        "01",
+        "buildings",
+        "environment",
+        "interior",
+        "structures",
+        "walls"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Buildings/Props.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Buildings/Props.png"
+      },
+      "w": 400,
+      "h": 400,
+      "category": "Environment/Structures/Buildings",
+      "tags": [
+        "buildings",
+        "environment",
+        "props",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Buildings/Roofs.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Buildings/Roofs.png"
+      },
+      "w": 400,
+      "h": 400,
+      "category": "Environment/Structures/Buildings",
+      "tags": [
+        "buildings",
+        "environment",
+        "roofs",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Buildings/Shadows.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Buildings/Shadows.png"
+      },
+      "w": 400,
+      "h": 400,
+      "category": "Environment/Structures/Buildings",
+      "tags": [
+        "buildings",
+        "environment",
+        "shadows",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Buildings/Walls.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Buildings/Walls.png"
+      },
+      "w": 672,
+      "h": 800,
+      "category": "Environment/Structures/Buildings",
+      "tags": [
+        "buildings",
+        "environment",
+        "structures",
+        "walls"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Alchemy/Alchemy_Table_01-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Alchemy/Alchemy_Table_01-Sheet.png"
+      },
+      "w": 192,
+      "h": 704,
+      "category": "Environment/Structures/Stations/Alchemy",
+      "tags": [
+        "01",
+        "alchemy",
+        "environment",
+        "sheet",
+        "stations",
+        "structures",
+        "table"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Alchemy/Alchemy_Table_02-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Alchemy/Alchemy_Table_02-Sheet.png"
+      },
+      "w": 528,
+      "h": 320,
+      "category": "Environment/Structures/Stations/Alchemy",
+      "tags": [
+        "02",
+        "alchemy",
+        "environment",
+        "sheet",
+        "stations",
+        "structures",
+        "table"
+      ],
+      "origin": "pack",
+      "frames": 2
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Alchemy/Alchemy_Table_03-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Alchemy/Alchemy_Table_03-Sheet.png"
+      },
+      "w": 400,
+      "h": 400,
+      "category": "Environment/Structures/Stations/Alchemy",
+      "tags": [
+        "03",
+        "alchemy",
+        "environment",
+        "sheet",
+        "stations",
+        "structures",
+        "table"
+      ],
+      "origin": "pack",
+      "frames": 1
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Anvil/Anvil_01-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Anvil/Anvil_01-Sheet.png"
+      },
+      "w": 512,
+      "h": 400,
+      "category": "Environment/Structures/Stations/Anvil",
+      "tags": [
+        "01",
+        "anvil",
+        "environment",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 1
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Anvil/Anvil_02-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Anvil/Anvil_02-Sheet.png"
+      },
+      "w": 480,
+      "h": 480,
+      "category": "Environment/Structures/Stations/Anvil",
+      "tags": [
+        "02",
+        "anvil",
+        "environment",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 1
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Anvil/Anvil_03-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Anvil/Anvil_03-Sheet.png"
+      },
+      "w": 768,
+      "h": 560,
+      "category": "Environment/Structures/Stations/Anvil",
+      "tags": [
+        "03",
+        "anvil",
+        "environment",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 1
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Anvil/Anvil.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Anvil/Anvil.png"
+      },
+      "w": 272,
+      "h": 160,
+      "category": "Environment/Structures/Stations/Anvil",
+      "tags": [
+        "anvil",
+        "environment",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Bonfire/Bonfire_01-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Bonfire/Bonfire_01-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Environment/Structures/Stations/Bonfire",
+      "tags": [
+        "01",
+        "bonfire",
+        "environment",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Bonfire/Bonfire_02-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Bonfire/Bonfire_02-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Environment/Structures/Stations/Bonfire",
+      "tags": [
+        "02",
+        "bonfire",
+        "environment",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Bonfire/Bonfire_03-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Bonfire/Bonfire_03-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Environment/Structures/Stations/Bonfire",
+      "tags": [
+        "03",
+        "bonfire",
+        "environment",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Bonfire/Bonfire_04-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Bonfire/Bonfire_04-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Environment/Structures/Stations/Bonfire",
+      "tags": [
+        "04",
+        "bonfire",
+        "environment",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Bonfire/Bonfire_05-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Bonfire/Bonfire_05-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Environment/Structures/Stations/Bonfire",
+      "tags": [
+        "05",
+        "bonfire",
+        "environment",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Bonfire/Bonfire_06-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Bonfire/Bonfire_06-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Environment/Structures/Stations/Bonfire",
+      "tags": [
+        "06",
+        "bonfire",
+        "environment",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Bonfire/Bonfire_07-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Bonfire/Bonfire_07-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Environment/Structures/Stations/Bonfire",
+      "tags": [
+        "07",
+        "bonfire",
+        "environment",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Bonfire/Bonfire_08-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Bonfire/Bonfire_08-Sheet.png"
+      },
+      "w": 128,
+      "h": 32,
+      "category": "Environment/Structures/Stations/Bonfire",
+      "tags": [
+        "08",
+        "bonfire",
+        "environment",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Bonfire/Bonfire_09-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Bonfire/Bonfire_09-Sheet.png"
+      },
+      "w": 320,
+      "h": 32,
+      "category": "Environment/Structures/Stations/Bonfire",
+      "tags": [
+        "09",
+        "bonfire",
+        "environment",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 10
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Bonfire/Bonfire_10-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Bonfire/Bonfire_10-Sheet.png"
+      },
+      "w": 192,
+      "h": 32,
+      "category": "Environment/Structures/Stations/Bonfire",
+      "tags": [
+        "10",
+        "bonfire",
+        "environment",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Bonfire/Bonfire.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Bonfire/Bonfire.png"
+      },
+      "w": 64,
+      "h": 384,
+      "category": "Environment/Structures/Stations/Bonfire",
+      "tags": [
+        "bonfire",
+        "environment",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Bonfire/Fire_01-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Bonfire/Fire_01-Sheet.png"
+      },
+      "w": 128,
+      "h": 48,
+      "category": "Environment/Structures/Stations/Bonfire",
+      "tags": [
+        "01",
+        "bonfire",
+        "environment",
+        "fire",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 3
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Bonfire/Fire_02-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Bonfire/Fire_02-Sheet.png"
+      },
+      "w": 128,
+      "h": 48,
+      "category": "Environment/Structures/Stations/Bonfire",
+      "tags": [
+        "02",
+        "bonfire",
+        "environment",
+        "fire",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 3
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Bonfire/Smoke-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Bonfire/Smoke-Sheet.png"
+      },
+      "w": 128,
+      "h": 48,
+      "category": "Environment/Structures/Stations/Bonfire",
+      "tags": [
+        "bonfire",
+        "environment",
+        "sheet",
+        "smoke",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 3
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Cooking Station/Butchery/Butchery_01-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Cooking Station/Butchery/Butchery_01-Sheet.png"
+      },
+      "w": 64,
+      "h": 64,
+      "category": "Environment/Structures/Stations/Cooking Station/Butchery",
+      "tags": [
+        "01",
+        "butchery",
+        "cooking",
+        "environment",
+        "sheet",
+        "station",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 1
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Cooking Station/Butchery/Butchery_02.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Cooking Station/Butchery/Butchery_02.png"
+      },
+      "w": 64,
+      "h": 64,
+      "category": "Environment/Structures/Stations/Cooking Station/Butchery",
+      "tags": [
+        "02",
+        "butchery",
+        "cooking",
+        "environment",
+        "station",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Cooking Station/Butchery/Butchery_03.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Cooking Station/Butchery/Butchery_03.png"
+      },
+      "w": 80,
+      "h": 80,
+      "category": "Environment/Structures/Stations/Cooking Station/Butchery",
+      "tags": [
+        "03",
+        "butchery",
+        "cooking",
+        "environment",
+        "station",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Cooking Station/Butchery/Butchery_04.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Cooking Station/Butchery/Butchery_04.png"
+      },
+      "w": 80,
+      "h": 80,
+      "category": "Environment/Structures/Stations/Cooking Station/Butchery",
+      "tags": [
+        "04",
+        "butchery",
+        "cooking",
+        "environment",
+        "station",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Cooking Station/Cooker/Cooker_01.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Cooking Station/Cooker/Cooker_01.png"
+      },
+      "w": 64,
+      "h": 64,
+      "category": "Environment/Structures/Stations/Cooking Station/Cooker",
+      "tags": [
+        "01",
+        "cooker",
+        "cooking",
+        "environment",
+        "station",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Cooking Station/Cooker/Cooker_02.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Cooking Station/Cooker/Cooker_02.png"
+      },
+      "w": 64,
+      "h": 64,
+      "category": "Environment/Structures/Stations/Cooking Station/Cooker",
+      "tags": [
+        "02",
+        "cooker",
+        "cooking",
+        "environment",
+        "station",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Cooking Station/Cooker/Cooker_03-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Cooking Station/Cooker/Cooker_03-Sheet.png"
+      },
+      "w": 192,
+      "h": 32,
+      "category": "Environment/Structures/Stations/Cooking Station/Cooker",
+      "tags": [
+        "03",
+        "cooker",
+        "cooking",
+        "environment",
+        "sheet",
+        "station",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 6
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Cooking Station/Cooker/Cooker_04-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Cooking Station/Cooker/Cooker_04-Sheet.png"
+      },
+      "w": 320,
+      "h": 80,
+      "category": "Environment/Structures/Stations/Cooking Station/Cooker",
+      "tags": [
+        "04",
+        "cooker",
+        "cooking",
+        "environment",
+        "sheet",
+        "station",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Cooking Station/Cooking Station.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Cooking Station/Cooking Station.png"
+      },
+      "w": 288,
+      "h": 224,
+      "category": "Environment/Structures/Stations/Cooking Station",
+      "tags": [
+        "cooking",
+        "environment",
+        "station",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Cooking Station/Estructure.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Cooking Station/Estructure.png"
+      },
+      "w": 288,
+      "h": 224,
+      "category": "Environment/Structures/Stations/Cooking Station",
+      "tags": [
+        "cooking",
+        "environment",
+        "estructure",
+        "station",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Cooking Station/Grill/Grill_01-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Cooking Station/Grill/Grill_01-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Environment/Structures/Stations/Cooking Station/Grill",
+      "tags": [
+        "01",
+        "cooking",
+        "environment",
+        "grill",
+        "sheet",
+        "station",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Cooking Station/Grill/Grill_02-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Cooking Station/Grill/Grill_02-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Environment/Structures/Stations/Cooking Station/Grill",
+      "tags": [
+        "02",
+        "cooking",
+        "environment",
+        "grill",
+        "sheet",
+        "station",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Cooking Station/Grill/Grill_03-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Cooking Station/Grill/Grill_03-Sheet.png"
+      },
+      "w": 256,
+      "h": 64,
+      "category": "Environment/Structures/Stations/Cooking Station/Grill",
+      "tags": [
+        "03",
+        "cooking",
+        "environment",
+        "grill",
+        "sheet",
+        "station",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 4
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Cooking Station/Grill/Grill_04-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Cooking Station/Grill/Grill_04-Sheet.png"
+      },
+      "w": 320,
+      "h": 64,
+      "category": "Environment/Structures/Stations/Cooking Station/Grill",
+      "tags": [
+        "04",
+        "cooking",
+        "environment",
+        "grill",
+        "sheet",
+        "station",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 5
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Furnace/Bricks_01-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Furnace/Bricks_01-Sheet.png"
+      },
+      "w": 64,
+      "h": 96,
+      "category": "Environment/Structures/Stations/Furnace",
+      "tags": [
+        "01",
+        "bricks",
+        "environment",
+        "furnace",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 2
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Furnace/Bricks_02-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Furnace/Bricks_02-Sheet.png"
+      },
+      "w": 96,
+      "h": 128,
+      "category": "Environment/Structures/Stations/Furnace",
+      "tags": [
+        "02",
+        "bricks",
+        "environment",
+        "furnace",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 1
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Furnace/Bricks_03-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Furnace/Bricks_03-Sheet.png"
+      },
+      "w": 96,
+      "h": 128,
+      "category": "Environment/Structures/Stations/Furnace",
+      "tags": [
+        "03",
+        "bricks",
+        "environment",
+        "furnace",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 1
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Furnace/Furnace.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Furnace/Furnace.png"
+      },
+      "w": 192,
+      "h": 384,
+      "category": "Environment/Structures/Stations/Furnace",
+      "tags": [
+        "environment",
+        "furnace",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Furnace/Iron_01-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Furnace/Iron_01-Sheet.png"
+      },
+      "w": 64,
+      "h": 96,
+      "category": "Environment/Structures/Stations/Furnace",
+      "tags": [
+        "01",
+        "environment",
+        "furnace",
+        "iron",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 2
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Furnace/Iron_02-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Furnace/Iron_02-Sheet.png"
+      },
+      "w": 96,
+      "h": 128,
+      "category": "Environment/Structures/Stations/Furnace",
+      "tags": [
+        "02",
+        "environment",
+        "furnace",
+        "iron",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 1
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Furnace/Iron_03-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Furnace/Iron_03-Sheet.png"
+      },
+      "w": 96,
+      "h": 128,
+      "category": "Environment/Structures/Stations/Furnace",
+      "tags": [
+        "03",
+        "environment",
+        "furnace",
+        "iron",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 1
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Furnace/Stone_01-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Furnace/Stone_01-Sheet.png"
+      },
+      "w": 64,
+      "h": 96,
+      "category": "Environment/Structures/Stations/Furnace",
+      "tags": [
+        "01",
+        "environment",
+        "furnace",
+        "sheet",
+        "stations",
+        "stone",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 2
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Furnace/Stone_02-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Furnace/Stone_02-Sheet.png"
+      },
+      "w": 96,
+      "h": 128,
+      "category": "Environment/Structures/Stations/Furnace",
+      "tags": [
+        "02",
+        "environment",
+        "furnace",
+        "sheet",
+        "stations",
+        "stone",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 1
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Furnace/Stone_03-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Furnace/Stone_03-Sheet.png"
+      },
+      "w": 96,
+      "h": 128,
+      "category": "Environment/Structures/Stations/Furnace",
+      "tags": [
+        "03",
+        "environment",
+        "furnace",
+        "sheet",
+        "stations",
+        "stone",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 1
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Sawmill/Base.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Sawmill/Base.png"
+      },
+      "w": 256,
+      "h": 144,
+      "category": "Environment/Structures/Stations/Sawmill",
+      "tags": [
+        "base",
+        "environment",
+        "sawmill",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Sawmill/Level_1.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Sawmill/Level_1.png"
+      },
+      "w": 32,
+      "h": 32,
+      "category": "Environment/Structures/Stations/Sawmill",
+      "tags": [
+        "1",
+        "environment",
+        "level",
+        "sawmill",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Sawmill/Level_2-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Sawmill/Level_2-Sheet.png"
+      },
+      "w": 640,
+      "h": 512,
+      "category": "Environment/Structures/Stations/Sawmill",
+      "tags": [
+        "2",
+        "environment",
+        "level",
+        "sawmill",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 1
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Sawmill/Level_3-Sheet.png",
+      "pack": "pixel-crawler",
+      "type": "strip",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Sawmill/Level_3-Sheet.png"
+      },
+      "w": 896,
+      "h": 640,
+      "category": "Environment/Structures/Stations/Sawmill",
+      "tags": [
+        "3",
+        "environment",
+        "level",
+        "sawmill",
+        "sheet",
+        "stations",
+        "structures"
+      ],
+      "origin": "pack",
+      "frames": 1
+    },
+    {
+      "id": "pixel-crawler/Environment/Structures/Stations/Workbench/Workbench.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Structures/Stations/Workbench/Workbench.png"
+      },
+      "w": 192,
+      "h": 352,
+      "category": "Environment/Structures/Stations/Workbench",
+      "tags": [
+        "environment",
+        "stations",
+        "structures",
+        "workbench"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Environment/Tilesets/Dungeon_Tiles.png",
+      "pack": "pixel-crawler",
+      "type": "tile",
+      "source": {
+        "kind": "sheetFrame",
+        "sheet": "Environment/Tilesets/Dungeon_Tiles.png",
+        "frame": 0
+      },
+      "w": 400,
+      "h": 400,
+      "category": "Environment/Tilesets",
+      "tags": [
+        "dungeon",
+        "environment",
+        "tiles",
+        "tilesets"
+      ],
+      "origin": "pack",
+      "frames": 625
+    },
+    {
+      "id": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png",
+      "pack": "pixel-crawler",
+      "type": "tile",
+      "source": {
+        "kind": "sheetFrame",
+        "sheet": "Environment/Tilesets/Floors_Tiles.png",
+        "frame": 0
+      },
+      "w": 400,
+      "h": 416,
+      "category": "Environment/Tilesets",
+      "tags": [
+        "environment",
+        "floors",
+        "tiles",
+        "tilesets"
+      ],
+      "origin": "pack",
+      "frames": 650
+    },
+    {
+      "id": "pixel-crawler/Environment/Tilesets/Wall_Tiles.png",
+      "pack": "pixel-crawler",
+      "type": "tile",
+      "source": {
+        "kind": "sheetFrame",
+        "sheet": "Environment/Tilesets/Wall_Tiles.png",
+        "frame": 0
+      },
+      "w": 400,
+      "h": 400,
+      "category": "Environment/Tilesets",
+      "tags": [
+        "environment",
+        "tiles",
+        "tilesets",
+        "wall"
+      ],
+      "origin": "pack",
+      "frames": 625
+    },
+    {
+      "id": "pixel-crawler/Environment/Tilesets/Wall_Variations.png",
+      "pack": "pixel-crawler",
+      "type": "tile",
+      "source": {
+        "kind": "sheetFrame",
+        "sheet": "Environment/Tilesets/Wall_Variations.png",
+        "frame": 0
+      },
+      "w": 256,
+      "h": 480,
+      "category": "Environment/Tilesets",
+      "tags": [
+        "environment",
+        "tilesets",
+        "variations",
+        "wall"
+      ],
+      "origin": "pack",
+      "frames": 480
+    },
+    {
+      "id": "pixel-crawler/Environment/Tilesets/Water_tiles.png",
+      "pack": "pixel-crawler",
+      "type": "tile",
+      "source": {
+        "kind": "sheetFrame",
+        "sheet": "Environment/Tilesets/Water_tiles.png",
+        "frame": 0
+      },
+      "w": 400,
+      "h": 400,
+      "category": "Environment/Tilesets",
+      "tags": [
+        "environment",
+        "tiles",
+        "tilesets",
+        "water"
+      ],
+      "origin": "pack",
+      "frames": 625
+    },
+    {
+      "id": "pixel-crawler/MockUps/Tavern.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "MockUps/Tavern.png"
+      },
+      "w": 1280,
+      "h": 1280,
+      "category": "MockUps",
+      "tags": [
+        "mockups",
+        "tavern"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Weapons/Bone/Bone.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Weapons/Bone/Bone.png"
+      },
+      "w": 224,
+      "h": 144,
+      "category": "Weapons/Bone",
+      "tags": [
+        "bone",
+        "weapons"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Weapons/Hands/Hands.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Weapons/Hands/Hands.png"
+      },
+      "w": 32,
+      "h": 96,
+      "category": "Weapons/Hands",
+      "tags": [
+        "hands",
+        "weapons"
+      ],
+      "origin": "pack"
+    },
+    {
+      "id": "pixel-crawler/Weapons/Wood/Wood.png",
+      "pack": "pixel-crawler",
+      "type": "object",
+      "source": {
+        "kind": "image",
+        "path": "Weapons/Wood/Wood.png"
+      },
+      "w": 192,
+      "h": 112,
+      "category": "Weapons/Wood",
+      "tags": [
+        "weapons",
+        "wood"
+      ],
+      "origin": "pack"
+    }
+  ]
+}

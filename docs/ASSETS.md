@@ -222,6 +222,26 @@ Full decision rationale (this supersedes plan 010's anchor-stamp tool for rigid 
 > (Retro Diffusion / PixelLab), and the Gemini bespoke-asset pipeline live in the R&D log:
 > [ASSET-EXPERIMENTS.md](ASSET-EXPERIMENTS.md).
 
+## Pack manifests & asset catalog
+
+Every pack dir under `public/assets/tilesets/<pack>/` carries a `pack.json`: `id`, `name`, `author`,
+`sourceUrl`, `licence`, `tileSize`, plus `rules` (glob patterns) encoding the 3 load classes above —
+`tile` (`Environment/Tilesets/**`), `strip` (`**/*-Sheet.png`), everything else defaults to `object` —
+and a `selfMade` rule (tags `_derived/**` etc as `origin: "self-made"`). `overrides` (exact relative
+path → partial field patch) and `exclude` (globs, dropped entirely) are the per-pack escape hatches
+for the odd sheet the mechanical rule gets wrong (e.g. the skeleton Death-Sheet's `frameWidth`
+exception above needs a `frames` override).
+
+`npm run assets:catalog` (`scripts/asset-catalog.mjs`, Node built-ins only — no image-parsing dep,
+PNG width/height read straight off the IHDR chunk) walks every `pack.json`'d dir and regenerates the
+**committed** `public/assets/asset-catalog.json` the Map Builder editor's Library panel browses.
+Deterministic (packs/assets/tags all sorted, no timestamp) — re-running with no pack changes produces
+a byte-identical file. Never hand-edit the catalog; re-run the script after adding/removing pack
+files or editing a `pack.json`.
+
+`public/assets/tilesets/mostowo-custom/` is the (currently-empty) skeleton home for future self-made
+art — same `pack.json` shape, `licence: "original"`.
+
 ## Item icons (Gemini pipeline, plan 009)
 
 Inventory **item icons** live at [`public/assets/icons/`](../public/assets/icons/) as **32×32

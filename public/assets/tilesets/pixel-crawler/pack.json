@@ -1,0 +1,17 @@
+{
+  "id": "pixel-crawler",
+  "name": "Pixel Crawler - Free Pack (v2.11)",
+  "author": "Anokolisa",
+  "sourceUrl": "https://anokolisa.itch.io/free-pixel-art-asset-pack-topdown-tileset-rpg-16x16-sprites",
+  "licence": "Free for commercial/study use, alter freely, credit optional, no reselling standalone (see Terms.txt)",
+  "tileSize": 16,
+  "rules": {
+    "tile": ["Environment/Tilesets/**"],
+    "strip": ["**/*-Sheet.png"],
+    "selfMade": ["_derived/**"]
+  },
+  "overrides": {
+    "Entities/Mobs/Skeleton Crew/Skeleton - Base/Death/Death-Sheet.png": { "frames": 8 }
+  },
+  "exclude": []
+}

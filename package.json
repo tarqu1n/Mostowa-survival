@@ -19,6 +19,7 @@
     "check": "npm run typecheck && npm run lint && npm run lint:md && npm run format:check && npm run test",
     "e2e": "playwright test",
     "smoke": "node scripts/smoke.mjs",
+    "assets:catalog": "node scripts/asset-catalog.mjs",
     "gen:retrodiffusion": "node scripts/gen-art/retrodiffusion.mjs",
     "gen:pixellab": "node scripts/gen-art/pixellab.mjs",
     "prepare": "husky"

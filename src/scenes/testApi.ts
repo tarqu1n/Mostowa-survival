@@ -21,6 +21,7 @@ import type { CharacterSprite } from '../entities/Character';
 import type { PlayerCharacter } from '../entities/PlayerCharacter';
 import type { MonsterCharacter, MonsterSpawnOpts } from '../entities/MonsterCharacter';
 import type { BuildManager } from './build/BuildManager';
+import type { CampfireManager } from './world/CampfireManager';
 import type { TaskGlowRenderer } from './fx/TaskGlowRenderer';
 import type { CombatFxManager } from './fx/CombatFxManager';
 import type { PointerInputController } from './input/PointerInputController';
@@ -62,6 +63,9 @@ export interface DebugState {
   outlinedTreeIds: string[];
   pulsingTreeId: string | null;
   queuedTreeIds: string[];
+  // Appended (plan 012) — the refactor-tripwire deep-equals DebugState, so new fields go at the END
+  // and the tripwire snapshot is updated in the same step. One entry per live campfire.
+  campfires: { col: number; row: number; fuel: number; lit: boolean }[];
 }
 
 /**
@@ -78,6 +82,7 @@ export interface DebugState {
  */
 export interface TestApiDeps {
   readonly buildManager: BuildManager;
+  readonly campfireManager: CampfireManager;
   readonly taskGlowRenderer: TaskGlowRenderer;
   readonly fx: CombatFxManager;
   readonly pointerInput: PointerInputController;
@@ -169,6 +174,7 @@ export class TestApi {
   private resetWorld(): void {
     this.deps.resetTreesAndEnemies();
     this.deps.buildManager.reset(); // sites/siteTiles/occupied/walls/nextSiteId/buildMode
+    this.deps.campfireManager.reset(); // destroy fire sprites + clear the collection (RUNTIME path)
     this.deps.taskGlowRenderer.reset(); // queue markers + glow halos/pulse + outlinedTreeIds
 
     this.deps.queue.clear();
@@ -239,12 +245,26 @@ export class TestApi {
       bushIds.push(this.deps.trees()[this.deps.trees().length - 1].id);
     }
 
+    // Pass the buildable id EXPLICITLY (never rely on the default selectedBuildableId, which a prior
+    // tryPlace may have moved — belt-and-suspenders alongside BuildManager.reset()'s reset to 'wall').
     for (const [c, r] of spec.walls ?? [])
-      this.deps.buildManager.finishSite(this.deps.buildManager.createBlueprint(c, r));
+      this.deps.buildManager.finishSite(this.deps.buildManager.createBlueprint(c, r, 'wall'));
+
+    // Campfires: mirror the wall path (finishSite → the campfire branch → materialiseBuildable →
+    // CampfireManager.materialise). Bypassing tilePlaceable/isInBase is fine + intended for fixtures.
+    const campfireIds: string[] = [];
+    for (const [c, r] of spec.campfires ?? []) {
+      this.deps.buildManager.finishSite(this.deps.buildManager.createBlueprint(c, r, 'campfire'));
+      const list = this.deps.campfireManager.all();
+      campfireIds.push(list[list.length - 1].id);
+    }
+    // Optional: seed every placed campfire's fuel (e.g. a near-empty fire for a drain/relight test).
+    if (spec.campfireFuel != null)
+      for (const cf of this.deps.campfireManager.all()) cf.fuel = spec.campfireFuel;
 
     const siteIds: string[] = [];
     for (const [c, r] of spec.blueprints ?? [])
-      siteIds.push(this.deps.buildManager.createBlueprint(c, r).id);
+      siteIds.push(this.deps.buildManager.createBlueprint(c, r, 'wall').id);
 
     const enemyIds: string[] = [];
     for (const z of spec.enemies ?? []) {
@@ -284,7 +304,7 @@ export class TestApi {
 
     this.deps.updateVision();
     this.deps.emitTasks();
-    return { treeIds, rockIds, bushIds, enemyIds, siteIds };
+    return { treeIds, rockIds, bushIds, enemyIds, siteIds, campfireIds };
   }
 
   /**
@@ -312,6 +332,27 @@ export class TestApi {
   /** True if the tile is currently a pathfinding obstacle (test helper). */
   isTileBlocked(col: number, row: number): boolean {
     return this.deps.isBlocked(col, row);
+  }
+
+  /** Select a buildable + attempt a real placement at a tile — exercises the true `tilePlaceable`
+   *  path (bounds/occupancy/reachability + the `isInBase` base-zone gate for `baseOnly`). Returns
+   *  whether a site was placed. (Enters build mode as a side effect, like the palette pick would.) */
+  tryPlace(id: string, col: number, row: number): boolean {
+    this.deps.buildManager.select(id);
+    return this.deps.buildManager.tryPlaceAt(col, row);
+  }
+
+  /** True if the tile's centre is within any lit campfire's light radius (the reveal predicate). */
+  inLight(col: number, row: number): boolean {
+    return this.deps.campfireManager.inLight(tileToWorldCenter(col), tileToWorldCenter(row));
+  }
+
+  /** Run the real tap-to-feed path on the campfire at `index` (spend one wood, top up + relight).
+   *  Returns whether a feed happened (false if the index is out of range or there's no wood). */
+  feedCampfire(index: number): boolean {
+    const c = this.deps.campfireManager.all()[index];
+    if (!c) return false;
+    return this.deps.campfireManager.feedAt(c.col, c.row);
   }
 
   /** State snapshot for the Tier-2 Playwright suite + the smoke test. */
@@ -357,6 +398,9 @@ export class TestApi {
         .all()
         .filter((a): a is Extract<Action, { kind: 'harvest' }> => a.kind === 'harvest')
         .map((a) => a.treeId),
+      campfires: this.deps.campfireManager
+        .all()
+        .map((c) => ({ col: c.col, row: c.row, fuel: c.fuel, lit: c.lit })),
     };
   }
 }

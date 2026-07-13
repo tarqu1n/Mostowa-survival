@@ -19,13 +19,21 @@ import {
   DAMAGE_VIGNETTE_COLOR,
 } from '../config';
 import { ITEMS } from '../data/items';
-import type { CombatantStats } from '../data/types';
+import type { CombatantStats, BuildableDef } from '../data/types';
 import { BUILDABLES } from '../data/buildables';
 import { iconKey } from '../data/tileset';
 import { bakeVignetteTexture } from '../render/vignetteTexture';
 import type { Inventory } from '../systems/Inventory';
 import type { InspectableStats } from '../data/types';
-import { Button, Panel, SlotGrid, arrangeRow, UI_THEME, type SlotVisual } from '../ui';
+import {
+  Button,
+  Panel,
+  SlotGrid,
+  arrangeRow,
+  arrangeColumn,
+  UI_THEME,
+  type SlotVisual,
+} from '../ui';
 
 /**
  * HUD overlay, run in parallel over GameScene (never replaces it). Renders the wood counter, a
@@ -44,6 +52,13 @@ export class UIScene extends Phaser.Scene {
   private inv?: Inventory;
   private buildButton!: Button;
   private modeIndicator!: Phaser.GameObjects.Text;
+
+  // Build palette (plan 012): BUILD opens a centred Panel listing every BUILDABLES entry (Wall,
+  // Campfire) with name + cost, each row dimmed when unaffordable. Picking a row emits `build:select`
+  // (→ BuildManager.select: remember it + enter build mode) and closes the palette. The rows are
+  // nested Buttons on the panel (like the Wellbeing eat-rows), so only the panel is in hudElements.
+  private buildPalette!: Panel;
+  private buildRows: Array<{ id: string; button: Button; cost: Record<string, number> }> = [];
   private cancelButton!: Button;
   private queueText!: Phaser.GameObjects.Text;
   private zoomText!: Phaser.GameObjects.Text;
@@ -181,7 +196,7 @@ export class UIScene extends Phaser.Scene {
       width: bw,
       height: bh,
       label: 'BUILD',
-      onDown: () => this.game.events.emit('build:toggle'),
+      onDown: () => this.onBuildButton(),
     });
     this.hudElements.push(this.buildButton);
 
@@ -397,7 +412,7 @@ export class UIScene extends Phaser.Scene {
 
     // Control hint — a genuinely fixed HUD label belongs on the never-zoomed UI camera, not on the
     // world camera (which now pans/zooms with the player).
-    this.add.text(6, BASE_HEIGHT - 30, 'tap: order · hold: queue · Build: walls', {
+    this.add.text(6, BASE_HEIGHT - 30, 'tap: order · hold: queue · Build: menu', {
       fontFamily: 'monospace',
       fontSize: '8px',
       color: '#6f6552',
@@ -484,6 +499,14 @@ export class UIScene extends Phaser.Scene {
     // Health & Wellbeing screen (plan 004) — meters + stat rows + edible list.
     this.buildWellbeingPanel();
 
+    // Build palette (plan 012) — built before refreshInventory so its rows exist for the first
+    // affordability pass.
+    this.buildBuildPalette();
+
+    // ESC closes the palette if open, else exits build mode (mirrors tapping BUILD again). Keyboard
+    // is scene-scoped input, torn down with the scene — no manual off needed.
+    this.input.keyboard?.on('keydown-ESC', this.onEscape, this);
+
     // Seed + subscribe: read the shared Inventory's own 'change' directly (no event-bus hop).
     this.refreshInventory();
     this.inv?.on('change', this.refreshInventory, this);
@@ -540,14 +563,13 @@ export class UIScene extends Phaser.Scene {
   private readonly itemVisual = (id: string): SlotVisual | undefined =>
     ITEMS[id] ? { iconKey: iconKey(id), color: ITEMS[id].color } : undefined;
 
-  /** Repaint the hotbar + full grid from the shared Inventory's slots, and re-dim BUILD by affordability. */
+  /** Repaint the hotbar + full grid from the shared Inventory's slots, and re-dim the build-palette
+   * rows by affordability. */
   private refreshInventory(): void {
     const slots = this.inv?.slots() ?? [];
     this.hotbar.update(slots.slice(0, HOTBAR_SLOTS), this.itemVisual);
     this.inventoryGrid.update(slots, this.itemVisual);
-    // Reflect affordability of a wall on the Build button (dim the label when you can't afford it).
-    const affordable = (this.inv?.get(ITEMS.wood.id) ?? 0) >= (BUILDABLES.wall.cost.wood ?? 0);
-    this.buildButton.label.setAlpha(affordable ? 1 : 0.4);
+    this.refreshBuildPalette(); // per-row buildable affordability (replaces wall-only BUILD dimming)
     this.refreshEatRows(); // keep the Wellbeing edible counts live with the bag
   }
 
@@ -566,6 +588,94 @@ export class UIScene extends Phaser.Scene {
     if (open) this.devPanel.show();
     else this.devPanel.hide();
     this.devButton.setToggled(open);
+  }
+
+  // ---- Build palette -------------------------------------------------------
+
+  /**
+   * Build the BUILD-toggled palette: a centred, dismissible Panel with one row per BUILDABLES entry
+   * (name + cost). Rows are nested Buttons that emit `build:select` and close the palette; only the
+   * panel goes in hudElements (its bounds cover the rows for the world-tap gate). Sized to fit N rows.
+   */
+  private buildBuildPalette(): void {
+    const entries = Object.values(BUILDABLES);
+    const ROW_W = 200;
+    const ROW_H = 30;
+    const GAP = 8;
+    const HEADER = 40; // title band above the first row
+    const PAD = 16; // bottom breathing room
+    const W = 224;
+    const H = HEADER + entries.length * ROW_H + (entries.length - 1) * GAP + PAD;
+
+    this.buildPalette = new Panel(this, BASE_WIDTH / 2, BASE_HEIGHT / 2, {
+      width: W,
+      height: H,
+      depth: 20,
+      dismissible: true,
+      onDismiss: () => this.setBuildPaletteOpen(false),
+    });
+    this.buildPalette.addText(16, { fontSize: '12px', color: '#e8dcc0' }).setText('BUILD');
+
+    const buttons = entries.map((def) => {
+      const button = new Button(this, 0, 0, {
+        width: ROW_W,
+        height: ROW_H,
+        label: this.buildableRowLabel(def),
+        fontSize: 10,
+        onDown: () => {
+          this.game.events.emit('build:select', { id: def.id });
+          this.setBuildPaletteOpen(false);
+        },
+      });
+      this.buildPalette.add(button);
+      this.buildRows.push({ id: def.id, button, cost: def.cost });
+      return button;
+    });
+
+    // Panel children are positioned relative to its centre; top edge is -H/2.
+    arrangeColumn(buttons, { x: 0, startY: -H / 2 + HEADER, height: ROW_H, gap: GAP });
+
+    this.hudElements.push(this.buildPalette);
+  }
+
+  /** "Wall   2 Wood" / "Campfire   10 Stone  10 Wood" — name plus each cost item as qty + name. */
+  private buildableRowLabel(def: BuildableDef): string {
+    const cost = Object.entries(def.cost)
+      .map(([id, qty]) => `${qty} ${ITEMS[id]?.name ?? id}`)
+      .join('  ');
+    return `${def.name}   ${cost}`;
+  }
+
+  /** BUILD tapped: in build mode it exits (mirrors the old toggle-off); otherwise it toggles the palette. */
+  private onBuildButton(): void {
+    if (this.buildButton.isToggled()) {
+      this.game.events.emit('build:toggle');
+      this.setBuildPaletteOpen(false);
+      return;
+    }
+    this.setBuildPaletteOpen(!this.buildPalette.visible);
+  }
+
+  private setBuildPaletteOpen(open: boolean): void {
+    if (open) {
+      this.refreshBuildPalette(); // sync affordability before showing
+      this.buildPalette.show();
+    } else {
+      this.buildPalette.hide();
+    }
+  }
+
+  /** Dim each palette row the player can't currently afford (reads the shared Inventory). */
+  private refreshBuildPalette(): void {
+    for (const row of this.buildRows) {
+      row.button.setDimmed(!(this.inv?.canAfford(row.cost) ?? false));
+    }
+  }
+
+  /** ESC: close the palette if open, else exit build mode (mirrors tapping BUILD again). */
+  private onEscape(): void {
+    if (this.buildPalette.visible) this.setBuildPaletteOpen(false);
+    else if (this.buildButton.isToggled()) this.game.events.emit('build:toggle');
   }
 
   // ---- Always-on HUD meters ------------------------------------------------
@@ -794,6 +904,7 @@ export class UIScene extends Phaser.Scene {
   private onBuildMode(active: boolean): void {
     this.modeIndicator.setVisible(active);
     this.buildButton.setToggled(active);
+    if (active) this.setBuildPaletteOpen(false); // a picked buildable enters build mode → drop the palette
   }
 
   /** Reflect the worker's live task state: current action label + queued count, and Cancel visibility. */

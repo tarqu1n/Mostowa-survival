@@ -28,6 +28,8 @@ export interface TreeNode {
  */
 export interface BuildSite {
   id: string;
+  /** Which `BUILDABLES` entry this site builds — drives `finishSite`'s render/occupancy branch. */
+  buildableId: string;
   col: number;
   row: number;
   rect: Phaser.GameObjects.Rectangle;
@@ -37,14 +39,29 @@ export interface BuildSite {
 }
 
 /**
+ * A built campfire in the world: its animated fire sprite plus fuel/lit state. Owned by
+ * CampfireManager, the sole writer of the sprite's anim/tint (and its sole destroyer). `fuel` drains
+ * every frame; `lit` mirrors `fuel > 0` and drives the light it casts + its dim-out when spent.
+ */
+export interface CampfireUnit {
+  id: string;
+  col: number;
+  row: number;
+  sprite: Phaser.GameObjects.Sprite;
+  fuel: number;
+  lit: boolean;
+}
+
+/**
  * What a pointer "raycast" landed on: the specific world entity whose *rendered sprite* is drawn
- * under the point (see {@link GameScene.pickSpriteAt}). `null` (the absence of a pick) means empty
+ * under the point (see {@link ScenePicker.pickSpriteAt}). `null` (the absence of a pick) means empty
  * ground — no interactive sprite there — and the caller falls back to a plain move-to-tile.
  */
 export type PointerPick =
   | { kind: 'tree'; tree: TreeNode }
   | { kind: 'enemy'; enemy: MonsterCharacter }
-  | { kind: 'site'; site: BuildSite };
+  | { kind: 'site'; site: BuildSite }
+  | { kind: 'campfire'; campfire: CampfireUnit };
 
 /** Cardinal facing shorthand for {@link ScenarioSpec}, mapped to `lastFacing` deltas below. */
 export type FacingSpec = 'up' | 'down' | 'left' | 'right';

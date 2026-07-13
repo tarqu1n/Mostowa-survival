@@ -156,6 +156,14 @@ export interface TilesetManifest {
       hand: HandArt;
     };
   };
+  /**
+   * Placeable-station animations, keyed by station role — separate from `actors` since these aren't
+   * characters. Today just the campfire's looping fire strip (see `data/buildables.ts`'s `campfire`
+   * entry, whose `animKey` must match `campfireAnimKey()`).
+   */
+  stations: {
+    campfire: StripAnim;
+  };
 }
 
 /**
@@ -415,6 +423,17 @@ export const PIXEL_CRAWLER_TILESET: TilesetManifest = {
       },
     },
   },
+  stations: {
+    // Fire_01-Sheet.png is 128×48 = 4 frames of 32w×48h — a non-square cell, so frameWidth must be set
+    // explicitly (a bare frameSize:32 would clip each flame to a 32×32 square, losing the top). The
+    // vertical Bonfire.png in the same folder isn't a horizontal strip and can't be sliced this way.
+    campfire: {
+      path: 'Environment/Structures/Stations/Bonfire/Fire_01-Sheet.png',
+      frameWidth: 32,
+      frameSize: 48,
+      frames: 4,
+    },
+  },
 };
 
 /** Swap this to trial a different pack — see the module doc above. */
@@ -450,6 +469,12 @@ export const enemyIdleKey = 'enemy-idle';
 
 /** Texture/anim key for the enemy Death strip (one-shot collapse on kill). */
 export const enemyDeathKey = 'enemy-death';
+
+/**
+ * Texture/anim key for the campfire's looping fire strip (see `stations.campfire` above). Must match
+ * the `animKey: 'campfire'` on the `campfire` entry in `data/buildables.ts`.
+ */
+export const campfireAnimKey = (): string => 'campfire';
 
 /** Texture key for an item's icon image (loaded from `public/assets/icons/<icon>`). */
 export const iconKey = (id: string): string => `icon:${id}`;

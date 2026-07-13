@@ -7,6 +7,56 @@ Format: `YYYY-MM-DD — [DECIDED|PROPOSED|OPEN] Title` then a short rationale.
 
 ---
 
+## 2026-07-13 — [DECIDED] Buildable runtime stays bespoke for now; generalise on buildable #2
+
+The campfire is the first *live* (per-frame-simulated) buildable, but it will be one of many
+(turrets, crafting stations, chests, traps, farms, lamps…). We deliberately did **not** build a
+generic structure/behavior framework yet — designing that abstraction from a population of one is how
+you build the wrong one (the hard part isn't the tick loop, it's typing each behavior's deps + state,
+which only a real second example reveals). Advisor-reviewed.
+
+Instead we did a small **de-ossification pass** so the campfire specifics don't harden at the seams a
+future generic manager would need:
+
+- **`BuildableDef.behavior?: string`** is the live-vs-static discriminant (`'campfire'` today).
+  `finishSite` branches on `def.behavior` (not `def.animKey`, which is now purely visual) to decide
+  whether a completed buildable is handed to a runtime manager.
+- **`litCampfires()` → `lightSources()`** across `CampfireManager`, `SurvivalClockDeps`,
+  `VisionControllerDeps`, and the two GameScene closures. The consumed shape (`{x,y,radius}[]`) was
+  already behavior-neutral; only the name said "campfire". A future lamp/torch emitter now aggregates
+  into the same scene closure without `SurvivalClock`/`VisionController` changing at all.
+
+Left **bespoke on purpose** (cheap to fold in later, 1–5 lines each): the dedicated `CampfireManager`,
+its GameScene construct+tick lines, the `ScenePicker` campfire pick/inspect case, `campfireStats`, the
+`feedAt` tap branch, and the testApi seams.
+
+**Trigger — generalise when buildable #2 with a `behavior` field lands.** Build a `StructureManager`
+owning a homogeneous `PlacedStructure[]` + a behavior registry: the scene calls `register(behaviorId,
+module)` at `buildWorld()`, each module constructed with its own narrow deps (preserves the 013/015
+coupling rule — one line per buildable, not one manager per buildable), exposing optional capability
+methods (`tick`/`onTap`/`light`/`stats`) so `ScenePicker`/`SurvivalClock`/`VisionController` each get a
+single `structures` route. `CampfireManager` dissolves into the first behavior module; `CampfireUnit`
+→ `PlacedStructure`; the `game.__test` wrapper signatures stay and re-point internally. Est. ~half a
+day, netted by the existing 216 unit + campfire e2e tests. Do NOT do it before #2 exists.
+
+## 2026-07-13 — [DECIDED] Buildable campfire + generalised build/palette (plan 012): four boundary calls
+
+- **Base zone is a fixed rect for now.** `BASE_ZONE` (`config.ts`) is a hardcoded tile rectangle,
+  explicitly a placeholder — expected to move to a dynamic/player-claimed base later.
+- **Buildable selection via a build palette**, chosen over a cycle-through-buildables control or a
+  dedicated button per buildable — scales cleanly as more buildables are added, and reuses the
+  existing UI kit (`Panel`/`Button`/`arrangeColumn`).
+- **Campfires get their own `CampfireManager`**, per the 013/015 world-manager pattern (a built
+  campfire is a live, per-frame-simulated object — fuel drain, lit flips — not a placement-lifecycle
+  concern like `BuildManager`). Lighting is wired via a single scene-mediated `lightSources()` closure
+  (renamed from `litCampfires()` — see the de-ossification entry above) handed to both `SurvivalClock`
+  (night-overlay mask) and `VisionController` (fog reveal) — no manager↔manager edge.
+- **Enemy fog-gating is deferred** to the night-waves plan. This plan's "reveal" is purely the
+  night-overlay hole the lit campfire cuts — enemies aren't vision-gated at all today (only the
+  player is), so nothing new is hidden/shown about them.
+
+Full mechanic write-up: [GAME-MECHANICS.md](GAME-MECHANICS.md).
+
 ## 2026-07-13 — [DECIDED] GameScene decomposition part 2: 5 world-subsystem boundary rulings (plan 015)
 
 Continuing plan 013's manager extraction, plan 015 pulled the remaining state-owning world

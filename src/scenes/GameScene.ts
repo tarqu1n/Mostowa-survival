@@ -17,9 +17,8 @@ import {
 } from '../config';
 import { ITEMS } from '../data/items';
 import { NODES } from '../data/nodes';
-import { BUILDABLES } from '../data/buildables';
 import { Inventory } from '../systems/Inventory';
-import { tileKey } from '../systems/grid';
+import { tileKey, worldToTile } from '../systems/grid';
 import { findPath, reachableAdjacent, type Cell } from '../systems/pathfind';
 import { TaskQueue, type Action } from '../systems/tasks';
 import { resolveMeleeAttack } from '../systems/combat';
@@ -34,6 +33,7 @@ import { BuildManager } from './build/BuildManager';
 import { TaskGlowRenderer } from './fx/TaskGlowRenderer';
 import { ResourceNodeManager } from './world/ResourceNodeManager';
 import { EnemyManager } from './world/EnemyManager';
+import { CampfireManager } from './world/CampfireManager';
 import { SurvivalClock } from './world/SurvivalClock';
 import { VisionController } from './fx/VisionController';
 import { TestApi } from './testApi';
@@ -120,6 +120,12 @@ export class GameScene extends Phaser.Scene {
   // the just-constructed player, same reasoning as `pointerInput` below); wires its own SHUTDOWN
   // teardown directly.
   private buildManager!: BuildManager;
+
+  // Campfires (plan 012) — the first live, per-frame-simulated buildable: owns the campfire collection
+  // + each fire's animated sprite, drains fuel each tick, and exposes its lit fires as the light source
+  // both SurvivalClock (night-overlay mask) and VisionController (fog reveal) read via the scene.
+  // Constructed fresh in buildWorld() each (re)start; wires its own SHUTDOWN teardown directly.
+  private campfireManager!: CampfireManager;
 
   // Pointer "raycast" + the tap/inspect intent built on top of it (plan 015 Step 5) — see
   // src/scenes/input/ScenePicker.ts. Stateless (no fields but scene+deps, no SHUTDOWN teardown — see
@@ -247,10 +253,18 @@ export class GameScene extends Phaser.Scene {
       isBlocked: (col, row) => this.isBlocked(col, row),
       hasBlockingTree: (col, row) => this.resourceNodeManager.hasBlockingNode(col, row),
       dims: () => this.gridDims,
-      canAffordWall: () => this.inv.canAfford(BUILDABLES.wall.cost),
-      spendWallCost: () => this.inv.spend(BUILDABLES.wall.cost),
+      canAfford: (cost) => this.inv.canAfford(cost),
+      spend: (cost) => this.inv.spend(cost),
       enqueueBuild: (siteId) => this.enqueue({ kind: 'build', siteId }),
+      materialiseBuildable: (site) => this.campfireManager.materialise(site),
       repath: () => this.repath(),
+    });
+
+    // Campfires (plan 012) — the live, per-frame buildable. Constructed here so it exists before
+    // VisionController below (whose constructor calls update() → lightSources()) and before any
+    // finishSite routes a `behavior` buildable to materialise(). Wires its own SHUTDOWN teardown.
+    this.campfireManager = new CampfireManager(this, {
+      spend: (cost) => this.inv.spend(cost),
     });
 
     // Pointer "raycast" + tap/inspect intent (plan 015 Step 5) — constructed here, after
@@ -261,6 +275,7 @@ export class GameScene extends Phaser.Scene {
       enemies: () => this.enemyManager.all(),
       trees: () => this.resourceNodeManager.all(),
       allSites: () => this.buildManager.allSites(),
+      campfires: () => this.campfireManager.all(),
     });
 
     // Queue/glow presentation (plan 013 Step 6) — pure presentation over the queue, so it has no
@@ -290,6 +305,15 @@ export class GameScene extends Phaser.Scene {
       onBuildMove: (pointer) => this.buildManager.updateGhost(pointer),
       getMode: () => this.mode,
       onTap: (pointer) => {
+        // Tap-to-feed: a SHORT tap on a campfire (command mode, wood in the bag) feeds it and issues
+        // NO order. feedAt returns false when there's no fire here or no wood, so a normal tap falls
+        // through to the move/harvest resolution below. onTap is command-mode-only by construction; the
+        // short-tap gate keeps long-press = queue uniform (a held press never feeds).
+        if (
+          pointer.getDuration() < LONGPRESS_MS &&
+          this.campfireManager.feedAt(worldToTile(pointer.worldX), worldToTile(pointer.worldY))
+        )
+          return;
         const action = this.scenePicker.actionAt(pointer.worldX, pointer.worldY);
         // A tap on a tree queues it: it falls in behind the current job (or starts at once if the
         // worker is idle) instead of interrupting an in-progress harvest — chopping is the loop you
@@ -321,6 +345,7 @@ export class GameScene extends Phaser.Scene {
     this.visionController = new VisionController(this, {
       getPlayerSprite: () => this.player,
       getVision: () => this.playerChar.stats.vision,
+      lightSources: () => this.campfireManager.lightSources(),
     });
 
     // Day/night clock + hunger/starvation (plan 015 Step 3) — constructed fresh each (re)start, at
@@ -331,6 +356,7 @@ export class GameScene extends Phaser.Scene {
       damagePlayer: (amount) => this.damagePlayer(amount),
       canAfford: (cost) => this.inv.canAfford(cost),
       spend: (cost) => this.inv.spend(cost),
+      lightSources: () => this.campfireManager.lightSources(),
     });
 
     // HUD overlay runs alongside this scene; grab its instance for the UI-tap guard. UIScene
@@ -346,6 +372,7 @@ export class GameScene extends Phaser.Scene {
    *  those methods), then push the first queue-highlight refresh. */
   private wireBus(): void {
     this.game.events.on('build:toggle', this.buildManager.toggleBuild, this.buildManager);
+    this.game.events.on('build:select', this.onBuildSelect, this);
     this.game.events.on('tasks:cancel', this.cancelAll, this);
     this.game.events.on('debug:randomise', this.randomiseWorld, this); // dev menu: scatter nodes + enemies
     this.game.events.on('debug:toggleTime', this.survivalClock.toggleDayNight, this.survivalClock); // dev menu: flip day/night
@@ -360,6 +387,7 @@ export class GameScene extends Phaser.Scene {
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.game.events.off('build:toggle', this.buildManager.toggleBuild, this.buildManager);
+      this.game.events.off('build:select', this.onBuildSelect, this);
       this.game.events.off('tasks:cancel', this.cancelAll, this);
       this.game.events.off('debug:randomise', this.randomiseWorld, this);
       this.game.events.off(
@@ -392,6 +420,7 @@ export class GameScene extends Phaser.Scene {
     if (!import.meta.env.DEV) return;
     const testApi = new TestApi(this, {
       buildManager: this.buildManager,
+      campfireManager: this.campfireManager,
       taskGlowRenderer: this.taskGlowRenderer,
       fx: this.fx,
       pointerInput: this.pointerInput,
@@ -462,6 +491,9 @@ export class GameScene extends Phaser.Scene {
       enqueue: (a) => this.enqueue(a),
       inspect: (c, r) => testApi.inspect(c, r),
       blocked: (c, r) => testApi.isTileBlocked(c, r),
+      tryPlace: (id, c, r) => testApi.tryPlace(id, c, r),
+      inLight: (c, r) => testApi.inLight(c, r),
+      feedCampfire: (i) => testApi.feedCampfire(i),
     };
     (this.game as unknown as { __test?: GameTestApi }).__test = api;
   }
@@ -481,6 +513,10 @@ export class GameScene extends Phaser.Scene {
     // Survival tick — day/night clock + hunger/starvation, above the no-action early-return below, so
     // time passes whether or not a worker task is active. See src/scenes/world/SurvivalClock.ts.
     this.survivalClock.tick(delta);
+
+    // Campfire fuel drains every frame too (above the early-return), so a fire burns down whether or
+    // not a worker task is active — mirrors the survival tick. See src/scenes/world/CampfireManager.ts.
+    this.campfireManager.tick(delta);
 
     const action = this.queue.current;
     if (!action) {
@@ -783,6 +819,12 @@ export class GameScene extends Phaser.Scene {
 
   private onInspectToggle(): void {
     this.setMode(this.mode === 'inspect' ? 'command' : 'inspect');
+  }
+
+  /** Palette picked a buildable (UIScene `build:select`): route to BuildManager, which remembers the
+   *  selection and enters build mode. */
+  private onBuildSelect({ id }: { id: string }): void {
+    this.buildManager.select(id);
   }
 
   /** Combat-mode movepad drag: store the drive vector (applied each frame in update(), scaled by

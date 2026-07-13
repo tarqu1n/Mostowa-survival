@@ -16,4 +16,23 @@ export const BUILDABLES: Record<string, BuildableDef> = {
     armour: 0,
     speed: 0,
   },
+  // Base-only light source; always burning once built, drains fuel continuously (see
+  // config.CAMPFIRE_FUEL_* — plan 012 Context & decisions). Renders as a 3-tile-tall animated
+  // sprite, bottom-anchored like a tall ResourceNodeDef.
+  campfire: {
+    id: 'campfire',
+    name: 'Campfire',
+    cost: { stone: 10, wood: 10 },
+    color: 0xff7a2b,
+    maxHp: 20,
+    armour: 0,
+    speed: 0,
+    light: 8,
+    baseOnly: true,
+    blocksPath: true,
+    behavior: 'campfire', // live/simulated — routed to CampfireManager on completion (see finishSite)
+    animKey: 'campfire',
+    tilesTall: 3,
+    originY: 1,
+  },
 };

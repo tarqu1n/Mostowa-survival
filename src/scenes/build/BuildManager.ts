@@ -3,6 +3,8 @@ import { TILE_SIZE, COLORS } from '../../config';
 import { tileKey, worldToTile, snapToTileCenter, tileToWorldCenter } from '../../systems/grid';
 import { reachableAdjacent, type Cell, type Dims } from '../../systems/pathfind';
 import { ACTIVE_TILESET, resolveTile } from '../../data/tileset';
+import { BUILDABLES } from '../../data/buildables';
+import { isInBase } from '../../systems/base';
 import type { BuildSite } from '../../entities/types';
 import type { CharacterSprite } from '../../entities/Character';
 import type { GameScene } from '../GameScene';
@@ -27,13 +29,17 @@ export interface BuildManagerDeps {
   hasBlockingTree(col: number, row: number): boolean;
   /** Grid bounds for tilePlaceable's in-bounds check. */
   dims(): Dims;
-  /** Can the player afford one wall's cost right now? (updateGhost's valid/invalid tint). */
-  canAffordWall(): boolean;
-  /** Spend one wall's cost; false (no-op) if unaffordable. */
-  spendWallCost(): boolean;
+  /** Can the player afford `cost` right now? (updateGhost's valid/invalid tint + the placement gate). */
+  canAfford(cost: Record<string, number>): boolean;
+  /** Spend `cost`; false (no-op) if unaffordable. */
+  spend(cost: Record<string, number>): boolean;
   /** Append a build order for a site to the task queue. */
   enqueueBuild(siteId: string): void;
-  /** Recompute the path to the active goal after the world changed (finishSite: a wall completed). */
+  /** Hand a just-completed *live/simulated* buildable's site to its runtime manager to create the
+   *  visual (e.g. CampfireManager.materialise). Called only for buildables with a `behavior`; buildables
+   *  without one take the static-tile path instead. */
+  materialiseBuildable(site: BuildSite): void;
+  /** Recompute the path to the active goal after the world changed (finishSite: a buildable completed). */
   repath(): void;
 }
 
@@ -49,6 +55,11 @@ export interface BuildManagerDeps {
 export class BuildManager {
   /** Whether build-mode placement currently owns the pointer (ghost tracking + place/enqueue). */
   buildMode = false;
+
+  /** Which `BUILDABLES` entry the palette has selected — placement/ghost/cost all key off it.
+   *  Defaults to `'wall'` so pre-palette behaviour (and the wall e2e) is unchanged; `reset()` restores
+   *  it (so a `tryPlaceAt` after a campfire selection can't leak `'campfire'` into a later scenario). */
+  private selectedBuildableId = 'wall';
 
   private readonly walls: Phaser.Physics.Arcade.StaticGroup;
   private readonly ghost: Phaser.GameObjects.Rectangle;
@@ -113,10 +124,13 @@ export class BuildManager {
 
   // --- Placement --------------------------------------------------------------
 
-  /** True if a wall can be blueprinted here: in bounds, empty, off live blocking nodes, and reachable. */
+  /** True if the *selected* buildable can be blueprinted here: in bounds, inside the base zone (if the
+   *  buildable is `baseOnly`), empty, off live blocking nodes, and reachable. */
   tilePlaceable(col: number, row: number): boolean {
     const dims = this.deps.dims();
     if (col < 0 || row < 0 || col >= dims.cols || row >= dims.rows) return false;
+    // Base-zone restriction for `baseOnly` buildables (e.g. the campfire); walls place anywhere.
+    if (BUILDABLES[this.selectedBuildableId].baseOnly && !isInBase(col, row)) return false;
     if (this.isOccupied(col, row) || this.hasSiteTile(col, row)) return false;
     // Only blocking nodes (trees/rocks) veto placement — a non-blocking bush can be built over.
     if (this.deps.hasBlockingTree(col, row)) return false;
@@ -129,7 +143,9 @@ export class BuildManager {
   updateGhost(pointer: Phaser.Input.Pointer): void {
     const col = worldToTile(pointer.worldX);
     const row = worldToTile(pointer.worldY);
-    const ok = this.tilePlaceable(col, row) && this.deps.canAffordWall();
+    const ok =
+      this.tilePlaceable(col, row) &&
+      this.deps.canAfford(BUILDABLES[this.selectedBuildableId].cost);
     this.ghost
       .setPosition(snapToTileCenter(pointer.worldX), snapToTileCenter(pointer.worldY))
       .setFillStyle(ok ? COLORS.ghostValid : COLORS.ghostInvalid, 0.5)
@@ -147,16 +163,41 @@ export class BuildManager {
       return;
     }
 
-    if (!this.tilePlaceable(col, row)) return;
-    if (!this.deps.spendWallCost()) return; // unaffordable — no-op
+    this.tryPlaceAt(col, row);
+  }
 
+  /**
+   * Place the *selected* buildable at a tile if allowed + affordable: runs the real {@link
+   * tilePlaceable} gate (incl. the base-zone check), spends its cost, blueprints it, and enqueues the
+   * build. Returns whether a site was placed. Pointer-free so the DEV-only test API can drive it
+   * directly (the "blocked outside base" seam). Does NOT handle the "tap an existing blueprint"
+   * re-enqueue case — that stays in {@link placeOrEnqueueBuild}.
+   */
+  tryPlaceAt(col: number, row: number): boolean {
+    if (!this.tilePlaceable(col, row)) return false;
+    if (!this.deps.spend(BUILDABLES[this.selectedBuildableId].cost)) return false; // unaffordable — no-op
     const site = this.createBlueprint(col, row);
     this.deps.enqueueBuild(site.id);
+    return true;
+  }
+
+  /** Palette selected a buildable: remember it + enter build mode. Wired to `build:select` by the
+   *  scene; emits `build:modeChanged` so the HUD reflects build mode (mirrors {@link toggleBuild}). */
+  select(id: string): void {
+    this.selectedBuildableId = id;
+    this.buildMode = true;
+    this.scene.game.events.emit('build:modeChanged', this.buildMode);
   }
 
   /** Add a passable, unbuilt blueprint at a tile and register its occupancy (shared by real build
-   * placement and the DEV-only scenario API). Does NOT spend wood or enqueue — callers do that. */
-  createBlueprint(col: number, row: number): BuildSite {
+   * placement and the DEV-only scenario API). `buildableId` defaults to the current selection but is
+   * passed explicitly by the scenario API (which places walls + campfires regardless of selection).
+   * Does NOT spend cost or enqueue — callers do that. */
+  createBlueprint(
+    col: number,
+    row: number,
+    buildableId: string = this.selectedBuildableId,
+  ): BuildSite {
     const key = tileKey(col, row);
     const rect = this.scene.add
       .rectangle(
@@ -170,6 +211,7 @@ export class BuildManager {
       .setDepth(1);
     const site: BuildSite = {
       id: `site-${this.nextSiteId++}`,
+      buildableId,
       col,
       row,
       rect,
@@ -182,18 +224,44 @@ export class BuildManager {
     return site;
   }
 
-  /** Complete a blueprint into a solid, blocking wall (materialises on the worker-vacated tile). */
+  /** Complete a blueprint into its finished structure (materialises on the worker-vacated tile).
+   *  Branches on the buildable: a *static* buildable (no `behavior` — the wall) renders a pack sprite
+   *  over the hidden rect; a *live/simulated* buildable (`behavior` set — the campfire) hands its
+   *  visual to a runtime manager via {@link BuildManagerDeps.materialiseBuildable}. `behavior` (not
+   *  `animKey`) is the discriminant — it means "needs a runtime manager", vs `animKey` which is purely
+   *  visual. Occupancy + a static collision body are added here for any blocking buildable (this
+   *  manager stays the sole pathing/collision writer). */
   finishSite(site: BuildSite): void {
     site.done = true;
-    // Physics body stays on the (now-hidden) rect; the pack's wall sprite renders on top of it.
+    const def = BUILDABLES[site.buildableId];
+    // Hide the blueprint square either way — the finished sprite renders on top of the (kept) rect,
+    // whose physics body backs the occupancy below.
     site.rect.setAlpha(0);
-    const wall = resolveTile(ACTIVE_TILESET.tiles.wall);
-    site.visual = this.scene.add.image(site.rect.x, site.rect.y, wall.key, wall.frame).setDepth(1);
-    this.walls.add(site.rect);
-    const body = site.rect.body as Phaser.Physics.Arcade.StaticBody;
-    body.setSize(TILE_SIZE, TILE_SIZE);
-    body.updateFromGameObject();
-    this.occupied.add(tileKey(site.col, site.row));
+
+    // Occupancy + static body for any blocking buildable (missing blocksPath ⇒ true, so the wall
+    // keeps blocking). A non-blocking buildable stays passable and off the occupancy set.
+    if (def.blocksPath ?? true) {
+      this.walls.add(site.rect);
+      const body = site.rect.body as Phaser.Physics.Arcade.StaticBody;
+      body.setSize(TILE_SIZE, TILE_SIZE);
+      body.updateFromGameObject();
+      this.occupied.add(tileKey(site.col, site.row));
+    }
+
+    if (def.behavior) {
+      // Live/simulated buildable (campfire): its runtime manager owns the sprite. Do NOT set
+      // site.visual — reset() destroys site.visual, and the manager destroys its own sprite (avoids a
+      // double-destroy). The sprite may be animated (def.animKey) — that's the manager's concern now.
+      this.deps.materialiseBuildable(site);
+    } else {
+      // Static-tile buildable. The wall is the only one today; a future static buildable would map its
+      // id to a `tiles` role here (`tiles` is a fixed-key manifest, not string-indexable).
+      const tile = resolveTile(ACTIVE_TILESET.tiles.wall);
+      site.visual = this.scene.add
+        .image(site.rect.x, site.rect.y, tile.key, tile.frame)
+        .setDepth(1);
+    }
+
     this.deps.repath();
   }
 
@@ -221,6 +289,7 @@ export class BuildManager {
     this.occupied.clear();
     this.nextSiteId = 0;
     this.buildMode = false;
+    this.selectedBuildableId = 'wall'; // don't leak a prior campfire selection into a fresh scenario
   }
 
   /**

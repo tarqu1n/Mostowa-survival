@@ -237,6 +237,24 @@ export const HUNGER_LOW_FRACTION = 0.2;
 export const HUNGER_VIGNETTE_COLOR = 0xe0b020;
 export const HUNGER_VIGNETTE_MAX_ALPHA = 0.5;
 
+/**
+ * Base zone (see plan 014 Context & decisions). A fixed rectangular tile-bounds region, centred
+ * near the spawn/camp tile (~22,40), that base-only buildables (e.g. the campfire) may be placed
+ * within. Inclusive of both min and max on each axis. Fixed for now; may become dynamic later.
+ */
+export const BASE_ZONE = { minCol: 12, maxCol: 32, minRow: 26, maxRow: 52 };
+
+/**
+ * Campfire fuel (see plan 014 Context & decisions). The fire is always burning once built, draining
+ * fuel continuously at `CAMPFIRE_FUEL_BURN_PER_SEC` — a full tank (`CAMPFIRE_FUEL_MAX`) lasts ~120s,
+ * deliberately short of a full day/night cycle (DAY_MS + NIGHT_MS = 210s) so upkeep stays a pressure.
+ * Refuelled by feeding wood: each unit adds `CAMPFIRE_FUEL_PER_WOOD` fuel (4 wood refuels an empty
+ * fire). Starts full on completion.
+ */
+export const CAMPFIRE_FUEL_MAX = 120;
+export const CAMPFIRE_FUEL_BURN_PER_SEC = 1;
+export const CAMPFIRE_FUEL_PER_WOOD = 30;
+
 /** Semantic colour palette (dark & grotty). Expand as the art identity firms up. */
 export const COLORS = {
   background: 0x14100f,
@@ -247,4 +265,5 @@ export const COLORS = {
   blueprint: 0x5a7a9a, // placed-but-unbuilt construction site (drawn translucent)
   queued: 0xffd500, // outline / marker for targets currently in the worker's task queue
   night: 0x0a1020, // full-screen overlay tint during the day/night cycle's dark hours
+  fireLight: 0xffb066, // warm campfire glow tint (later step: light/reveal radius rendering)
 } as const;

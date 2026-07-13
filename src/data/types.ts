@@ -96,6 +96,26 @@ export interface BuildableDef extends ObjectStats {
   name: string;
   cost: Record<string, number>;
   color: number;
+  /** Light/vision radius in **tiles** this structure casts once built; omit for non-light-sources. */
+  light?: number;
+  /** Restricts placement to the base zone (see config.BASE_ZONE); omit to allow placement anywhere. */
+  baseOnly?: boolean;
+  /** Whether this structure occupies its tile and blocks movement/pathing; omit ⇒ not yet decided (a later step defaults it). */
+  blocksPath?: boolean;
+  /** Runtime-behavior key: a buildable with a `behavior` is *live/simulated* (per-frame tick, tap,
+   *  light, …) and is handed to a runtime manager on completion; omit ⇒ an inert static-tile buildable
+   *  (e.g. the wall). This is the live-vs-static discriminant (distinct from `animKey`, which is purely
+   *  visual). Today the only value is `'campfire'`; a future StructureManager registry keys off it —
+   *  see docs/DECISIONS.md "generalise buildable runtime on buildable #2". */
+  behavior?: string;
+  /** Purely visual: if present, the buildable's sprite is this animated manifest key (not a static
+   *  tile). Independent of `behavior` (a buildable can be simulated without being animated, or vice
+   *  versa) — though today the campfire is the only one and is both. */
+  animKey?: string;
+  /** Height (in tiles) the sprite is scaled to stand — for multi-tile animated buildables. */
+  tilesTall?: number;
+  /** Sprite anchor Y (mirrors ResourceNodeDef.originY) — bottom-anchored so a tall structure overhangs upward. */
+  originY?: number;
 }
 
 /** An enemy catalogue entry — a combatant with a name/id/placeholder tint. */

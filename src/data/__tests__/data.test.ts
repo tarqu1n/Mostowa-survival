@@ -103,6 +103,11 @@ describe('BUILDABLES', () => {
     expect(BUILDABLES.wall.cost.wood).toBeGreaterThan(0);
     expect(ITEMS.wood).toBeDefined();
   });
+
+  it('campfire costs exactly 10 stone + 10 wood and has a positive light radius', () => {
+    expect(BUILDABLES.campfire.cost).toEqual({ stone: 10, wood: 10 });
+    expect(BUILDABLES.campfire.light).toBeGreaterThan(0);
+  });
 });
 
 describe('ENEMIES', () => {

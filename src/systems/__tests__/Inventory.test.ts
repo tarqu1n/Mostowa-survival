@@ -113,6 +113,27 @@ describe('Inventory', () => {
       expect(inv.spend({ wood: 2 })).toBe(false);
       expect(inv.get('wood')).toBe(1);
     });
+
+    it('funds a campfire build (stone: 10, wood: 10 — see src/data/buildables.ts BUILDABLES.campfire.cost)', () => {
+      const inv = new Inventory();
+      inv.add('stone', 10);
+      inv.add('wood', 10);
+      expect(inv.canAfford({ stone: 10, wood: 10 })).toBe(true);
+      const ok = inv.spend({ stone: 10, wood: 10 });
+      expect(ok).toBe(true);
+      expect(inv.get('stone')).toBe(0);
+      expect(inv.get('wood')).toBe(0);
+    });
+
+    it('refuses a campfire spend when a single resource is short', () => {
+      const inv = new Inventory();
+      inv.add('stone', 10);
+      inv.add('wood', 9); // one short
+      expect(inv.canAfford({ stone: 10, wood: 10 })).toBe(false);
+      expect(inv.spend({ stone: 10, wood: 10 })).toBe(false);
+      expect(inv.get('stone')).toBe(10);
+      expect(inv.get('wood')).toBe(9);
+    });
   });
 
   describe('slots, stacking & capacity', () => {

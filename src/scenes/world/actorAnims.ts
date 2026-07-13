@@ -6,6 +6,7 @@ import {
   enemyWalkKey,
   enemyIdleKey,
   enemyDeathKey,
+  campfireAnimKey,
   type Facing,
   type PlayerState,
 } from '../../data/tileset';
@@ -77,6 +78,19 @@ export function registerActorAnims(scene: Phaser.Scene): void {
       }),
       frameRate: DEATH_ANIM_FRAMERATE,
       repeat: 0,
+    });
+  }
+  // Campfire (station): a looping flame flicker. Registered here alongside the actors so every
+  // anims.create lives in one guarded place (plan 012); key + frame count come from the manifest.
+  if (!scene.anims.exists(campfireAnimKey())) {
+    scene.anims.create({
+      key: campfireAnimKey(),
+      frames: scene.anims.generateFrameNumbers(campfireAnimKey(), {
+        start: 0,
+        end: ACTIVE_TILESET.stations.campfire.frames - 1,
+      }),
+      frameRate: 8, // steady flame flicker
+      repeat: -1,
     });
   }
 }

@@ -5,8 +5,9 @@
  */
 
 import { BUILDABLES } from '../data/buildables';
+import { CAMPFIRE_FUEL_MAX } from '../config';
 import type { CombatantStats, InspectableStats } from '../data/types';
-import type { TreeNode, BuildSite } from '../entities/types';
+import type { TreeNode, BuildSite, CampfireUnit } from '../entities/types';
 import type { MonsterCharacter } from '../entities/MonsterCharacter';
 
 export function treeStats(node: TreeNode): InspectableStats {
@@ -18,6 +19,17 @@ export function wallStats(site: BuildSite): InspectableStats {
     name: 'Wall',
     maxHp: BUILDABLES.wall.maxHp,
     extra: [{ label: 'Status', value: site.done ? 'Built' : 'Building' }],
+  };
+}
+
+export function campfireStats(unit: CampfireUnit): InspectableStats {
+  return {
+    name: 'Campfire',
+    maxHp: BUILDABLES.campfire.maxHp,
+    extra: [
+      { label: 'Fuel', value: `${Math.ceil(unit.fuel)}/${CAMPFIRE_FUEL_MAX}` },
+      { label: 'Status', value: unit.lit ? 'Lit' : 'Out' },
+    ],
   };
 }
 

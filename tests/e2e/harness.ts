@@ -38,6 +38,7 @@ export interface DebugState {
   outlinedTreeIds: string[];
   pulsingTreeId: string | null;
   queuedTreeIds: string[];
+  campfires: Array<{ col: number; row: number; fuel: number; lit: boolean }>;
 }
 
 /**
@@ -132,6 +133,30 @@ export function inspect(page: Page, col: number, row: number): Promise<void> {
 /** True if a tile is currently a pathfinding obstacle. */
 export function blocked(page: Page, col: number, row: number): Promise<boolean> {
   return page.evaluate(([c, r]) => (window as any).game.__test.blocked(c, r), [col, row] as const);
+}
+
+/** Select a buildable + attempt a real placement (runs tilePlaceable + the isInBase gate). */
+export function tryPlace(page: Page, id: string, col: number, row: number): Promise<boolean> {
+  return page.evaluate(([id, c, r]) => (window as any).game.__test.tryPlace(id, c, r), [
+    id,
+    col,
+    row,
+  ] as const);
+}
+
+/** True if the tile's centre is within any lit campfire's light radius. */
+export function inLight(page: Page, col: number, row: number): Promise<boolean> {
+  return page.evaluate(([c, r]) => (window as any).game.__test.inLight(c, r), [col, row] as const);
+}
+
+/** Run the real tap-to-feed path on the campfire at `index`; returns whether a feed happened. */
+export function feedCampfire(page: Page, index: number): Promise<boolean> {
+  return page.evaluate((i) => (window as any).game.__test.feedCampfire(i), index);
+}
+
+/** The live campfires (col/row/fuel/lit), spec order — a shortcut over `state(page).campfires`. */
+export function campfires(page: Page): Promise<DebugState['campfires']> {
+  return page.evaluate(() => (window as any).game.__test.state().campfires);
 }
 
 /** Emit a game event (drives the HUD-wired paths: mode toggles, zoom, attack, follow). */

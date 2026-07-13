@@ -36,6 +36,10 @@ export interface SurvivalClockDeps {
   canAfford(cost: Record<string, number>): boolean;
   /** Deduct `cost` atomically; false (no-op) if unaffordable — eat()'s spend. */
   spend(cost: Record<string, number>): boolean;
+  /** World-space light discs (the behavior-neutral light-source seam — CampfireManager.lightSources()
+   *  today, via the scene, no manager↔manager edge). Each becomes a hole in the night overlay so a lit
+   *  source is readable at night. Empty ⇒ no holes ⇒ full night, byte-identical to pre-campfire behaviour. */
+  lightSources(): readonly { x: number; y: number; radius: number }[];
 }
 
 /**
@@ -46,10 +50,13 @@ export interface SurvivalClockDeps {
  * (drained every frame in the same tick; at zero the player starves, taking `STARVE_DAMAGE` every
  * `STARVE_DAMAGE_INTERVAL_MS` via `deps.damagePlayer`).
  *
- * **Sole writer of `nightOverlay`'s alpha.** Per the plan's ownership rule ("ownership follows the
- * writer"), the map-sized dark rect that darkens the world at night lives here, not on
- * VisionController or any other manager — every alpha write (the per-frame tick, a manual
- * `toggleDayNight` jump, and the DEV-only test API's `nightOverlay` poke) funnels through this class.
+ * **Sole writer of `nightOverlay`'s alpha, and owner of its campfire-light mask.** Per the plan's
+ * ownership rule ("ownership follows the writer"), the map-sized dark rect that darkens the world at
+ * night lives here, not on VisionController or any other manager — every alpha write (the per-frame
+ * tick, a manual `toggleDayNight` jump, and the DEV-only test API's `nightOverlay` poke) funnels
+ * through this class. Plan 012 added the overlay's inverted geometry mask + its `lightShape` source
+ * here too (redrawn each tick from the scene-supplied `deps.lightSources()` — no manager↔manager
+ * edge), so lit campfires punch readable holes in the darkness.
  *
  * Constructed fresh in `buildWorld()` each (re)start, at the exact point the old inline night-overlay
  * block used to run. Unlike `ResourceNodeManager`/`EnemyManager`, its constructor DOES have real
@@ -82,6 +89,14 @@ export class SurvivalClock {
    */
   readonly nightOverlay: Phaser.GameObjects.Rectangle;
 
+  /**
+   * Hidden Graphics whose filled circles (one per lit campfire) source the night overlay's INVERTED
+   * geometry mask — filled areas become holes, so a lit fire punches a readable gap in the darkness.
+   * Redrawn each {@link tick} (and after a manual clock jump — see {@link applyClock}) from
+   * `deps.lightSources()`; empty ⇒ no holes ⇒ full night. Mirrors VisionController's `fogShape` mask.
+   */
+  private readonly lightShape: Phaser.GameObjects.Graphics;
+
   constructor(
     private readonly scene: GameScene,
     private readonly deps: SurvivalClockDeps,
@@ -90,6 +105,13 @@ export class SurvivalClock {
       .rectangle(MAP_WIDTH / 2, MAP_HEIGHT / 2, MAP_WIDTH, MAP_HEIGHT, COLORS.night, 1)
       .setAlpha(0)
       .setDepth(15);
+    // Campfire light: an inverted geometry mask over the overlay (filled circle ⇒ hole). Created once;
+    // its shape is redrawn each frame. With no lit fires the shape is empty, so the overlay is
+    // undimmed-nowhere — i.e. full night, exactly as before campfires existed.
+    this.lightShape = scene.add.graphics().setVisible(false);
+    const lightMask = this.lightShape.createGeometryMask();
+    lightMask.setInvertAlpha(true);
+    this.nightOverlay.setMask(lightMask);
     scene.registry.set('dayPhase', 'day');
     scene.registry.set('dayCount', 1);
     scene.registry.set('hunger', this.hunger); // seed so UIScene (Wellbeing screen) re-reads it on restart
@@ -114,6 +136,7 @@ export class SurvivalClock {
     this.clockMs += delta;
     const cycleMs = this.clockMs % cycleLengthMs();
     this.nightOverlay.setAlpha(tintAlphaAt(cycleMs));
+    this.redrawLight(); // punch the lit-campfire holes into the darkness (empty ⇒ full night)
     const phase = phaseAt(cycleMs);
     const dayCount = dayCountForTotal(this.clockMs);
     if (phase !== this.dayPhase || dayCount !== this.dayCount) {
@@ -169,6 +192,7 @@ export class SurvivalClock {
   private applyClock(): void {
     const cycleMs = this.clockMs % cycleLengthMs();
     this.nightOverlay.setAlpha(tintAlphaAt(cycleMs));
+    this.redrawLight();
     this.dayPhase = phaseAt(cycleMs);
     this.dayCount = dayCountForTotal(this.clockMs);
     this.scene.registry.set('dayPhase', this.dayPhase);
@@ -179,6 +203,15 @@ export class SurvivalClock {
       cycleMs,
       tNorm: cycleMs / cycleLengthMs(),
     });
+  }
+
+  /** Redraw the night-overlay mask shape from the current lit campfires — one filled circle per fire
+   *  becomes a hole in the darkness. Cleared + refilled each call so the holes track fuel/lit changes;
+   *  an empty shape (no lit fires) means no holes, i.e. full night. */
+  private redrawLight(): void {
+    this.lightShape.clear();
+    this.lightShape.fillStyle(0xffffff);
+    for (const l of this.deps.lightSources()) this.lightShape.fillCircle(l.x, l.y, l.radius);
   }
 
   /**

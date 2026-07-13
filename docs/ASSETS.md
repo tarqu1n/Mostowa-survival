@@ -167,6 +167,11 @@ not repeated here):
   skeleton uses its single-orientation `Death-Sheet.png` (above). Both are one-shot (`repeat: 0`) at a
   slower `DEATH_ANIM_FRAMERATE` so they read as a fall, not a twitch.
 
+- **Campfire station (plan 012):** `Environment/Structures/Stations/Bonfire/Fire_01-Sheet.png`
+  (128×48 = 4 frames of 32w×48h; the vertical `Bonfire.png` in the same folder can't be strip-sliced)
+  wired as the looping `campfire` texture (`campfireAnimKey()`, `TilesetManifest.stations.campfire`) —
+  texture load only this step; the `anims.create` registration is a later plan-012 step.
+
 **Berry *bush* is still placeholder art (plan 004), not a Pixel Crawler frame:**
 `_derived/bush.png` is baked by `scripts/placeholder-art.mjs` (same coloured-rect-placeholder
 pattern as plan 008's item icons). The **`berries` item icon is now real** — Gemini-generated via

@@ -1,8 +1,8 @@
 import type { Action } from '../../systems/tasks';
 import { worldToTile } from '../../systems/grid';
 import { hurtboxContains, DEFAULT_HURTBOX } from '../../systems/hurtbox';
-import { treeStats, wallStats, enemyStats } from '../../systems/stats';
-import type { PointerPick, TreeNode, BuildSite } from '../../entities/types';
+import { treeStats, wallStats, enemyStats, campfireStats } from '../../systems/stats';
+import type { PointerPick, TreeNode, BuildSite, CampfireUnit } from '../../entities/types';
 import type { MonsterCharacter } from '../../entities/MonsterCharacter';
 import type { GameScene } from '../GameScene';
 
@@ -22,6 +22,8 @@ export interface ScenePickerDeps {
   trees(): TreeNode[];
   /** Every placed site, built + unbuilt, in placement order (BuildManager.allSites()). */
   allSites(): readonly BuildSite[];
+  /** Every built campfire (CampfireManager.all()) — picked over its own (hidden) site rect by draw order. */
+  campfires(): CampfireUnit[];
 }
 
 /**
@@ -71,6 +73,8 @@ export class ScenePicker {
       return void this.scene.game.events.emit('inspect:show', treeStats(pick.tree));
     if (pick?.kind === 'site')
       return void this.scene.game.events.emit('inspect:show', wallStats(pick.site));
+    if (pick?.kind === 'campfire')
+      return void this.scene.game.events.emit('inspect:show', campfireStats(pick.campfire));
     this.scene.game.events.emit('inspect:hide');
   }
 
@@ -122,6 +126,12 @@ export class ScenePicker {
       const obj = s.visual ?? s.rect;
       const spriteHit = s.visual ? this.alphaHit(s.visual, x, y) : obj.getBounds().contains(x, y);
       if ((s.col === col && s.row === row) || spriteHit) consider(obj, { kind: 'site', site: s });
+    }
+    // A built campfire's fire sprite is created after (and over) its now-hidden site rect, so it wins
+    // the pick tie-break by draw order — inspecting a built fire yields the campfire, not its site.
+    for (const c of this.deps.campfires()) {
+      if ((c.col === col && c.row === row) || this.alphaHit(c.sprite, x, y))
+        consider(c.sprite, { kind: 'campfire', campfire: c });
     }
     return best ? (best as { pick: PointerPick }).pick : null;
   }

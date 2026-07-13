@@ -44,6 +44,10 @@ export interface ScenarioSpec {
   >;
   walls?: Array<[number, number]>;
   blueprints?: Array<[number, number]>;
+  /** Campfires placed built + lit, bypassing the base-zone gate (fixtures). See __test.applyScenario. */
+  campfires?: Array<[number, number]>;
+  /** Seed every placed campfire's fuel (e.g. a near-empty fire for a drain/relight test). */
+  campfireFuel?: number;
   rng?: () => number;
   hunger?: number;
   clockMs?: number;
@@ -57,6 +61,7 @@ export interface ScenarioResult {
   bushIds: string[];
   enemyIds: string[];
   siteIds: string[];
+  campfireIds: string[];
 }
 
 /** The DEV-only debug surface installed at `window.game.__test` (see GameScene.create). */
@@ -69,4 +74,10 @@ export interface GameTestApi {
   enqueue(a: Action): void;
   inspect(col: number, row: number): void;
   blocked(col: number, row: number): boolean;
+  /** Select `id` + attempt a real placement at a tile (runs tilePlaceable + the isInBase gate). */
+  tryPlace(id: string, col: number, row: number): boolean;
+  /** True if the tile's centre falls within any lit campfire's light radius. */
+  inLight(col: number, row: number): boolean;
+  /** Run the real tap-to-feed path on the campfire at `index` (spend wood, top up, relight). */
+  feedCampfire(index: number): boolean;
 }

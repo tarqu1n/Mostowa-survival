@@ -222,3 +222,11 @@ of `GameScene`; 1385→~877 lines. The task-loop/combat spine (order/enqueue/beg
 completeCurrent/runHarvest/runBuild/repath, ~260 lines) is a deliberate keep, not a miss — see
 [DECISIONS.md](DECISIONS.md) (2026-07-13). No gameplay change; the `refactor-tripwire` golden
 snapshot still holds.
+
+## Buildable campfire + generalised build/palette (plan 012)
+
+The wall-hardcoded build path is generalised into a build **palette** (BUILD opens a panel listing
+every `BUILDABLES` entry with cost/affordability; picking one selects it for placement) and gains its
+first non-wall buildable, the **campfire** — a base-zone-only light + vision source with continuous
+fuel drain and tap-to-feed refuelling, owned by its own `CampfireManager` per the 013/015 manager
+pattern. Tuned numbers + the full mechanic write-up: [GAME-MECHANICS.md](GAME-MECHANICS.md).

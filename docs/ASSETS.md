@@ -222,6 +222,29 @@ Full decision rationale (this supersedes plan 010's anchor-stamp tool for rigid 
 > (Retro Diffusion / PixelLab), and the Gemini bespoke-asset pipeline live in the R&D log:
 > [ASSET-EXPERIMENTS.md](ASSET-EXPERIMENTS.md).
 
+## Item icons (Gemini pipeline, plan 009)
+
+Inventory **item icons** live at [`public/assets/icons/`](../public/assets/icons/) as **32×32
+transparent PNGs**, one per item, named `<item-id>.png` (matches `ITEMS[*].icon` in
+`src/data/items.ts`; loaded as `icon:<id>`, with the item's `color` rect as fallback if a key is
+missing). They're generated from prompts, not hand-drawn:
+
+- **Source of truth** = the prompt manifest in [`scripts/gen-icons/prompts.py`](../scripts/gen-icons/prompts.py)
+  — a shared style preamble + one subject line per item. Regenerate any icon from there; that's the
+  reproducible origin (per the "commit the processed sprite + note its origin" convention).
+- **Pipeline:** [`scripts/gen-icons/`](../scripts/gen-icons/) — Gemini (`gemini-2.5-flash-image`)
+  generates ~1024px, then PIL keys out the flat background → square-crops → downscales to 32×32 →
+  optional palette quantise. Full R&D context + endpoint/auth in
+  [ASSET-EXPERIMENTS.md](ASSET-EXPERIMENTS.md#gemini-asset-generation-via-guppi); run commands and
+  "how to add an item" in that script's README.
+- **Placeholder → real flow:** plan 008 shipped coloured-rect placeholder PNGs so the inventory UI
+  worked immediately; plan 009 replaces them with generated art. Generation is **gated on
+  `GEMINI_API_KEY`** (LAN-only, via Tailscale), so it's a run-when-reachable step, not part of the
+  build — the game stays green on whatever icons are committed.
+
+> **Origins:** *(record which icons are Gemini-generated vs still placeholder as they land — the
+> prompt manifest is the reproducible source for the generated ones.)*
+
 ## Where assets live
 
 - `public/assets/` — sprites/tilesets/atlases the game loads (Vite serves it from the site root;

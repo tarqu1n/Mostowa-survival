@@ -23,6 +23,13 @@ playwright-report/
 # gen-art trial outputs (throwaway AI image generations — see scripts/gen-art/README.md)
 scripts/.gen-art/
 
+# gen-icons raw generations (throwaway ~1024px scratch — see scripts/gen-icons/README.md)
+scripts/.gen-icons/
+
+# Python bytecode cache (scripts/*.py tooling)
+__pycache__/
+*.pyc
+
 # Editor / OS
 .DS_Store
 .idea/

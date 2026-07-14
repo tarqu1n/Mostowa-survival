@@ -82,6 +82,7 @@ export function registerActorAnims(scene: Phaser.Scene): void {
   }
   // Campfire (station): a looping flame flicker. Registered here alongside the actors so every
   // anims.create lives in one guarded place (plan 012); key + frame count come from the manifest.
+  // CampfireManager scales the played sprite by fuel (plan 016) — the anim itself is fuel-agnostic.
   if (!scene.anims.exists(campfireAnimKey())) {
     scene.anims.create({
       key: campfireAnimKey(),

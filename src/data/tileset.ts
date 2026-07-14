@@ -171,7 +171,9 @@ export interface TilesetManifest {
   /**
    * Placeable-station animations, keyed by station role — separate from `actors` since these aren't
    * characters. Today just the campfire's looping fire strip (see `data/buildables.ts`'s `campfire`
-   * entry, whose `animKey` must match `campfireAnimKey()`).
+   * entry, whose `animKey` must match `campfireAnimKey()`). CampfireManager scales this single sprite
+   * by fuel so the fire visibly grows/shrinks — the Bonfire_0x sheets aren't a clean intensity ramp
+   * (some are braziers, some bare flames), so a consistent sprite + scale reads better than swapping.
    */
   stations: {
     campfire: StripAnim;
@@ -446,13 +448,13 @@ export const PIXEL_CRAWLER_TILESET: TilesetManifest = {
     },
   },
   stations: {
-    // Bonfire_05-Sheet.png is 128×32 = 4 frames of 32×32 — the *full* campfire (log base + flames),
-    // unlike Fire_0x-Sheet.png which is flames only (no base — it looked like a floating fire). The
-    // Bonfire_01..08 sheets are 4-frame campfires of increasing flame intensity (01 ≈ embers →
-    // 08 ≈ biggest); bump the digit to change how fierce the fire reads. (09/10 are a different,
-    // boxed forge structure — not a campfire.) Square cell, so a bare frameSize:32 slices it right.
+    // Bonfire_07-Sheet.png: a log fire with prominent flames (128×32 = 4 frames of 32×32). Chosen for
+    // the clearest visible flame — Bonfire_05 (the earlier pick) read as barely-there at this size,
+    // which is what "there is no flame" was about. CampfireManager scales this single sprite by fuel so
+    // the fire grows/shrinks (plan 016); the Bonfire_0x set isn't a clean intensity ramp to swap across
+    // (01/02/04 are braziers, 06/08 bare flames), so one consistent sprite + scale is the right call.
     campfire: {
-      path: 'Environment/Structures/Stations/Bonfire/Bonfire_05-Sheet.png',
+      path: 'Environment/Structures/Stations/Bonfire/Bonfire_07-Sheet.png',
       frameSize: 32,
       frames: 4,
     },

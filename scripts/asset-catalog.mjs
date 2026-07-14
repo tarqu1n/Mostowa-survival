@@ -11,7 +11,14 @@
  * `pack.json` shape:
  *   { id, name, author, sourceUrl, licence, tileSize,
  *     rules: { tile: string[], strip: string[], selfMade: string[] },   // glob patterns, see `globToRegExp`
- *     overrides: { [relativePath]: Partial<Asset> },                    // exact-path escape hatch
+ *     overrides: { [relativePath]: Partial<Asset> & { type?, rows? } }, // exact-path escape hatch —
+ *                                                                       // `type` forces classification
+ *                                                                       // (consulted BEFORE the type
+ *                                                                       // branches below, plan 014 step
+ *                                                                       // 7c), `rows` (default 1) turns a
+ *                                                                       // strip's `frames` into a grid —
+ *                                                                       // both consumed here, never
+ *                                                                       // written to the emitted asset
  *     exclude: string[],                                                // glob patterns, dropped entirely
  *     regionParams: { [relativePath]: Partial<DetectionParams> },       // consumed by gen_regions.py, not here
  *     regions: { [relativePath]: Array<{x,y,w,h}> } }                   // consumed by gen_regions.py, not here
@@ -117,36 +124,52 @@ function listPngs(root, dir = root, out = []) {
   return out;
 }
 
-// ---- Animation-strip frame math: a strip is always ONE HORIZONTAL ROW of `frames`, so the frame
-// height is simply the sheet height, and frame width is `w / frames` — never a square/smaller-dim
-// GUESS (the previous rule here: frameSize = min(w,h), frames = round(max(w,h)/frameSize)). That
-// guess is provably wrong whenever a strip's frames aren't square: e.g. Fire_01-Sheet.png 128x48 is
-// really 4 frames of 32x48, but the old rule picked frameSize=48 (assuming square) and rounded
-// 128/48=2.667 to 3 — both the frame count AND width would have been wrong, reproducing the exact
-// flicker/"flying" slice bug `StripAnim.frameWidth` exists to fix (src/data/tileset.ts L44-50).
-// `frames` can only be derived automatically in the unambiguous case (`w` a whole multiple of `h`,
-// i.e. square frames) — anything else needs an explicit `frames` override in pack.json (don't
-// guess); unresolved strips fall back to treating the whole sheet as one unsliced frame and warn. */
-function stripFrameDims(w, h, relPath, framesOverride, warnings) {
-  const frameHeight = h;
+// ---- Animation-strip frame math: GRID math, not just a single horizontal row (plan 014 step 7c) —
+// a strip is `rows` rows of `frames / rows` columns (default `rows = 1`, i.e. the classic single
+// row), so `frameHeight = h / rows`, `cols = frames / rows`, `frameWidth = w / cols`. This
+// generalises the step-7a fix rather than reverting it: with `rows = 1` the math collapses back to
+// exactly the old single-row case (`frameHeight = h`, `frameWidth = w / frames`) — never a
+// square/smaller-dim GUESS (the pre-7a rule: frameSize = min(w,h), frames = round(max(w,h)/frameSize),
+// provably wrong for non-square frames: Fire_01-Sheet.png 128x48 is really 4 frames of 32x48, but that
+// guess picked frameSize=48 and rounded 128/48=2.667 to 3 — both frame count AND width wrong,
+// reproducing the exact flicker/"flying" slice bug `StripAnim.frameWidth` exists to fix,
+// src/data/tileset.ts L44-50). Concrete grid case: the furnace sheets (`Bricks_01-Sheet.png` 64x96)
+// are 2x2 grids of 4 flame frames — `frames:4, rows:2` in the override gives frameHeight=48, cols=2,
+// frameWidth=32.
+// `frames` can only be derived automatically in the unambiguous single-row case (`rows` defaulted to
+// 1 AND `w` a whole multiple of `h`, i.e. square frames) — anything else (a grid, or non-square
+// single-row frames) needs an explicit `frames` override in pack.json (don't guess); unresolved
+// strips fall back to treating the whole sheet as one unsliced frame and warn, same as any grid whose
+// dimensions don't divide evenly. */
+function stripFrameDims(w, h, relPath, framesOverride, rowsOverride, warnings) {
+  const rows = rowsOverride ?? 1;
+  const unresolved = () => {
+    warnings.push(
+      `${relPath}: strip ${w}x${h} isn't a whole multiple of its own height (non-square frames) ` +
+        `and has no 'frames' override in pack.json -> treating as 1 unsliced frame`,
+    );
+    return { frameWidth: w, frameHeight: h, frames: 1 };
+  };
+
   let frames = framesOverride;
   if (frames === undefined) {
-    if (w % h === 0) {
-      frames = w / h; // square frames — the only case derivable without a pack.json override
+    if (rows === 1 && w % h === 0) {
+      frames = w / h; // square single-row frames — the only case derivable without an override
     } else {
-      frames = 1; // unresolved: render unsliced rather than mis-slice on a wrong guess
-      warnings.push(
-        `${relPath}: strip ${w}x${h} isn't a whole multiple of its own height (non-square frames) ` +
-          `and has no 'frames' override in pack.json -> treating as 1 unsliced frame`,
-      );
+      return unresolved();
     }
   }
-  const frameWidth = w / frames;
-  if (!Number.isInteger(frameWidth)) {
+
+  const frameHeight = h / rows;
+  const cols = frames / rows;
+  const frameWidth = w / cols;
+  if (![frameHeight, cols, frameWidth].every(Number.isInteger)) {
     warnings.push(
-      `${relPath}: strip ${w}x${h} with frames=${frames} (from pack.json override) gives a ` +
-        `non-integer frameWidth ${frameWidth} -> check the override`,
+      `${relPath}: strip ${w}x${h} with frames=${frames} rows=${rows} (from pack.json override) ` +
+        `gives a non-integer grid (frameHeight=${frameHeight}, cols=${cols}, frameWidth=${frameWidth}) ` +
+        `-> check the override, falling back to 1 unsliced frame`,
     );
+    return { frameWidth: w, frameHeight: h, frames: 1 };
   }
   return { frameWidth, frameHeight, frames };
 }
@@ -154,13 +177,19 @@ function stripFrameDims(w, h, relPath, framesOverride, warnings) {
 function buildAsset(pack, relPath, warnings) {
   const abs = join(TILESETS_DIR, pack.id, relPath);
   const { width: w, height: h } = readPngSize(abs);
-  const type = matchesAny(pack.rules.tile, relPath)
+  const ruleType = matchesAny(pack.rules.tile, relPath)
     ? 'tile'
     : matchesAny(pack.rules.strip, relPath)
       ? 'strip'
       : 'object';
   const origin = matchesAny(pack.rules.selfMade ?? [], relPath) ? 'self-made' : 'pack';
   const override = pack.overrides?.[relPath];
+  // An explicit `override.type` forces classification BEFORE the type-dependent branches below run
+  // (plan 014 step 7c) — resolving it first, rather than relabelling after the fact, is what makes a
+  // forced reclassify actually redo the frame/region math instead of just relabelling a stale asset.
+  // Mirrored one-liner in `scripts/pixel-crawler/gen_regions.py`'s `object_sheets` filter (critique
+  // #4 — the two classifiers must never silently drift).
+  const type = override?.type ?? ruleType;
 
   let asset = {
     id: `${pack.id}/${relPath}`,
@@ -186,14 +215,14 @@ function buildAsset(pack, relPath, warnings) {
     }
     asset.frames = Math.floor(cols) * Math.floor(rows);
   } else if (type === 'strip') {
-    // `frames` can come from the override (checked here, ahead of the generic override-merge
-    // below, since frameWidth math NEEDS frames up front) — the generic merge re-applies it
-    // afterwards too, harmlessly (same value).
+    // `frames`/`rows` come from the override (checked here, ahead of the generic override-merge
+    // below, since the grid math NEEDS them up front).
     const { frameWidth, frameHeight, frames } = stripFrameDims(
       w,
       h,
       relPath,
       override?.frames,
+      override?.rows,
       warnings,
     );
     asset.frameWidth = frameWidth;
@@ -201,7 +230,16 @@ function buildAsset(pack, relPath, warnings) {
     asset.frames = frames;
   }
 
-  if (override) asset = { ...asset, ...override };
+  if (override) {
+    // `type`/`rows` are classification directives consumed above, not literal `CatalogAsset`
+    // fields — merging them in verbatim would leak an undocumented `rows` key into the committed
+    // catalog (and a redundant-but-harmless `type`, already resolved above). Strip them before the
+    // generic merge; everything else in the override (e.g. `frames`) still applies normally.
+    const patch = { ...override };
+    delete patch.type;
+    delete patch.rows;
+    asset = { ...asset, ...patch };
+  }
   return asset;
 }
 

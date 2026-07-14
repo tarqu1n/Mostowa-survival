@@ -283,6 +283,49 @@ four (plus the already-correct dead-tree/stump) regions.
 — there's no automatic staleness check for that case (by design: this module reads pixels, `parseMap`
 deliberately doesn't).
 
+### Per-asset type/grid overrides + in-editor reclassify (plan 014 step 7c)
+
+`pack.json` `rules`-based classification (filename/path glob → `tile`/`strip`/`object`) is
+mechanical and sometimes wrong — e.g. the furnace sheets (`Bricks_01-Sheet.png` etc., 64×96) match
+`*-Sheet.png` → `strip` by filename, but they're 2×2 **grid** animations (4 flame frames arranged in
+a square, not one horizontal row), which the filename rule can't express. Two `overrides[relPath]`
+keys fix this, consumed by **both** generators before classification (never after — a bare `type`
+override redoes the frame/region math, it doesn't just relabel a stale asset):
+
+- **`type: "tile" | "strip" | "object"`** — forces classification, overriding the `rules` glob
+  match. A `-Sheet.png` forced to `object` gets a `gen_regions.py` detection pass (and gains
+  `regions` if it detects ≥2 sprites); a `.png` forced to `strip` is excluded from detection.
+- **`rows`** (strip-only, default `1`) — turns the existing `frames` override into a GRID: with
+  `rows` rows, `frameHeight = h / rows`, `cols = frames / rows`, `frameWidth = w / cols`. `rows: 1`
+  (the default) collapses back to the original single-horizontal-row math, so every pre-existing
+  `frames`-only override still means exactly what it always did.
+
+Example — the furnace fix actually committed: `"Environment/Structures/Stations/Furnace/
+Bricks_01-Sheet.png": { "frames": 4, "rows": 2 }` → `frameHeight = 96/2 = 48`, `cols = 4/2 = 2`,
+`frameWidth = 64/2 = 32`.
+
+**Preferred path — the in-editor "Reclassify" popover** (Library panel, plan 014 step 7c): click
+the ⚙ on any non-tile asset card to open a popover with a `type` dropdown and, for `strip`, `frames`/
+`rows` fields with a live grid overlay on the full sheet (updates as you type — pure arithmetic on
+`w`/`h`, no pixel decode) plus divisor-pair suggestion chips. Committing `PUT`s
+`/__editor/asset-override` (`scripts/vite-editor-api.mjs`, dev-only middleware), which patches
+`pack.json` and reruns **both** generators server-side, in order (`gen_regions.py` then
+`assets:catalog` — the sidecar must be current before the catalog build reads it), serialized so two
+overlapping reclassifies can't race. On success the Library refetches the catalog immediately — no
+page reload, no manual terminal step. If `python3` isn't on `PATH`, the endpoint still saves the
+`pack.json` patch and returns a structured error naming the fallback below (the override isn't lost,
+only the regen needs finishing by hand).
+
+**Fallback — the two-command regen** (same as the Atlas sprite regions section above): edit
+`pack.json` by hand, then `python3 scripts/pixel-crawler/gen_regions.py && npm run assets:catalog`.
+
+**Known limitation:** already-placed decor is a catalog SNAPSHOT — a furnace already dropped into a
+map before its sheet was reclassified does not retroactively animate; delete and re-place it (no
+texture-key collision either way, since `decorTextureKey` includes the frame dims). Pixel-based
+auto-detection of a strip's grid is deliberately out of scope — connected-component detection is
+weak on animation sheets specifically, and the grid itself is ambiguous from pixels alone (64×96
+could be 2×2 or 2×3) — manual entry with a live preview is the v1 approach.
+
 ## Item icons (Gemini pipeline, plan 009)
 
 Inventory **item icons** live at [`public/assets/icons/`](../public/assets/icons/) as **32×32

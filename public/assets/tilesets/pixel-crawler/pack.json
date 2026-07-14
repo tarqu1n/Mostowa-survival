@@ -40,6 +40,10 @@
     },
     "Environment/Structures/Stations/Cooking Station/Grill/Grill_04-Sheet.png": {
       "frames": 4
+    },
+    "Environment/Structures/Stations/Furnace/Bricks_01-Sheet.png": {
+      "frames": 4,
+      "rows": 2
     }
   },
   "exclude": [],

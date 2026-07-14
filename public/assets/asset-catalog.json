@@ -9239,9 +9239,9 @@
         "structures"
       ],
       "origin": "pack",
-      "frameWidth": 64,
-      "frameHeight": 96,
-      "frames": 1
+      "frameWidth": 32,
+      "frameHeight": 48,
+      "frames": 4
     },
     {
       "id": "pixel-crawler/Environment/Structures/Stations/Furnace/Bricks_02-Sheet.png",

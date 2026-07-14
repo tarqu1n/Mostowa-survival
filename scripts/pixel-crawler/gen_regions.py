@@ -9,7 +9,10 @@ so the two can never silently drift apart when a rule changes (plan 014 step 7a 
 Everything NOT matched by `rules.tile`/`rules.strip` (after `exclude`) is an `object` sheet and gets
 a detection pass, including already-single-sprite `_derived/*.png` extracts — uniform treatment,
 no special-casing; those simply end up with one region and stay a plain object downstream in
-`asset-catalog.mjs` (an asset needs >=2 regions to be treated as an atlas).
+`asset-catalog.mjs` (an asset needs >=2 regions to be treated as an atlas). An `overrides[relPath].type`
+in `pack.json` (plan 014 step 7c, `is_object_sheet()` below) forces this classification per-asset —
+mirrors `scripts/asset-catalog.mjs`'s `type = override.type ?? ruleType` — so a `-Sheet.png` forced
+to `object` DOES get a detection pass and a `.png` forced to `strip`/`tile` is EXCLUDED from one.
 
 Region `key = "${x}_${y}"` — the box's top-left corner, NOT its detection order/index. Detection
 order can shift run-to-run (tie-breaking on ambiguous pixels), but a sprite's pixel position only
@@ -91,6 +94,25 @@ def load_pack():
         return json.load(f)
 
 
+def is_object_sheet(rel, rules, overrides):
+    """True if `rel` is `object`-classified — i.e. gets a region-detection pass. Mirrors
+    `scripts/asset-catalog.mjs`'s `type = override.type ?? ruleType` one-liner: an explicit
+    `overrides[rel].type` forces classification here too, so this script and the catalog builder can
+    never silently disagree on which sheets are atlases (plan 014 step 7c critique #4) — e.g. a
+    `-Sheet.png` forced to `object` DOES get a region pass, and a `.png` forced to `strip` is
+    EXCLUDED from one."""
+    rule_type = (
+        "tile"
+        if matches_any(rules.get("tile", []), rel)
+        else "strip"
+        if matches_any(rules.get("strip", []), rel)
+        else "object"
+    )
+    override_type = overrides.get(rel, {}).get("type")
+    asset_type = override_type if override_type is not None else rule_type
+    return asset_type == "object"
+
+
 def boxes_to_regions(boxes):
     """`components()` boxes are `(x0, y0, x1, y1)` with `x1`/`y1` EXCLUSIVE — convert to the sidecar's
     `{key, x, y, w, h}` shape and sort by (y, x) so output order never depends on detection order."""
@@ -106,17 +128,13 @@ def main():
     pack = load_pack()
     rules = pack["rules"]
     exclude = pack.get("exclude", [])
+    overrides = pack.get("overrides", {})
     region_param_overrides = pack.get("regionParams", {})
     region_overrides = pack.get("regions", {})
 
     all_pngs = list_pngs(PC)
     kept = [rel for rel in all_pngs if not matches_any(exclude, rel)]
-    object_sheets = sorted(
-        rel
-        for rel in kept
-        if not matches_any(rules.get("tile", []), rel)
-        and not matches_any(rules.get("strip", []), rel)
-    )
+    object_sheets = sorted(rel for rel in kept if is_object_sheet(rel, rules, overrides))
 
     sheets = {}
     warnings = []

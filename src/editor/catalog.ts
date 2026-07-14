@@ -39,8 +39,12 @@ export interface CatalogAsset {
   h: number;
   /** Frame count — present on `tile`/`strip` (sheet) assets, absent on standalone `object` images. */
   frames?: number;
-  /** Explicit per-frame cell size for a `strip` asset (Phaser `load.spritesheet` shape) —
-   *  `frameHeight = h` (a strip is one horizontal row), `frameWidth = w / frames`. Never a
+  /** Explicit per-frame cell size for a `strip` asset (Phaser `load.spritesheet` shape) — GRID
+   *  math, not just a single horizontal row (plan 014 step 7c): `frameHeight = h / rows`,
+   *  `frameWidth = w / (frames / rows)`, where `rows` defaults to 1 (the classic single-row case,
+   *  where this collapses to `frameHeight = h`, `frameWidth = w / frames`). `rows` itself isn't a
+   *  `CatalogAsset` field — it's a `pack.json` override input consumed at catalog-build time; a
+   *  consumer that needs it back derives `rows = h / frameHeight`, `cols = w / frameWidth`. Never a
    *  square/smaller-dim guess (see `src/data/tileset.ts` `StripAnim` doc and
    *  `scripts/asset-catalog.mjs`'s `stripFrameDims`). Absent on `tile`/`object` assets. */
   frameWidth?: number;

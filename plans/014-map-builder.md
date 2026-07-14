@@ -793,7 +793,7 @@ free values render nearest-neighbour and are the author's aesthetic call.
     animates, place it, confirm it animates in-viewport; save→close→reopen → both still correct; undo
     both placements.
 
-- [ ] **Step 7c: Per-asset type override + grid-animation authoring** `[delegate sonnet]`
+- [x] **Step 7c: Per-asset type override + grid-animation authoring** `[delegate sonnet]`
   - **Why:** filename/path classification in `pack.json` `rules` is lossy and the strip frame-math
     is single-horizontal-row only. Concrete failure: the furnace sheets (`Bricks_01-Sheet.png` etc.,
     64×96) are 2×2 **grid** animations (4 flame frames), match `*-Sheet.png` → `strip`, but
@@ -879,6 +879,43 @@ free values render nearest-neighbour and are the author's aesthetic call.
     deterministic (double-run byte-identical) and the committed `asset-catalog.json`/`regions.json`
     reflect the overrides; an unresolved strip (`frames` still 1) falls back to the plain card, not a
     1-frame anim; `npm run check` green.
+  - Outcome: implemented entirely within the 7c file set (`git diff --stat` confirmed disjoint from
+    the concurrent plan-016/crash-reporter work). `pack.json`: added the
+    `Environment/Structures/Stations/Furnace/Bricks_01-Sheet.png` `{frames:4, rows:2}` override (the
+    worked example). `asset-catalog.mjs`: resolves `type = override.type ?? ruleType` BEFORE the
+    type-dependent branches (a bare `type` override now redoes frame math, not just relabels), and
+    `stripFrameDims` rewritten to grid math (`frameHeight=h/rows`, `cols=frames/rows`,
+    `frameWidth=w/cols`; `rows` defaults 1 → collapses to the old single-row math; a non-integer grid
+    warns and falls back to 1 frame); `type`/`rows` stripped from the generic override merge (classification
+    directives, not `CatalogAsset` fields). `gen_regions.py`: new `is_object_sheet()` mirrors the same
+    `type = override.type ?? ruleType` one-liner (cross-ref comments like the `globToRegExp` mirror) so
+    a `-Sheet.png` forced to `object` gets a region pass and a `.png` forced to `strip`/`tile` is
+    excluded. `vite-editor-api.mjs`: new `PUT /__editor/asset-override` — sanitises packId/relPath/patch,
+    merges into `pack.json` `overrides`, runs `gen_regions.py`→`assets:catalog` via `execFile` (fixed
+    argv, no shell), serialized through an in-flight promise queue, returns generator output as
+    `warnings`, structured 502 on `python3` ENOENT/failure (pack.json left patched = the documented
+    degrade). `api.ts`: `putAssetOverride` typed wrapper. `catalog.ts`: doc-comment-only update (grid
+    math; no field/behaviour change). `LibraryPanel.tsx`: `isAnimatableStrip` now `frames>=2` (an
+    unresolved 1-frame strip falls back to the plain `AssetCard`, no bogus `anim{…,frames:1}` stamp);
+    extracted `refetchCatalog` (cache-busted) as an explicit refetch path; new `AssetReclassify` ⚙
+    popover (type dropdown; `frames`/`rows` fields for strip; live CSS-grid overlay recomputed per
+    keystroke; `suggestGrids` `TILE_SIZE`-aligned divisor-pair chips) wired into
+    `AssetCard`/`AtlasSheetPicker`/`AnimatedStripPicker`/`FavouriteItem`, inline styles only (no
+    `editor.css` change). `docs/ASSETS.md`: new "Per-asset type/grid overrides + in-editor reclassify"
+    subsection (override keys, furnace example, preferred in-editor flow + two-command fallback, known
+    limits). No editor keyboard shortcut added → Shortcuts panel untouched. Verified (no React/DOM
+    harness, per steps 5–7): `Bricks_01` catalog entry = `type:strip, frameWidth:32, frameHeight:48,
+    frames:4` (64/2 × 96/2); both generators double-run byte-identical; cross-generator agreement
+    live-tested (`-Sheet`→object gains regions; `.png`→strip loses them) then reverted to a clean
+    baseline; middleware exercised end-to-end via a real `vite` dev server + curl (200 success, 3-way
+    concurrent queue no corruption, 400/404 on bad packId/traversal/invalid patch, structured error on
+    generator failure). `tsc --noEmit` exit 0; prettier/eslint clean on every 7c file; 317/317 tests
+    green. Aggregate `npm run check` red ONLY on the concurrent session's untracked
+    `src/debug/crashReporter.ts` (prettier) — outside 7c's scope, untouched here. Deviation: reclassify
+    affordance not added to tile-sheet grids (`TileFrameGrid`) — tile misclassification isn't this
+    step's target; the same component can be added later. HUMAN acceptance still needed at
+    `npm run editor`: reclassify `Bricks_01` → `frames:4, rows:2`, watch the grid overlay + animated
+    preview, place it → an animated furnace drops (not the whole sheet), save→reopen round-trips.
 
 - [ ] **Step 8: Shape, walkability + zones painting** `[delegate sonnet]`
   - Generalise the step-6 paint pipeline over a "target grid" (tile layer / walkability / zones /

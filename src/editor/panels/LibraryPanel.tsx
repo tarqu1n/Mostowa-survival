@@ -607,7 +607,16 @@ function AtlasSheetPicker({
   onArmRegion: (assetId: string, region: DecorRegion) => void;
 }) {
   const [zoom, setZoom] = useState(1);
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const hoveringRef = useRef(false);
+  const panRef = useRef<{
+    startX: number;
+    startY: number;
+    startLeft: number;
+    startTop: number;
+  } | null>(null);
   // Set by a wheel event, consumed by the layout effect below to keep the pointed-at content point
   // stationary across the zoom: `cx/cy` = content-space point under the cursor, `ox/oy` = its pixel
   // offset within the viewport.
@@ -651,6 +660,59 @@ function AtlasSheetPicker({
     return () => el.removeEventListener('wheel', onWheel);
   }, [scale]);
 
+  // Hold Space to pan (middle-mouse-drag works too, unconditionally — see onCanvasPointerDown), mirrors
+  // the object-editor tab's regions editor. Gated on `hoveringRef` rather than global focus so it never
+  // steals the spacebar from another Library card while the pointer's elsewhere on the page.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent): void {
+      if (e.code !== 'Space' || e.repeat || !hoveringRef.current) return;
+      e.preventDefault();
+      setSpaceHeld(true);
+    }
+    function onKeyUp(e: KeyboardEvent): void {
+      if (e.code === 'Space') setSpaceHeld(false);
+    }
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, []);
+
+  function onCanvasPointerDown(e: React.PointerEvent<HTMLDivElement>): void {
+    if (e.button !== 1 && !(e.button === 0 && spaceHeld)) return;
+    e.preventDefault();
+    const el = viewportRef.current;
+    panRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startLeft: el?.scrollLeft ?? 0,
+      startTop: el?.scrollTop ?? 0,
+    };
+    setIsPanning(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function onCanvasPointerMove(e: React.PointerEvent<HTMLDivElement>): void {
+    const p = panRef.current;
+    if (!p) return;
+    const el = viewportRef.current;
+    if (el) {
+      el.scrollLeft = p.startLeft - (e.clientX - p.startX);
+      el.scrollTop = p.startTop - (e.clientY - p.startY);
+    }
+  }
+
+  function onCanvasPointerUp(e: React.PointerEvent<HTMLDivElement>): void {
+    if (!panRef.current) return;
+    panRef.current = null;
+    setIsPanning(false);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  }
+
   return (
     <div className="lib-tile-sheet" style={{ position: 'relative' }}>
       <div className="lib-tile-sheet-name" title={asset.id}>
@@ -687,15 +749,29 @@ function AtlasSheetPicker({
         </button>
         <span className="lib-atlas-zoom-val">{zoom}×</span>
       </div>
-      <div className="lib-atlas-viewport" ref={viewportRef}>
+      <div
+        className="lib-atlas-viewport"
+        ref={viewportRef}
+        onPointerEnter={() => {
+          hoveringRef.current = true;
+        }}
+        onPointerLeave={() => {
+          hoveringRef.current = false;
+        }}
+      >
         <div
-          className="lib-atlas-canvas pixelated"
+          className={`lib-atlas-canvas pixelated ${spaceHeld ? 'is-pan-ready' : ''} ${
+            isPanning ? 'is-panning' : ''
+          }`}
           style={{
             width: dispW,
             height: dispH,
             backgroundImage: `url(${url})`,
             backgroundSize: `${dispW}px ${dispH}px`,
           }}
+          onPointerDown={onCanvasPointerDown}
+          onPointerMove={onCanvasPointerMove}
+          onPointerUp={onCanvasPointerUp}
         >
           {(asset.regions ?? []).map((region: CatalogRegion) => {
             const isArmed =

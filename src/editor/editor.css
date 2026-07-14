@@ -824,6 +824,17 @@ button.is-active {
   overflow: hidden;
 }
 
+/* Pan affordance (middle-mouse-drag or hold-Space-drag) — higher specificity than any single-class
+   cursor rule set per-view (e.g. `.editor-region-canvas`'s crosshair), so it wins regardless of
+   declaration order. */
+.lib-atlas-canvas.is-pan-ready {
+  cursor: grab;
+}
+
+.lib-atlas-canvas.is-panning {
+  cursor: grabbing;
+}
+
 .lib-atlas-hotspot {
   position: absolute;
   margin: 0;

@@ -53,7 +53,14 @@ import {
 import { footprintIsValid, nextObjectId } from '../objectOps';
 import { HistoryStack, type Command } from './history';
 
-export type EditorView = 'map' | 'world';
+/** A central-pane tab (plan 017 step 1). `map`/`world` are the two permanent, non-closable tabs; an
+ *  `object` tab is opened on demand from the Library's ⚙ (one per asset) and can be closed. The id is
+ *  deterministic — `map` / `world` / `object:<assetId>` — so `openObjectTab` dedupes with a plain
+ *  `find` and no separate lookup table is needed. */
+export type EditorTab =
+  | { id: 'map'; kind: 'map' }
+  | { id: 'world'; kind: 'world' }
+  | { id: string; kind: 'object'; assetId: string };
 
 export type EditorTool =
   | 'pan'
@@ -123,7 +130,12 @@ export interface PendingDirty {
 const EMPTY_WORLD: WorldLayout = { schemaVersion: 1, placements: [] };
 
 export interface EditorState {
-  view: EditorView;
+  /** Central-pane tabs (plan 017 step 1). Always leads with the permanent `map` + `world` tabs;
+   *  object tabs are appended by `openObjectTab`. */
+  tabs: EditorTab[];
+  /** Id of the currently-shown tab. Defaults to `'map'`; never dangles (close/reconcile always
+   *  re-point it to a live tab, `'map'` at worst). */
+  activeTabId: string;
   map: MapFile | null;
   mapId: string | null;
   dirty: boolean;
@@ -168,7 +180,14 @@ export interface EditorState {
   newMap(id: string, name: string, width: number, height: number): void;
   loadMap(map: MapFile, id: string): void;
   closeMap(): void;
-  setView(view: EditorView): void;
+  /** Opens (find-or-append) the `object:<assetId>` tab and activates it — a no-duplicate open, since
+   *  the id is deterministic. */
+  openObjectTab(assetId: string): void;
+  /** Activates the tab with `id` if it exists; a no-op otherwise. */
+  activateTab(id: string): void;
+  /** Closes an object tab. No-op for the permanent `map`/`world` tabs. If the closed tab was active,
+   *  activates its left neighbour (the tab that sat at the closed index − 1), falling back to `'map'`. */
+  closeTab(id: string): void;
   setActiveLayer(layerId: string): void;
   setActiveTool(tool: EditorTool): void;
   setBrushAsset(asset: string | null): void;
@@ -330,6 +349,27 @@ function reconcileSelection(map: MapFile | null, ids: string[]): string[] {
   return ids.filter((id) => existing.has(id));
 }
 
+/** Drop object tabs whose asset is gone from the fresh catalog, and re-point `activeTabId` if it
+ *  pointed at a dropped tab. Net-new defensive code (NOT an existing reconcile pattern): a reclassify
+ *  never changes an asset id, so this only fires if an asset file is removed/renamed on disk and the
+ *  catalog regenerates without it. `map`/`world` are always kept; an object tab survives iff the
+ *  catalog is non-null AND still lists its `assetId`. A null catalog (the initial/cleared state) keeps
+ *  every tab unchanged — we don't nuke tabs just because the catalog hasn't loaded. A dropped active
+ *  tab falls back to `'map'`. */
+function reconcileTabs(
+  tabs: EditorTab[],
+  activeTabId: string,
+  catalog: EditorCatalog,
+): { tabs: EditorTab[]; activeTabId: string } {
+  if (!catalog) return { tabs, activeTabId };
+  const kept = tabs.filter(
+    (t) => t.kind !== 'object' || catalog.assets.some((a) => a.id === t.assetId),
+  );
+  if (kept.length === tabs.length) return { tabs, activeTabId };
+  const stillActive = kept.some((t) => t.id === activeTabId);
+  return { tabs: kept, activeTabId: stillActive ? activeTabId : 'map' };
+}
+
 /** Bundles several `{do,undo}` op pairs into ONE `Command` — `do` runs them in order, `undo` reverses
  *  them in REVERSE order (so a later op's undo, which may assume an earlier op's effect, unwinds
  *  first). Used by the multi-object batch actions (rotate/flip/depth-bump) so selecting N objects and
@@ -347,7 +387,11 @@ function batchCommand(ops: Array<{ do: () => void; undo: () => void }>): Command
 
 export const useEditorStore = create<EditorState>()(
   subscribeWithSelector((set, get) => ({
-    view: 'map',
+    tabs: [
+      { id: 'map', kind: 'map' },
+      { id: 'world', kind: 'world' },
+    ],
+    activeTabId: 'map',
     map: null,
     mapId: null,
     dirty: false,
@@ -428,7 +472,29 @@ export const useEditorStore = create<EditorState>()(
       }));
     },
 
-    setView: (view) => set({ view }),
+    openObjectTab: (assetId) =>
+      set((s): Partial<EditorState> => {
+        const id = `object:${assetId}`;
+        const tab: EditorTab = { id, kind: 'object', assetId };
+        const tabs = s.tabs.some((t) => t.id === id) ? s.tabs : [...s.tabs, tab];
+        return { tabs, activeTabId: id };
+      }),
+    activateTab: (id) =>
+      set((s): Partial<EditorState> =>
+        s.tabs.some((t) => t.id === id) ? { activeTabId: id } : {},
+      ),
+    closeTab: (id) =>
+      set((s): Partial<EditorState> => {
+        if (id === 'map' || id === 'world') return {}; // permanent tabs — never closed
+        const index = s.tabs.findIndex((t) => t.id === id);
+        if (index < 0) return {}; // not open — nothing to remove
+        const tabs = s.tabs.filter((t) => t.id !== id);
+        // Closing the active tab hands focus to its left neighbour (index − 1); everything else keeps
+        // the current active tab. `?? 'map'` guards the (unreachable — index 0/1 are permanent) case
+        // of closing the leftmost tab.
+        const activeTabId = s.activeTabId === id ? (s.tabs[index - 1]?.id ?? 'map') : s.activeTabId;
+        return { tabs, activeTabId };
+      }),
     setActiveLayer: (layerId) => set({ activeLayerId: layerId }),
     setActiveTool: (activeTool) => set({ activeTool }),
     setBrushAsset: (brushAsset) => set({ brushAsset }),
@@ -456,7 +522,8 @@ export const useEditorStore = create<EditorState>()(
           : [...s.hiddenLayerIds, layerId],
       })),
     setWorld: (world) => set({ world }),
-    setCatalog: (catalog) => set({ catalog }),
+    setCatalog: (catalog) =>
+      set((s) => ({ catalog, ...reconcileTabs(s.tabs, s.activeTabId, catalog) })),
     markSaved: () => set({ dirty: false }),
 
     applyCommand: (cmd) => {

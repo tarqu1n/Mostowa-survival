@@ -30,15 +30,14 @@ const TOOLS: Array<{ id: EditorTool; label: string; title: string }> = [
 
 /**
  * Top toolbar (plan 014 step 5, extended step 6): New / Open / Save, Undo / Redo, a paint-tool strip,
- * the current map name + dirty dot, and the Map/World view switch. Save serializes → re-validates
- * through `parseMap` → PUTs; a validation or IO failure flashes an error toast rather than writing
- * junk. World view itself lands in step 9 (the switch just flips `view`).
+ * and the current map name + dirty dot. Save serializes → re-validates through `parseMap` → PUTs; a
+ * validation or IO failure flashes an error toast rather than writing junk. The Map/World (and
+ * object-editor) switch now lives in the central-pane tab strip (plan 017 step 2), not here.
  */
 export function Toolbar({ showToast }: { showToast: ToastFn }) {
   const map = useEditorStore((s) => s.map);
   const mapId = useEditorStore((s) => s.mapId);
   const dirty = useEditorStore((s) => s.dirty);
-  const view = useEditorStore((s) => s.view);
   const canUndo = useEditorStore((s) => s.canUndo);
   const canRedo = useEditorStore((s) => s.canRedo);
   const activeTool = useEditorStore((s) => s.activeTool);
@@ -155,21 +154,6 @@ export function Toolbar({ showToast }: { showToast: ToastFn }) {
         ) : (
           <span className="editor-placeholder">No map open</span>
         )}
-      </div>
-
-      <div className="editor-toolbar-group editor-toolbar-view">
-        <button
-          className={view === 'map' ? 'is-active' : ''}
-          onClick={() => useEditorStore.getState().setView('map')}
-        >
-          Map
-        </button>
-        <button
-          className={view === 'world' ? 'is-active' : ''}
-          onClick={() => useEditorStore.getState().setView('world')}
-        >
-          World
-        </button>
       </div>
 
       <div className="editor-toolbar-group">

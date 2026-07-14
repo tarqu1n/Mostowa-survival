@@ -3,6 +3,7 @@ import { TILE_SIZE } from '../config';
 import { useEditorStore } from './store/editorStore';
 import { Toolbar } from './Toolbar';
 import { PhaserViewport } from './PhaserViewport';
+import { ObjectEditorTab } from './tabs/ObjectEditorTab';
 import { LibraryPanel } from './panels/LibraryPanel';
 import { LayersPanel } from './panels/LayersPanel';
 import { InspectorPanel } from './panels/InspectorPanel';
@@ -11,9 +12,13 @@ import { useToast, ToastHost } from './Toast';
 
 /**
  * Map Builder shell (plan 014 step 5, extended steps 6-7): toolbar on top, then a three-pane body —
- * Library (left), the Phaser viewport (centre), Inspector + Layers (right). The World view is a
- * placeholder until step 9. Everything shares state through `useEditorStore`; this component only
- * wires the panes, the global undo/redo + delete shortcuts, and the Portal-tool's name/facing dialog.
+ * Library (left), the tabbed central pane (centre), Inspector + Layers (right). The central pane is a
+ * tab strip over a panel area (plan 017 step 2): the permanent Map + World tabs plus an object-editor
+ * tab per Library ⚙ click. Every tab's panel is mounted at once and shown/hidden by `visibility`
+ * (never `display:none`) so the Phaser map canvas — expensive, stateful, `Scale.RESIZE` — survives
+ * every switch instead of being torn down and rebuilt. Everything shares state through
+ * `useEditorStore`; this component wires the panes, the tab strip, the global undo/redo + delete
+ * shortcuts (gated to the Map tab), and the Portal-tool's name/facing dialog.
  */
 
 /** Arrow key → unit direction (screen space: up = -y). Drives the selected-object nudge below. */
@@ -25,7 +30,8 @@ const NUDGE_DIRS: Record<string, { x: number; y: number }> = {
 };
 
 export function EditorApp() {
-  const view = useEditorStore((s) => s.view);
+  const tabs = useEditorStore((s) => s.tabs);
+  const activeTabId = useEditorStore((s) => s.activeTabId);
   const map = useEditorStore((s) => s.map);
   const pendingPortalRect = useEditorStore((s) => s.pendingPortalRect);
   const { toast, showToast } = useToast();
@@ -36,6 +42,11 @@ export function EditorApp() {
   // NOTE: any shortcut added/changed here must be reflected in `shortcuts.ts` (the Shortcuts panel).
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      // These all act on the MAP document; ignore them entirely unless the Map tab is showing, so
+      // e.g. pressing Delete while an object-editor tab is active never silently deletes selected
+      // map objects (read via getState — this effect has an empty dep array). Top correctness risk
+      // of the tabbed pane (plan 017 step 2).
+      if (useEditorStore.getState().activeTabId !== 'map') return;
       const el = document.activeElement;
       if (el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
@@ -83,14 +94,82 @@ export function EditorApp() {
           <LibraryPanel />
         </aside>
         <main className="editor-pane editor-pane--viewport">
-          {view === 'map' ? (
-            <>
-              <PhaserViewport />
-              {!map && <div className="editor-empty-hint">New or Open a map to begin.</div>}
-            </>
-          ) : (
-            <div className="editor-empty-hint">World view — coming in step 9.</div>
-          )}
+          <div className="editor-tab-strip" role="tablist">
+            {tabs.map((tab) => {
+              const isActive = tab.id === activeTabId;
+              const closable = tab.kind === 'object';
+              const label =
+                tab.kind === 'map'
+                  ? 'Map'
+                  : tab.kind === 'world'
+                    ? 'World'
+                    : (tab.assetId.split('/').pop() ?? tab.assetId);
+              return (
+                <button
+                  key={tab.id}
+                  role="tab"
+                  aria-selected={isActive}
+                  className={`editor-tab ${isActive ? 'is-active' : ''}`}
+                  title={tab.kind === 'object' ? tab.assetId : label}
+                  onClick={() => useEditorStore.getState().activateTab(tab.id)}
+                  // Middle-click closes an object tab (a common tab-strip convention). onAuxClick
+                  // fires for non-primary buttons; guard on button === 1 (middle).
+                  onAuxClick={(e) => {
+                    if (closable && e.button === 1) {
+                      e.preventDefault();
+                      useEditorStore.getState().closeTab(tab.id);
+                    }
+                  }}
+                >
+                  <span className="editor-tab-label">{label}</span>
+                  {closable && (
+                    <span
+                      className="editor-tab-close"
+                      role="button"
+                      aria-label="Close tab"
+                      title="Close tab"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        useEditorStore.getState().closeTab(tab.id);
+                      }}
+                    >
+                      ✕
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {/* Every tab's panel is mounted at once, absolutely filling the panel area; only the active
+              one is visible. Inactive panels are hidden with `visibility` (via .is-hidden), NEVER
+              `display:none` — display:none would collapse the Scale.RESIZE Phaser canvas to 0×0. So
+              the Map panel (and its live Phaser game) stays mounted regardless of the active tab. */}
+          <div className="editor-tab-panels">
+            {tabs.map((tab) => {
+              const hidden = tab.id !== activeTabId;
+              const panelClass = `editor-tab-panel ${hidden ? 'is-hidden' : ''}`;
+              if (tab.kind === 'map') {
+                return (
+                  <div key={tab.id} className={panelClass}>
+                    <PhaserViewport />
+                    {!map && <div className="editor-empty-hint">New or Open a map to begin.</div>}
+                  </div>
+                );
+              }
+              if (tab.kind === 'world') {
+                return (
+                  <div key={tab.id} className={panelClass}>
+                    <div className="editor-empty-hint">World view — coming in step 9.</div>
+                  </div>
+                );
+              }
+              return (
+                <div key={tab.id} className={panelClass}>
+                  <ObjectEditorTab assetId={tab.assetId} />
+                </div>
+              );
+            })}
+          </div>
         </main>
         <aside className="editor-pane editor-pane--inspector">
           <InspectorPanel />

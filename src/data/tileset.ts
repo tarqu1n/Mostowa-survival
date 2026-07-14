@@ -368,11 +368,13 @@ export const PIXEL_CRAWLER_TILESET: TilesetManifest = {
             { x: 24, y: 20, rot: 14 },
             { x: 24, y: 19, rot: 14 },
           ],
+          // Free hand dropped down + out (out 3, down 3 — the 32px idle-frame equivalent of the Run's
+          // shift) so it hangs by the hip rather than tucked up at the ribs. y follows the bob.
           offHand: [
-            { x: 10, y: 20 },
-            { x: 10, y: 21 },
-            { x: 10, y: 20 },
-            { x: 10, y: 19 },
+            { x: 7, y: 23 },
+            { x: 7, y: 24 },
+            { x: 7, y: 23 },
+            { x: 7, y: 22 },
           ],
         },
       },
@@ -391,13 +393,15 @@ export const PIXEL_CRAWLER_TILESET: TilesetManifest = {
             { x: 44, y: 40, rot: 14 },
             { x: 43, y: 39, rot: 14 },
           ],
+          // Free hand hangs low by the hip, well clear of the body (was up at the ribs, tucked in),
+          // so it reads as a swinging trailing arm: shifted out 5px + down 6px from the old ribs spot.
           offHand: [
-            { x: 28, y: 47 },
-            { x: 29, y: 46 },
-            { x: 28, y: 45 },
-            { x: 28, y: 47 },
-            { x: 29, y: 46 },
-            { x: 28, y: 45 },
+            { x: 23, y: 53 },
+            { x: 24, y: 52 },
+            { x: 23, y: 51 },
+            { x: 23, y: 53 },
+            { x: 24, y: 52 },
+            { x: 23, y: 51 },
           ],
         },
       },
@@ -426,9 +430,10 @@ export const PIXEL_CRAWLER_TILESET: TilesetManifest = {
       },
       // Two DISTINCT hands (the skeleton's own are unreadable nubs), so it doesn't read as two identical
       // fists: off hand = brown gloved fist (_derived/hand.png, Hands.png idx 4), mirrored via offFlip so
-      // it's the opposite hand; main hand = the open grip (_derived/hand_open.png, idx 7) tilted mainRot 14°
-      // to wrap the raised weapon. Both centred on their anchor. mainZ 2 draws the grip over the weapon
-      // (z 1); offZ 1 sits the free fist beside the body.
+      // it's the opposite hand; main hand = the open grip (_derived/hand_open.png, idx 6 — the right hand,
+      // thumb on the outside; idx 7 was its left-hand mirror) tilted mainRot 14° to wrap the raised weapon.
+      // Both centred on their anchor. mainZ 2 draws the grip over the weapon (z 1); offZ 1 sits the free
+      // fist beside the body.
       hand: {
         source: { kind: 'image', path: '_derived/hand.png' },
         mainSource: { kind: 'image', path: '_derived/hand_open.png' },

@@ -675,13 +675,22 @@ export class EditorScene extends Phaser.Scene {
     dy: number,
   ): void {
     const cam = this.cameras.main;
-    const before = cam.getWorldPoint(pointer.x, pointer.y);
-    const next = Phaser.Math.Clamp(Math.round(cam.zoom) + (dy > 0 ? -1 : 1), MIN_ZOOM, MAX_ZOOM);
-    if (next === cam.zoom) return;
+    const zoomBefore = cam.zoom;
+    const next = Phaser.Math.Clamp(Math.round(zoomBefore) + (dy > 0 ? -1 : 1), MIN_ZOOM, MAX_ZOOM);
+    if (next === zoomBefore) return;
+    // getWorldPoint() inverts a matrix that's only rebuilt once per frame in preRender(), so it
+    // can't be trusted immediately after setZoom() in the same tick. Re-derive the same transform
+    // preRender() builds (Camera#preRender in phaser.esm.js): zoom pivots around the viewport's
+    // origin (default centre), so world = scroll + origin + (screen - camXY - origin) / zoom.
+    const originX = cam.width * cam.originX;
+    const originY = cam.height * cam.originY;
+    const relX = pointer.x - cam.x - originX;
+    const relY = pointer.y - cam.y - originY;
+    const worldX = cam.scrollX + originX + relX / zoomBefore;
+    const worldY = cam.scrollY + originY + relY / zoomBefore;
     cam.setZoom(next);
-    const after = cam.getWorldPoint(pointer.x, pointer.y); // keep the world point under the cursor fixed
-    cam.scrollX += before.x - after.x;
-    cam.scrollY += before.y - after.y;
+    cam.scrollX = worldX - originX - relX / next;
+    cam.scrollY = worldY - originY - relY / next;
     this.updateHover(pointer);
   }
 

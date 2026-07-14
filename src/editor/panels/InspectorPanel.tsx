@@ -156,10 +156,21 @@ function DecorFields({ obj }: { obj: DecorObject }) {
       <p className="editor-placeholder" title={obj.asset}>
         Decor: {obj.asset.split('/').pop()}
       </p>
+      {obj.region && (
+        <p className="editor-placeholder" title="Atlas crop — set by the Library's hotspot picker">
+          Region: {obj.region.w}×{obj.region.h} @ ({obj.region.x},{obj.region.y})
+        </p>
+      )}
+      {obj.anim && (
+        <p className="editor-placeholder" title="Animated strip — fps is a fixed placement default">
+          Anim: {obj.anim.frames}f {obj.anim.frameWidth}×{obj.anim.frameHeight} @ {obj.anim.fps}fps
+        </p>
+      )}
       <div className="insp-field-row">
         <NumberField label="X" value={obj.x} onCommit={(x) => update({ x })} />
         <NumberField label="Y" value={obj.y} onCommit={(y) => update({ y })} />
       </div>
+      <p className="editor-placeholder insp-hint">Arrow keys nudge 1px · Shift+Arrow = 1 tile</p>
       <div className="insp-field-row">
         <NumberField
           label="Scale X"

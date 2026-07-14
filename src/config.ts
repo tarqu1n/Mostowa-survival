@@ -258,14 +258,25 @@ export const CAMPFIRE_FUEL_PER_WOOD = 30;
 /**
  * Refuel-as-worker-order tuning (plan 016). Tapping a fire queues a `refuel` order: the worker walks
  * adjacent and feeds one wood per `CAMPFIRE_FEED_INTERVAL_MS` (an empty fire tops up in ~4s / 4 wood),
- * stopping when a full wood no longer fits or the bag runs dry. The `*_MIN_FRAC` values are what the
- * flame's display scale (`FLAME`) and its light radius (`LIGHT`) shrink to at near-empty, as a fraction
- * of full — both lerp `MIN_FRAC..1` with fuel, so a well-fed fire is visibly bigger + brighter and a
- * dying one shrinks + dims (full flame = native sprite size, full light = the buildable's `light` tiles).
+ * stopping when a full wood no longer fits or the bag runs dry. `CAMPFIRE_LIGHT_MIN_FRAC` is what the
+ * light radius shrinks to at near-empty, as a fraction of full — it lerps `MIN_FRAC..1` with fuel, so a
+ * well-fed fire casts a bigger hole and a dying one dims (full light = the buildable's `light` tiles).
  */
 export const CAMPFIRE_FEED_INTERVAL_MS = 1000;
 export const CAMPFIRE_LIGHT_MIN_FRAC = 0.4;
-export const CAMPFIRE_FLAME_MIN_FRAC = 0.5;
+
+/**
+ * Flame/smoke rendering (plan 016 follow-up). The flame is a TWO-sheet swap keyed on fuel fraction: at
+ * or above `CAMPFIRE_FLAME_LARGE_MIN_FRAC` the larger `Fire_01` sheet burns, scaled a touch by fuel
+ * (`CAMPFIRE_FLAME_LARGE_SCALE_MIN`..1 across the top band) so a well-fed fire is visibly bigger; below
+ * the threshold the smaller `Fire_02` sheet takes over at native size — so a fire running low steps
+ * down. The flame is lifted `CAMPFIRE_FLAME_RISE_PX` above the stone base (reads as rising out of the
+ * ring, not sitting in it); a smoke plume always drifts `CAMPFIRE_SMOKE_RISE_PX` above the base centre.
+ */
+export const CAMPFIRE_FLAME_LARGE_MIN_FRAC = 0.5;
+export const CAMPFIRE_FLAME_LARGE_SCALE_MIN = 0.85;
+export const CAMPFIRE_FLAME_RISE_PX = 6;
+export const CAMPFIRE_SMOKE_RISE_PX = 30;
 
 /** Semantic colour palette (dark & grotty). Expand as the art identity firms up. */
 export const COLORS = {

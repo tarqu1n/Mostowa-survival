@@ -170,15 +170,21 @@ export interface TilesetManifest {
   };
   /**
    * Placeable-station animations, keyed by station role — separate from `actors` since these aren't
-   * characters. The campfire layers two strips: a `base` (glowing embers/logs — always present) and a
-   * `flame` drawn on top (plan 016). Neither sheet alone works — the Bonfire_0x sheets read as a flat
-   * ember spread ("no flame"), and the Fire_0x flames alone look like they float with no fuel under
-   * them — so we composite. CampfireManager scales the flame by fuel (grows/shrinks; hidden at 0,
-   * leaving embers); the base stays put. `data/buildables.ts`'s `campfire.animKey` just needs to be
-   * truthy to route through the animated-buildable branch.
+   * characters. The campfire composites FOUR strips: a stone-ring `base` (always present, dimmed when
+   * out), a `flameLarge` + `flameSmall` pair (CampfireManager burns the large sheet above 50% fuel and
+   * the small one below, so the flame steps down as it runs low), and a `smoke` plume drawn on top at
+   * all times (plan 016 follow-up). Neither the base nor a flame reads right alone — the base is a flat
+   * ember ring ("no flame") and a bare flame floats with no fuel under it — so we composite.
+   * `data/buildables.ts`'s `campfire.animKey` just needs to be truthy to route through the
+   * animated-buildable branch.
    */
   stations: {
-    campfire: { base: StripAnim; flame: StripAnim };
+    campfire: {
+      base: StripAnim;
+      flameLarge: StripAnim;
+      flameSmall: StripAnim;
+      smoke: StripAnim;
+    };
   };
 }
 
@@ -449,18 +455,33 @@ export const PIXEL_CRAWLER_TILESET: TilesetManifest = {
     },
   },
   stations: {
-    // base = Bonfire_03 (a low log/ember pile, 128×32 = 4 frames of 32×32) — the glowing fuel that
-    // stays put and is all that's left once the fire's out. flame = Fire_01 (a bright orange flame,
-    // 128×48 = 4 frames of 32 wide × 48 tall) drawn on top, scaled by fuel. frameWidth(32) ≠
-    // frameSize(48) for the flame, so both are declared (a bare frameSize:48 would slice between frames).
+    // base = Bonfire_01 (a ring of stones with glowing embers, 128×32 = 4 frames of 32×32) — the fire
+    // costs stone to build, so the base reads as a stone fire-ring and is all that's left (dimmed) once
+    // out. flameLarge = Fire_01 / flameSmall = Fire_02 (both 128×48 = 4 frames of 32 wide × 48 tall):
+    // CampfireManager burns the large sheet above 50% fuel and the small one below, so the flame visibly
+    // steps down as it runs low. smoke = Smoke-Sheet (same 32×48 grid) rides above the flame at all
+    // times. frameWidth(32) ≠ frameSize(48) on the tall sheets, so both are declared (a bare
+    // frameSize:48 would slice between frames).
     campfire: {
       base: {
-        path: 'Environment/Structures/Stations/Bonfire/Bonfire_03-Sheet.png',
+        path: 'Environment/Structures/Stations/Bonfire/Bonfire_01-Sheet.png',
         frameSize: 32,
         frames: 4,
       },
-      flame: {
+      flameLarge: {
         path: 'Environment/Structures/Stations/Bonfire/Fire_01-Sheet.png',
+        frameWidth: 32,
+        frameSize: 48,
+        frames: 4,
+      },
+      flameSmall: {
+        path: 'Environment/Structures/Stations/Bonfire/Fire_02-Sheet.png',
+        frameWidth: 32,
+        frameSize: 48,
+        frames: 4,
+      },
+      smoke: {
+        path: 'Environment/Structures/Stations/Bonfire/Smoke-Sheet.png',
         frameWidth: 32,
         frameSize: 48,
         frames: 4,
@@ -503,11 +524,17 @@ export const enemyIdleKey = 'enemy-idle';
 /** Texture/anim key for the enemy Death strip (one-shot collapse on kill). */
 export const enemyDeathKey = 'enemy-death';
 
-/** Texture/anim key for the campfire's ember/log base layer (see `stations.campfire.base`). */
+/** Texture/anim key for the campfire's stone-ring ember base layer (see `stations.campfire.base`). */
 export const campfireBaseKey = (): string => 'campfire-base';
 
-/** Texture/anim key for the campfire's flame layer, drawn over the base (see `stations.campfire.flame`). */
-export const campfireFlameKey = (): string => 'campfire-flame';
+/** Texture/anim key for the campfire's LARGE flame sheet, burned above 50% fuel (see `stations.campfire.flameLarge`). */
+export const campfireFlameLargeKey = (): string => 'campfire-flame-large';
+
+/** Texture/anim key for the campfire's SMALL flame sheet, burned at/below 50% fuel (see `stations.campfire.flameSmall`). */
+export const campfireFlameSmallKey = (): string => 'campfire-flame-small';
+
+/** Texture/anim key for the campfire's smoke plume, always drawn above the flame (see `stations.campfire.smoke`). */
+export const campfireSmokeKey = (): string => 'campfire-smoke';
 
 /** Texture key for an item's icon image (loaded from `public/assets/icons/<icon>`). */
 export const iconKey = (id: string): string => `icon:${id}`;

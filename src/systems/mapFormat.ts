@@ -103,6 +103,34 @@ export interface NodeObject {
   row: number;
 }
 
+/** A crop rect (sheet-local px) into `DecorObject.asset`'s source PNG — plan 014 step 7a's
+ *  metadata-not-split atlas model: rather than physically splitting a multi-sprite sheet (e.g.
+ *  `Environment/Props/Static/Furniture.png`) into one file per sprite, a decor instance carries the
+ *  bounding box of the ONE sprite it wants, cropped at render. Ints; `x,y >= 0`, `w,h > 0`. Mutually
+ *  exclusive with `anim` (a decor object is a static atlas crop OR an animated strip, never both —
+ *  `parseMap` rejects both present). Sourced from the matching `CatalogAsset.regions` entry
+ *  (`scripts/pixel-crawler/gen_regions.py` detects them); absent `region` on a decor whose asset
+ *  isn't an atlas ⇒ render the whole sheet/image (today's behaviour, unchanged). */
+export interface DecorRegion {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Animation-strip playback for a decor instance — deliberately the same shape
+ *  `Phaser.Loader.LoaderPlugin.spritesheet(key, url, { frameWidth, frameHeight })` consumes
+ *  directly, plus `frames`/`fps` for `anims.create`. Ints, all `> 0`. Mutually exclusive with
+ *  `region` (see `DecorRegion` doc) — a decor object is a static crop OR an animated strip, never
+ *  both. Sourced from the matching `CatalogAsset`'s `frameWidth`/`frameHeight`/`frames` (a `strip`
+ *  asset) plus an editor-chosen `fps`. */
+export interface DecorAnim {
+  frameWidth: number;
+  frameHeight: number;
+  frames: number;
+  fps: number;
+}
+
 export interface DecorObject {
   id: string;
   kind: 'decor';
@@ -119,6 +147,12 @@ export interface DecorObject {
   depth: number;
   /** Runtime collision footprint (tiles). Omit for purely cosmetic decor. */
   collision?: CollisionFootprint;
+  /** Static atlas-sprite crop — mutually exclusive with `anim`. Both LAST (after `collision`) and
+   *  optional-omitted-when-absent (see `parseMapObject`/`serializeMap`), like `meta.favourites`, so
+   *  a map authored before step 7a round-trips byte-identical. */
+  region?: DecorRegion;
+  /** Animated-strip playback — mutually exclusive with `region`. See field-order note on `region`. */
+  anim?: DecorAnim;
 }
 
 export type PortalFacing = 'up' | 'down' | 'left' | 'right';
@@ -413,6 +447,32 @@ function parseCollisionFootprint(value: unknown, path: string): CollisionFootpri
   return { col: expectInt(obj.col, `${path}.col`), row: expectInt(obj.row, `${path}.row`), w, h };
 }
 
+function parseDecorRegion(value: unknown, path: string): DecorRegion {
+  const obj = expectRecord(value, path);
+  const x = expectInt(obj.x, `${path}.x`);
+  const y = expectInt(obj.y, `${path}.y`);
+  const w = expectInt(obj.w, `${path}.w`);
+  const h = expectInt(obj.h, `${path}.h`);
+  if (x < 0) fail(`${path}.x must be >= 0`);
+  if (y < 0) fail(`${path}.y must be >= 0`);
+  if (w <= 0) fail(`${path}.w must be > 0`);
+  if (h <= 0) fail(`${path}.h must be > 0`);
+  return { x, y, w, h };
+}
+
+function parseDecorAnim(value: unknown, path: string): DecorAnim {
+  const obj = expectRecord(value, path);
+  const frameWidth = expectInt(obj.frameWidth, `${path}.frameWidth`);
+  const frameHeight = expectInt(obj.frameHeight, `${path}.frameHeight`);
+  const frames = expectInt(obj.frames, `${path}.frames`);
+  const fps = expectInt(obj.fps, `${path}.fps`);
+  if (frameWidth <= 0) fail(`${path}.frameWidth must be > 0`);
+  if (frameHeight <= 0) fail(`${path}.frameHeight must be > 0`);
+  if (frames <= 0) fail(`${path}.frames must be > 0`);
+  if (fps <= 0) fail(`${path}.fps must be > 0`);
+  return { frameWidth, frameHeight, frames, fps };
+}
+
 const PORTAL_FACINGS: ReadonlySet<string> = new Set(['up', 'down', 'left', 'right']);
 
 function parseMapObject(value: unknown, path: string): MapObject {
@@ -433,6 +493,15 @@ function parseMapObject(value: unknown, path: string): MapObject {
   }
 
   if (kind === 'decor') {
+    // region/anim are optional and read only when present (mirrors meta.favourites — see module
+    // doc) so a map authored before step 7a re-serializes byte-identical. Mutually exclusive: a
+    // decor object crops a static atlas sprite XOR plays an animated strip, never both.
+    const region =
+      obj.region === undefined ? undefined : parseDecorRegion(obj.region, `${path}.region`);
+    const anim = obj.anim === undefined ? undefined : parseDecorAnim(obj.anim, `${path}.anim`);
+    if (region !== undefined && anim !== undefined) {
+      fail(`${path} cannot have both region and anim (mutually exclusive)`);
+    }
     return {
       id,
       kind: 'decor',
@@ -449,6 +518,8 @@ function parseMapObject(value: unknown, path: string): MapObject {
         obj.collision === undefined
           ? undefined
           : parseCollisionFootprint(obj.collision, `${path}.collision`),
+      ...(region === undefined ? {} : { region }),
+      ...(anim === undefined ? {} : { anim }),
     };
   }
 
@@ -655,9 +726,29 @@ function tileSourceKey(source: TileSource): string {
     : `sheetFrame:${source.sheet}:${source.frame}`;
 }
 
-/** Deduped union of every texture this map needs: palette entries + decor asset refs. The
- *  enumeration future preload/refcount/release consumes; `node-ref`→texture resolution needs
- *  `NODES` and is layered on in the registry, not here (keeps this module dependency-light). */
+/**
+ * Deduped union of every texture this map needs: palette entries + decor asset refs. The
+ * enumeration future preload/refcount/release consumes; `node-ref`→texture resolution needs
+ * `NODES` and is layered on in the registry, not here (keeps this module dependency-light).
+ *
+ * Deliberately SHEET-granular, not region-granular (plan 014 step 7a): a `DecorObject.region` crops
+ * a sub-rect at render, but the load/dedupe unit stays the whole sheet — walking `region`s here to
+ * enumerate just the sub-rects actually used would be a trivial future derived pass IF a per-map
+ * atlas-baking step ever needs it, so it isn't built speculatively now. Known trade-off (critique
+ * #5): loading a whole multi-sprite atlas (e.g. `Furniture.png` 800×864) to draw one cropped sprite
+ * is fine for v1's small test maps but is real mobile texture-memory pressure once the full Mostowo
+ * camp map lands with many atlases in play — that's the point region-baking (crop once into a
+ * per-map atlas at build/stream time, authored data untouched) earns its keep; noted here for that
+ * follow-up, not solved now.
+ *
+ * Content-drift caveat (critique #3): this module is asset-blind by design (no pixel reads), so
+ * `parseMap` validates a `region`'s ints/positivity but can't know whether it still lands on the
+ * right sprite — re-running `scripts/pixel-crawler/gen_regions.py` after any sheet edit is the ONLY
+ * guard against a sprite moving inside a same-size sheet (an out-of-bounds region is caught by the
+ * Node catalog build; a same-size drift isn't, that's the gap). A DEV-only region-bounds assert
+ * against the loaded texture's real dimensions belongs in the renderer (`decorSprites`, step 7b),
+ * not here — this module has no texture/pixel access to assert against.
+ */
 export function collectTextureSources(map: MapFile): TextureSourceRef[] {
   const seen = new Set<string>();
   const result: TextureSourceRef[] = [];

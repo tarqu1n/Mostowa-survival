@@ -27,7 +27,9 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import {
   createEmptyMap,
   isInside,
+  type DecorAnim,
   type DecorObject,
+  type DecorRegion,
   type MapFile,
   type MapObject,
   type NodeObject,
@@ -84,6 +86,28 @@ export interface EditorOverlays {
   ghosts: boolean;
 }
 
+/**
+ * A catalog asset armed for `decor` placement (plan 014 step 7b), carrying the chosen crop/anim
+ * alongside the asset id so the Library's atlas-hotspot / animated-strip pickers can pass a specific
+ * sprite through to `placeDecor` without a second lookup. Mutually exclusive (an armed asset is a
+ * plain whole-image placement, a `region` crop, or an `anim` strip, never more than one) — the Library
+ * only ever constructs one of the three shapes, mirroring `DecorObject`'s own region/anim exclusivity.
+ * `anim` omits `fps`: placement always stamps `DECOR_ANIM_DEFAULT_FPS` (critique #6 — no per-instance
+ * editable fps in v1), so there's nothing to carry here.
+ */
+export interface ArmedObjectAsset {
+  assetId: string;
+  region?: DecorRegion;
+  anim?: Omit<DecorAnim, 'fps'>;
+}
+
+/** Fixed animation rate every placed `anim` decor gets stamped with (critique #6: no per-instance
+ *  editable fps field in v1 — the game will use fixed anim-framerate constants of its own, e.g.
+ *  `ACTION_ANIM_FRAMERATE`/`DEATH_ANIM_FRAMERATE` in `src/config.ts`). `fps` still lives in the
+ *  `DecorObject.anim` schema (see mapFormat's module doc) so the loader stays catalog-independent —
+ *  it just isn't an authoring knob yet. */
+export const DECOR_ANIM_DEFAULT_FPS = 8;
+
 /** Loaded asset catalog (`AssetCatalog`, see `catalog.ts`). The Library panel fetches + narrows
  *  `asset-catalog.json` on mount and populates this via `setCatalog`; `null` until then. */
 export type EditorCatalog = AssetCatalog | null;
@@ -108,10 +132,10 @@ export interface EditorState {
   activeLayerId: string | null;
   activeTool: EditorTool;
   brushAsset: string | null;
-  /** Catalog id of a strip/object asset clicked in the Library, "arming" `decor` placement for the
-   *  `place` tool. Mutually exclusive with `armedNodeRef` (arming one clears the other — only one
-   *  thing is ever armed at a time). */
-  armedObjectAsset: string | null;
+  /** A catalog asset (+ optional chosen `region`/`anim`) clicked in the Library, "arming" `decor`
+   *  placement for the `place` tool. Mutually exclusive with `armedNodeRef` (arming one clears the
+   *  other — only one thing is ever armed at a time). */
+  armedObjectAsset: ArmedObjectAsset | null;
   /** A `NODES` key clicked in the Library's "Nodes" section, arming `node` placement for the `place`
    *  tool. Mutually exclusive with `armedObjectAsset`. */
   armedNodeRef: string | null;
@@ -148,7 +172,7 @@ export interface EditorState {
   setActiveLayer(layerId: string): void;
   setActiveTool(tool: EditorTool): void;
   setBrushAsset(asset: string | null): void;
-  setArmedObjectAsset(assetId: string | null): void;
+  setArmedObjectAsset(armed: ArmedObjectAsset | null): void;
   setArmedNodeRef(ref: string | null): void;
   setSnapToTileCenter(enabled: boolean): void;
   setPendingPortalRect(rect: PortalRect | null): void;
@@ -198,10 +222,18 @@ export interface EditorState {
 
   // ---- objects: place, transform, stack, portals (step 7) ----
   /** Places a `decor` object at `(x,y)` px with the default cosmetic transform (scale 1, rotation 0,
-   *  no flip, depth 0, no collision) and an auto `decor_NNNN` id; selects it. Refuses (returns
-   *  `false`, no mutation) if its anchor tile is void/out-of-bounds — matches `parseMap`'s
-   *  void-consistency invariant. */
-  placeDecor(asset: string, x: number, y: number): boolean;
+   *  no flip, depth 0, no collision) and an auto `decor_NNNN` id; selects it. An optional `region`
+   *  (atlas crop) or `anim` (animated strip, minus `fps` — see `ArmedObjectAsset`/
+   *  `DECOR_ANIM_DEFAULT_FPS`) is written onto the new object exactly as `mapFormat` expects (mutually
+   *  exclusive, omitted when absent). Refuses (returns `false`, no mutation) if its anchor tile is
+   *  void/out-of-bounds — matches `parseMap`'s void-consistency invariant. */
+  placeDecor(
+    asset: string,
+    x: number,
+    y: number,
+    region?: DecorRegion,
+    anim?: Omit<DecorAnim, 'fps'>,
+  ): boolean;
   /** Places a `kind:'node'` object referencing a `NODES` key at `(col,row)`; auto `node_NNNN` id;
    *  selects it. Void-rejected like `placeDecor`. */
   placeNode(ref: string, col: number, row: number): boolean;
@@ -723,7 +755,7 @@ export const useEditorStore = create<EditorState>()(
 
     // ---- objects: place, transform, stack, portals (step 7) ----
 
-    placeDecor: (asset, x, y) => {
+    placeDecor: (asset, x, y, region, anim) => {
       const map = get().map;
       if (!map) return false;
       const id = nextObjectId(map, 'decor');
@@ -739,6 +771,8 @@ export const useEditorStore = create<EditorState>()(
         flipX: false,
         flipY: false,
         depth: 0,
+        ...(region ? { region } : {}),
+        ...(anim ? { anim: { ...anim, fps: DECOR_ANIM_DEFAULT_FPS } } : {}),
       };
       if (!footprintIsValid(map, obj)) return false;
       const cmd: Command = {

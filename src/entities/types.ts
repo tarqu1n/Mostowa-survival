@@ -39,25 +39,30 @@ export interface BuildSite {
 }
 
 /**
- * A built campfire in the world: its animated fire sprite plus fuel/lit state. Owned by
- * CampfireManager, the sole writer of the sprite's anim/tint (and its sole destroyer). `fuel` drains
+ * A built campfire in the world: its stacked fire sprites plus fuel/lit state. Owned by
+ * CampfireManager, the sole writer of the sprites' anim/tint (and their sole destroyer). `fuel` drains
  * every frame; `lit` mirrors `fuel > 0` and drives the light it casts + its dim-out when spent. The
- * fire is TWO layered sprites: `sprite` is the ember/log base (always present) and `flame` is the
- * flame drawn on top. CampfireManager scales `flame` by fuel each tick (`flameBaseScale` is its
- * full-fuel size) and hides it when the fire's out, leaving the embers.
+ * fire is THREE layered sprites: `sprite` is the stone-ring base (always present), `flame` is the
+ * flame over it (large/small sheet + scale by fuel, hidden when out), and `smoke` is the plume above
+ * (always drifting). CampfireManager picks the flame sheet + scale from fuel each tick (`flameBaseScale`
+ * is its full-fuel fit).
  */
 export interface CampfireUnit {
   id: string;
   col: number;
   row: number;
-  /** Ember/log base layer — always visible (dimmed when out). */
+  /** Stone-ring ember base layer — always visible (dimmed when out). */
   sprite: Phaser.GameObjects.Sprite;
-  /** Flame layer, drawn over the base — scaled by fuel, hidden at 0. */
+  /** Flame layer, drawn over the base — swaps large/small sheet + scales by fuel, hidden when out. */
   flame: Phaser.GameObjects.Sprite;
+  /** Smoke plume, drawn above the flame — always visible/animating. */
+  smoke: Phaser.GameObjects.Sprite;
   fuel: number;
   lit: boolean;
-  /** Flame's fitted full-fuel display scale — CampfireManager render state; ×fuelFrac each tick. */
+  /** Flame's fitted full-fuel display scale — CampfireManager render state; the large sheet ×[MIN..1] by fuel. */
   flameBaseScale: number;
+  /** Which flame sheet is currently rendered (large >50% fuel, small ≤50%) — swap state, so the anim isn't replayed every tick. */
+  flameLevel: 'large' | 'small';
 }
 
 /**

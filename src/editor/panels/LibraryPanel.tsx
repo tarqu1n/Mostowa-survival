@@ -1,22 +1,43 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { TILE_SIZE } from '../../config';
 import { NODES } from '../../data/nodes';
 import { ACTIVE_TILESET } from '../../data/tileset';
 import type { ResourceNodeDef } from '../../data/types';
+import type { DecorAnim, DecorRegion } from '../../systems/mapFormat';
 import { parseAssetId, tilesetAssetUrl } from '../textureLoading';
-import { parseCatalog, catalogTileCols, type AssetCatalog, type CatalogAsset } from '../catalog';
-import { useEditorStore } from '../store/editorStore';
+import {
+  parseCatalog,
+  catalogTileCols,
+  type AssetCatalog,
+  type CatalogAsset,
+  type CatalogRegion,
+} from '../catalog';
+import {
+  useEditorStore,
+  DECOR_ANIM_DEFAULT_FPS,
+  type ArmedObjectAsset,
+} from '../store/editorStore';
 
 /**
- * Library panel (plan 014 steps 6-7) — loads the generated asset catalog, browses it by pack/category
+ * Library panel (plan 014 steps 6-7b) — loads the generated asset catalog, browses it by pack/category
  * (or text search over id/tags), a "Favourites" pseudo-category for the active zone's (or, with no
  * zone active, the map's) favourited assets, and a "Nodes" pseudo-category listing `NODES` entries
  * (previewed via their tileset role). Tile-type assets (the 5 grid tilesheets) expand into a clickable
- * frame grid; clicking a frame sets `brushAsset` and switches to the Brush tool. Strip/object assets
- * and Nodes instead "arm" placement (`armedObjectAsset`/`armedNodeRef`, mutually exclusive — see
- * editorStore's module doc) and switch to the Place tool, mirroring how a tile click switches to
- * Brush — kept deliberately separate from `brushAsset` so arming an object/node can never make the
- * brush/rect tools paint it into a tile layer.
+ * frame grid; clicking a frame sets `brushAsset` and switches to the Brush tool. Non-tile assets arm
+ * `decor` placement (`armedObjectAsset`/`armedNodeRef` for Nodes, mutually exclusive — see editorStore's
+ * module doc) and switch to the Place tool, mirroring how a tile click switches to Brush — kept
+ * deliberately separate from `brushAsset` so arming an object/node can never make the brush/rect tools
+ * paint it into a tile layer. Three non-tile shapes (step 7b):
+ *  - An `object` atlas (`asset.regions` present — multiple sprites detected on one sheet, e.g.
+ *    `Furniture.png`/`Rocks.png`): `AtlasSheetPicker` shows the WHOLE sheet with a clickable hotspot
+ *    per detected region — click the sprite ON the sheet to arm just that crop (the user's explicit
+ *    "show the whole sheet, click the sprite on it" ask), rather than a swatch grid that would
+ *    misrepresent irregularly-sized/positioned sprites.
+ *  - A `strip` with resolvable `frameWidth`/`frameHeight`/`frames`: `AnimatedStripPicker` shows a
+ *    live CSS `steps()` preview of the whole strip playing — click arms the animated decor.
+ *  - Everything else (a plain single-sprite `object`, or a `strip` whose frame geometry can't be
+ *    resolved) falls back to the original whole-image `AssetCard` — click arms a plain (no
+ *    `region`/`anim`) decor, unchanged from step 7.
  *
  * Re-render note: `map`/`zones`/`meta.favourites` are mutated IN PLACE by store commands (stable
  * object references — see editorStore's module doc), so this component subscribes to `docRevision`/
@@ -31,6 +52,10 @@ const PREVIEW_PX = TILE_SIZE * 2;
 const FAVOURITES = '__favourites__';
 /** Sentinel `selectedCategory` value for the Nodes pseudo-category (step 7). */
 const NODES_CATEGORY = '__nodes__';
+/** Max on-screen width/height (px) for an atlas sheet preview (step 7b) — caps a dense sheet like
+ *  `Furniture.png` (800×864) to something that fits the Library pane; hotspots scale down with it so
+ *  they still land on the right sprite. Sheets already smaller than this render at native size. */
+const ATLAS_PREVIEW_MAX_PX = 240;
 
 export function LibraryPanel() {
   const [catalog, setCatalogLocal] = useState<AssetCatalog | null>(null);
@@ -123,8 +148,21 @@ export function LibraryPanel() {
   }
   function armObject(assetId: string): void {
     const s = useEditorStore.getState();
-    s.setArmedObjectAsset(assetId);
+    s.setArmedObjectAsset({ assetId });
     s.setActiveTool('place'); // mirrors pickTile switching to Brush — arming always arms a TOOL too
+  }
+  /** Arms a specific atlas-sheet crop (`AtlasSheetPicker`'s hotspot click). */
+  function armRegion(assetId: string, region: DecorRegion): void {
+    const s = useEditorStore.getState();
+    s.setArmedObjectAsset({ assetId, region });
+    s.setActiveTool('place');
+  }
+  /** Arms an animated strip (`AnimatedStripPicker`'s click) — `fps` is stamped at placement time
+   *  (`DECOR_ANIM_DEFAULT_FPS`), never carried here (critique #6: no per-instance editable fps). */
+  function armAnim(assetId: string, anim: Omit<DecorAnim, 'fps'>): void {
+    const s = useEditorStore.getState();
+    s.setArmedObjectAsset({ assetId, anim });
+    s.setActiveTool('place');
   }
   function armNode(ref: string): void {
     const s = useEditorStore.getState();
@@ -225,27 +263,50 @@ export function LibraryPanel() {
               ))}
 
             {(showingCategory || searchLower.length > 0) &&
-              visibleAssets.map((asset) =>
-                asset.type === 'tile' ? (
-                  <TileFrameGrid
-                    key={asset.id}
-                    asset={asset}
-                    brushAsset={brushAsset}
-                    favourites={favouriteSet}
-                    onPick={pickTile}
-                    onToggleFavourite={toggleFavourite}
-                  />
-                ) : (
+              visibleAssets.map((asset) => {
+                if (asset.type === 'tile') {
+                  return (
+                    <TileFrameGrid
+                      key={asset.id}
+                      asset={asset}
+                      brushAsset={brushAsset}
+                      favourites={favouriteSet}
+                      onPick={pickTile}
+                      onToggleFavourite={toggleFavourite}
+                    />
+                  );
+                }
+                if (asset.type === 'object' && (asset.regions?.length ?? 0) > 0) {
+                  return (
+                    <AtlasSheetPicker
+                      key={asset.id}
+                      asset={asset}
+                      armedObjectAsset={armedObjectAsset}
+                      onArmRegion={armRegion}
+                    />
+                  );
+                }
+                if (isAnimatableStrip(asset)) {
+                  return (
+                    <AnimatedStripPicker
+                      key={asset.id}
+                      asset={asset}
+                      isArmed={armedObjectAsset?.assetId === asset.id}
+                      onArm={armAnim}
+                    />
+                  );
+                }
+                return (
                   <AssetCard
                     key={asset.id}
                     asset={asset}
                     isFavourite={favouriteSet.has(asset.id)}
-                    isArmed={armedObjectAsset === asset.id}
+                    isArmed={armedObjectAsset?.assetId === asset.id}
                     onArm={() => armObject(asset.id)}
                     onToggleFavourite={() => toggleFavourite(asset.id)}
                   />
-                ),
-              )}
+                );
+              })}
 
             {searchLower.length > 0 && visibleAssets.length === 0 && (
               <p className="editor-placeholder">No matches.</p>
@@ -410,7 +471,7 @@ function FavouriteItem({
   catalog: AssetCatalog;
   favId: string;
   brushAsset: string | null;
-  armedObjectAsset: string | null;
+  armedObjectAsset: ArmedObjectAsset | null;
   onPickTile: (assetId: string) => void;
   onArmObject: (assetId: string) => void;
   onToggleFavourite: (assetId: string) => void;
@@ -477,9 +538,233 @@ function FavouriteItem({
     <AssetCard
       asset={asset}
       isFavourite
-      isArmed={armedObjectAsset === favId || brushAsset === favId}
+      isArmed={armedObjectAsset?.assetId === favId || brushAsset === favId}
       onArm={() => onArmObject(favId)}
       onToggleFavourite={() => onToggleFavourite(favId)}
     />
+  );
+}
+
+/** True if `asset` is a `strip` with fully resolvable per-frame geometry — the only shape
+ *  `AnimatedStripPicker` can safely animate (per plan guidance: don't guess frame math for a strip
+ *  that lacks clean `frameWidth`/`frameHeight`/`frames`; fall back to the plain `AssetCard` instead). */
+function isAnimatableStrip(
+  asset: CatalogAsset,
+): asset is CatalogAsset & { frameWidth: number; frameHeight: number; frames: number } {
+  return (
+    asset.type === 'strip' &&
+    typeof asset.frameWidth === 'number' &&
+    typeof asset.frameHeight === 'number' &&
+    typeof asset.frames === 'number' &&
+    asset.frames > 0
+  );
+}
+
+/**
+ * Atlas sheet picker (step 7b) — an `object` asset with detected `regions` (e.g. `Furniture.png`,
+ * `Rocks.png`). Renders the WHOLE sheet with each region as an absolutely-positioned transparent
+ * hotspot button — "show the whole sheet, click the sprite on it" per the user's explicit ask. A
+ * swatch-per-region grid would misrepresent these sheets: regions are irregular sizes at irregular
+ * positions (not a uniform tile grid), so cropping each into a same-size cell would lose the sheet's
+ * actual layout/relationships. A base "fit" scale caps a big sheet down to `ATLAS_PREVIEW_MAX_PX`; a
+ * `zoom` control (1–8×, via the +/− buttons, the slider, or the mouse wheel over the sheet)
+ * multiplies it so the author can enlarge dense sheets enough to see/click small sprites — the canvas
+ * overflows into a scrollable viewport and hotspots scale with the effective scale so they stay on
+ * their sprite. Wheel-zoom is cursor-anchored (the content point under the pointer stays put) and uses
+ * a native non-passive listener because React's synthetic `onWheel` is passive and can't
+ * `preventDefault` the viewport's own scroll.
+ */
+const ATLAS_ZOOM_MIN = 1;
+const ATLAS_ZOOM_MAX = 8;
+const ATLAS_ZOOM_STEP = 0.5;
+const clampZoom = (z: number): number =>
+  Math.min(
+    ATLAS_ZOOM_MAX,
+    Math.max(ATLAS_ZOOM_MIN, Math.round(z / ATLAS_ZOOM_STEP) * ATLAS_ZOOM_STEP),
+  );
+
+function AtlasSheetPicker({
+  asset,
+  armedObjectAsset,
+  onArmRegion,
+}: {
+  asset: CatalogAsset;
+  armedObjectAsset: ArmedObjectAsset | null;
+  onArmRegion: (assetId: string, region: DecorRegion) => void;
+}) {
+  const [zoom, setZoom] = useState(1);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  // Set by a wheel event, consumed by the layout effect below to keep the pointed-at content point
+  // stationary across the zoom: `cx/cy` = content-space point under the cursor, `ox/oy` = its pixel
+  // offset within the viewport.
+  const pendingAnchor = useRef<{ cx: number; cy: number; ox: number; oy: number } | null>(null);
+
+  const path = asset.source.kind === 'sheetFrame' ? asset.source.sheet : asset.source.path;
+  const url = tilesetAssetUrl(asset.pack, path);
+  const fitScale = Math.min(1, ATLAS_PREVIEW_MAX_PX / Math.max(asset.w, asset.h));
+  const scale = fitScale * zoom;
+  const dispW = Math.round(asset.w * scale);
+  const dispH = Math.round(asset.h * scale);
+  const armedRegion = armedObjectAsset?.assetId === asset.id ? armedObjectAsset.region : undefined;
+
+  // Re-anchor scroll after a wheel-zoom changes the canvas size (runs before paint, so no flicker).
+  useLayoutEffect(() => {
+    const el = viewportRef.current;
+    const a = pendingAnchor.current;
+    if (!el || !a) return;
+    el.scrollLeft = a.cx * scale - a.ox;
+    el.scrollTop = a.cy * scale - a.oy;
+    pendingAnchor.current = null;
+  }, [scale]);
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const ox = e.clientX - rect.left;
+      const oy = e.clientY - rect.top;
+      pendingAnchor.current = {
+        cx: (el.scrollLeft + ox) / scale,
+        cy: (el.scrollTop + oy) / scale,
+        ox,
+        oy,
+      };
+      setZoom((z) => clampZoom(z + (e.deltaY < 0 ? ATLAS_ZOOM_STEP : -ATLAS_ZOOM_STEP)));
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [scale]);
+
+  return (
+    <div className="lib-tile-sheet">
+      <div className="lib-tile-sheet-name" title={asset.id}>
+        {asset.id.split('/').pop()}
+      </div>
+      <div className="lib-atlas-zoom">
+        <button
+          type="button"
+          className="lib-atlas-zoom-btn"
+          title="Zoom out"
+          disabled={zoom <= ATLAS_ZOOM_MIN}
+          onClick={() => setZoom((z) => clampZoom(z - ATLAS_ZOOM_STEP))}
+        >
+          −
+        </button>
+        <input
+          type="range"
+          min={ATLAS_ZOOM_MIN}
+          max={ATLAS_ZOOM_MAX}
+          step={ATLAS_ZOOM_STEP}
+          value={zoom}
+          aria-label="Atlas zoom"
+          onChange={(e) => setZoom(clampZoom(Number(e.target.value)))}
+        />
+        <button
+          type="button"
+          className="lib-atlas-zoom-btn"
+          title="Zoom in"
+          disabled={zoom >= ATLAS_ZOOM_MAX}
+          onClick={() => setZoom((z) => clampZoom(z + ATLAS_ZOOM_STEP))}
+        >
+          +
+        </button>
+        <span className="lib-atlas-zoom-val">{zoom}×</span>
+      </div>
+      <div className="lib-atlas-viewport" ref={viewportRef}>
+        <div
+          className="lib-atlas-canvas pixelated"
+          style={{
+            width: dispW,
+            height: dispH,
+            backgroundImage: `url(${url})`,
+            backgroundSize: `${dispW}px ${dispH}px`,
+          }}
+        >
+          {(asset.regions ?? []).map((region: CatalogRegion) => {
+            const isArmed =
+              armedRegion !== undefined &&
+              armedRegion.x === region.x &&
+              armedRegion.y === region.y &&
+              armedRegion.w === region.w &&
+              armedRegion.h === region.h;
+            return (
+              <button
+                key={region.key}
+                className={`lib-atlas-hotspot ${isArmed ? 'is-active' : ''}`}
+                title={`${region.w}×${region.h} @ (${region.x},${region.y})`}
+                style={{
+                  left: region.x * scale,
+                  top: region.y * scale,
+                  width: Math.max(4, region.w * scale),
+                  height: Math.max(4, region.h * scale),
+                }}
+                onClick={() =>
+                  onArmRegion(asset.id, { x: region.x, y: region.y, w: region.w, h: region.h })
+                }
+              />
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Animated strip picker (step 7b) — a `strip` asset with resolvable per-frame geometry
+ * (`isAnimatableStrip`). Shows a live preview of the strip playing in a ONE-FRAME window via a CSS
+ * `steps()` animation. The swatch is exactly one scaled frame (`dispW`×`dispH`); the sheet is drawn
+ * behind it at its true scaled width (`frames * dispW`) and `background-position-x` travels the whole
+ * `-frames * dispW` over `steps(frames)`, so every step lands exactly on a frame boundary. (A
+ * percentage `0% → 100%` travel — the earlier approach — under-shifts by `(frames-1)/frames` of a
+ * frame each step because of CSS's percentage-position formula, which showed two half-frames sliding
+ * sideways instead of a clean flip.) The travel distance is handed to the shared keyframe via the
+ * `--strip-travel` custom property, since @keyframes can't read component values. Clicking arms the
+ * animated decor; placement stamps a fixed default `fps` (`DECOR_ANIM_DEFAULT_FPS`), never edited here
+ * (critique #6).
+ */
+function AnimatedStripPicker({
+  asset,
+  isArmed,
+  onArm,
+}: {
+  asset: CatalogAsset & { frameWidth: number; frameHeight: number; frames: number };
+  isArmed: boolean;
+  onArm: (assetId: string, anim: Omit<DecorAnim, 'fps'>) => void;
+}) {
+  const path = asset.source.kind === 'sheetFrame' ? asset.source.sheet : asset.source.path;
+  const url = tilesetAssetUrl(asset.pack, path);
+  const scale = PREVIEW_PX / asset.frameHeight;
+  const dispW = Math.round(asset.frameWidth * scale);
+  const dispH = Math.round(asset.frameHeight * scale);
+  const label = asset.id.split('/').pop() ?? asset.id;
+
+  const swatchStyle: CSSProperties & Record<'--strip-travel', string> = {
+    width: dispW,
+    height: dispH,
+    backgroundImage: `url(${url})`,
+    backgroundSize: `${asset.frames * dispW}px ${dispH}px`,
+    animationDuration: `${asset.frames / DECOR_ANIM_DEFAULT_FPS}s`,
+    animationTimingFunction: `steps(${asset.frames})`,
+    '--strip-travel': `${-asset.frames * dispW}px`,
+  };
+
+  return (
+    <button
+      className={`lib-card lib-strip-anim ${isArmed ? 'is-active' : ''}`}
+      title={asset.id}
+      onClick={() =>
+        onArm(asset.id, {
+          frameWidth: asset.frameWidth,
+          frameHeight: asset.frameHeight,
+          frames: asset.frames,
+        })
+      }
+    >
+      <span className="lib-strip-swatch pixelated" style={swatchStyle} />
+      <span className="lib-card-label">{label}</span>
+    </button>
   );
 }

@@ -6,6 +6,7 @@ import { cellIndex, isInside, type MapFile, type PortalRect } from '../systems/m
 import { worldToTile, snapToTileCenter } from '../systems/grid';
 import { useEditorStore } from './store/editorStore';
 import { parseAssetId, tilesetAssetUrl } from './textureLoading';
+import { queueDecorTexture, resolveDecorDraw } from '../render/decorSprites';
 
 /**
  * The editor's single Phaser scene (plan 014 step 5). Renders the open map pixel-identically to the
@@ -108,6 +109,9 @@ export class EditorScene extends Phaser.Scene {
     this.selectionGfx = this.add.graphics().setDepth(DEPTH_SELECTION);
     this.rectPreviewGfx = this.add.graphics().setDepth(DEPTH_RECT_PREVIEW);
 
+    // Input wiring: wheel = zoom, middle/space/pan-tool drag = pan, and the pointer-tool modifiers
+    // (Alt = free-pixel, Shift-click = multi-select). NOTE: any shortcut/gesture added or changed
+    // below must be reflected in `shortcuts.ts` (the Shortcuts panel).
     this.input.on(Phaser.Input.Events.POINTER_WHEEL, this.handleWheel, this);
     this.input.on(Phaser.Input.Events.POINTER_DOWN, this.handlePointerDown, this);
     this.input.on(Phaser.Input.Events.POINTER_MOVE, this.handlePointerMove, this);
@@ -235,11 +239,12 @@ export class EditorScene extends Phaser.Scene {
     for (const obj of map.objects) {
       if (obj.kind === 'decor') {
         try {
-          const { pack, path, frame } = parseAssetId(obj.asset);
-          if (frame === undefined) addImage(tileImageKey(path), tilesetAssetUrl(pack, path));
-          // Sheet-frame decor: best-effort TILE_SIZE frames here; the catalog (step 6) carries the
-          // real frame dimensions and will supersede this.
-          else addSheet(sheetKey(path), tilesetAssetUrl(pack, path));
+          // Decor asset ids never carry a tile-style `#frame` suffix (that scheme is for Library tile
+          // brushes only — see `resolveBrushValue`/`parseAssetId`'s doc); `queueDecorTexture` decides
+          // whole-image vs spritesheet load from `obj.region`/`obj.anim` (mapFormat's own metadata),
+          // not from the asset id shape, so `frame` is irrelevant here.
+          const { pack, path } = parseAssetId(obj.asset);
+          queueDecorTexture(this, obj, path, tilesetAssetUrl(pack, path), seen);
         } catch (e) {
           console.warn(`[editor] skipping decor "${obj.id}": ${(e as Error).message}`);
         }
@@ -418,27 +423,39 @@ export class EditorScene extends Phaser.Scene {
     this.redrawSelection();
   }
 
+  /** Renders a decor object through the shared `decorSprites` helper (region-crop / animated
+   *  playback in-editor) — the same resolution the step-11 game loader will use, so there's exactly
+   *  one place that knows how to turn a `DecorObject` into pixels. A plain image (no `region`/`anim`)
+   *  and a `region` crop both draw as a static `Image`; an `anim` decor draws as a `Sprite` and starts
+   *  playing immediately. */
   private placeDecor(
     obj: Extract<MapFile['objects'][number], { kind: 'decor' }>,
-  ): Phaser.GameObjects.Image | undefined {
-    let parsed: { pack: string; path: string; frame?: number };
+  ): Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | undefined {
+    let path: string;
     try {
-      parsed = parseAssetId(obj.asset);
+      ({ path } = parseAssetId(obj.asset));
     } catch {
       return undefined; // already warned in queueTextures
     }
-    const key = parsed.frame === undefined ? tileImageKey(parsed.path) : sheetKey(parsed.path);
-    if (!this.textures.exists(key)) return undefined; // texture missing — skip cleanly
-    const img =
-      parsed.frame === undefined
-        ? this.add.image(obj.x, obj.y, key)
-        : this.add.image(obj.x, obj.y, key, parsed.frame);
-    img.setScale(obj.scaleX, obj.scaleY);
-    img.setAngle(obj.rotation); // stored in degrees (see mapFormat DecorObject)
-    img.setFlip(obj.flipX, obj.flipY);
-    img.setDepth(DEPTH_OBJECTS + obj.depth);
-    this.objectSprites.push(img);
-    return img;
+    const draw = resolveDecorDraw(this, obj, path);
+    if (!draw) return undefined; // texture missing — skip cleanly
+
+    let display: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
+    if (draw.kind === 'anim') {
+      const sprite = this.add.sprite(obj.x, obj.y, draw.key);
+      sprite.play(draw.animKey);
+      display = sprite;
+    } else if (draw.kind === 'region') {
+      display = this.add.image(obj.x, obj.y, draw.key, draw.frame);
+    } else {
+      display = this.add.image(obj.x, obj.y, draw.key);
+    }
+    display.setScale(obj.scaleX, obj.scaleY);
+    display.setAngle(obj.rotation); // stored in degrees (see mapFormat DecorObject)
+    display.setFlip(obj.flipX, obj.flipY);
+    display.setDepth(DEPTH_OBJECTS + obj.depth);
+    this.objectSprites.push(display);
+    return display;
   }
 
   /** Nodes render as their REAL tile-role sprite, matching `ResourceNodeManager.addNode` exactly:
@@ -730,7 +747,8 @@ export class EditorScene extends Phaser.Scene {
           const snap = state.snapToTileCenter && !alt;
           const x = snap ? snapToTileCenter(world.x) : world.x;
           const y = snap ? snapToTileCenter(world.y) : world.y;
-          if (!state.placeDecor(state.armedObjectAsset, x, y)) {
+          const { assetId, region, anim } = state.armedObjectAsset;
+          if (!state.placeDecor(assetId, x, y, region, anim)) {
             console.warn('[editor] decor placement refused — void/out-of-bounds cell');
           }
         } else if (state.armedNodeRef) {

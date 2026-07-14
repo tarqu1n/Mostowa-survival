@@ -5,3 +5,7 @@ node_modules/
 playwright-report/
 test-results/
 **/*.md
+# Map files are serialized by src/systems/mapFormat.ts (serializeMap): stable key order + compact
+# one-row-per-line cell grids for diff-friendly saves. Prettier would explode each cell onto its own
+# line (huge diffs), so it must not touch them. world.json/manifest.json are plain JSON and stay formatted.
+src/data/maps/*.map.json

@@ -5,17 +5,25 @@ import {
   CAMPFIRE_FUEL_BURN_PER_SEC,
   CAMPFIRE_FUEL_PER_WOOD,
   CAMPFIRE_LIGHT_MIN_FRAC,
-  CAMPFIRE_FLAME_MIN_FRAC,
+  CAMPFIRE_FLAME_LARGE_MIN_FRAC,
+  CAMPFIRE_FLAME_LARGE_SCALE_MIN,
+  CAMPFIRE_FLAME_RISE_PX,
+  CAMPFIRE_SMOKE_RISE_PX,
   COLORS,
 } from '../../config';
 import { tileToWorldCenter } from '../../systems/grid';
 import { BUILDABLES } from '../../data/buildables';
-import { campfireBaseKey, campfireFlameKey } from '../../data/tileset';
+import {
+  campfireBaseKey,
+  campfireFlameLargeKey,
+  campfireFlameSmallKey,
+  campfireSmokeKey,
+} from '../../data/tileset';
 import { drainFuel, feedFuel, isLit, fuelFrac } from '../../systems/campfire';
 import type { CampfireUnit, BuildSite } from '../../entities/types';
 import type { GameScene } from '../GameScene';
 
-/** Ember/log base render height in tiles (the flame's height comes from the buildable's `tilesTall`). */
+/** Stone-ring base render height in tiles (the flame's height comes from the buildable's `tilesTall`). */
 const EMBER_TILES = 2;
 
 /**
@@ -32,15 +40,17 @@ export interface CampfireManagerDeps {
 
 /**
  * Campfires — the first live, per-frame-simulated buildable (plan 012). Owns the campfire collection
- * and each one's TWO fire sprites — an ember/log base + a flame layered over it (plan 016) — so it is
- * the sole writer of their anim/tint/scale and their sole destroyer. A campfire is created by
- * {@link materialise} when its build site completes (called
+ * and each one's THREE stacked sprites — a stone-ring base + a flame over it + a smoke plume on top
+ * (plan 016 follow-up) — so it is the sole writer of their anim/tint/scale and their sole destroyer. A
+ * campfire is created by {@link materialise} when its build site completes (called
  * from `BuildManager.finishSite` via the scene-mediated `materialiseBuildable` dep — BuildManager
  * still owns the site rect + its occupancy/collision body, this manager owns only the visual + fuel).
  *
- * Per-frame {@link tick} drains fuel, flips lit/unlit (dimming the sprite when spent), and scales the
- * flame sprite by fuel so it visibly grows/shrinks as it burns (plan 016 — a single consistent sprite
- * scaled, NOT swapping the Bonfire_0x sheets, which aren't a clean intensity ramp). {@link feedOne} is
+ * Per-frame {@link tick} drains fuel, flips lit/unlit (dimming the base when spent), and drives the
+ * flame from fuel (see {@link applyFlame}): the LARGE `Fire_01` sheet above 50% fuel (scaled a touch by
+ * fuel), the SMALL `Fire_02` sheet below — a two-level swap, unlike the plan-012 single sheet, because
+ * these two flame sheets ARE a clean ramp (the Bonfire_0x sheets weren't). The smoke drifts at all
+ * times, fuel-agnostic. {@link feedOne} is
  * the single fuel/sprite write path — the GameScene `refuel` worker order feeds one wood per tick
  * through it (walk-adjacent-then-tend, like harvesting), and the DEV {@link feedAt} test seam delegates
  * to it. {@link lightSources} is the single light source the scene hands to BOTH SurvivalClock
@@ -70,60 +80,104 @@ export class CampfireManager {
 
   // --- Lifecycle -----------------------------------------------------------------
 
-  /** Turn a completed campfire build site into a live, burning campfire: two bottom-anchored layers at
-   *  the fire's tile — an ember/log `base` (fixed height) and a `flame` drawn just above it (its
-   *  `flameBaseScale` is the full-fuel size; tick multiplies it by the fuel fraction). Starts full + lit. */
+  /** Turn a completed campfire build site into a live, burning campfire: three bottom-anchored layers at
+   *  the fire's tile — a stone-ring `base` (fixed height), a `flame` lifted `CAMPFIRE_FLAME_RISE_PX`
+   *  above it (large/small sheet + scale set by {@link applyFlame}), and a `smoke` plume above that
+   *  (always drifting). Starts full + lit. */
   materialise(site: BuildSite): void {
     const def = BUILDABLES[site.buildableId];
     const x = tileToWorldCenter(site.col);
     const y = tileToWorldCenter(site.row);
     const originY = def.originY ?? 1;
+    const tilesTall = def.tilesTall ?? 1;
+
     const base = this.scene.add.sprite(x, y, campfireBaseKey()).setDepth(1).setOrigin(0.5, originY);
     base.setScale((TILE_SIZE * EMBER_TILES) / base.frame.height).play(campfireBaseKey());
-    // Flame sits a hair above the base (depth 1.01) so it draws over the embers; height = the
-    // buildable's tilesTall at full fuel, scaled down as fuel drains (see applyScale).
+
+    // Flame rides a few px above the stone base (depth 1.01) so it reads as rising out of the ring, not
+    // sitting in it; starts on the large sheet (full fuel). flameBaseScale = its full-fuel fit; both
+    // flame sheets share the 32×48 grid, so one scale fits either. applyFlame picks the sheet + scale.
     const flame = this.scene.add
-      .sprite(x, y, campfireFlameKey())
+      .sprite(x, y - CAMPFIRE_FLAME_RISE_PX, campfireFlameLargeKey())
       .setDepth(1.01)
       .setOrigin(0.5, originY);
-    const flameBaseScale = (TILE_SIZE * (def.tilesTall ?? 1)) / flame.frame.height;
-    flame.play(campfireFlameKey());
+    const flameBaseScale = (TILE_SIZE * tilesTall) / flame.frame.height;
+    flame.play(campfireFlameLargeKey());
+
+    // Smoke always drifts above the flame (depth 1.02), independent of fuel/lit state.
+    const smoke = this.scene.add
+      .sprite(x, y - CAMPFIRE_SMOKE_RISE_PX, campfireSmokeKey())
+      .setDepth(1.02)
+      .setOrigin(0.5, originY);
+    smoke.setScale((TILE_SIZE * tilesTall) / smoke.frame.height).play(campfireSmokeKey());
+
     const c: CampfireUnit = {
       id: `campfire-${this.nextId++}`,
       col: site.col,
       row: site.row,
       sprite: base,
       flame,
+      smoke,
       fuel: CAMPFIRE_FUEL_MAX,
       lit: true,
       flameBaseScale,
+      flameLevel: 'large',
     };
-    this.applyScale(c); // full tank → native flame size
+    this.applyFlame(c); // full tank → large sheet at native size
     this.campfires.push(c);
   }
 
   // --- Per-frame tick ------------------------------------------------------------
 
   /** Drain every campfire's fuel and reflect it visually: flip lit on a zero-crossing (lit→unlit stops
-   *  the flame + dims it ash-grey; unlit→lit resumes), and while lit, scale the flame to match fuel so
-   *  it shrinks as it burns down. Called every frame (above the scene's no-action early-return) so fuel
-   *  drains whether or not a worker task is active. */
+   *  the flame + dims the base ash-grey; unlit→lit resumes), and while lit, pick the flame sheet + scale
+   *  for the new fuel so it visibly steps down as it burns. Called every frame (above the scene's
+   *  no-action early-return) so fuel drains whether or not a worker task is active. */
   tick(delta: number): void {
     for (const c of this.campfires) {
       c.fuel = drainFuel(c.fuel, delta, CAMPFIRE_FUEL_BURN_PER_SEC);
       if (c.lit && !isLit(c.fuel)) this.douse(c);
       else if (!c.lit && isLit(c.fuel)) this.light(c);
-      else if (c.lit) this.applyScale(c); // still lit — grow/shrink the flame to match fuel
+      else if (c.lit) this.applyFlame(c); // still lit — pick sheet + scale for the new fuel
     }
   }
 
-  /** Scale the FLAME from its fuel: `flameBaseScale × fuelFrac(fuel)`, so a full tank is native size and
-   *  a dying fire's flame shrinks toward `CAMPFIRE_FLAME_MIN_FRAC` of it. The ember base is fixed — only
-   *  the flame grows/shrinks. Sole flame-scale writer (drain in tick + the jump-up on feed route here). */
-  private applyScale(c: CampfireUnit): void {
-    c.flame.setScale(
-      c.flameBaseScale * fuelFrac(c.fuel, CAMPFIRE_FUEL_MAX, CAMPFIRE_FLAME_MIN_FRAC),
+  /** Which flame sheet a given fuel level burns: the LARGE sheet at/above `CAMPFIRE_FLAME_LARGE_MIN_FRAC`
+   *  of a full tank, the SMALL sheet below. */
+  private flameLevelFor(fuel: number): 'large' | 'small' {
+    return fuel / CAMPFIRE_FUEL_MAX >= CAMPFIRE_FLAME_LARGE_MIN_FRAC ? 'large' : 'small';
+  }
+
+  private flameKeyFor(level: 'large' | 'small'): string {
+    return level === 'large' ? campfireFlameLargeKey() : campfireFlameSmallKey();
+  }
+
+  /** Drive the FLAME from fuel: swap between the large (>50%) and small (≤50%) sheets on a threshold
+   *  crossing — keeping the current frame index so the loop doesn't visibly restart — then set its
+   *  scale. The large sheet grows a touch across the top band (`CAMPFIRE_FLAME_LARGE_SCALE_MIN`..1); the
+   *  small sheet stays native (its art already reads as a reduced flame, so we don't shrink it further).
+   *  The stone base is fixed — only the flame changes. Sole flame texture/scale writer (drain in tick +
+   *  the jump-up on feed both route here). */
+  private applyFlame(c: CampfireUnit): void {
+    const level = this.flameLevelFor(c.fuel);
+    if (level !== c.flameLevel) {
+      c.flameLevel = level;
+      c.flame.play({
+        key: this.flameKeyFor(level),
+        startFrame: c.flame.anims.currentFrame?.index ?? 0,
+      });
+    }
+    const topBand = Phaser.Math.Clamp(
+      (c.fuel / CAMPFIRE_FUEL_MAX - CAMPFIRE_FLAME_LARGE_MIN_FRAC) /
+        (1 - CAMPFIRE_FLAME_LARGE_MIN_FRAC),
+      0,
+      1,
     );
+    const scale =
+      level === 'large'
+        ? c.flameBaseScale * Phaser.Math.Linear(CAMPFIRE_FLAME_LARGE_SCALE_MIN, 1, topBand)
+        : c.flameBaseScale;
+    c.flame.setScale(scale);
   }
 
   // --- Tap-to-feed ---------------------------------------------------------------
@@ -143,7 +197,7 @@ export class CampfireManager {
     if (!this.deps.spend({ wood: 1 })) return false; // no wood — no-op
     c.fuel = feedFuel(c.fuel, CAMPFIRE_FUEL_PER_WOOD, CAMPFIRE_FUEL_MAX);
     if (!c.lit && isLit(c.fuel)) this.light(c);
-    else this.applyScale(c); // already lit → jump the flame up to the new fuel
+    else this.applyFlame(c); // already lit → jump the flame up to the new fuel (may swap small→large)
     return true;
   }
 
@@ -208,7 +262,8 @@ export class CampfireManager {
 
   // --- Reset / teardown ----------------------------------------------------------
 
-  /** Douse: hide + stop the flame (embers remain), and dim the ember base ash-grey (fuel is 0 here). */
+  /** Douse: hide + stop the flame (the stone ring remains), and dim the base ash-grey (fuel is 0 here).
+   *  Smoke keeps drifting — a doused fire still smoulders (smoke is always-on). */
   private douse(c: CampfireUnit): void {
     c.lit = false;
     c.flame.stop();
@@ -216,12 +271,14 @@ export class CampfireManager {
     c.sprite.setTint(0x555555);
   }
 
-  /** Light/relight: un-dim the embers, show + resume the flame, and size it to current fuel. */
+  /** Light/relight: un-dim the stones, show + resume the flame on the sheet for the current fuel, and
+   *  size it. */
   private light(c: CampfireUnit): void {
     c.lit = true;
     c.sprite.clearTint();
-    c.flame.setVisible(true).play(campfireFlameKey(), true);
-    this.applyScale(c);
+    c.flameLevel = this.flameLevelFor(c.fuel);
+    c.flame.setVisible(true).play(this.flameKeyFor(c.flameLevel), true);
+    this.applyFlame(c);
   }
 
   /**
@@ -233,6 +290,7 @@ export class CampfireManager {
     for (const c of this.campfires) {
       c.sprite.destroy();
       c.flame.destroy();
+      c.smoke.destroy();
     }
     this.campfires = [];
     this.nextId = 0;

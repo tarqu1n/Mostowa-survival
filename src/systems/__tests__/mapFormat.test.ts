@@ -31,6 +31,8 @@ interface RawObjectFixture {
   flipY?: boolean;
   depth?: number;
   collision?: { col: number; row: number; w: number; h: number };
+  region?: { x: number; y: number; w: number; h: number };
+  anim?: { frameWidth: number; frameHeight: number; frames: number; fps: number };
   name?: string;
   rect?: { col: number; row: number; w: number; h: number };
   facing?: string;
@@ -298,6 +300,105 @@ describe('parseMap', () => {
         r.meta.favourites = 'not-an-array';
       });
       expect(() => parseMap(raw)).toThrow(/favourites/);
+    });
+  });
+
+  /** `decor_0002` (index 2 of the fixture's objects) has no `collision` — a convenient bare decor
+   *  to hang `region`/`anim` mutations off without disturbing the other invariant tests. */
+  describe('decor region/anim (plan 014 step 7a)', () => {
+    function decorAt(map: MapFile, id: string) {
+      const obj = map.objects.find((o) => o.id === id);
+      if (!obj || obj.kind !== 'decor') throw new Error(`expected a decor object "${id}"`);
+      return obj;
+    }
+
+    it('parses a decor object with a region', () => {
+      const raw = withRaw((r) => {
+        r.objects[2].region = { x: 4, y: 8, w: 16, h: 24 };
+      });
+      const decor = decorAt(parseMap(raw), 'decor_0002');
+      expect(decor.region).toEqual({ x: 4, y: 8, w: 16, h: 24 });
+      expect(decor.anim).toBeUndefined();
+    });
+
+    it('rejects a region with a negative x/y', () => {
+      const raw = withRaw((r) => {
+        r.objects[2].region = { x: -1, y: 0, w: 1, h: 1 };
+      });
+      expect(() => parseMap(raw)).toThrow(/region\.x must be >= 0/);
+    });
+
+    it('rejects a region with a non-positive w/h', () => {
+      const raw = withRaw((r) => {
+        r.objects[2].region = { x: 0, y: 0, w: 0, h: 1 };
+      });
+      expect(() => parseMap(raw)).toThrow(/region\.w must be > 0/);
+    });
+
+    it('rejects a non-integer region field', () => {
+      const raw = withRaw((r) => {
+        r.objects[2].region = { x: 0.5, y: 0, w: 1, h: 1 };
+      });
+      expect(() => parseMap(raw)).toThrow(/region\.x must be an integer/);
+    });
+
+    it('parses a decor object with anim', () => {
+      const raw = withRaw((r) => {
+        r.objects[2].anim = { frameWidth: 32, frameHeight: 48, frames: 4, fps: 8 };
+      });
+      const decor = decorAt(parseMap(raw), 'decor_0002');
+      expect(decor.anim).toEqual({ frameWidth: 32, frameHeight: 48, frames: 4, fps: 8 });
+      expect(decor.region).toBeUndefined();
+    });
+
+    it('rejects an anim with a non-positive frameWidth/frameHeight/frames/fps', () => {
+      const raw = withRaw((r) => {
+        r.objects[2].anim = { frameWidth: 0, frameHeight: 48, frames: 4, fps: 8 };
+      });
+      expect(() => parseMap(raw)).toThrow(/anim\.frameWidth must be > 0/);
+    });
+
+    it('rejects a decor object with BOTH region and anim (mutually exclusive)', () => {
+      const raw = withRaw((r) => {
+        r.objects[2].region = { x: 0, y: 0, w: 16, h: 16 };
+        r.objects[2].anim = { frameWidth: 16, frameHeight: 16, frames: 2, fps: 4 };
+      });
+      expect(() => parseMap(raw)).toThrow(/cannot have both region and anim/);
+    });
+
+    it('round-trips a decor object WITH region, serializing WITH the key and reparsing identically', () => {
+      const raw = withRaw((r) => {
+        r.objects[2].region = { x: 4, y: 8, w: 16, h: 24 };
+      });
+      const map = parseMap(raw);
+      const json = serializeMap(map);
+      const parsedJson = JSON.parse(json) as { objects: Array<{ id: string; region?: unknown }> };
+      const decorJson = parsedJson.objects.find((o) => o.id === 'decor_0002');
+      expect(decorJson?.region).toEqual({ x: 4, y: 8, w: 16, h: 24 });
+      expect(parseMap(JSON.parse(json))).toEqual(map);
+    });
+
+    it('round-trips a decor object WITH anim, serializing WITH the key and reparsing identically', () => {
+      const raw = withRaw((r) => {
+        r.objects[2].anim = { frameWidth: 32, frameHeight: 48, frames: 4, fps: 8 };
+      });
+      const map = parseMap(raw);
+      const json = serializeMap(map);
+      const parsedJson = JSON.parse(json) as { objects: Array<{ id: string; anim?: unknown }> };
+      const decorJson = parsedJson.objects.find((o) => o.id === 'decor_0002');
+      expect(decorJson?.anim).toEqual({ frameWidth: 32, frameHeight: 48, frames: 4, fps: 8 });
+      expect(parseMap(JSON.parse(json))).toEqual(map);
+    });
+
+    it('round-trips the base fixture (no region/anim on any object) serializing WITHOUT the keys', () => {
+      const map = parseMap(validRaw());
+      const json = serializeMap(map);
+      const parsedJson = JSON.parse(json) as { objects: Array<Record<string, unknown>> };
+      for (const obj of parsedJson.objects) {
+        expect(Object.prototype.hasOwnProperty.call(obj, 'region')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(obj, 'anim')).toBe(false);
+      }
+      expect(parseMap(JSON.parse(json))).toEqual(map);
     });
   });
 });

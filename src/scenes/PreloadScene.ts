@@ -9,7 +9,9 @@ import {
   enemyIdleKey,
   enemyDeathKey,
   campfireBaseKey,
-  campfireFlameKey,
+  campfireFlameLargeKey,
+  campfireFlameSmallKey,
+  campfireSmokeKey,
   iconKey,
   type TileSource,
   type StripAnim,
@@ -114,10 +116,13 @@ export class PreloadScene extends Phaser.Scene {
     loadStrip(enemyIdleKey, enemy.idle); // 32px Idle bob — its own footprint (Phase B)
     loadStrip(enemyDeathKey, enemy.death);
 
-    // Stations: the campfire's two layers — an ember/log base + a flame on top (plan 016). Registered
-    // as Phaser anims later (registerActorAnims), not here — this just loads the textures.
+    // Stations: the campfire's four layers — stone-ring base + large/small flame sheets + smoke (plan
+    // 016 follow-up). Registered as Phaser anims later (registerActorAnims), not here — this just loads
+    // the textures.
     loadStrip(campfireBaseKey(), manifest.stations.campfire.base);
-    loadStrip(campfireFlameKey(), manifest.stations.campfire.flame);
+    loadStrip(campfireFlameLargeKey(), manifest.stations.campfire.flameLarge);
+    loadStrip(campfireFlameSmallKey(), manifest.stations.campfire.flameSmall);
+    loadStrip(campfireSmokeKey(), manifest.stations.campfire.smoke);
 
     // Monster weapon art + the two hand images (off-hand fist + main-hand open grip): one static image
     // each (no anim), keyed like the derived tiles. GameScene resolves them via resolveTile(source).

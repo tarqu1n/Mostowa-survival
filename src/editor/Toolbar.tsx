@@ -4,6 +4,7 @@ import { getMap, putMap } from './api';
 import { useEditorStore, type EditorTool } from './store/editorStore';
 import { NewMapDialog, type NewMapFields } from './NewMapDialog';
 import { OpenMapDialog } from './OpenMapDialog';
+import { ShortcutsDialog } from './ShortcutsDialog';
 import type { ToastFn } from './Toast';
 
 /** The paint tools + pan + the step-7 object tools, in display order. Collision/zone/shape land in a
@@ -47,6 +48,7 @@ export function Toolbar({ showToast }: { showToast: ToastFn }) {
 
   const [showNew, setShowNew] = useState(false);
   const [showOpen, setShowOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function handleSave(): Promise<void> {
@@ -170,10 +172,17 @@ export function Toolbar({ showToast }: { showToast: ToastFn }) {
         </button>
       </div>
 
+      <div className="editor-toolbar-group">
+        <button onClick={() => setShowShortcuts(true)} title="Keyboard & mouse shortcuts">
+          ⌨ Keys
+        </button>
+      </div>
+
       {showNew && <NewMapDialog onCreate={handleCreate} onCancel={() => setShowNew(false)} />}
       {showOpen && (
         <OpenMapDialog onOpen={(id) => void handleOpen(id)} onCancel={() => setShowOpen(false)} />
       )}
+      {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
     </header>
   );
 }

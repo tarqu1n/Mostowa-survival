@@ -7,7 +7,9 @@ import {
   enemyIdleKey,
   enemyDeathKey,
   campfireBaseKey,
-  campfireFlameKey,
+  campfireFlameLargeKey,
+  campfireFlameSmallKey,
+  campfireSmokeKey,
   type Facing,
   type PlayerState,
 } from '../../data/tileset';
@@ -81,13 +83,16 @@ export function registerActorAnims(scene: Phaser.Scene): void {
       repeat: 0,
     });
   }
-  // Campfire (station): two looping flickers — the ember/log base and the flame layered on top (plan
-  // 016). Registered here alongside the actors so every anims.create lives in one guarded place; keys +
-  // frame counts come from the manifest. CampfireManager scales the flame by fuel (anims are fuel-agnostic).
-  const { base: campfireBase, flame: campfireFlame } = ACTIVE_TILESET.stations.campfire;
+  // Campfire (station): four looping flickers — the stone-ring base, the large + small flame sheets,
+  // and the smoke plume (plan 016 follow-up). Registered here alongside the actors so every anims.create
+  // lives in one guarded place; keys + frame counts come from the manifest. CampfireManager picks which
+  // flame sheet + scale by fuel (anims are fuel-agnostic).
+  const { base, flameLarge, flameSmall, smoke } = ACTIVE_TILESET.stations.campfire;
   for (const [key, strip] of [
-    [campfireBaseKey(), campfireBase],
-    [campfireFlameKey(), campfireFlame],
+    [campfireBaseKey(), base],
+    [campfireFlameLargeKey(), flameLarge],
+    [campfireFlameSmallKey(), flameSmall],
+    [campfireSmokeKey(), smoke],
   ] as const) {
     if (scene.anims.exists(key)) continue;
     scene.anims.create({

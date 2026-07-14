@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useEditorStore } from '../editorStore';
+import { useEditorStore, DECOR_ANIM_DEFAULT_FPS } from '../editorStore';
 import { parseMap, serializeMap, type DecorObject, type MapFile } from '../../../systems/mapFormat';
 
 const DECOR_ASSET = 'pixel-crawler/Environment/Props/Static/Rocks.png#5';
+const ATLAS_ASSET = 'pixel-crawler/Environment/Props/Static/Furniture.png';
+const STRIP_ASSET = 'pixel-crawler/Environment/Structures/Stations/Bonfire/Bonfire_07-Sheet.png';
 
 /** Fresh 6x6 map for each test — `newMap` also clears history/selection/armed state (a full reset of
  *  everything the store shares across tests, since it's a module-level singleton). */
@@ -331,5 +333,63 @@ describe('acceptance: step 7 done-when scenario', () => {
     while (useEditorStore.getState().canUndo) useEditorStore.getState().undo();
     expect(map.objects).toHaveLength(0);
     expect(useEditorStore.getState().canUndo).toBe(false);
+  });
+});
+
+describe('editorStore objects: placeDecor region/anim (plan 014 step 7b)', () => {
+  beforeEach(() => reset());
+
+  it('placeDecor writes a region onto the new decor object and omits anim', () => {
+    const region = { x: 4, y: 8, w: 16, h: 24 };
+    const ok = useEditorStore.getState().placeDecor(ATLAS_ASSET, 40, 56, region);
+    expect(ok).toBe(true);
+    const obj = useEditorStore.getState().map!.objects[0] as DecorObject;
+    expect(obj.region).toEqual(region);
+    expect(obj.anim).toBeUndefined();
+  });
+
+  it('placeDecor stamps the fixed default fps onto an armed anim (minus fps) and omits region', () => {
+    const anim = { frameWidth: 32, frameHeight: 32, frames: 4 };
+    const ok = useEditorStore.getState().placeDecor(STRIP_ASSET, 40, 56, undefined, anim);
+    expect(ok).toBe(true);
+    const obj = useEditorStore.getState().map!.objects[0] as DecorObject;
+    expect(obj.anim).toEqual({ ...anim, fps: DECOR_ANIM_DEFAULT_FPS });
+    expect(obj.region).toBeUndefined();
+  });
+
+  it('placeDecor with neither region nor anim omits both keys (unchanged step-7 behaviour)', () => {
+    useEditorStore.getState().placeDecor(DECOR_ASSET, 16, 16);
+    const obj = useEditorStore.getState().map!.objects[0] as DecorObject;
+    expect(obj.region).toBeUndefined();
+    expect(obj.anim).toBeUndefined();
+  });
+
+  it('a region decor refuses on a void anchor tile exactly like a plain decor', () => {
+    const map = useEditorStore.getState().map!;
+    const cells = new Array(36).fill(1) as number[];
+    cells[2 * 6 + 2] = 0; // (2,2) void
+    map.shape = { cells };
+    const ok = useEditorStore
+      .getState()
+      .placeDecor(ATLAS_ASSET, 40, 40, { x: 0, y: 0, w: 8, h: 8 }); // floor(40/16) = (2,2)
+    expect(ok).toBe(false);
+    expect(map.objects).toHaveLength(0);
+  });
+
+  it('round-trips a region decor and an anim decor through serializeMap -> parseMap', () => {
+    useEditorStore.getState().placeDecor(ATLAS_ASSET, 16, 16, { x: 4, y: 8, w: 16, h: 24 });
+    useEditorStore
+      .getState()
+      .placeDecor(STRIP_ASSET, 32, 32, undefined, { frameWidth: 32, frameHeight: 32, frames: 4 });
+    const map: MapFile = useEditorStore.getState().map!;
+    const json = serializeMap(map);
+    const reparsed = parseMap(JSON.parse(json) as unknown);
+    expect(reparsed).toEqual(map);
+    expect(JSON.parse(serializeMap(reparsed)) as unknown).toEqual(JSON.parse(json) as unknown);
+
+    // undo walks both placements back to empty.
+    useEditorStore.getState().undo();
+    useEditorStore.getState().undo();
+    expect(useEditorStore.getState().map!.objects).toHaveLength(0);
   });
 });

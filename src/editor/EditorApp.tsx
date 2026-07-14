@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { TILE_SIZE } from '../config';
 import { useEditorStore } from './store/editorStore';
 import { Toolbar } from './Toolbar';
 import { PhaserViewport } from './PhaserViewport';
@@ -14,15 +15,25 @@ import { useToast, ToastHost } from './Toast';
  * placeholder until step 9. Everything shares state through `useEditorStore`; this component only
  * wires the panes, the global undo/redo + delete shortcuts, and the Portal-tool's name/facing dialog.
  */
+
+/** Arrow key → unit direction (screen space: up = -y). Drives the selected-object nudge below. */
+const NUDGE_DIRS: Record<string, { x: number; y: number }> = {
+  ArrowLeft: { x: -1, y: 0 },
+  ArrowRight: { x: 1, y: 0 },
+  ArrowUp: { x: 0, y: -1 },
+  ArrowDown: { x: 0, y: 1 },
+};
+
 export function EditorApp() {
   const view = useEditorStore((s) => s.view);
   const map = useEditorStore((s) => s.map);
   const pendingPortalRect = useEditorStore((s) => s.pendingPortalRect);
   const { toast, showToast } = useToast();
 
-  // Ctrl/Cmd+Z = undo, Shift+Ctrl/Cmd+Z = redo, Delete/Backspace = remove the selected object(s).
-  // Ignored while typing in a dialog/Inspector field (the SAME input-guard for all three, so Delete
-  // never fires while editing a numeric field).
+  // Ctrl/Cmd+Z = undo, Shift+Ctrl/Cmd+Z = redo, Delete/Backspace = remove the selected object(s),
+  // arrow keys = nudge the selection. Ignored while typing in a dialog/Inspector field (the SAME
+  // input-guard for all, so these never fire while editing a numeric field).
+  // NOTE: any shortcut added/changed here must be reflected in `shortcuts.ts` (the Shortcuts panel).
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       const el = document.activeElement;
@@ -38,6 +49,25 @@ export function EditorApp() {
         if (ids.length > 0) {
           e.preventDefault();
           useEditorStore.getState().deleteObjects(ids);
+        }
+        return;
+      }
+      // Arrow keys nudge the selection for fine positioning: plain = 1px (decor only — nodes/portals
+      // are tile-addressed and don't sub-tile), Shift = one whole tile (everything). Routes through the
+      // same void-validated, undoable `translateObjects` a drag uses — one undo entry per press.
+      const dir = NUDGE_DIRS[e.key];
+      if (dir) {
+        const ids = useEditorStore.getState().selectedObjectIds;
+        if (ids.length > 0) {
+          e.preventDefault();
+          const coarse = e.shiftKey;
+          const step = coarse ? TILE_SIZE : 1;
+          useEditorStore.getState().translateObjects(ids, {
+            dxPx: dir.x * step,
+            dyPx: dir.y * step,
+            dCol: coarse ? dir.x : 0,
+            dRow: coarse ? dir.y : 0,
+          });
         }
       }
     };

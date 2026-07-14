@@ -598,6 +598,288 @@ free values render nearest-neighbour and are the author's aesthetic call.
     — a concurrent session's in-flight plan-016 `'refuel'` task work, outside this step's scope and
     untouched here.
 
+- [x] **Step 7a: Atlas sprite regions + animated-decor data pipeline** `[delegate sonnet]`
+  - **Why:** ~50 of 55 `object`-type catalog assets are actually multi-sprite ATLASES (e.g.
+    `Environment/Props/Static/Furniture.png` 800×864, `Rocks.png`, tree sheets holding several
+    variants); placing one drops the WHOLE sheet as one decor. Decision (with user + advisor,
+    record in DECISIONS.md at the final step): do NOT physically split atlases into files (avoids
+    committing hundreds of binaries, preserves the pack "re-download and drop in" principle, keeps
+    atlas texture-sharing). Instead carry per-sprite **bounding-box metadata** and crop at render;
+    a future build/stream step can bake only used regions into a per-map atlas WITHOUT touching
+    authored data (the data model keeps that open by construction). Animation strips
+    (`*-Sheet.png`, one sprite N frames) are placed as ANIMATED decor, not dumped whole.
+  - Create `scripts/pixel-crawler/gen_regions.py` reusing `components()` from
+    `scripts/pixel-crawler/objects.py` (leave objects.py untouched): for each multi-object `object`
+    sheet, detect sprite bounding boxes and emit a committed sidecar
+    `public/assets/tilesets/pixel-crawler/regions.json`. **Classify sheets by READING the
+    `pack.json` `rules`** (the same source `asset-catalog.mjs` uses — do NOT re-derive a parallel
+    NOT-Tilesets/NOT-`-Sheet` copy, or the two silently drift when a rule changes; critique #4):
+    the sidecar is built for whatever the pack classifies as `object`. Sidecar shape:
+    `{ schemaVersion:1, sheets: { "<relpath>": { params:{alphaThresh,gap,minArea},
+    regions:[{ key:"<x>_<y>", x, y, w, h }] } } }`. Region `key = "${x}_${y}"` (coordinate-derived,
+    NOT ordinal — stable across regens unless a sprite actually moves). Per-sheet detection-param
+    overrides (and hand-authored region lists for pathological sheets where touching sprites merge)
+    live in `pack.json` (a new `regionParams`/`regions` override map); the Python script reads them.
+    Contributor regen: `python3 scripts/pixel-crawler/gen_regions.py && npm run assets:catalog`.
+  - Extend `scripts/asset-catalog.mjs` (stays no-npm-dep, never decodes pixels): merge
+    `regions.json` — an `object` asset with **≥2 detected regions** gains `regions:[{key,x,y,w,h}]`
+    (an atlas); **1 or no entry** stays a plain single object (a 37×76 tree keeps no `regions`).
+    Validate the sidecar: every entry references an existing PNG; every region is in-bounds vs the
+    IHDR w/h the script already reads (FATAL on OOB — a stale sidecar). Also emit explicit
+    `frameWidth`/`frameHeight` on `strip` entries — but **fix the frame math (critique #1): a strip
+    is a horizontal row of `frames`, so `frameHeight = sheet height` and `frameWidth = w / frames`,
+    NOT the existing square/smaller-dim `stripFrames` guess** (that guess is provably wrong for the
+    non-square strips 7b animates — `Fire_01` 128×48, the 19 crafting-station sheets step 2 flagged
+    as not dividing evenly — and reproduces the flicker/"flying" slice bug `StripAnim.frameWidth`
+    exists to fix, see `src/data/tileset.ts` L44-50). `frames` for a strip must come from a
+    `pack.json` override where `w` isn't an integer multiple of the frame width (don't guess);
+    warn non-fatally on an unresolved strip. The `anim` block stays the explicit
+    `{frameWidth, frameHeight, frames, fps}` (what Phaser `load.spritesheet` consumes directly) —
+    the alignment with `StripAnim` is the REASONING, not the field names: declare width AND height
+    explicitly, never re-derive a square guess. Warn (non-fatal, like the existing strip warnings)
+    when a large `object` PNG has no
+    sidecar entry — the nudge to rerun the Python step. Never run detection on strips.
+  - `src/systems/mapFormat.ts`: add optional `region?: { x, y, w, h }` and
+    `anim?: { frameWidth, frameHeight, frames, fps }` to `DecorObject`, **mutually exclusive**
+    (`parseMap` rejects both present). Validate ints; `x,y >= 0`, `w,h > 0`, `frames > 0`,
+    `fps > 0`. Omit-when-absent on serialize (like `meta.favourites`) so existing maps round-trip
+    byte-identical. **No `schemaVersion` bump** (additive optional fields; `migrateMap` stays
+    identity). `objectFootprintCells` unchanged (footprint = `collision` rect else anchor tile);
+    `collectTextureSources` unchanged (the SHEET stays the load/dedupe unit — add a code comment
+    that used-region enumeration is a trivial future derived walk, don't build it; and note the
+    known **mobile texture-memory risk** (critique #5): loading a whole atlas to draw one crop is
+    fine for v1's tiny test map but is the point where region-baking earns its keep when the real
+    Mostowo map lands — record it for that follow-up). Tests cover `region`/`anim` parse + the
+    mutual-exclusion rejection + round-trip. **Content-drift note (critique #3):** the Node
+    validation catches OOB but NOT a sprite that moved inside a same-size sheet, and `parseMap` is
+    asset-blind by design — so document (in ASSETS.md) that re-running `gen_regions.py` is the only
+    guard against content drift; the DEV-only region-bounds assert lives in `decorSprites`/loader
+    (step 7b/11), not here.
+  - `src/editor/catalog.ts`: add `regions?: [{ key, x, y, w, h }]` to `CatalogAsset` and
+    `frameWidth?`/`frameHeight?` on strip entries; narrow them in `parseCatalog`.
+  - Side effects: `public/assets/tilesets/pixel-crawler/pack.json` (region param/override map),
+    regenerate + commit `public/assets/asset-catalog.json` (`npm run assets:catalog`), commit the
+    new `regions.json`. Owns `mapFormat.ts` — do not run write-concurrent with step 8.
+  - Docs: `docs/ASSETS.md` — short note (region sidecar, what it is, the two-command regen, "never
+    hand-edit except pack.json overrides").
+  - Done when: `python3 gen_regions.py && npm run assets:catalog` run clean and deterministic
+    (double-run byte-identical); **eyeball the numbered `objects.py` preview for EVERY multi-object
+    sheet the step-12 test map will draw from (not just 3 samples — critique #2), confirming
+    detected regions map to real individual sprites; where detection merges near-touching sprites or
+    splits a disjoint-part sprite, add a `pack.json` override and re-verify** — detection quality is
+    the whole value of the feature, so exercise the override escape hatch here, not at authoring time;
+    catalog + sidecar validate; `mapFormat` tests green; `npm run check` green.
+  - Outcome: created `scripts/pixel-crawler/gen_regions.py` (reads `pack.json` `rules` — no parallel
+    classification copy — and its new `regionParams`/`regions` override maps; reuses `components()`
+    from `objects.py` untouched) and committed `public/assets/tilesets/pixel-crawler/regions.json`
+    (56 sheets, coordinate-derived `"${x}_${y}"` keys, sorted, deterministic double-run verified byte
+    for byte). Extended `asset-catalog.mjs`: `mergeRegions()` merges the sidecar into `object` assets
+    (`regions` attached only at >=2, validated in-bounds — FATAL on OOB or a sidecar entry naming a
+    non-current object asset — plus a non-fatal warn on a large `object` PNG missing a sidecar
+    entry); replaced the old square/smaller-dim `stripFrames` guess with `stripFrameDims` — strips
+    now emit `frameHeight = h`, `frameWidth = w/frames`, deriving `frames` only in the unambiguous
+    square case (`w % h === 0`) and otherwise requiring a `pack.json` `frames` override (else warns
+    and falls back to 1 unsliced frame) — fixed `Fire_01`/`Fire_02`/`Smoke`-Sheet.png (128×48, really
+    4 frames of 32×48) via override, cutting divide-evenly warnings 19→16 (the rest are unwired
+    crafting-station sheets, left as non-fatal warnings by design). `mapFormat.ts`: added
+    `DecorRegion`/`DecorAnim` + optional `region?`/`anim?` on `DecorObject` (last fields, mutual
+    exclusion enforced in `parseMapObject`, omit-when-absent mirrors `meta.favourites` exactly);
+    `collectTextureSources` doc extended in place with the critique #3 (content-drift)/#5 (mobile
+    memory) notes, no behaviour change. `catalog.ts` gained `CatalogRegion` + `regions?`/
+    `frameWidth?`/`frameHeight?` on `CatalogAsset`. Eyeballed via `objects.py`'s numbered preview:
+    `Furniture.png`, `Rocks.png`, `Resources.png`, `Esoteric.png`, `Tools.png`,
+    `Trees/Model_03/Size_04-export.png`, `Vegetation.png`, `Bonfire.png` (object variant). Found +
+    fixed via `pack.json` overrides: (1) `Rocks.png`/`Resources.png`/`Esoteric.png`/`Tools.png` each
+    had a baked-in "PALETTE:" swatch-legend artifact in one corner that detection picked up as a
+    sprite — `regions` override drops just that one box per sheet, keeping the rest verbatim; (2)
+    `Trees/Model_03/Size_04-export.png`'s 4 colour variants touch at the canopy edges and merged into
+    one 192×416 blob — a numpy column/row-sum check found the true seam (~4-6px pinch points) and the
+    override splits it into 4 clean quadrants (visually re-verified, no clipping) plus the 3
+    already-correct regions; (3) `Furniture.png` gets a `regionParams: {gap:0}` override (49→75
+    regions, a real improvement) but still shows residual merges on this unusually dense,
+    edge-to-edge-drawn atlas — documented as a known limitation for whoever authors decor from it,
+    not fully resolved (hand-splitting the remaining ~15 clusters needs a real image-crop tool, out
+    of proportion for this step); (4) `Vegetation.png` gets `regionParams: {minArea:20}` (89→120
+    regions) — visually confirmed cleaner separation of small foliage/berry sprites, no bad splits.
+    Also spot-checked `Resources.png` and `Environment/Structures/Stations/Bonfire/Bonfire.png` (the
+    static object variant, not the animated `-Sheet.png` strip already wired to the campfire) beyond
+    the required set: both show one or two remaining paired-item merges (e.g. two crates, two
+    fire-pit variants, drawn touching) left un-overridden — flagged here, not fixed, since neither
+    sheet is confirmed needed by the eventual step-12 test map and further hand-splitting has
+    diminishing returns against this step's data-pipeline scope. `mapFormat.test.ts` gained a
+    `decor region/anim` describe block:
+    parse, int/positivity validation per field, mutual-exclusion rejection, and 3 round-trip tests
+    (with region, with anim, and the base fixture WITHOUT either serializing with the keys absent) —
+    42 tests total in that file, 307 across the suite. `npx tsc --noEmit` clean repo-wide (the
+    plan-016 breakage this step was warned about had already been resolved by that concurrent session
+    by the time this step ran); `eslint src/systems src/editor scripts` 0 errors; `prettier --check`
+    clean on every file touched; `markdownlint-cli2` clean on `docs/ASSETS.md`. `docs/ASSETS.md` got
+    a new "Atlas sprite regions" subsection (sidecar shape, two-command regen, the 3 concrete
+    overrides above as examples, content-drift caveat).
+
+- [x] **Step 7b: Library sprite-picker, region/animated placement + rendering** `[delegate sonnet]`
+  - Create `src/render/decorSprites.ts` (Phaser-coupled, game-shared — `render/` already holds
+    baked-texture helpers): given a `DecorObject` + its resolved texture key/URL, idempotently
+    ensure the needed texture/sub-frame/anim exists and return the draw key/frame (or anim key).
+    Region → `if (!tex.has(name)) tex.add(name, 0, x, y, w, h)` with `name = r${x}_${y}_${w}_${h}`,
+    return that frame. Anim → `load.spritesheet(key,url,{frameWidth,frameHeight})` +
+    `anims.create` with a deterministic deduped key (e.g.
+    `decoranim:<asset>:<frameWidth>x<frameHeight>@<fps>`). This ONE helper is used by
+    `EditorScene.ts` now and the step-11 game loader later — no divergent implementations, no
+    editor-catalog dependency in the game (the `DecorObject` carries all metadata). Add a **DEV-only
+    region-bounds assert here (critique #3)**: warn if a decor's `region` falls outside its resolved
+    texture's real dimensions (the only place a moved-sprite content-drift becomes observable, since
+    `parseMap` is asset-blind).
+  - `src/editor/panels/LibraryPanel.tsx`: for atlas assets (have `regions`), render the whole sheet
+    with absolutely-positioned clickable hotspot rects (scaled by the preview zoom) — clicking arms
+    that region. Strip assets: an animated CSS `steps()` preview (`background-position` over
+    `frames`, using `frameWidth`) — clicking arms the anim. Single objects unchanged. The click
+    "show the whole sheet, click the sprite on it" UX is the user's explicit ask.
+  - `src/editor/store/editorStore.ts`: extend the armed-object state so it carries the chosen
+    `region?`/`anim?` alongside the `assetId` (e.g. `armedObjectAsset: { assetId, region?, anim? }
+    | null`, or a parallel field — pick the cleaner; keep node arming separate). `placeDecor` writes
+    `region`/`anim` into the new `DecorObject`. All still routed through history/undo + void-gated.
+  - `src/editor/EditorScene.ts`: render decor through the shared `decorSprites` helper
+    (region-crop + animated playback in-editor). `queueTextures` loads the SHEET (not per-region).
+    **Remove only the DECOR branch of the interim `#frame` render path** in `EditorScene` (the
+    TILE_SIZE spritesheet slice with the "catalog will supersede this" note) — **keep
+    `parseAssetId`'s `#frame` parsing itself intact: tile painting depends on it**
+    (`resolveBrushValue` in `editorStore.ts` → `parseAssetId` frame; critique #7). `#frame` stays
+    valid for tile-type Library ids only. The untracked stray `src/data/maps/test.map.json` (uses the
+    old whole-sheet decor) should be discarded, not migrated.
+  - `src/editor/panels/InspectorPanel.tsx`: show `region` (read-only x/y/w/h) for a cropped decor;
+    for an animated decor show its anim info **read-only** — placement stamps a fixed default `fps`
+    (~8); do NOT add a per-instance editable fps field (critique #6: no consumer needs it, the game
+    uses fixed anim-framerate constants). `fps` stays in the schema so the loader is
+    catalog-independent, but it isn't a per-object authoring knob in v1.
+  - Side effects: none outside `src/editor/` + the new `src/render/decorSprites.ts`. Depends on 7a.
+  - Docs: none (final step writes docs/EDITOR.md).
+  - Done when: place a single cropped sprite from `Furniture.png` and from `Rocks.png` — the viewport
+    shows JUST that sprite, not the sheet; place an animated strip decor and it animates in-editor;
+    save→reopen preserves `region`/`anim`; `parseMap` passes; undo walks it back; `npm run check`
+    green. Live visual acceptance at `npm run editor` (no React/DOM harness — verify the data path
+    programmatically as in steps 6/7, and state what a human must click).
+  - Outcome: created `src/render/decorSprites.ts` (game-shared, Phaser-coupled, NO editor imports —
+    only `Phaser` type-only + `DecorObject`/`DecorAnim` from `mapFormat` + `tileImageKey` from
+    `tileset`) split into `queueDecorTexture` (load phase — whole SHEET as image for region, or
+    `load.spritesheet` keyed by path+frame-dims for anim) and `resolveDecorDraw` (post-load — region
+    registers sub-frame `r${x}_${y}_${w}_${h}` via `texture.add`, returns `{kind:'region',key,frame}`;
+    anim dedupes an `anims` entry keyed `decoranim:<asset>:<w>x<h>@<fps>`, returns
+    `{kind:'anim',key,animKey}`), sharing one `decorTextureKey`; DEV-only region-bounds `console.warn`
+    on overflow vs real texture size (critique #3, the only observable content-drift point). The
+    queue/resolve split was needed because Phaser spritesheet load is async and EditorScene's load
+    lifecycle is two-phase (queue → start → COMPLETE → bake) — still one module, no divergent logic.
+    `src/render/__tests__/decorSprites.test.ts` (5) covers the Phaser-free `decorTextureKey`
+    determinism/uniqueness. `editorStore.ts`: `armedObjectAsset` became `ArmedObjectAsset`
+    `{assetId, region?, anim?}` (node arming stays separate); `placeDecor` gained region/anim params
+    and stamps `DECOR_ANIM_DEFAULT_FPS = 8` (exported) — no per-instance fps knob (critique #6).
+    `EditorScene.ts` routes decor load+render through `decorSprites`; removed ONLY the interim
+    `#frame`-sheet DECOR branch (tile `#frame` parsing in `parseAssetId`/`resolveBrushValue` left
+    intact — critique #7). `LibraryPanel.tsx`: `AtlasSheetPicker` (whole sheet + absolutely-positioned
+    clickable hotspot rects → arms that region) and `AnimatedStripPicker` (CSS `steps()` live preview →
+    arms the anim); plain single objects unchanged. `InspectorPanel.tsx`: read-only Region (x/y/w/h) /
+    Anim info lines. `editor.css`: atlas/strip picker styles + `lib-strip-play` keyframes.
+    `editorStoreObjects.test.ts` +region/anim placeDecor coverage (writes, fps-stamp, void-refusal,
+    `serializeMap`→`parseMap` byte-identical round-trip, undo). Strays cleaned: deleted
+    `src/data/maps/test.map.json`, reverted `manifest.json` to empty committed state. Deviations:
+    favouriting an atlas/strip falls back to whole-image (favourite ids carry no region/anim) — not in
+    acceptance scope. Side effects confirmed via `git diff --stat`: only `src/editor/**` +
+    `src/render/decorSprites.ts` (+test) changed, plus the two stray cleanups; plan-016 files
+    untouched. `npm run check` fully green — typecheck/lint/lint:md/format clean, 317/317 tests.
+    ⚠ NOT machine-verified (no React/DOM harness): the live click-through — a human must, at
+    `npm run editor`: browse to `Furniture.png`/`Rocks.png` in the Library, confirm the whole sheet
+    renders with hotspot outlines, click one, Place, click in the viewport → confirm ONLY that cropped
+    sprite shows (not the sheet); pick an animatable `*-Sheet.png` strip, confirm its Library preview
+    animates, place it, confirm it animates in-viewport; save→close→reopen → both still correct; undo
+    both placements.
+
+- [ ] **Step 7c: Per-asset type override + grid-animation authoring** `[delegate sonnet]`
+  - **Why:** filename/path classification in `pack.json` `rules` is lossy and the strip frame-math
+    is single-horizontal-row only. Concrete failure: the furnace sheets (`Bricks_01-Sheet.png` etc.,
+    64×96) are 2×2 **grid** animations (4 flame frames), match `*-Sheet.png` → `strip`, but
+    `stripFrameDims` can't resolve `frames` (not square, no override) and falls back to 1 unsliced
+    frame — so placing one drops the whole 2×2 sheet as one static decor (the "missed animation").
+    Triaging ~55 `object` sheets + every strip by hand as a one-off isn't sensible; give the author
+    an in-editor control to (a) force an asset's type and (b) describe its frame grid, driving the
+    SAME two generators — no parallel classification store (critique #4). **Decision (with user +
+    advisor, record in DECISIONS.md at the final step): frame-grid geometry is deterministic integer
+    arithmetic over the sheet's known w/h, NOT an LLM/Claude-CLI job** — an LLM guessing frame counts
+    is nondeterministic and re-opens the off-by-one flicker class `stripFrameDims` exists to fight;
+    the author's eyes are the arbiter, a live grid overlay the aid.
+  - **Override shape — extend the existing `pack.json` `overrides` map** (per-relpath; do NOT add a
+    new store): add optional `type: "tile"|"strip"|"object"` (forces classification) and, for strips,
+    optional `rows` (default 1) alongside the existing `frames`. `frames` stays = total frame count
+    (unchanged meaning — all 8 existing overrides stay valid with `rows` defaulting to 1); do NOT
+    introduce `cols`/`frameWidth`/`frameHeight` vocab that forks from what
+    `DecorAnim`/`generateFrameNumbers` actually consume. Example:
+    `"…/Bricks_01-Sheet.png": { "frames": 4, "rows": 2 }`.
+  - **Both generators must consult `override.type` BEFORE classifying** (or they silently drift —
+    critique #4):
+    - `scripts/asset-catalog.mjs`: `buildAsset` classifies from `rules`, then the generic
+      `{...asset, ...override}` merge runs AFTER the type-dependent branches — so a bare `type`
+      override would relabel WITHOUT redoing frame math. Resolve `type = override.type ?? ruleType`
+      first and branch on that. Fix `stripFrameDims` to grid math: `frameHeight = h/rows`,
+      `cols = frames/rows`, `frameWidth = w/cols`; validate all three integer (non-fatal
+      `console.warn` + fall back to 1 frame on non-integer, as today), `frames` still sourced from the
+      override for non-square sheets.
+    - `scripts/pixel-crawler/gen_regions.py` (~L114 `object_sheets`): classifies from `rules` only —
+      apply the same `type = override.type ?? ruleType` so a `-Sheet.png` forced to `object` DOES get
+      a region pass and a `.png` forced to `strip` is EXCLUDED from region detection. Mirror the
+      one-liner in both with cross-referencing comments (like the existing `globToRegExp` mirror).
+  - **No downstream schema change** (advisor-confirmed): `DecorObject.anim
+    {frameWidth, frameHeight, frames, fps}` already expresses grids — Phaser `load.spritesheet` slices
+    the whole image row-major into `frameWidth×frameHeight` cells and `frames` indexes 0..N-1 across
+    rows — so `mapFormat.ts`, `decorSprites.ts`, and the game-loader path are UNTOUCHED. `CatalogAsset`
+    needs no new field (the picker derives `cols = w/frameWidth`, `rows = h/frameHeight`). Only update
+    the now-stale "a strip is one horizontal row" doc comment on `frameHeight` in
+    `src/editor/catalog.ts` and the `stripFrameDims` header in `asset-catalog.mjs`.
+  - **Editor → pipeline via the dev middleware** (the middleware runs the regen — the cross-device
+    rule makes "run two terminal commands" a non-starter on a phone, and a `type` flip written to
+    `pack.json` WITHOUT an immediate regen leaves the catalog regen broken since `mergeRegions` FATALs
+    on a stale sidecar): new `PUT /__editor/asset-override` in `scripts/vite-editor-api.mjs` →
+    sanitise pack id, patch the asset's entry in that pack's `pack.json`, then run the two generators
+    IN ORDER as child processes with fixed argv, no shell, no user input in the command:
+    `execFile('python3', [gen_regions.py])` then `execFile(process.execPath, [asset-catalog.mjs])`.
+    Serialize concurrent requests (a simple in-flight promise queue). Pipe generator warnings back in
+    the response. On `python3` `ENOENT`, return a structured error telling the user to run the two
+    documented commands manually — that IS the graceful degrade to the dumb workflow. `src/editor/api.ts`:
+    typed wrapper. Stays dev-only (`serve`-mode middleware) and never touches live/prod.
+  - **Library UI** (`src/editor/panels/LibraryPanel.tsx`, the ONLY editor file 7c touches): a
+    reclassify affordance on the selected asset — a popover with a `tile/strip/object` type dropdown
+    and, when `strip`, `frames` + `rows` fields with a **live grid overlay on the full-sheet preview**
+    that updates as you type (plus divisor-pair suggestion chips derived purely from `w`/`h` and
+    `tileSize` multiples — arithmetic, no pixel decode). On commit → `PUT /__editor/asset-override` →
+    on success refetch `asset-catalog.json` and `setCatalog` (LibraryPanel fetches once on mount with
+    `[]` deps today — add an explicit refetch path). Also fix a doc-vs-behaviour bug here:
+    `isAnimatableStrip` accepts `frames > 0`, so the unresolved `frames:1` fallback wrongly renders via
+    `AnimatedStripPicker` and stamps a useless `anim {…, frames:1}` onto placed decor — require
+    `frames >= 2` so a still-unresolved strip falls back to the plain `AssetCard`.
+  - Known limitations to record: already-placed decor is a snapshot — fixing the catalog does NOT
+    self-heal a furnace already placed in a map; it must be re-placed (no texture-key collision —
+    `decorTextureKey` includes frame dims). Pixel-based grid AUTO-detect is deliberately deferred:
+    connected-component detection is weak on animation sheets specifically (adjacent flame/smoke frames
+    bleed across cell boundaries) and GCD is ambiguous (64×96 → 2×2 or 2×3?) — manual-entry-with-live-
+    preview makes each sheet a ~5-second job; build detection later only if that proves painful.
+  - Side effects: `public/assets/tilesets/pixel-crawler/pack.json` (type/rows overrides), regenerate +
+    commit `regions.json` + `public/assets/asset-catalog.json`, `scripts/asset-catalog.mjs`,
+    `scripts/pixel-crawler/gen_regions.py`, `scripts/vite-editor-api.mjs`, `src/editor/api.ts`,
+    `src/editor/catalog.ts` (doc comment only), `src/editor/panels/LibraryPanel.tsx`. **Explicitly ZERO
+    changes to `EditorScene.ts`, `editorStore.ts`, `mapFormat.ts`, `decorSprites.ts`** — keeps 7c's diff
+    disjoint from step 8's painting work and independently revertible. Commit the just-landed 7a/7b
+    surgically FIRST (concurrent-edit exposure).
+  - Docs: `docs/ASSETS.md` — extend the pack-manifest / "Atlas sprite regions" section with the
+    `type`/`rows` override keys and the in-editor reclassify flow (the preferred path; the two-command
+    regen stays the fallback). If an editor shortcut is added, update the in-app Shortcuts panel
+    (`src/editor/shortcuts.ts`).
+  - Done when: in the editor, force `Bricks_01-Sheet.png` to a 2×2 grid (`frames:4, rows:2`) via the
+    reclassify popover → the catalog regenerates through the middleware → the Library preview animates
+    the 4 frames → placing it drops an ANIMATED furnace (not the whole sheet); force a mis-classified
+    asset and see the other generator agree (a `-Sheet` forced to `object` gains regions; a `.png`
+    forced to `strip` loses them); `python3 gen_regions.py && npm run assets:catalog` still run clean +
+    deterministic (double-run byte-identical) and the committed `asset-catalog.json`/`regions.json`
+    reflect the overrides; an unresolved strip (`frames` still 1) falls back to the plain card, not a
+    1-frame anim; `npm run check` green.
+
 - [ ] **Step 8: Shape, walkability + zones painting** `[delegate sonnet]`
   - Generalise the step-6 paint pipeline over a "target grid" (tile layer / walkability / zones /
     shape) rather than duplicating tool code.
@@ -705,11 +987,13 @@ free values render nearest-neighbour and are the author's aesthetic call.
     - Ground: bake authored tile layers bottom→top into the chunked RenderTexture path
       (reuse/extend `drawGround`'s batch-draw approach; non-overhead layers under entities,
       `overhead: true` layers on a texture at depth 12 — above player 10, below night 15).
-    - Objects: `kind:'node'` → existing `addNode(NODES[ref], col, row)`; `kind:'decor'` →
-      `add.image` with stored transform at depth 1 + stored `depth` offset fraction; decor
-      `collision` footprints, the map's `walkability.cells`, **and void shape cells** all feed
-      `isBlocked` (compose with the existing occupied/nodes checks). `kind:'portal'` → no-op in
-      v1 (log presence).
+    - Objects: `kind:'node'` → existing `addNode(NODES[ref], col, row)`; `kind:'decor'` → draw via
+      the SHARED `src/render/decorSprites.ts` helper (step 7b) so region-cropped and `anim`ated decor
+      render identically to the editor — `add.image`/sprite with stored transform at depth 1 + stored
+      `depth` offset fraction (animated decor plays its anim); decor `collision` footprints, the map's
+      `walkability.cells`, **and void shape cells** all feed `isBlocked` (compose with the existing
+      occupied/nodes checks). `kind:'portal'` → no-op in v1 (log presence). `collectTextureSources`
+      semantics unchanged (sheet = load unit).
     - Dims: the world/grid/camera bounds must come from `meta.width/height` (bounding box —
       void is just blocked, `Dims` stays rectangular for A*), not `MAP_WIDTH/HEIGHT` constants,
       when a map is loaded. All runtime coords stay map-local in v1; global coords
@@ -731,8 +1015,10 @@ free values render nearest-neighbour and are the author's aesthetic call.
 - [ ] **Step 12: Author the test maps, write docs, record decisions** `[inline]`
   - Using the editor, author `src/data/maps/test-camp.map.json` exercising every feature: an
     irregular (non-rectangular) shape, tiles from ≥2 different sheets on ≥2 layers (one
-    overhead), a terrain-brush patch, ≥3 decor objects (one rotated, one scaled, two stacked),
-    ≥2 resource nodes, a painted blocked region, 2 zones with favourites, 1 portal. Author a
+    overhead), a terrain-brush patch, ≥3 decor objects (one rotated, one scaled, two stacked; **one
+    region-cropped from a multi-sprite atlas and one animated strip decor** — proving the step-7a/7b
+    path end-to-end), ≥2 resource nodes, a painted blocked region, 2 zones with favourites, 1 portal.
+    Author a
     small second map (`test-forest`) whose shaped edge interlocks with test-camp; position both
     in the world view (clean validation, at least one seam) and confirm the ghost strip shows
     while editing. Verify each loads in-game via step 11's path.
@@ -760,6 +1046,33 @@ free values render nearest-neighbour and are the author's aesthetic call.
   - Done when: both test maps play in-game; both have committed thumbs and consistent
     `manifest.json` rows (world integrity test green); docs read clean (`npm run lint:md`);
     DECISIONS/STATUS/CLAUDE.md updated; `npm run check` green.
+
+## Critique
+
+> Fresh-eyes review of the mid-execution additions (Steps 7a/7b + the 11/12 amendments),
+> 2026-07-14. **No High findings — nothing blocks execution.** All findings below are folded into
+> the step text above (each tagged `critique #N`).
+
+**Verdict:** Metadata-not-split is the right call and the 7a/7b split is clean — proceed, but
+resolve one Medium during 7a: the plan treated animation-strip frame dimensions as "already
+computed," yet the catalog's smaller-dim heuristic is provably wrong for the exact non-square
+sheets 7b targets for animated decor.
+
+|#|Finding|Lens|Severity|Status|
+|-|-------|----|--------|------|
+|1|Strip `frameWidth`/`frameHeight` from the square/smaller-dim `stripFrames` guess is wrong for non-square strips (`Fire_01` 128×48, crafting-station sheets) — the exact animated-decor candidates; reproduces the flicker/"flying" slice bug.|Consistency / correctness|Medium|Folded into 7a: `frameHeight = height`, `frameWidth = w/frames`, `frames` via override, no square guess.|
+|2|7a done-when spot-checked only 3 sheets; detection quality across ~50 atlases is the feature's whole value; escape hatches unexercised.|Gaps / correctness|Medium|Folded into 7a done-when: eyeball every sheet the test map uses; exercise the pack.json override here.|
+|3|Region validation misses content-drift (a sprite moved inside a same-size sheet still validates); no bound-check of `DecorObject.region` vs real asset dims.|Gaps & risks|Medium|Folded: document regen-is-the-guard (ASSETS.md); DEV-only region-bounds assert in `decorSprites` (7b).|
+|4|"Object sheet" classification would live in 3 places; `gen_regions` could silently drift from `pack.json` rules.|Consistency|Low|Folded into 7a: `gen_regions.py` reads the `pack.json` rules, not a re-derived copy.|
+|5|Sheet-granular `collectTextureSources` loads a whole atlas to draw one crop — mild tension with the mobile memory goal; region-baking deferred by design.|Roadmap fit|Low|Folded: recorded as a known mobile-texture-memory risk for the real-Mostowo-map follow-up.|
+|6|Per-decor editable `fps` is a knob no consumer needs (game uses fixed anim-framerate constants).|Right-sizing|Low|Folded into 7b: fixed default fps, no per-instance editable field; `fps` stays in schema for the loader.|
+|7|"Remove the interim `#frame` decor path" risked stripping `#frame` from `parseAssetId`, which tile painting needs.|Executability|Low|Folded into 7b: keep `parseAssetId` `#frame`; remove only the decor render branch.|
+
+**What the plan gets right:** embedding the full `region` rect on `DecorObject` (self-describing
+maps, re-detection non-destructive); one shared `src/render/decorSprites.ts` for editor + game
+(reuse like `resolveTile`, not runtime coupling); the no-npm-dep catalog rule respected; additive
+optional fields with no schemaVersion bump (matching the `meta.favourites` precedent); the
+7a(data)/7b(UI+render) split is a clean seam.
 
 ## Out of scope
 

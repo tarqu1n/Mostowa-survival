@@ -16,6 +16,17 @@ export interface CatalogPack {
 
 export type CatalogAssetType = 'tile' | 'strip' | 'object';
 
+/** One detected sprite bounding box within an `object` atlas's sheet (plan 014 step 7a). `key` is
+ *  coordinate-derived (`"${x}_${y}"`, see `scripts/pixel-crawler/gen_regions.py`), stable across
+ *  regens unless the sprite actually moves. */
+export interface CatalogRegion {
+  key: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface CatalogAsset {
   /** `<pack>/<relative path>` — stable across regens. Tile-type ids never carry `#frame` (they name
    *  the whole sheet); the Library appends `#frame` itself when a specific tile frame is clicked. */
@@ -28,6 +39,17 @@ export interface CatalogAsset {
   h: number;
   /** Frame count — present on `tile`/`strip` (sheet) assets, absent on standalone `object` images. */
   frames?: number;
+  /** Explicit per-frame cell size for a `strip` asset (Phaser `load.spritesheet` shape) —
+   *  `frameHeight = h` (a strip is one horizontal row), `frameWidth = w / frames`. Never a
+   *  square/smaller-dim guess (see `src/data/tileset.ts` `StripAnim` doc and
+   *  `scripts/asset-catalog.mjs`'s `stripFrameDims`). Absent on `tile`/`object` assets. */
+  frameWidth?: number;
+  frameHeight?: number;
+  /** Present on `object` assets detected as multi-sprite atlases (>=2 regions merged from
+   *  `<pack>/regions.json`) — see `scripts/pixel-crawler/gen_regions.py`. Absent ⇒ a plain
+   *  single-sprite object (place the whole image), including every `object` asset with 0 or 1
+   *  detected region. */
+  regions?: CatalogRegion[];
   category: string;
   tags: string[];
 }

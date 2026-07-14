@@ -202,6 +202,71 @@ button.is-active {
   margin-top: 6px;
 }
 
+/* ---- Shortcuts panel ---- */
+
+.editor-modal--wide {
+  max-width: 560px;
+}
+
+.shortcuts-body {
+  max-height: 65vh;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+.shortcuts-group {
+  margin-bottom: 14px;
+}
+
+.shortcuts-group h4 {
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8a7f76;
+}
+
+.shortcuts-list {
+  margin: 0;
+}
+
+.shortcuts-row {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 0.85rem;
+}
+
+.shortcuts-row dt {
+  margin: 0;
+}
+
+.shortcuts-row dd {
+  margin: 0;
+  color: #c9bcae;
+}
+
+.shortcuts-or {
+  color: #8a7f76;
+  font-size: 0.75rem;
+}
+
+.shortcuts-row kbd {
+  display: inline-block;
+  font-family: inherit;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  padding: 1px 6px;
+  color: #e8e0d8;
+  background: #0e0b0a;
+  border: 1px solid #3a2f2a;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
 .editor-map-list {
   list-style: none;
   margin: 0 0 10px;
@@ -414,6 +479,106 @@ button.is-active {
   color: #e0708a;
 }
 
+/* ---- Atlas sheet picker + animated strip picker (step 7b) ---- */
+
+.lib-atlas-zoom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.lib-atlas-zoom input[type='range'] {
+  flex: 1;
+  min-width: 0;
+}
+
+.lib-atlas-zoom-btn {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  border: 1px solid #3a302b;
+  border-radius: 3px;
+  background: #241d1a;
+  color: #d8c9bb;
+  cursor: pointer;
+}
+
+.lib-atlas-zoom-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.lib-atlas-zoom-val {
+  flex: none;
+  font-size: 0.7rem;
+  color: #a99a8c;
+  min-width: 26px;
+  text-align: right;
+}
+
+.lib-atlas-viewport {
+  max-height: 320px;
+  overflow: auto;
+  background: #0e0b0a;
+  border-radius: 3px;
+}
+
+.lib-atlas-canvas {
+  position: relative;
+  background-repeat: no-repeat;
+  background-color: #0e0b0a;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.lib-atlas-hotspot {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 1px solid rgba(240, 216, 144, 0.35);
+  border-radius: 2px;
+  background: rgba(240, 216, 144, 0.08);
+}
+
+.lib-atlas-hotspot:hover {
+  background: rgba(240, 216, 144, 0.22);
+  border-color: rgba(240, 216, 144, 0.85);
+}
+
+.lib-atlas-hotspot.is-active {
+  background: rgba(95, 208, 255, 0.28);
+  border-color: #5fd0ff;
+}
+
+.lib-strip-anim {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.lib-strip-swatch {
+  display: block;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  margin-bottom: 4px;
+  animation-name: lib-strip-play;
+  animation-iteration-count: infinite;
+}
+
+/* Pixel-exact frame stepping: the swatch is one frame wide and the sheet is drawn at its true scaled
+ * width, so travelling background-position-x by the full strip width (`--strip-travel`, set inline to
+ * `-frames*dispW`) over `steps(frames)` lands each step on a frame boundary — see AnimatedStripPicker's
+ * doc for why the older percentage travel under-shifted. */
+@keyframes lib-strip-play {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: var(--strip-travel) 0;
+  }
+}
+
 /* ---- Layers panel (step 6) ---- */
 
 .layers-list {
@@ -528,6 +693,12 @@ button.is-active {
 .insp-field-row .insp-field {
   flex: 1;
   min-width: 0;
+}
+
+.insp-hint {
+  margin: -2px 0 2px;
+  font-size: 0.72rem;
+  opacity: 0.75;
 }
 
 .insp-checkboxes {

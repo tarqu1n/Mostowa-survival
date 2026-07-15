@@ -11,7 +11,7 @@ import {
   type PortalRect,
 } from '../systems/mapFormat';
 import { worldToTile, snapToTileCenter } from '../systems/grid';
-import { useEditorStore, type PaintMode } from './store/editorStore';
+import { useEditorStore, type PaintMode, type UnderlayState } from './store/editorStore';
 import { parseAssetId, tilesetAssetUrl } from './textureLoading';
 import { getMap } from './api';
 import { computeGhostStripCells, ghostBoundingBox, type GhostCell } from './worldViewOps';
@@ -49,7 +49,15 @@ const PAN_MARGIN_TILES = 6;
 const GHOST_STRIP_TILES = 12;
 const GHOST_ALPHA = 0.4;
 
+// Reference-underlay tracing image (plan 022): a single fixed texture key (one underlay at a time),
+// removed + reloaded whenever the picked image changes (Phaser errors on a duplicate key).
+const UNDERLAY_TEXTURE_KEY = '__underlay';
+
 // Render depths. Tile layers occupy 0..layers.length-1; everything else sits above them.
+const DEPTH_UNDERLAY = 200; // trace-over reference image — an OVERLAY: ABOVE the tile layers (so it's
+// never hidden by opaque tiles you've painted — trace + check coverage through its ~0.5 alpha), but
+// below the ghost strips + editor guide overlays (void/objects/walkability/zones/grid) so those stay
+// legible on top.
 const DEPTH_GHOST = 250; // dimmed neighbour strips — above tile layers, below the void hatch/objects
 const DEPTH_GHOST_NOTICE = 9200;
 const DEPTH_VOID = 500;
@@ -99,6 +107,16 @@ export class EditorScene extends Phaser.Scene {
   /** Bumped on every `refreshGhosts` so a slower earlier async pass (neighbour fetch + texture load)
    *  that resolves late can detect it's been superseded and bail before drawing stale strips. */
   private ghostEpoch = 0;
+  /** The reference-overlay tracing sprite (plan 022), or `undefined` when none is picked/visible.
+   *  Rendered above the tile layers at `DEPTH_UNDERLAY`. */
+  private underlayImage?: Phaser.GameObjects.Image;
+  /** Bumped per `refreshUnderlay` so a slow async texture load resolving late detects it was
+   *  superseded and bails before drawing (mirrors `ghostEpoch`). */
+  private underlayEpoch = 0;
+  /** The data URL currently resident under `UNDERLAY_TEXTURE_KEY` — lets a transform-only change
+   *  (opacity/offset/scale slider) skip re-decoding the large base64 image and just re-apply the
+   *  transform to the existing sprite, reloading the texture only when the image itself changes. */
+  private underlayTextureDataUrl?: string;
   private objectSprites: Phaser.GameObjects.GameObject[] = [];
   /** Object id → its primary display GameObject (decor's image; node/portal's marker rect) — lets the
    *  select tool hit-test/highlight by id without re-deriving bounds from map data (step 7). Rebuilt
@@ -244,6 +262,13 @@ export class EditorScene extends Phaser.Scene {
         (s) => s.selectedObjectIds,
         () => this.redrawSelection(),
       ),
+      // Reference underlay (plan 022): re-render on every underlay change — pick/clear, a transform
+      // slider, visibility/lock toggle, or a lifecycle swap. `refreshUnderlay` reads the latest
+      // `underlay` via getState() and reloads the texture only when the image itself changed.
+      useEditorStore.subscribe(
+        (s) => s.underlayRevision,
+        () => this.refreshUnderlay(),
+      ),
     );
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.teardown());
@@ -264,6 +289,7 @@ export class EditorScene extends Phaser.Scene {
     window.removeEventListener('keyup', this.onKeyUp);
     if (useEditorStore.getState().bakeThumbnail) useEditorStore.getState().setBakeThumbnail(null);
     this.clearGhosts();
+    this.destroyUnderlay();
   }
 
   // ---- Document lifecycle ----
@@ -284,6 +310,7 @@ export class EditorScene extends Phaser.Scene {
     for (const layer of this.chunkRTs) for (const rt of layer) rt.destroy();
     this.chunkRTs = [];
     this.clearGhosts();
+    this.destroyUnderlay();
     for (const obj of this.objectSprites) obj.destroy();
     this.objectSprites = [];
     this.objectDisplayById.clear();
@@ -383,6 +410,9 @@ export class EditorScene extends Phaser.Scene {
     this.fitCamera(map);
     // A reopen/reload re-derives the neighbour ghost strips from the current world layout (step 9).
     void this.refreshGhosts();
+    // …and the reference underlay from persisted per-map settings (plan 022). Handles the case where
+    // the underlay is already hydrated at build time; a late hydrate fires the subscription instead.
+    this.refreshUnderlay();
   }
 
   /**
@@ -876,6 +906,67 @@ export class EditorScene extends Phaser.Scene {
   private mintStrokeId(): string {
     this.strokeCounter += 1;
     return `stroke-${Date.now()}-${this.strokeCounter}`;
+  }
+
+  // ---- Reference underlay (plan 022) ----
+
+  /** Destroy the underlay sprite and remove its texture (Phaser errors on re-adding a live key).
+   *  Idempotent — safe to call when nothing is resident (teardown / clearRender / a hidden underlay). */
+  private destroyUnderlay(): void {
+    this.underlayImage?.destroy();
+    this.underlayImage = undefined;
+    if (this.textures.exists(UNDERLAY_TEXTURE_KEY)) this.textures.remove(UNDERLAY_TEXTURE_KEY);
+    this.underlayTextureDataUrl = undefined;
+  }
+
+  private applyUnderlayTransform(img: Phaser.GameObjects.Image, u: UnderlayState): void {
+    img.setPosition(u.offsetX * TILE_SIZE, u.offsetY * TILE_SIZE);
+    img.setScale(u.scale);
+    img.setAlpha(u.opacity);
+  }
+
+  /**
+   * Reconcile the on-screen underlay against `store.underlay` (plan 022). Absent or hidden → tear it
+   * down. A transform-only change (same `dataUrl` already resident) → re-apply position/scale/alpha to
+   * the existing sprite, no reload. A new/changed image → remove the old texture and load the data URL
+   * under the fixed `UNDERLAY_TEXTURE_KEY`, creating the sprite at `DEPTH_UNDERLAY` (above the tile
+   * layers) on load COMPLETE. Async + epoch-guarded (`underlayEpoch`) so a slow load resolving after a newer
+   * refresh never draws stale. A decode failure is non-fatal — the global FILE_LOAD_ERROR handler warns
+   * and the `textures.exists` check leaves the underlay simply absent.
+   */
+  private refreshUnderlay(): void {
+    const token = ++this.underlayEpoch;
+    const underlay = useEditorStore.getState().underlay;
+    if (!underlay || !underlay.visible) {
+      this.destroyUnderlay();
+      return;
+    }
+    // Same image already resident → transform-only update (skip the base64 re-decode).
+    if (this.underlayImage && this.underlayTextureDataUrl === underlay.dataUrl) {
+      this.applyUnderlayTransform(this.underlayImage, underlay);
+      return;
+    }
+    // New or changed image — drop the old texture (dup-key guard) and reload.
+    this.destroyUnderlay();
+    const dataUrl = underlay.dataUrl;
+    const place = (): void => {
+      if (token !== this.underlayEpoch) return; // a newer refresh superseded this load
+      if (!this.textures.exists(UNDERLAY_TEXTURE_KEY)) return; // decode failed — FILE_LOAD_ERROR warned
+      const u = useEditorStore.getState().underlay; // re-read: a transform may have changed mid-load
+      if (!u || !u.visible) {
+        this.destroyUnderlay();
+        return;
+      }
+      this.underlayTextureDataUrl = dataUrl;
+      this.underlayImage = this.add
+        .image(0, 0, UNDERLAY_TEXTURE_KEY)
+        .setOrigin(0, 0)
+        .setDepth(DEPTH_UNDERLAY);
+      this.applyUnderlayTransform(this.underlayImage, u);
+    };
+    this.load.image(UNDERLAY_TEXTURE_KEY, dataUrl);
+    this.load.once(Phaser.Loader.Events.COMPLETE, place);
+    this.load.start();
   }
 
   // ---- Neighbour ghost strips (step 9) ----

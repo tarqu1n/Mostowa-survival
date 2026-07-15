@@ -74,6 +74,87 @@ export async function putThumb(id: string, png: Blob): Promise<void> {
   );
 }
 
+/** Reference-underlay tracing images (plan 022): dev-only, committed under
+ *  `scripts/map-reference/out/`, served via `/__editor/map-references`. Names are the
+ *  `<name>-reference.png` basenames with the suffix stripped. */
+export async function listMapReferences(): Promise<string[]> {
+  const res = await expectOk(await fetch(`${BASE}/map-references`), 'listMapReferences');
+  return (await res.json()) as string[];
+}
+
+/** URL of a committed reference's tracing PNG — pass straight to Phaser `load.image` / `fetch`. */
+export function mapReferenceImageUrl(name: string): string {
+  return `${BASE}/map-references/${encodeURIComponent(name)}.png`;
+}
+
+/** Raw sidecar JSON for a reference, or `null` when absent (the `.json` is optional — a 404 is the
+ *  "no sidecar" signal, not an error). `null` when absent, else raw JSON — narrow with `parseSidecar`
+ *  before use. */
+export async function getMapReferenceSidecar(name: string): Promise<unknown> {
+  const res = await fetch(`${BASE}/map-references/${encodeURIComponent(name)}.json`);
+  if (res.status === 404) return null;
+  await expectOk(res, `getMapReferenceSidecar(${name})`);
+  return res.json();
+}
+
+export interface CaptureResult {
+  ok: true;
+  name: string;
+  grid: { w: number; h: number };
+  image: { w: number; h: number };
+}
+
+/** Thrown by `captureMapReference` on an expected, actionable failure the caller branches on by
+ *  `kind`: `'exists'` (409 — a reference with that name already exists; re-call with `overwrite:true`
+ *  after the user confirms), `'busy'` (409 — another capture is already running), or `'other'` (any
+ *  other failure, e.g. bad input 400 / capture 502). */
+export class CaptureError extends Error {
+  constructor(
+    readonly kind: 'exists' | 'busy' | 'other',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'CaptureError';
+  }
+}
+
+/** Runs a server-side map-reference capture (`POST /__editor/map-references`, plan 023): the dev
+ *  middleware runs `capture.mjs` (headless Chromium → an OSM raster slice) for `name` centered on
+ *  `lat,lon` covering a square `radiusMetres` half-extent, writing `out/<name>-reference.{png,json}`
+ *  so it appears in `listMapReferences()`. Radius → grid is computed server-side
+ *  (`gridW=gridH=ceil(2·radiusMetres/3)`, 16 px/tile). Throws `CaptureError` on a 409 name-clash
+ *  (`kind:'exists'` — pass `overwrite:true` to replace after confirming), a 409 `busy`, or any other
+ *  failure (`kind:'other'`); resolves with the written grid/image dimensions on success. Does NOT
+ *  refresh the reference list or load the underlay — that's the caller's job (mirrors `putMap`). */
+export async function captureMapReference(opts: {
+  name: string;
+  lat: number;
+  lon: number;
+  radiusMetres: number;
+  overwrite?: boolean;
+}): Promise<CaptureResult> {
+  const res = await fetch(`${BASE}/map-references`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(opts),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    const err = body?.error;
+    if (res.status === 409 && err === 'exists') {
+      throw new CaptureError('exists', `reference "${opts.name}" already exists`);
+    }
+    if (res.status === 409 && err === 'busy') {
+      throw new CaptureError('busy', 'a capture is already in progress — try again in a moment');
+    }
+    throw new CaptureError(
+      'other',
+      `captureMapReference failed: ${res.status} ${res.statusText} ${err ?? ''}`.trim(),
+    );
+  }
+  return (await res.json()) as CaptureResult;
+}
+
 /** A `pack.json` `overrides[relPath]` patch (plan 014 step 7c) — merged server-side into any
  *  existing override for that asset, never a wholesale replace. `type` forces classification.
  *  Plan 017 step 6 decouples grid geometry from the played-frame set: when `cols` is present the

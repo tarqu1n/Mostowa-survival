@@ -14,6 +14,12 @@
  *   PUT  /__editor/maps/:id/thumb  -> writes PNG body to public/assets/maps/thumbs/<id>.png
  *   PUT  /__editor/asset-override  -> patches a pack.json asset override, reruns the asset pipeline
  *   PUT  /__editor/asset-regions   -> replaces a pack.json regions list, reruns the asset pipeline
+ *   GET  /__editor/map-references          -> string[] of reference names (scripts/map-reference/out/*-reference.png)
+ *   GET  /__editor/map-references/:name.png  -> raw tracing PNG (reference underlay, plan 022)
+ *   GET  /__editor/map-references/:name.json -> raw sidecar JSON (optional; 404 = no sidecar)
+ *   POST /__editor/map-references          -> runs capture.mjs server-side ({name,lat,lon,radiusMetres,
+ *                                             overwrite?} → OSM slice), writes out/<name>-reference.{png,json},
+ *                                             returns {ok,name,grid,image} (plan 023)
  *
  * Deliberately dumb: no `parseMap`/`parseWorldLayout` here — the editor validates client-side
  * before every PUT (plan 014 step 4). It DOES sanitise `:id` against path traversal
@@ -48,6 +54,19 @@
  * AND in-bounds of the sheet PNG (its width/height read straight off the IHDR chunk by `readPngSize`,
  * mirroring `asset-catalog.mjs` — NEVER importing that module, which runs its whole build on import),
  * so a bad box can't reach `pack.json`. Deliberately does NOT touch the separate `regionParams` key.
+ *
+ * `POST /__editor/map-references` (plan 023) is the in-editor "Capture new reference" backend: it runs
+ * `capture.mjs` server-side (headless Chromium → an OSM raster slice at a fixed 3 m/tile, 16 px/tile)
+ * for a `{name, lat, lon, radiusMetres, overwrite?}` body, writing `out/<name>-reference.{png,json}`.
+ * A square radius maps to the grid as `gridW = gridH = ceil(2·radiusMetres / 3)`. This is a dev-only,
+ * SUPERVISED, user-initiated action (a Capture button click) — never an auto-pilot connection — and it
+ * hits openstreetmap.org from the dev-server host, so it keeps the capture tool's polite identifying
+ * User-Agent and pinned MapLibre version (see `capture.mjs`); coordinate-in, OSM-out only, never Google
+ * imagery. `capture.mjs` is imported LAZILY (dynamic `import()` inside the handler, not at the top of
+ * this file) because it statically pulls in `playwright` (a devDependency) — and `vite.config.ts`
+ * imports THIS module at config-load time for prod builds too, where devDeps may be absent. A
+ * name-clash without `overwrite:true` is a 409 `exists`; a second concurrent capture is a 409 `busy`
+ * (serialised by the module-level `captureInFlight` flag); a capture that throws is a 502.
  */
 import {
   mkdirSync,
@@ -67,6 +86,15 @@ const ID_RE = /^[a-z0-9-]+$/;
 const PACK_ID_RE = /^[a-z0-9-]+$/;
 const OVERRIDE_TYPES = new Set(['tile', 'strip', 'object']);
 const MANUAL_REGEN_HINT = 'python3 scripts/pixel-crawler/gen_regions.py && npm run assets:catalog';
+
+// Capture geometry (plan 023): fixed 3 m/tile, 16 px/tile (== TILE_SIZE), matching the capture tool
+// defaults so an editor-captured reference drops onto the Map Builder grid 1:1. A square radius (m)
+// → grid: gridW = gridH = ceil(2·radius / metresPerTile). Cap the radius so a fat-fingered value
+// can't ask headless Chromium to render a gigantic map (and hammer the OSM tile server).
+const MAP_REFERENCE_M_PER_TILE = 3;
+const MAP_REFERENCE_PX_PER_TILE = 16;
+const MAP_REFERENCE_MAX_RADIUS_M = 5000;
+const MAP_REFERENCE_MAPLIBRE_VERSION = '4.7.1';
 
 function sanitiseId(id) {
   return typeof id === 'string' && ID_RE.test(id) ? id : null;
@@ -199,6 +227,33 @@ function sendRawJsonFile(res, filePath) {
   res.end(readFileSync(filePath, 'utf8'));
 }
 
+function sendRawFile(res, filePath, contentType) {
+  res.statusCode = 200;
+  res.setHeader('Content-Type', contentType);
+  res.end(readFileSync(filePath));
+}
+
+const REFERENCE_PNG_SUFFIX = '-reference.png';
+
+/** Reference-underlay tracing images live under `scripts/map-reference/out/` as committed dev
+ *  artifacts (plan 022 step 1) — list the available reference *names* by scanning for
+ *  `*-reference.png` and stripping the suffix (matching `<name>-reference.{png,json}` the capture
+ *  tool writes). Missing dir ⇒ empty list (the tool may not have been run yet). */
+function listMapReferences(referencesDir) {
+  if (!existsSync(referencesDir)) return [];
+  return readdirSync(referencesDir)
+    .filter((f) => f.endsWith(REFERENCE_PNG_SUFFIX))
+    .map((f) => f.slice(0, -REFERENCE_PNG_SUFFIX.length))
+    .sort((a, b) => a.localeCompare(b));
+}
+
+// A capture launches headless Chromium and fetches OSM tiles — heavy, and two overlapping runs would
+// fight over the same `out/<name>-reference.*` files. A single in-flight boolean serialises them: a
+// second concurrent POST gets a 409 `busy` (simpler than the `enqueueRegen` promise queue, and a
+// human clicking Capture twice wants a clear "wait", not a silent queue). Module-scoped so it holds
+// across requests for the lifetime of the dev server.
+let captureInFlight = false;
+
 /** Plain-JS mirror of `generateManifest` (src/systems/worldLayout.ts): same
  *  `{schemaVersion, placements, maps}` shape, placements + maps both sorted by id for
  *  deterministic, diff-friendly output. Reads straight off disk — no validation (see module doc). */
@@ -318,6 +373,7 @@ export function editorApiPlugin() {
       const worldPath = join(mapsDir, 'world.json');
       const thumbsDir = join(root, 'public/assets/maps/thumbs');
       const tilesetsDir = join(root, 'public/assets/tilesets');
+      const referencesDir = join(root, 'scripts/map-reference/out');
 
       server.middlewares.use(async (req, res, next) => {
         const url = new URL(req.url ?? '/', 'http://localhost');
@@ -448,6 +504,108 @@ export function editorApiPlugin() {
               return;
             }
             sendJson(res, 200, { ok: true, warnings: result.warnings });
+            return;
+          }
+
+          if (path === '/__editor/map-references' && req.method === 'GET') {
+            sendJson(res, 200, listMapReferences(referencesDir));
+            return;
+          }
+
+          if (path === '/__editor/map-references' && req.method === 'POST') {
+            let payload;
+            try {
+              payload = JSON.parse((await readBody(req)).toString('utf8'));
+            } catch {
+              sendJson(res, 400, { error: 'invalid JSON body' });
+              return;
+            }
+            const name = sanitiseId(payload?.name);
+            const { lat, lon, radiusMetres } = payload ?? {};
+            if (!name) {
+              sendJson(res, 400, { error: 'invalid name — lowercase letters, digits, hyphens only' });
+              return;
+            }
+            if (
+              !Number.isFinite(lat) ||
+              lat < -90 ||
+              lat > 90 ||
+              !Number.isFinite(lon) ||
+              lon < -180 ||
+              lon > 180 ||
+              !Number.isFinite(radiusMetres) ||
+              radiusMetres <= 0 ||
+              radiusMetres > MAP_REFERENCE_MAX_RADIUS_M
+            ) {
+              sendJson(res, 400, {
+                error: `invalid coordinate/radius — lat∈[-90,90], lon∈[-180,180], radiusMetres∈(0,${MAP_REFERENCE_MAX_RADIUS_M}]`,
+              });
+              return;
+            }
+
+            const overwrite = payload?.overwrite === true;
+            if (existsSync(join(referencesDir, `${name}-reference.png`)) && !overwrite) {
+              sendJson(res, 409, { error: 'exists', name });
+              return;
+            }
+            if (captureInFlight) {
+              sendJson(res, 409, { error: 'busy' });
+              return;
+            }
+
+            const grid = Math.ceil((2 * radiusMetres) / MAP_REFERENCE_M_PER_TILE);
+            captureInFlight = true;
+            try {
+              // Dynamic import (NOT a top-of-file import): `capture.mjs` statically imports
+              // `playwright` (a devDependency). vite.config.ts imports THIS module at config-load
+              // time for BOTH `serve` and `build`, so a static import would pull playwright into every
+              // prod build — breaking CI where devDeps aren't installed. Importing lazily here keeps it
+              // strictly to the dev-serve, user-initiated capture path. The specifier resolves relative
+              // to this file (scripts/) → scripts/map-reference/capture.mjs.
+              const { capture } = await import('./map-reference/capture.mjs');
+              const cap = await capture({
+                name,
+                centerLat: lat,
+                centerLon: lon,
+                gridW: grid,
+                gridH: grid,
+                metresPerTile: MAP_REFERENCE_M_PER_TILE,
+                pxPerTile: MAP_REFERENCE_PX_PER_TILE,
+                maplibreVersion: MAP_REFERENCE_MAPLIBRE_VERSION,
+              });
+              sendJson(res, 200, {
+                ok: true,
+                name,
+                grid: { w: grid, h: grid },
+                image: cap.sidecar.image,
+              });
+            } catch (e) {
+              sendJson(res, 502, { error: String((e && e.message) || e) });
+            } finally {
+              captureInFlight = false;
+            }
+            return;
+          }
+
+          const refMatch = /^\/__editor\/map-references\/([^/]+)\.(png|json)$/.exec(path);
+          if (refMatch && req.method === 'GET') {
+            const name = sanitiseId(refMatch[1]);
+            const ext = refMatch[2];
+            if (!name) {
+              sendJson(res, 400, { error: 'invalid reference name' });
+              return;
+            }
+            const refPath = join(referencesDir, `${name}-reference.${ext}`);
+            if (!existsSync(refPath)) {
+              // The .json sidecar is optional — a 404 here is the "no sidecar" signal.
+              sendJson(res, 404, { error: `reference "${name}.${ext}" not found` });
+              return;
+            }
+            if (ext === 'png') {
+              sendRawFile(res, refPath, 'image/png');
+            } else {
+              sendRawJsonFile(res, refPath);
+            }
             return;
           }
 

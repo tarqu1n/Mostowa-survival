@@ -43,7 +43,18 @@ import {
 import type { TileSource } from '../../data/tileset';
 import type { Dims } from '../../systems/autotile';
 import type { MapPlacement, WorldLayout } from '../../systems/worldLayout';
-import { GROUND_CHUNK_ROWS } from '../../config';
+import { GROUND_CHUNK_ROWS, TILE_SIZE } from '../../config';
+import { toast } from 'sonner';
+import { getMapReferenceSidecar, mapReferenceImageUrl } from '../api';
+import { computeAutoAlign, parseSidecar, type AutoAlign } from '../underlayAlign';
+import {
+  deleteSettings,
+  getCachedImage,
+  getSettings,
+  putCachedImage,
+  putSettings,
+  type UnderlaySettings,
+} from '../underlayStore';
 import type { AssetCatalog } from '../catalog';
 import type { TerrainCatalog, TerrainDef } from '../terrainCatalog';
 import { parseAssetId } from '../textureLoading';
@@ -151,6 +162,16 @@ export interface PendingDirty {
 
 const EMPTY_WORLD: WorldLayout = { schemaVersion: 1, placements: [] };
 
+/** The live reference-underlay: the persisted `UnderlaySettings` plus the resolved base64 `dataUrl`
+ *  the Phaser scene loads as a texture (plan 022 step 4). Editor VIEW state only — never `MapFile`,
+ *  never persisted whole (only its `UnderlaySettings` half is, via `underlayStore`; the `dataUrl` is
+ *  re-resolved from cache/fetch on load, or held in-memory for ad-hoc file images). */
+export type UnderlayState = UnderlaySettings & { dataUrl: string };
+
+/** Starting opacity for a freshly-picked underlay — a shade above the `GHOST_ALPHA=0.4` precedent so
+ *  the trace-over image reads clearly while tile layers still paint legibly on top. */
+const DEFAULT_UNDERLAY_OPACITY = 0.5;
+
 export interface EditorState {
   /** Central-pane tabs (plan 017 step 1). Always leads with the permanent `map` + `world` tabs;
    *  object tabs are appended by `openObjectTab`. */
@@ -206,6 +227,15 @@ export interface EditorState {
   /** Editor VIEW state, not map data — which layer ids are hidden in the viewport. Never touches
    *  `MapFile`/`TileLayer` (those have no visibility field; see module doc on `overhead` vs this). */
   hiddenLayerIds: string[];
+  /** Reference-underlay for the open map (plan 022) — a trace-over image behind the tile layers,
+   *  editor VIEW state only (its `UnderlaySettings` persist per-map in `localStorage`, NEVER in
+   *  `MapFile`). `null` when no reference is picked / the fetch failed / the map has no persisted
+   *  underlay. See `UnderlayState`. */
+  underlay: UnderlayState | null;
+  /** Bumped on every underlay change (pick/clear/opacity/offset/scale/visible/lock/lifecycle swap) —
+   *  mirrors `docRevision`/`worldRevision`: the Phaser `EditorScene` subscribes to it and re-reads
+   *  `underlay` via `getState()`, no map re-diff. */
+  underlayRevision: number;
   /** See module doc. Set by paint actions just before `applyCommand`; consumed+cleared by
    *  `EditorScene.onDocEdited` via `consumePendingDirty`. */
   pendingDirty: PendingDirty | null;
@@ -250,6 +280,31 @@ export interface EditorState {
   setActiveZoneId(id: number | null): void;
   toggleOverlay(key: keyof EditorOverlays): void;
   toggleLayerVisibility(layerId: string): void;
+
+  // ---- reference underlay (plan 022 step 4) — editor view-state, persisted per-map in localStorage,
+  //      never in MapFile. All are no-ops when `mapId` is null; async paths bail if the map swaps
+  //      mid-flight (epoch-guard spirit — compare `mapId` after each await). ----
+  /** Picks a committed repo reference by `name`: resolve its data URL (cache → else fetch + cache),
+   *  fetch+parse its sidecar and `computeAutoAlign` for the initial scale/offset, set `underlay`,
+   *  persist, bump the revision. Any align `warning` surfaces via a sonner toast; a fetch failure is
+   *  non-fatal (toast, `underlay` left unchanged). */
+  setUnderlayReference(name: string): Promise<void>;
+  /** Loads an ad-hoc image `File` (desktop file-picker / drag-drop): read to a data URL,
+   *  `referenceName=null`, identity auto-align (no sidecar), set + persist + bump. The bytes live in
+   *  memory only (no cache key), so an ad-hoc underlay does not survive a reload. */
+  setUnderlayImageFromFile(file: File): Promise<void>;
+  /** Clears the underlay for the open map and deletes its persisted settings. */
+  clearUnderlay(): void;
+  setUnderlayOpacity(opacity: number): void;
+  setUnderlayOffset(offsetX: number, offsetY: number): void;
+  setUnderlayScale(scale: number): void;
+  toggleUnderlayVisible(): void;
+  toggleUnderlayLock(): void;
+  /** Lifecycle helper (called by `loadMap`/`newMap` after `mapId` is set): if `mapId` has persisted
+   *  underlay settings naming a `referenceName`, resolve its data URL (cache → else fetch) and
+   *  populate `underlay`. Ad-hoc (`referenceName=null`) settings aren't re-resolvable, so they're
+   *  skipped. Silently non-fatal on failure. Guarded against a map swap mid-fetch. */
+  hydrateUnderlay(mapId: string): Promise<void>;
   /** Replaces the whole world layout WITHOUT touching history — used to seed `world` from disk on the
    *  World view's initial load (`getWorld` → `parseWorldLayout`). Resets `worldDirty` to `false`
    *  (freshly read) and bumps `worldRevision`. Do NOT use for user edits — those go through the
@@ -727,6 +782,51 @@ function batchCommand(ops: Array<{ do: () => void; undo: () => void }>): Command
   };
 }
 
+/** Read a `Blob`/`File` as a base64 data URL (`FileReader`) — used for both fetched reference PNGs
+ *  and ad-hoc picked/dropped files, so a single data-URI path feeds `load.image` and `localStorage`
+ *  (plan 022's no-object-URL simplification). Rejects on a read error. */
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error('FileReader failed'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+/** Strip the in-memory `dataUrl` off a live `UnderlayState`, leaving the `UnderlaySettings` half that
+ *  is what actually persists to `localStorage` (the data URL is re-resolved on load, never stored in
+ *  the settings blob). */
+function settingsOf(u: UnderlayState): UnderlaySettings {
+  return {
+    referenceName: u.referenceName,
+    visible: u.visible,
+    locked: u.locked,
+    opacity: u.opacity,
+    offsetX: u.offsetX,
+    offsetY: u.offsetY,
+    scale: u.scale,
+  };
+}
+
+/** Fetch `url` and resolve to a base64 data URL (throws on a non-OK response). */
+async function fetchAsDataUrl(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`fetch ${url} failed: ${res.status} ${res.statusText}`);
+  return blobToDataUrl(await res.blob());
+}
+
+/** Decode a data URL just far enough to read its intrinsic pixel size — needed so `computeAutoAlign`
+ *  can compare the actually-loaded image against the sidecar's recorded dimensions. */
+function imageSizeFromDataUrl(dataUrl: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => reject(new Error('image decode failed'));
+    img.src = dataUrl;
+  });
+}
+
 export const useEditorStore = create<EditorState>()(
   subscribeWithSelector((set, get) => ({
     tabs: [
@@ -755,6 +855,8 @@ export const useEditorStore = create<EditorState>()(
     activeZoneId: null,
     overlays: { grid: true, walkability: false, zones: false, ghosts: false },
     hiddenLayerIds: [],
+    underlay: null,
+    underlayRevision: 0,
     pendingDirty: null,
     mapEpoch: 0,
     docRevision: 0,
@@ -776,11 +878,14 @@ export const useEditorStore = create<EditorState>()(
         pendingPortalRect: null,
         dirty: true, // freshly created — not yet on disk
         pendingDirty: null,
+        underlay: null, // fresh doc — drop any prior underlay; hydrate restores if this id has one
+        underlayRevision: s.underlayRevision + 1,
         mapEpoch: s.mapEpoch + 1,
         docRevision: 0,
         canUndo: false,
         canRedo: false,
       }));
+      void get().hydrateUnderlay(id);
     },
 
     loadMap: (map, id) => {
@@ -796,11 +901,14 @@ export const useEditorStore = create<EditorState>()(
         pendingPortalRect: null,
         dirty: false, // just read from disk
         pendingDirty: null,
+        underlay: null, // swap maps → drop the old underlay; hydrate re-resolves this map's own
+        underlayRevision: s.underlayRevision + 1,
         mapEpoch: s.mapEpoch + 1,
         docRevision: 0,
         canUndo: false,
         canRedo: false,
       }));
+      void get().hydrateUnderlay(id);
     },
 
     closeMap: () => {
@@ -816,6 +924,8 @@ export const useEditorStore = create<EditorState>()(
         pendingPortalRect: null,
         dirty: false,
         pendingDirty: null,
+        underlay: null,
+        underlayRevision: s.underlayRevision + 1,
         mapEpoch: s.mapEpoch + 1,
         docRevision: 0,
         canUndo: false,
@@ -873,6 +983,158 @@ export const useEditorStore = create<EditorState>()(
           ? s.hiddenLayerIds.filter((id) => id !== layerId)
           : [...s.hiddenLayerIds, layerId],
       })),
+
+    // ---- reference underlay (plan 022 step 4) ----
+
+    setUnderlayReference: async (name) => {
+      const mapId = get().mapId;
+      if (!mapId) return;
+      // Cache first (deduped by reference name across maps), else fetch the committed PNG + cache it.
+      let dataUrl = getCachedImage(name);
+      if (dataUrl === null) {
+        try {
+          dataUrl = await fetchAsDataUrl(mapReferenceImageUrl(name));
+        } catch (e) {
+          toast.error(`Couldn't load reference "${name}": ${(e as Error).message}`);
+          return;
+        }
+        if (get().mapId !== mapId) return; // map swapped during the fetch — abandon
+        putCachedImage(name, dataUrl);
+      }
+      // Auto-align from the sidecar (optional). Any failure degrades to identity — non-fatal.
+      let align: AutoAlign = { scale: 1, offsetX: 0, offsetY: 0 };
+      try {
+        const size = await imageSizeFromDataUrl(dataUrl);
+        if (get().mapId !== mapId) return;
+        const sidecarJson = await getMapReferenceSidecar(name);
+        if (get().mapId !== mapId) return;
+        align = computeAutoAlign({
+          sidecar: parseSidecar(sidecarJson),
+          imageW: size.w,
+          imageH: size.h,
+          tileSize: TILE_SIZE,
+        });
+      } catch (e) {
+        console.warn(`[editor] underlay auto-align failed for "${name}":`, e);
+      }
+      if (align.warning) toast.warning(align.warning);
+      const settings: UnderlaySettings = {
+        referenceName: name,
+        visible: true,
+        locked: false,
+        opacity: DEFAULT_UNDERLAY_OPACITY,
+        offsetX: align.offsetX,
+        offsetY: align.offsetY,
+        scale: align.scale,
+      };
+      if (get().mapId !== mapId) return;
+      putSettings(mapId, settings);
+      set((s) => ({
+        underlay: { ...settings, dataUrl },
+        underlayRevision: s.underlayRevision + 1,
+      }));
+    },
+
+    setUnderlayImageFromFile: async (file) => {
+      const mapId = get().mapId;
+      if (!mapId) return;
+      let dataUrl: string;
+      try {
+        dataUrl = await blobToDataUrl(file);
+      } catch (e) {
+        toast.error(`Couldn't read image file: ${(e as Error).message}`);
+        return;
+      }
+      if (get().mapId !== mapId) return; // map swapped during the read — abandon
+      // No sidecar for an ad-hoc file → identity align (imageW/H irrelevant with sidecar absent).
+      const align = computeAutoAlign({ sidecar: null, imageW: 0, imageH: 0, tileSize: TILE_SIZE });
+      const settings: UnderlaySettings = {
+        referenceName: null,
+        visible: true,
+        locked: false,
+        opacity: DEFAULT_UNDERLAY_OPACITY,
+        offsetX: align.offsetX,
+        offsetY: align.offsetY,
+        scale: align.scale,
+      };
+      putSettings(mapId, settings);
+      set((s) => ({
+        underlay: { ...settings, dataUrl },
+        underlayRevision: s.underlayRevision + 1,
+      }));
+    },
+
+    clearUnderlay: () => {
+      const mapId = get().mapId;
+      if (!mapId) return;
+      deleteSettings(mapId);
+      set((s) => ({ underlay: null, underlayRevision: s.underlayRevision + 1 }));
+    },
+
+    setUnderlayOpacity: (opacity) => {
+      const { underlay, mapId } = get();
+      if (!underlay || !mapId) return;
+      const next: UnderlayState = { ...underlay, opacity };
+      putSettings(mapId, settingsOf(next));
+      set((s) => ({ underlay: next, underlayRevision: s.underlayRevision + 1 }));
+    },
+
+    setUnderlayOffset: (offsetX, offsetY) => {
+      const { underlay, mapId } = get();
+      if (!underlay || !mapId) return;
+      const next: UnderlayState = { ...underlay, offsetX, offsetY };
+      putSettings(mapId, settingsOf(next));
+      set((s) => ({ underlay: next, underlayRevision: s.underlayRevision + 1 }));
+    },
+
+    setUnderlayScale: (scale) => {
+      const { underlay, mapId } = get();
+      if (!underlay || !mapId) return;
+      const next: UnderlayState = { ...underlay, scale };
+      putSettings(mapId, settingsOf(next));
+      set((s) => ({ underlay: next, underlayRevision: s.underlayRevision + 1 }));
+    },
+
+    toggleUnderlayVisible: () => {
+      const { underlay, mapId } = get();
+      if (!underlay || !mapId) return;
+      const next: UnderlayState = { ...underlay, visible: !underlay.visible };
+      putSettings(mapId, settingsOf(next));
+      set((s) => ({ underlay: next, underlayRevision: s.underlayRevision + 1 }));
+    },
+
+    toggleUnderlayLock: () => {
+      const { underlay, mapId } = get();
+      if (!underlay || !mapId) return;
+      const next: UnderlayState = { ...underlay, locked: !underlay.locked };
+      putSettings(mapId, settingsOf(next));
+      set((s) => ({ underlay: next, underlayRevision: s.underlayRevision + 1 }));
+    },
+
+    hydrateUnderlay: async (mapId) => {
+      const settings = getSettings(mapId);
+      // Only committed references are re-resolvable; ad-hoc file images (referenceName === null) have
+      // no cache key, so their bytes don't survive a reload — skip them.
+      if (!settings || !settings.referenceName) return;
+      const name = settings.referenceName;
+      let dataUrl = getCachedImage(name);
+      if (dataUrl === null) {
+        try {
+          dataUrl = await fetchAsDataUrl(mapReferenceImageUrl(name));
+        } catch (e) {
+          console.warn(`[editor] couldn't restore underlay "${name}":`, e);
+          return; // non-fatal — leave `underlay` null
+        }
+        if (get().mapId !== mapId) return; // map swapped during the fetch — abandon
+        putCachedImage(name, dataUrl);
+      }
+      if (get().mapId !== mapId) return;
+      set((s) => ({
+        underlay: { ...settings, dataUrl },
+        underlayRevision: s.underlayRevision + 1,
+      }));
+    },
+
     setWorld: (world) =>
       set((s) => ({ world, worldDirty: false, worldRevision: s.worldRevision + 1 })),
     markWorldSaved: () => set({ worldDirty: false }),

@@ -37,6 +37,16 @@ bindings here).
   tray onto the grid; overlap of inside-cells = red error (Save disabled); seam/adjacency/island
   issues = amber warnings (non-blocking). Placements are the only thing the World tab writes.
 
+## Reference overlay
+
+**Map tab** tracing aid: semi-transparent reference image (e.g. OSM capture) rendered **over** the
+tile layers (so opaque painted tiles never hide it — trace and check coverage through its alpha),
+below the grid + editor guide overlays. References committed to `scripts/map-reference/out/` are
+loaded via **dropdown** in the Reference panel; **file-picker / drag-drop** load ad-hoc images.
+Transform settings (opacity, X/Y offset, scale) persist **per-map to localStorage** under
+`mostowo-editor-underlay:` — never in `.map.json` or prod. Sidecar JSON auto-aligns to grid.
+Toggle with `U` or panel checkbox. Phone-usable. Capture tool — new references in-editor via **Reference → "Capture new"** (name + `lat,lon` + radius, runs on dev-server), or batch-script via the CLI — see [map-reference/](../scripts/map-reference/README.md).
+
 ## File formats — source of truth is the code
 
 Do **not** treat this doc as the schema. The authoritative shapes + validators are:

@@ -11,6 +11,7 @@ import { LibraryPanel } from './panels/LibraryPanel';
 import { LayersPanel } from './panels/LayersPanel';
 import { ZonesPanel } from './panels/ZonesPanel';
 import { InspectorPanel } from './panels/InspectorPanel';
+import { ReferencePanel } from './panels/ReferencePanel';
 import { PortalDialog } from './PortalDialog';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from './ui/resizable';
 import { Separator } from './ui/separator';
@@ -73,6 +74,14 @@ export function EditorApp() {
       // e.g. pressing Delete while the World or an object-editor tab is active never silently deletes
       // selected map objects. Top correctness risk of the tabbed pane (plan 017 step 2).
       if (activeTabId !== 'map') return;
+      // U = toggle the reference underlay's visibility. Plain 'u' only (no Ctrl/Cmd/Alt), so it
+      // doesn't collide with browser/OS bindings; the store action itself no-ops when there's no
+      // underlay loaded, so this is safe to call unconditionally on the Map tab.
+      if (e.key.toLowerCase() === 'u' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        useEditorStore.getState().toggleUnderlayVisible();
+        return;
+      }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const ids = useEditorStore.getState().selectedObjectIds;
         if (ids.length > 0) {
@@ -196,7 +205,28 @@ export function EditorApp() {
                     );
                     if (tab.kind === 'map') {
                       return (
-                        <div key={tab.id} className={panelClass}>
+                        <div
+                          key={tab.id}
+                          className={panelClass}
+                          // Drag-drop an image onto the Map viewport → reference underlay (plan 022,
+                          // desktop convenience). onDragOver must preventDefault for onDrop to fire;
+                          // only image files route through, and the store no-ops if no map is open.
+                          onDragOver={(e) => {
+                            if (Array.from(e.dataTransfer.types).includes('Files')) {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'copy';
+                            }
+                          }}
+                          onDrop={(e) => {
+                            const file = Array.from(e.dataTransfer.files).find((f) =>
+                              f.type.startsWith('image/'),
+                            );
+                            if (file) {
+                              e.preventDefault();
+                              void useEditorStore.getState().setUnderlayImageFromFile(file);
+                            }
+                          }}
+                        >
                           <PhaserViewport />
                           {!map && (
                             <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[0.95rem] text-border-muted">
@@ -229,6 +259,8 @@ export function EditorApp() {
             <LayersPanel />
             <Separator className="my-3.5" />
             <ZonesPanel />
+            <Separator className="my-3.5" />
+            <ReferencePanel />
           </aside>
         </div>
         {/* Match the old toast colours: green success / red error (the shared brown popover would make

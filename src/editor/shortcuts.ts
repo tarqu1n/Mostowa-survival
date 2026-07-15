@@ -72,6 +72,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
+    title: 'Reference underlay',
+    shortcuts: [
+      { keys: ['U'], action: 'Toggle the reference underlay’s visibility (Map tab only)' },
+    ],
+  },
+  {
     title: 'World view',
     shortcuts: [
       {

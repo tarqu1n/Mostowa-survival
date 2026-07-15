@@ -80,4 +80,6 @@ export interface GameTestApi {
   inLight(col: number, row: number): boolean;
   /** Run the real tap-to-feed path on the campfire at `index` (spend wood, top up, relight). */
   feedCampfire(index: number): boolean;
+  /** The authored zone id at global tile `(col,row)`, `0` = no zone (plan 014 zones read path). */
+  zoneAt(col: number, row: number): number;
 }

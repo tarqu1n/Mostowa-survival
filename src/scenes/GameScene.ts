@@ -25,6 +25,7 @@ import { tileKey, tileToWorldCenter } from '../systems/grid';
 import { findPath, reachableAdjacent, type Cell } from '../systems/pathfind';
 import { originOf } from '../systems/mapRuntime';
 import { mapBlocks } from '../systems/mapWalkability';
+import { zoneAt } from '../systems/mapZones';
 import type { MapFile, DecorObject, NodeObject, PortalObject } from '../systems/mapFormat';
 import { breadcrumb, setCrashContext } from '../debug/crashReporter';
 import { TaskQueue, type Action } from '../systems/tasks';
@@ -577,6 +578,7 @@ export class GameScene extends Phaser.Scene {
       tryPlace: (id, c, r) => testApi.tryPlace(id, c, r),
       inLight: (c, r) => testApi.inLight(c, r),
       feedCampfire: (i) => testApi.feedCampfire(i),
+      zoneAt: (c, r) => this.zoneAt(c, r),
     };
     (this.game as unknown as { __test?: GameTestApi }).__test = api;
   }
@@ -649,6 +651,15 @@ export class GameScene extends Phaser.Scene {
     // The map's own base walkability composites UNDER the runtime obstacles above (plan 018 A5/A11);
     // convert the GLOBAL (col,row) back to map-local by subtracting the map origin.
     mapBlocks(this.startMap, col - this.mapOrigin.col, row - this.mapOrigin.row);
+
+  /**
+   * The authored zone id at GLOBAL tile `(col,row)`, or `0` for no zone (plan 014 step 11 —
+   * proving the zones runtime read path). Converts to map-local by subtracting the map origin, same
+   * as {@link isBlocked} does for `mapBlocks`. Nothing consumes it in gameplay yet; quests/spawn
+   * rules will. */
+  zoneAt(col: number, row: number): number {
+    return zoneAt(this.startMap, col - this.mapOrigin.col, row - this.mapOrigin.row);
+  }
 
   /** Path the worker toward `goal`; returns false if unreachable (`null` path). `[]` = already there. */
   private pathTo(goal: Cell): boolean {

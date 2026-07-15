@@ -7,6 +7,39 @@ Format: `YYYY-MM-DD — [DECIDED|PROPOSED|OPEN] Title` then a short rationale.
 
 ---
 
+## 2026-07-15 — [DECIDED] Map Builder editor + map/world file format (plan 014)
+
+Resolves the 2026-07-11 [OPEN] "want a map editor" steer below. The editor is a **React chrome over
+one Phaser viewport**, a dev-only second Vite page (`editor.html` → `src/editor/`), excluded from the
+prod build. Full detail: [EDITOR.md](EDITOR.md) + `plans/014-map-builder.md`. The settled calls:
+
+- **Custom JSON, not Tiled.** Maps live in `src/data/maps/*.map.json`, validated through one pure
+  choke point (`src/systems/mapFormat.ts` `parseMap`); world layout in `world.json`
+  (`worldLayout.ts`). React for chrome (usability/filtering), Phaser for the viewport only.
+- **Per-map palette is append-only** — layer cells index a `palette` array (`0` = empty); indices are
+  never renumbered on save (keeps grid diffs tiny). **Autotile bakes are canonical** (the game loader
+  stays dumb/pixel-exact); an editor-only semantic `terrain` mask is kept alongside and rebaked on
+  save. **Zones** = a per-tile uint8 id layer + `defs`. **Walkability** = base-terrain passability
+  only; runtime obstacles composite over it via `isBlocked`.
+- **Objects = one array, `kind` discriminator** (`node`/`decor`/`portal`), every object a stable
+  string `id`. **Connections/unlock-gates live in the registry, not map files** — maps expose named
+  portals; the registry wires portal→portal (placeholder `MapConnections` for now). Map files never
+  reference other maps.
+- **Irregular shapes + one global tile coordinate space.** Each map has a per-tile shape mask
+  (void = blocked); `world.json` places every map in signed global tile coords. This is the
+  foundation for future **seamless walk-across** streaming and **cross-map monster pursuit** (a stated
+  requirement) — the engine work is out of scope, but the data model doesn't block it.
+- **Seams are derived, not authored** (computed at load from world.json + shape masks + walkability).
+  **Validation split:** overlapping inside-cells / unknown mapId / structural invalidity = ERROR
+  (fails loads); seam-walkability mismatch / diagonal-only adjacency / island / unplaced = WARNING.
+- **Lazy registry from day one** (`mapRuntime.ts`: eager manifest+world, lazy per-map chunks) — the
+  structure streaming needs, at the cost of one `await` today. **Committed 1px-per-tile thumbnails**
+  are the future world-map screen's data source (drawable with zero map files loaded).
+  **Fast-travel needs no format change** — it's a portal + a registry connection carrying a gate.
+- **Persistence contract (no code yet):** authored map files are immutable; runtime state is a future
+  save-side overlay keyed `{mapId, objectId}`. Therefore **anything runtime-mutable must be an
+  object, never painted into tile layers** — tile/walkability/zone/shape cells are never overlayable.
+
 ## 2026-07-14 — [DECIDED] Editor styling → Tailwind v4 + shadcn/ui (dev-only)
 
 The dev-only Map Builder editor (`src/editor/**`) migrated from a 1292-line hand-written `editor.css`
@@ -577,7 +610,11 @@ Supersedes the [PROPOSED] entry directly below (Pixel Crawler is now committed/w
 leading candidate). Full narrative:
 [docs/ASSETS.md](ASSETS.md#active-tileset--pixel-crawler-wired-in-plan-005).
 
-## 2026-07-11 — [OPEN] Want a map editor; Pixel Crawler autotiler + demo polish gaps
+## 2026-07-11 — [RESOLVED] Want a map editor; Pixel Crawler autotiler + demo polish gaps
+
+> **Resolved** by the 2026-07-15 [DECIDED] Map Builder entry at the top (plan 014 — editor built,
+> `autotile.py`'s 8-neighbour key logic ported to `src/systems/autotile.ts`). The demo/autotiler
+> polish gaps below stay open as art-tuning notes.
 
 Matt's steer after reviewing the autotiled demos: they're good enough for evaluation, but the real
 need going forward is a **map editor so he can build/edit maps himself** rather than tuning a Python

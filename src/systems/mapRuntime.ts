@@ -27,6 +27,22 @@ import worldJson from '../data/maps/world.json';
 export const MANIFEST = parseManifest(manifestJson);
 export const WORLD = parseWorldLayout(worldJson);
 
+/**
+ * Registry-level map graph (plan 014 advisor decision: connections/unlock-gates live in the
+ * registry, NOT in map files — maps only expose named `portal` objects; the registry wires
+ * portal→portal with optional gate conditions). Placeholder for now: seam-adjacency is DERIVED at
+ * load from `world.json` + shape masks (see `buildWorldIndex().seams`), so only NON-adjacent travel
+ * (boat/car fast-travel) ever needs an explicit connection here. The world-graph/fast-travel system
+ * is its own future plan; `gate` stays `unknown` until that plan defines gate semantics. */
+export interface MapConnection {
+  from: { mapId: string; portalId: string };
+  to: { mapId: string; portalId: string };
+  gate?: unknown;
+}
+
+/** Explicit (non-derived) map connections. Empty at L0 — no fast-travel wiring exists yet. */
+export const CONNECTIONS: readonly MapConnection[] = [];
+
 const METAS: Record<string, MapMetaLite> = {};
 for (const entry of MANIFEST.maps) {
   METAS[entry.id] = { id: entry.id, width: entry.width, height: entry.height };

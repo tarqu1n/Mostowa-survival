@@ -64,6 +64,7 @@ vision in [docs/GAME-DESIGN.md](docs/GAME-DESIGN.md).
 - [docs/STATUS.md](docs/STATUS.md) — what's **built so far** (feature/plan history)
 - [docs/LORE.md](docs/LORE.md) — intro story + real-Mostowo people/places/stories that theme the game
 - [docs/ASSETS.md](docs/ASSETS.md) — art pipeline: active pack, sprite extraction, what's wired, where assets live
+- [docs/EDITOR.md](docs/EDITOR.md) — dev-only **Map Builder** (`npm run editor`): panes, tools, map/world file format, generated artifacts, persistence contract
 - [docs/ASSET-EXPERIMENTS.md](docs/ASSET-EXPERIMENTS.md) — art R&D log: tileset candidates, AI-gen trials, Gemini pipeline
 - [scripts/gen-icons/README.md](scripts/gen-icons/README.md) — **item-icon generation pipeline** (Gemini): *when* to run it (add/replace an item icon), *how*, and the LAN-key gate — overview in [ASSETS.md](docs/ASSETS.md#item-icons-gemini-pipeline-plan-009)
 - [docs/GAME-MECHANICS.md](docs/GAME-MECHANICS.md) — tuned mechanics & numbers (costs, fuel, radii, base zone)

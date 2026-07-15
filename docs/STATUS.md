@@ -272,3 +272,20 @@ portals are parsed-and-held (no transitions yet). The old procedural `drawGround
 and the fixed `MAP_WIDTH`/`MAP_HEIGHT`/`BASE_ZONE` consts are gone. **Temp:** hunger is non-lethal
 (`HUNGER_LETHAL=false`) until the start map carries authored food. Adjacent-ring streaming is
 [plan 019](../plans/019-l1-map-streaming.md).
+
+## Map Builder — dev-only in-repo map editor (plan 014)
+
+A React-chrome-over-Phaser map editor (`editor.html` → `src/editor/`, excluded from the prod build)
+for authoring the custom-JSON maps the runtime loader (plan 018) consumes. Paints tile layers, an
+**autotile terrain brush** (8-neighbour blob logic ported from `autotile.py` → `src/systems/autotile.ts`),
+places/transforms scenery (region-cropped atlas sprites + animated strips), paints walkability, zones,
+and the irregular **shape mask**; undo/redo throughout. A **World tab** positions maps in one global
+tile coordinate space (`world.json`); exports a 1px-per-tile thumbnail per map. Saves via a dev-only
+Vite middleware that regenerates `manifest.json`. The map/world **file format + validators** are pure
+modules (`src/systems/mapFormat.ts` / `worldLayout.ts`), reused by both editor and game; the game
+consumes maps through the lazy `mapRuntime.ts` registry. Zones have a runtime read path
+(`src/systems/mapZones.ts` `zoneAt`, exposed on `GameScene` + the `__test` seam), a CI world-integrity
+test (`src/data/maps/__tests__/world.test.ts`), and a placeholder `MapConnections` type. Full detail:
+[EDITOR.md](EDITOR.md); how-to for packs/catalog: [ASSETS.md](ASSETS.md). **Still to author:** the
+test-content maps that exercise every feature end-to-end (plan 014 step 12) — which is what unblocks
+re-enabling lethal hunger and plan 019's second placement.

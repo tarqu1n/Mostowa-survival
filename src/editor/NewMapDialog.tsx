@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { MAX_MAP_DIM } from '../systems/mapFormat';
+import { MAX_MAP_DIM, MAP_ID_PATTERN } from '../systems/mapFormat';
 
 export interface NewMapFields {
   id: string;
@@ -11,9 +11,6 @@ export interface NewMapFields {
   width: number;
   height: number;
 }
-
-// Matches the middleware's `:id` sanitiser (`[a-z0-9-]+`) so a New map can always be saved later.
-const ID_PATTERN = /^[a-z0-9-]+$/;
 
 /** A labelled field row (`<Label>` + control), shared by every field below. */
 const fieldClass = 'flex flex-col gap-1.5';
@@ -35,7 +32,7 @@ export function NewMapDialog({
   const [width, setWidth] = useState(45);
   const [height, setHeight] = useState(80);
 
-  const idOk = ID_PATTERN.test(id);
+  const idOk = MAP_ID_PATTERN.test(id);
   const dimsOk = width >= 1 && width <= MAX_MAP_DIM && height >= 1 && height <= MAX_MAP_DIM;
   const valid = idOk && name.trim().length > 0 && dimsOk;
 

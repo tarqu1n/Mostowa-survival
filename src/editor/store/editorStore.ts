@@ -470,6 +470,19 @@ export interface EditorState {
    *  rebuild (see module doc), not a narrowed rebake. */
   resizeMap(edges: ResizeEdges): boolean;
 
+  /** Renames the open map: sets a NEW `map` reference with `meta.id = newId` + `meta.name = newName`,
+   *  points `mapId` at `newId`, and does the in-memory + localStorage half of an id migration —
+   *  migrating the underlay-settings key (`getSettings(oldId)` → `putSettings(newId)` → `deleteSettings(oldId)`,
+   *  bumping `underlayRevision`) and rewriting any matching `world.placements` entry `oldId→newId`
+   *  in place (`worldDirty:true` + `worldRevision` bump). Clears `dirty` (the caller writes the doc to
+   *  disk around this call). Returns `{ placementMigrated }` — `true` iff a world placement was rewritten.
+   *
+   *  Deliberately NOT routed through `applyCommand`/history — a rename is an immediate disk migration
+   *  (the id is a filesystem key), not an undoable edit; reverse it by renaming back. All disk IO
+   *  (putMap/deleteMap/putThumb/putWorld) lives in the calling component, not here. A name-only change
+   *  (id unchanged) skips the underlay/world migration and just swaps the `map` reference. */
+  renameMapState(newId: string, newName: string): { placementMigrated: boolean };
+
   // ---- painting (step 6) ----
   /** Brush stroke: paints every cell along the segment `(fromCol,fromRow)`→`(toCol,toRow)` on the
    *  active layer with the resolved `brushAsset` (palette find-or-append). `strokeId` coalesces a
@@ -1896,6 +1909,45 @@ export const useEditorStore = create<EditorState>()(
         toast.info('Map resized — world layout has unsaved changes (Save World separately).');
       }
       return true;
+    },
+
+    renameMapState: (newId, newName) => {
+      const { map, mapId: oldId, world } = get();
+      if (!map) return { placementMigrated: false };
+
+      const idChanged = newId !== oldId;
+
+      // Underlay settings migration (only on an id change, and only if the old id had settings).
+      let underlayMigrated = false;
+      if (idChanged && oldId) {
+        const settings = getSettings(oldId);
+        if (settings) {
+          putSettings(newId, settings);
+          deleteSettings(oldId);
+          underlayMigrated = true;
+        }
+      }
+
+      // World placement migration: rewrite the matching placement's mapId in place (mirrors
+      // `movePlacement`'s in-place mutation) so the World tab sees the same array reference.
+      let placementMigrated = false;
+      if (idChanged) {
+        const placement = world.placements.find((p) => p.mapId === oldId);
+        if (placement) {
+          placement.mapId = newId;
+          placementMigrated = true;
+        }
+      }
+
+      set((s) => ({
+        map: s.map ? { ...s.map, meta: { ...s.map.meta, id: newId, name: newName } } : s.map,
+        mapId: newId,
+        dirty: false,
+        ...(underlayMigrated ? { underlayRevision: s.underlayRevision + 1 } : {}),
+        ...(placementMigrated ? { worldDirty: true, worldRevision: s.worldRevision + 1 } : {}),
+      }));
+
+      return { placementMigrated };
     },
 
     // ---- painting ----

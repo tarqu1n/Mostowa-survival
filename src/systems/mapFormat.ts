@@ -752,6 +752,9 @@ export function createEmptyMap(id: string, name: string, width: number, height: 
  *  `NewMapDialog` (was a local `MAX_DIM` there) and `planResize`/`applyResize` below. */
 export const MAX_MAP_DIM = 512;
 
+/** Map id pattern — client mirror of the middleware's `ID_RE` (lowercase letters, digits, hyphens). */
+export const MAP_ID_PATTERN = /^[a-z0-9-]+$/;
+
 /** Tiles to add on each edge of a resize; negative crops that edge. */
 export interface ResizeEdges {
   top: number;

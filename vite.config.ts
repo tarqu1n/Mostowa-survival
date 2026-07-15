@@ -26,6 +26,32 @@ export default defineConfig(({ command }) => ({
       input: 'index.html',
     },
   },
+  server: {
+    watch: {
+      // The Map Builder editor (dev-only) writes these on Save: map/world/nodes JSON + the
+      // regenerated manifest.json (`scripts/vite-editor-api.mjs`), the thumbnail PNGs, and captured
+      // reference underlays. `manifest.json`/`world.json`/`*.map.json` are all in the game page's
+      // module graph (`src/systems/mapRuntime.ts`), so writing one makes Vite broadcast a
+      // full-reload to EVERY connected client — including the editor tab, which then snaps back to
+      // its onload state mid-save (the save itself still lands on disk). Ignoring these paths in the
+      // watcher stops that spurious reload; a real content change is picked up on the next explicit
+      // reload / dev-server restart, which is the editor's workflow anyway.
+      //
+      // The asset pipeline (Object Editor "reclassify" / Regions editor "Apply", via
+      // `/__editor/asset-override` + `/__editor/asset-regions`) rewrites the pack manifests and
+      // regenerates `public/assets/asset-catalog.json`. Those live under `public/`, and Vite
+      // force-reloads on ANY `public/` change (not just module-graph files) — same spurious reload.
+      // Safe to ignore too: the editor already refetches `asset-catalog.json` with a cache-buster
+      // after every Apply (`src/editor/catalogSource.ts`), so it never needed the reload.
+      ignored: [
+        '**/src/data/maps/**',
+        '**/public/assets/maps/thumbs/**',
+        '**/public/assets/tilesets/**',
+        '**/public/assets/asset-catalog.json',
+        '**/scripts/map-reference/out/**',
+      ],
+    },
+  },
   plugins: [
     react(),
     // Tailwind v4 (editor-only). Only src/editor/editor.css does `@import "tailwindcss"`, and only

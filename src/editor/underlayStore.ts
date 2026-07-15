@@ -149,6 +149,22 @@ export function getCachedImage(name: string): string | null {
   }
 }
 
+/** Drop the cached image for `name` (and its index entry), if any. Called when a committed reference
+ *  is deleted so its stale bytes don't linger in localStorage. No-op if uncached / storage disabled. */
+export function deleteCachedImage(name: string): void {
+  const s = storage();
+  if (!s) return;
+  try {
+    s.removeItem(imageKey(name));
+  } catch {
+    // ignore — still drop it from the index below
+  }
+  writeIndex(
+    s,
+    readIndex(s).filter((n) => n !== name),
+  );
+}
+
 /** Cache `dataUrl` under `name`. On `QuotaExceededError`, evict the least-recently-used *other*
  *  cached image and retry ONCE, then give up gracefully. Returns whether the image is now cached. */
 export function putCachedImage(name: string, dataUrl: string): boolean {

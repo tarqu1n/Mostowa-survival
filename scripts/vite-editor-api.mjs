@@ -22,6 +22,7 @@
  *   POST /__editor/map-references          -> runs capture.mjs server-side ({name,lat,lon,radiusMetres,
  *                                             overwrite?} → OSM slice), writes out/<name>-reference.{png,json},
  *                                             returns {ok,name,grid,image} (plan 023)
+ *   DELETE /__editor/map-references/:name  -> removes out/<name>-reference.{png,json} (sidecar best-effort)
  *
  * Deliberately dumb: no `parseMap`/`parseWorldLayout` here — the editor validates client-side
  * before every PUT (plan 014 step 4). It DOES sanitise `:id` against path traversal
@@ -546,7 +547,9 @@ export function editorApiPlugin() {
             const name = sanitiseId(payload?.name);
             const { lat, lon, radiusMetres } = payload ?? {};
             if (!name) {
-              sendJson(res, 400, { error: 'invalid name — lowercase letters, digits, hyphens only' });
+              sendJson(res, 400, {
+                error: 'invalid name — lowercase letters, digits, hyphens only',
+              });
               return;
             }
             if (
@@ -607,6 +610,30 @@ export function editorApiPlugin() {
             } finally {
               captureInFlight = false;
             }
+            return;
+          }
+
+          // DELETE a committed reference by bare name (no extension — that path is the GET-only
+          // asset route below). Removes the PNG + the optional sidecar; a missing PNG is a 404.
+          const refDeleteMatch = /^\/__editor\/map-references\/([^/]+)$/.exec(path);
+          if (refDeleteMatch && req.method === 'DELETE') {
+            const name = sanitiseId(refDeleteMatch[1]);
+            if (!name) {
+              sendJson(res, 400, { error: 'invalid reference name' });
+              return;
+            }
+            const pngPath = join(referencesDir, `${name}-reference.png`);
+            if (!existsSync(pngPath)) {
+              sendJson(res, 404, { error: `reference "${name}" not found` });
+              return;
+            }
+            rmSync(pngPath);
+            // Best-effort: the .json sidecar is optional (may never have been written).
+            const sidecarPath = join(referencesDir, `${name}-reference.json`);
+            if (existsSync(sidecarPath)) {
+              rmSync(sidecarPath);
+            }
+            sendJson(res, 200, { ok: true });
             return;
           }
 

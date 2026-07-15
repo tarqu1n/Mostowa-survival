@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  deleteCachedImage,
   deleteSettings,
   getCachedImage,
   getSettings,
@@ -129,5 +130,23 @@ describe('underlayStore image cache', () => {
     useStorage(undefined);
     expect(putCachedImage('a', 'AAAA')).toBe(false);
     expect(getCachedImage('a')).toBeNull();
+  });
+
+  it('deletes a cached image and drops it from the LRU index', () => {
+    useStorage(new FakeStorage());
+    putCachedImage('a', 'AAAA');
+    putCachedImage('b', 'BBBB');
+    deleteCachedImage('a');
+    expect(getCachedImage('a')).toBeNull();
+    expect(getCachedImage('b')).toBe('BBBB');
+    // 'a' is gone from the index, so the next quota eviction picks 'b', not the already-deleted 'a'.
+    expect(localStorage.getItem('mostowo-editor-underlay:img-index')).toBe('["b"]');
+  });
+
+  it('deleteCachedImage is a no-op for an unknown name / unavailable storage', () => {
+    useStorage(new FakeStorage());
+    expect(() => deleteCachedImage('nope')).not.toThrow();
+    useStorage(undefined);
+    expect(() => deleteCachedImage('a')).not.toThrow();
   });
 });

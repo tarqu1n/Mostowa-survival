@@ -113,6 +113,17 @@ export async function listMapReferences(): Promise<string[]> {
   return (await res.json()) as string[];
 }
 
+/** Deletes a committed reference's `out/<name>-reference.png` (+ the optional `.json` sidecar,
+ *  best-effort server-side). A missing reference is a 404 → thrown like any other failure. Does not
+ *  touch the per-map underlay settings / localStorage image cache — callers handle that (mirrors how
+ *  `deleteMap` leaves `world.json` to the caller). */
+export async function deleteMapReference(name: string): Promise<void> {
+  await expectOk(
+    await fetch(`${BASE}/map-references/${encodeURIComponent(name)}`, { method: 'DELETE' }),
+    `deleteMapReference(${name})`,
+  );
+}
+
 /** URL of a committed reference's tracing PNG — pass straight to Phaser `load.image` / `fetch`. */
 export function mapReferenceImageUrl(name: string): string {
   return `${BASE}/map-references/${encodeURIComponent(name)}.png`;

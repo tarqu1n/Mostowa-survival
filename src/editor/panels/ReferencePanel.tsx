@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { toast } from 'sonner';
 import { useEditorStore } from '../store/editorStore';
-import { captureMapReference, CaptureError, listMapReferences } from '../api';
+import {
+  captureMapReference,
+  CaptureError,
+  deleteMapReference,
+  getMapReferenceSidecar,
+  listMapReferences,
+} from '../api';
+import { deleteCachedImage } from '../underlayStore';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -28,6 +35,32 @@ function parseLatLon(raw: string): { lat: number; lon: number } | null {
   if (!Number.isFinite(lat) || lat < -90 || lat > 90) return null;
   if (!Number.isFinite(lon) || lon < -180 || lon > 180) return null;
   return { lat, lon };
+}
+
+/** Pull the capture parameters (center + square half-extent) back out of a reference's sidecar JSON
+ *  so it can be re-captured in place. `radiusMetres` is half the recorded `extentMetres.w` (the
+ *  capture endpoint derives grid = ceil(2·radius / metresPerTile)); falls back to grid·metresPerTile/2
+ *  for an older sidecar without `extentMetres`. `null` if the sidecar lacks usable geometry (e.g. it
+ *  was hand-placed) — the caller then tells the user to use "Capture new" instead. */
+function recaptureParams(json: unknown): { lat: number; lon: number; radiusMetres: number } | null {
+  if (typeof json !== 'object' || json === null) return null;
+  const o = json as Record<string, unknown>;
+  const center = o.center as Record<string, unknown> | undefined;
+  const lat = Number(center?.lat);
+  const lon = Number(center?.lon);
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90) return null;
+  if (!Number.isFinite(lon) || lon < -180 || lon > 180) return null;
+
+  const extent = o.extentMetres as Record<string, unknown> | undefined;
+  let radiusMetres = Number(extent?.w) / 2;
+  if (!Number.isFinite(radiusMetres) || radiusMetres <= 0) {
+    const grid = o.grid as Record<string, unknown> | undefined;
+    radiusMetres = (Number(grid?.w) * Number(o.metresPerTile)) / 2;
+  }
+  if (!Number.isFinite(radiusMetres) || radiusMetres <= 0 || radiusMetres > MAX_CAPTURE_RADIUS_M) {
+    return null;
+  }
+  return { lat, lon, radiusMetres };
 }
 
 /**
@@ -118,6 +151,7 @@ export function ReferencePanel() {
   const [coord, setCoord] = useState('');
   const [radiusStr, setRadiusStr] = useState(String(DEFAULT_CAPTURE_RADIUS_M));
   const [capturing, setCapturing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const newNameId = useId();
   const coordId = useId();
   const radiusId = useId();
@@ -146,18 +180,28 @@ export function ReferencePanel() {
 
   // Run the server-side capture. Returns after a success (refresh + auto-load) or a handled failure;
   // on the 409 name-exists race (the fetched list was stale) it confirms + retries with overwrite.
-  const doCapture = async (lat: number, lon: number, overwrite: boolean): Promise<void> => {
+  // Shared by "Capture new" (form values) and "Recapture" (a committed reference's own sidecar).
+  const runCapture = async (opts: {
+    name: string;
+    lat: number;
+    lon: number;
+    radiusMetres: number;
+    overwrite: boolean;
+  }): Promise<void> => {
     setCapturing(true);
     try {
-      await captureMapReference({ name: newName, lat, lon, radiusMetres: radius, overwrite });
+      await captureMapReference(opts);
+      // An overwrite replaces the bytes on disk; drop the stale cached data-URL so the reload below
+      // (and any other map) re-fetches the fresh image instead of the old one.
+      deleteCachedImage(opts.name);
       await refresh();
-      setSelectedRef(newName);
-      await store().setUnderlayReference(newName); // auto-load onto the Map tab
-      toast.success(`Captured "${newName}".`);
+      setSelectedRef(opts.name);
+      await store().setUnderlayReference(opts.name); // (re)load onto the Map tab
+      toast.success(`Captured "${opts.name}".`);
     } catch (e: unknown) {
       if (e instanceof CaptureError && e.kind === 'exists') {
-        if (window.confirm(`A reference named "${newName}" already exists. Overwrite it?`)) {
-          await doCapture(lat, lon, true);
+        if (window.confirm(`A reference named "${opts.name}" already exists. Overwrite it?`)) {
+          await runCapture({ ...opts, overwrite: true });
         }
         return;
       }
@@ -181,7 +225,66 @@ export function ReferencePanel() {
     ) {
       return;
     }
-    void doCapture(parsedCoord.lat, parsedCoord.lon, already);
+    void runCapture({
+      name: newName,
+      lat: parsedCoord.lat,
+      lon: parsedCoord.lon,
+      radiusMetres: radius,
+      overwrite: already,
+    });
+  };
+
+  // Recapture the selected reference in place: re-run the OSM capture from its own sidecar (same
+  // centre + extent), overwriting the committed image. The explicit "refresh in place" surface over
+  // the endpoint's overwrite path — no need to re-type the coordinate.
+  const onRecapture = async () => {
+    if (!selectedRef || capturing || deleting) return;
+    const name = selectedRef;
+    let sidecar: unknown;
+    try {
+      sidecar = await getMapReferenceSidecar(name);
+    } catch (e: unknown) {
+      toast.error(`Couldn't read "${name}" sidecar: ${(e as Error).message}`);
+      return;
+    }
+    const params = recaptureParams(sidecar);
+    if (!params) {
+      toast.error(
+        `"${name}" has no capture metadata to recapture from — use "Capture new" instead.`,
+      );
+      return;
+    }
+    if (
+      !window.confirm(`Recapture "${name}" from OpenStreetMap? This overwrites the current image.`)
+    ) {
+      return;
+    }
+    void runCapture({ name, ...params, overwrite: true });
+  };
+
+  // Delete the selected committed reference (PNG + sidecar on disk). Also evicts its cached bytes and,
+  // if it's the underlay currently shown on this map, clears that now-dangling overlay.
+  const onDelete = async () => {
+    if (!selectedRef || capturing || deleting) return;
+    const name = selectedRef;
+    if (
+      !window.confirm(`Delete reference "${name}"? This removes the committed image from the repo.`)
+    ) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteMapReference(name);
+      deleteCachedImage(name);
+      if (store().underlay?.referenceName === name) store().clearUnderlay();
+      setSelectedRef(null);
+      await refresh();
+      toast.success(`Deleted "${name}".`);
+    } catch (e: unknown) {
+      toast.error(`Delete failed: ${(e as Error).message}`);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -238,6 +341,30 @@ export function ReferencePanel() {
                     }}
                   >
                     Load
+                  </Button>
+                </div>
+                {/* Manage the selected committed reference (plan 022): re-capture it in place from
+                    its own sidecar, or delete it from the repo. */}
+                <div className="flex gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    disabled={!selectedRef || capturing || deleting}
+                    onClick={() => void onRecapture()}
+                    title="Re-run the OSM capture from this reference's saved location, overwriting its image"
+                  >
+                    {capturing ? 'Recapturing…' : 'Recapture'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-red-400 hover:text-red-300"
+                    disabled={!selectedRef || capturing || deleting}
+                    onClick={() => void onDelete()}
+                    title="Delete this committed reference (image + sidecar) from the repo"
+                  >
+                    {deleting ? 'Deleting…' : 'Delete'}
                   </Button>
                 </div>
               </div>

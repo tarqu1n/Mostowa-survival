@@ -27,6 +27,8 @@ The **authoritative, always-current** shortcut list is the in-app **Shortcuts** 
 `src/editor/shortcuts.ts` — keep that file in sync when a shortcut changes (don't duplicate the
 bindings here).
 
+**Brush tool** — arm a tileset piece and rotate it in 90° steps (see Shortcuts panel for keys and toolbar buttons); a rotated tile becomes a distinct palette entry; ghost preview shows the pending angle. Fill and rect gestures paint at angle 0.
+
 **Toolbar actions:**
 
 - **Edit map** (plan 025) — a dialog grouping two map-level operations, each with its own primary
@@ -64,6 +66,7 @@ Transform settings (opacity, X/Y offset, scale) persist **per-map to localStorag
 `mostowo-editor-underlay:` (key migrates on rename) — never in `.map.json` or prod. Sidecar JSON
 auto-aligns to grid.
 Toggle with `U` or panel checkbox. Phone-usable. Capture tool — new references in-editor via **Reference → "Capture new"** (name + `lat,lon` + radius, runs on dev-server), or batch-script via the CLI — see [map-reference/](../scripts/map-reference/README.md).
+Manage a committed reference from the dropdown: **Recapture** re-runs the OSM capture in place from its own sidecar (same centre + extent, overwrites the image; needs a sidecar with capture metadata), and **Delete** removes its `out/<name>-reference.{png,json}` from the repo (`DELETE /__editor/map-references/:name`) — both evict the cached bytes, and Delete also clears the overlay if that reference is the one currently shown.
 
 ## Node Types (authored resource nodes)
 

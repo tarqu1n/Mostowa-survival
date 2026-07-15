@@ -19,8 +19,11 @@
  * module never interprets it, just remembers the most recently applied/undone/redone entry's tag via
  * `getLastDomain()`. The editor store uses this to run ONE shared undo/redo stack across both the map
  * document and the world-layout placements (so Ctrl+Z works uniformly regardless of which tab is
- * active) while still knowing, after a move, which side effects (map `dirty`/`docRevision` vs. world
- * `worldDirty`) to update — without this module needing to know anything about maps or worlds.
+ * active) while still knowing, after a move, which side effects to update — without this module needing
+ * to know anything about maps or worlds. The store recognises exactly three tags: `undefined` (a pure
+ * map edit → bump map `dirty`/`docRevision`), `'world'` (a placement edit → bump `worldDirty`/
+ * `worldRevision`), and `'map+world'` (a resize that also compensates a placed map's origin, plan 024 →
+ * bump BOTH sets).
  */
 
 export interface Command {

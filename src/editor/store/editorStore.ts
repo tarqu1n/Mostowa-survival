@@ -20,13 +20,22 @@
  *    per-chunk loop after `map.layers` has been reordered already redraws the right content at the
  *    right depth with no depth-reassignment step. Layer ADD/DELETE change `map.layers.length`, which
  *    `onDocEdited` already detects to trigger a full `syncDocument()` rebuild (new/removed RT).
+ *
+ *  A dimension-changing edit (`resizeMap`, plan 024) also just rides `docRevision`, not a dedicated
+ *  third counter — it's an in-place edit like any other applyCommand/undo/redo move, it just happens
+ *  to swap in arrays of a NEW width/height rather than same-sized ones. Nothing here distinguishes
+ *  "same dims, cells changed" from "dims changed" — that's the Phaser scene's job (a baked-dims
+ *  fallback, plan 024 step 3: `EditorScene` compares the map's current `meta.width/height` against
+ *  what it last baked at and does a full rebuild, not a rebake, when they differ), not this store's.
  */
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import {
+  applyResize,
   createEmptyMap,
   isInside,
+  planResize,
   type DecorAnim,
   type DecorObject,
   type DecorRegion,
@@ -36,6 +45,7 @@ import {
   type PortalFacing,
   type PortalObject,
   type PortalRect,
+  type ResizeEdges,
   type TerrainSection,
   type TileLayer,
   type ZoneDef,
@@ -305,6 +315,15 @@ export interface EditorState {
    *  populate `underlay`. Ad-hoc (`referenceName=null`) settings aren't re-resolvable, so they're
    *  skipped. Silently non-fatal on failure. Guarded against a map swap mid-fetch. */
   hydrateUnderlay(mapId: string): Promise<void>;
+  /** Internal reconciler: if the LIVE `underlay` (if any) has drifted from the open map's persisted
+   *  `UnderlaySettings` (offset/scale), copies the persisted values onto the live object and bumps
+   *  `underlayRevision`; a genuine no-op otherwise — the persisted blob is the source of truth (see
+   *  `hydrateUnderlay`'s doc), the live object is just its resolved-`dataUrl` cache. Called
+   *  unconditionally from `applyCommand`/`undo`/`redo` so it's free on every edit; the only mutation
+   *  that currently causes a divergence is `resizeMap` writing the persisted offset via `putSettings`
+   *  without touching `underlay` directly (its `do`/`undo` stay `set`-free — see its doc). Not meant
+   *  to be called from UI code. */
+  syncUnderlayFromSettings(): void;
   /** Replaces the whole world layout WITHOUT touching history — used to seed `world` from disk on the
    *  World view's initial load (`getWorld` → `parseWorldLayout`). Resets `worldDirty` to `false`
    *  (freshly read) and bumps `worldRevision`. Do NOT use for user edits — those go through the
@@ -343,6 +362,28 @@ export interface EditorState {
   /** Removes `mapId`'s placement (returns it to the unplaced tray). No-op (returns `false`) if it
    *  isn't placed. One undoable command tagged `domain:'world'`. */
   removePlacement(mapId: string): boolean;
+
+  // ---- resize (plan 024 step 2) ----
+  /** Resizes the open map by `edges` (tiles; a negative edge crops) as ONE undoable command — see
+   *  `systems/mapFormat`'s `planResize`/`applyResize` for the pure analysis/remap this wraps around a
+   *  live in-place swap (mirrors `buildShapeCommand`'s captured-prior-reference style: `do`/`undo`
+   *  swap whole array references + `meta` dims + translated objects onto the live `map`, never
+   *  mutating the OLD arrays, so both directions are cheap reference assignments). Bails (returns
+   *  `false`, no mutation) if there's no open map, the resulting dims are invalid, or any object would
+   *  leave the new bounds (`ResizePlan.offendingObjectIds`) — mirrors the dialog's own Apply-gating so
+   *  a caller that skips the dialog's checks still can't corrupt the document.
+   *
+   *  A resize that touches the top/left edge (`dLeft || dTop`) additionally, in the SAME command: (1)
+   *  if the map is placed in `world.placements`, shifts that placement's origin by `(-dLeft,-dTop)`
+   *  and tags the command `domain:'map+world'` so undo/redo bump BOTH the map's and the world's side
+   *  effects, plus toasts that the world layout now has unsaved changes (Save Map ≠ Save World); (2)
+   *  if the map has persisted `UnderlaySettings`, shifts their offset by `(+dLeft,+dTop)` (via
+   *  `putSettings`, so the traced reference underlay stays aligned) even when the underlay isn't
+   *  currently hydrated — `syncUnderlayFromSettings` picks up the live half of that afterwards. A
+   *  right/bottom-only resize touches neither: it stays a plain, undomain-tagged map command and never
+   *  dirties `world`. Does NOT set `pendingDirty` — a dimension change always needs the scene's full
+   *  rebuild (see module doc), not a narrowed rebake. */
+  resizeMap(edges: ResizeEdges): boolean;
 
   // ---- painting (step 6) ----
   /** Brush stroke: paints every cell along the segment `(fromCol,fromRow)`→`(toCol,toRow)` on the
@@ -1135,6 +1176,19 @@ export const useEditorStore = create<EditorState>()(
       }));
     },
 
+    syncUnderlayFromSettings: () => {
+      const mapId = get().mapId;
+      if (!mapId) return;
+      const s = getSettings(mapId);
+      const u = get().underlay;
+      if (u && s && (u.offsetX !== s.offsetX || u.offsetY !== s.offsetY || u.scale !== s.scale)) {
+        set((st) => ({
+          underlay: { ...u, offsetX: s.offsetX, offsetY: s.offsetY, scale: s.scale },
+          underlayRevision: st.underlayRevision + 1,
+        }));
+      }
+    },
+
     setWorld: (world) =>
       set((s) => ({ world, worldDirty: false, worldRevision: s.worldRevision + 1 })),
     markWorldSaved: () => set({ worldDirty: false }),
@@ -1156,6 +1210,7 @@ export const useEditorStore = create<EditorState>()(
         canUndo: history.canUndo(),
         canRedo: history.canRedo(),
       }));
+      get().syncUnderlayFromSettings();
     },
 
     applyWorldCommand: (cmd) => {
@@ -1170,9 +1225,29 @@ export const useEditorStore = create<EditorState>()(
 
     undo: () => {
       if (!history.undo()) return;
+      get().syncUnderlayFromSettings();
       // A single shared stack spans map + world; the reverted entry's `domain` tag says which side
-      // effects to bump (see history.ts / applyWorldCommand).
-      if (history.getLastDomain() === 'world') {
+      // effects to bump (see history.ts / applyWorldCommand). `'map+world'` (plan 024's `resizeMap`,
+      // a top/left resize of a PLACED map) bumps both sets in one go — it must be checked before the
+      // plain `'world'` branch below (a distinct string, so either check order works, but matching
+      // this order keeps the three cases readably distinct top-to-bottom: coupled, world-only, map).
+      const domain = history.getLastDomain();
+      if (domain === 'map+world') {
+        set((s) => ({
+          dirty: true,
+          docRevision: s.docRevision + 1,
+          pendingDirty: null,
+          activeLayerId: reconcileActiveLayer(s.map, s.activeLayerId),
+          selectedObjectIds: reconcileSelection(s.map, s.selectedObjectIds),
+          activeZoneId: reconcileActiveZone(s.map, s.activeZoneId),
+          worldDirty: true,
+          worldRevision: s.worldRevision + 1,
+          canUndo: history.canUndo(),
+          canRedo: history.canRedo(),
+        }));
+        return;
+      }
+      if (domain === 'world') {
         set((s) => ({
           worldDirty: true,
           worldRevision: s.worldRevision + 1,
@@ -1195,7 +1270,24 @@ export const useEditorStore = create<EditorState>()(
 
     redo: () => {
       if (!history.redo()) return;
-      if (history.getLastDomain() === 'world') {
+      get().syncUnderlayFromSettings();
+      const domain = history.getLastDomain();
+      if (domain === 'map+world') {
+        set((s) => ({
+          dirty: true,
+          docRevision: s.docRevision + 1,
+          pendingDirty: null,
+          activeLayerId: reconcileActiveLayer(s.map, s.activeLayerId),
+          selectedObjectIds: reconcileSelection(s.map, s.selectedObjectIds),
+          activeZoneId: reconcileActiveZone(s.map, s.activeZoneId),
+          worldDirty: true,
+          worldRevision: s.worldRevision + 1,
+          canUndo: history.canUndo(),
+          canRedo: history.canRedo(),
+        }));
+        return;
+      }
+      if (domain === 'world') {
         set((s) => ({
           worldDirty: true,
           worldRevision: s.worldRevision + 1,
@@ -1279,6 +1371,112 @@ export const useEditorStore = create<EditorState>()(
         },
       };
       get().applyWorldCommand(cmd);
+      return true;
+    },
+
+    // ---- resize (plan 024 step 2) ----
+
+    resizeMap: (edges) => {
+      const { map, mapId, world } = get();
+      if (!map || !mapId) return false;
+      const plan = planResize(map, edges);
+      if (!plan.dimsValid || plan.offendingObjectIds.length > 0) return false;
+      const { dLeft, dTop } = plan;
+      const resized = applyResize(map, edges);
+
+      // Capture prior array/ref state (mirrors `buildShapeCommand`'s captured-prior-reference style)
+      // so `undo` is a cheap reference-restore, never a re-derivation.
+      const oldState = {
+        width: map.meta.width,
+        height: map.meta.height,
+        shape: map.shape,
+        layerCells: map.layers.map((l) => l.cells),
+        terrainCells: map.terrain.map((t) => t.cells),
+        walk: map.walkability.cells,
+        zones: map.zones.cells,
+        objects: map.objects,
+      };
+      const newState = {
+        width: resized.meta.width,
+        height: resized.meta.height,
+        shape: resized.shape,
+        layerCells: resized.layers.map((l) => l.cells),
+        terrainCells: resized.terrain.map((t) => t.cells),
+        walk: resized.walkability.cells,
+        zones: resized.zones.cells,
+        objects: resized.objects,
+      };
+      const applyState = (st: typeof oldState): void => {
+        map.meta.width = st.width;
+        map.meta.height = st.height;
+        map.shape = st.shape;
+        map.layers.forEach((l, i) => {
+          l.cells = st.layerCells[i];
+        });
+        map.terrain.forEach((t, i) => {
+          t.cells = st.terrainCells[i];
+        });
+        map.walkability.cells = st.walk;
+        map.zones.cells = st.zones;
+        map.objects = st.objects;
+      };
+
+      // Underlay: shift the PERSISTED offset (not the live cache — `syncUnderlayFromSettings` picks
+      // that up after `applyCommand`) even if this map's underlay isn't currently hydrated, so a
+      // later `hydrateUnderlay` on this map resolves the already-corrected offset.
+      const baseSettings = getSettings(mapId);
+      const shiftUnderlay = !!baseSettings && (dLeft !== 0 || dTop !== 0);
+
+      // World coupling: only a top/left edit moves the origin, and only if this map is placed.
+      const placement =
+        dLeft !== 0 || dTop !== 0 ? world.placements.find((p) => p.mapId === mapId) : undefined;
+      const prevOrigin = placement ? { col: placement.origin.col, row: placement.origin.row } : null;
+      const coupled = !!placement;
+
+      const cmd: Command = {
+        do: () => {
+          applyState(newState);
+          if (shiftUnderlay && baseSettings) {
+            putSettings(mapId, {
+              ...baseSettings,
+              offsetX: baseSettings.offsetX + dLeft,
+              offsetY: baseSettings.offsetY + dTop,
+            });
+          }
+          if (placement && prevOrigin) {
+            placement.origin = { col: prevOrigin.col - dLeft, row: prevOrigin.row - dTop };
+          }
+        },
+        undo: () => {
+          applyState(oldState);
+          if (shiftUnderlay && baseSettings) {
+            putSettings(mapId, baseSettings);
+          }
+          if (placement && prevOrigin) {
+            placement.origin = { col: prevOrigin.col, row: prevOrigin.row };
+          }
+        },
+      };
+
+      // `applyCommand`/`applyWorldCommand` each hard-code ONE domain's side effects; a resize can need
+      // BOTH at once, so this inlines `history.apply` with the conditional `domain` tag (mirroring
+      // `applyWorldCommand`'s own inline style) rather than forcing either of those two through a
+      // domain they don't own.
+      history.apply({ ...cmd, domain: coupled ? 'map+world' : undefined });
+      get().syncUnderlayFromSettings();
+      set((s) => ({
+        dirty: true,
+        docRevision: s.docRevision + 1,
+        activeLayerId: reconcileActiveLayer(s.map, s.activeLayerId),
+        selectedObjectIds: reconcileSelection(s.map, s.selectedObjectIds),
+        activeZoneId: reconcileActiveZone(s.map, s.activeZoneId),
+        canUndo: history.canUndo(),
+        canRedo: history.canRedo(),
+        ...(coupled ? { worldDirty: true, worldRevision: s.worldRevision + 1 } : {}),
+      }));
+      if (coupled) {
+        toast.info('Map resized — world layout has unsaved changes (Save World separately).');
+      }
       return true;
     },
 

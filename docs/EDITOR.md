@@ -27,6 +27,16 @@ The **authoritative, always-current** shortcut list is the in-app **Shortcuts** 
 `src/editor/shortcuts.ts` — keep that file in sync when a shortcut changes (don't duplicate the
 bindings here).
 
+**Toolbar actions:**
+
+- **Resize** — grow/crop the open map by per-edge tile deltas (Top/Right/Bottom/Left; `+` adds, `−`
+  crops), with a live `W×H` preview; bounded to `1..512` per side. Apply is **blocked** if any object
+  would fall outside the new bounds (the offending ids are listed); a crop that discards painted
+  cells asks to confirm (undo restores it). One undoable step. For a placed map, a **top/left** edit
+  auto-shifts the world placement origin so content stays fixed in global space (world layout goes
+  dirty — **Save World** separately from Save Map); the reference underlay offset re-aligns too.
+  Toolbar button only (no shortcut); disabled when no map is open.
+
 ## Map vs World view
 
 - **Map tab** — edit one map: paint tile layers, place/transform scenery, paint walkability, zones,
@@ -53,7 +63,7 @@ Do **not** treat this doc as the schema. The authoritative shapes + validators a
 
 - **Map** (`*.map.json`): `src/systems/mapFormat.ts` — `parseMap`/`serializeMap`/`createEmptyMap`/
   `migrateMap`, and the `MapFile` type. `terrain` is editor-only (the game reads baked
-  `TileLayer.cells`, never the semantic mask).
+  `TileLayer.cells`, never the semantic mask). Terrain autotile bakes at a cropped edge self-heal on the next Save via `rebakeTerrainsForSave()`.
 - **World** (`world.json`): `src/systems/worldLayout.ts` — `parseWorldLayout`/`validateWorld`, the
   global-coord helpers, and the manifest seam.
 

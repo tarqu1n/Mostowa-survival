@@ -99,6 +99,11 @@ export class EditorScene extends Phaser.Scene {
   private currentEpoch = -1;
 
   private chunkRTs: Phaser.GameObjects.RenderTexture[][] = []; // [layerIndex][chunkIndex]
+  /** The map dims the chunk RTs were last baked at. Chunk-RT sizes derive from map dims, so a resize
+   *  (or its undo/redo — plan 024) that changes width/height must rebuild wholesale, not rebake in
+   *  place; `onDocEdited` compares these against the current dims to trigger that (see its guard). */
+  private bakedWidth = -1;
+  private bakedHeight = -1;
   /** One dimmed RenderTexture per placed neighbour whose tiles reach into the open map's border ring
    *  (step 9). Rebuilt by `refreshGhosts`; strictly read-only + non-interactive. */
   private ghostRTs: Phaser.GameObjects.RenderTexture[] = [];
@@ -428,8 +433,15 @@ export class EditorScene extends Phaser.Scene {
   private onDocEdited(): void {
     const { map } = useEditorStore.getState();
     if (!map) return;
-    if (this.chunkRTs.length !== map.layers.length) {
-      this.syncDocument(); // layer set changed — safest to rebuild wholesale
+    if (
+      this.chunkRTs.length !== map.layers.length ||
+      this.bakedWidth !== map.meta.width ||
+      this.bakedHeight !== map.meta.height
+    ) {
+      // Layer set OR map dimensions changed — chunk RTs must be recreated, not just redrawn, so
+      // rebuild wholesale (also refits the camera + re-derives ghosts/underlay). The dims arm fires
+      // for a resize and for its undo/redo, since all three bump `docRevision` (plan 024).
+      this.syncDocument();
       return;
     }
 
@@ -491,6 +503,9 @@ export class EditorScene extends Phaser.Scene {
   private bakeAllLayers(map: MapFile): void {
     const cols = map.meta.width;
     const chunkCount = Math.ceil(map.meta.height / GROUND_CHUNK_ROWS);
+    // Record the dims these RTs are sized for, so a later dimension change forces a full rebuild.
+    this.bakedWidth = map.meta.width;
+    this.bakedHeight = map.meta.height;
     this.chunkRTs = map.layers.map((_layer, layerIndex) => {
       const rts: Phaser.GameObjects.RenderTexture[] = [];
       for (let chunk = 0; chunk < chunkCount; chunk++) {

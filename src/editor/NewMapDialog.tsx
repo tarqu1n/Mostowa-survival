@@ -3,6 +3,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { MAX_MAP_DIM } from '../systems/mapFormat';
 
 export interface NewMapFields {
   id: string;
@@ -13,7 +14,6 @@ export interface NewMapFields {
 
 // Matches the middleware's `:id` sanitiser (`[a-z0-9-]+`) so a New map can always be saved later.
 const ID_PATTERN = /^[a-z0-9-]+$/;
-const MAX_DIM = 512; // a sane bake ceiling — the biggest planned map (45×80) is well under this
 
 /** A labelled field row (`<Label>` + control), shared by every field below. */
 const fieldClass = 'flex flex-col gap-1.5';
@@ -36,7 +36,7 @@ export function NewMapDialog({
   const [height, setHeight] = useState(80);
 
   const idOk = ID_PATTERN.test(id);
-  const dimsOk = width >= 1 && width <= MAX_DIM && height >= 1 && height <= MAX_DIM;
+  const dimsOk = width >= 1 && width <= MAX_MAP_DIM && height >= 1 && height <= MAX_MAP_DIM;
   const valid = idOk && name.trim().length > 0 && dimsOk;
 
   return (
@@ -80,7 +80,7 @@ export function NewMapDialog({
               id="new-map-width"
               type="number"
               min={1}
-              max={MAX_DIM}
+              max={MAX_MAP_DIM}
               value={width}
               onChange={(e) => setWidth(Math.floor(Number(e.target.value)))}
             />
@@ -91,7 +91,7 @@ export function NewMapDialog({
               id="new-map-height"
               type="number"
               min={1}
-              max={MAX_DIM}
+              max={MAX_MAP_DIM}
               value={height}
               onChange={(e) => setHeight(Math.floor(Number(e.target.value)))}
             />

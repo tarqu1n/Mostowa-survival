@@ -9,6 +9,7 @@ import {
 } from './store/editorStore';
 import { NewMapDialog, type NewMapFields } from './NewMapDialog';
 import { OpenMapDialog } from './OpenMapDialog';
+import { ResizeMapDialog } from './ResizeMapDialog';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
@@ -112,6 +113,7 @@ export function Toolbar() {
 
   const [showNew, setShowNew] = useState(false);
   const [showOpen, setShowOpen] = useState(false);
+  const [showResize, setShowResize] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -192,6 +194,14 @@ export function Toolbar() {
           disabled={!map || saving}
         >
           Save
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setShowResize(true)}
+          disabled={!map}
+        >
+          Resize
         </Button>
       </div>
 
@@ -336,6 +346,7 @@ export function Toolbar() {
       </div>
 
       {showNew && <NewMapDialog onCreate={handleCreate} onCancel={() => setShowNew(false)} />}
+      {showResize && <ResizeMapDialog onCancel={() => setShowResize(false)} />}
       {showOpen && (
         <OpenMapDialog onOpen={(id) => void handleOpen(id)} onCancel={() => setShowOpen(false)} />
       )}

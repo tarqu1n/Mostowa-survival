@@ -162,6 +162,14 @@ the thumb under the new id, saves the world layout if the map is placed (rewriti
 failure never orphans the live map). Also migrates the `mostowo-editor-underlay:settings:<id>`
 localStorage key old→new.
 
+## Regions on tile assets (plan 028)
+
+The ⚙ Regions editor is reachable on a **tile**-classed asset too, via an "Edit regions" toggle
+beside the Type dropdown — no type demotion. Regions drawn this way are tagged `role:'object'` on
+save (a per-selected-box badge shows the role), letting a mixed sheet's props (e.g. a fountain on a
+terrain sheet) become placeable while the sheet stays `tile` and terrain keeps tiling. Details +
+occlusion/invariant: [ASSETS.md](ASSETS.md#atlas-sprite-regions-plan-014-step-7a).
+
 ## Packs & catalog
 
 How asset packs, the catalog, atlas regions, and type/grid overrides work: see

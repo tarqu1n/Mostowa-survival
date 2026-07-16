@@ -157,14 +157,26 @@ def process_pack(pack_dir):
 
     all_pngs = list_pngs(pack_dir)
     kept = [rel for rel in all_pngs if not matches_any(exclude, rel)]
-    object_sheets = sorted(rel for rel in kept if is_object_sheet(rel, rules, overrides))
+    object_sheets = [rel for rel in kept if is_object_sheet(rel, rules, overrides)]
+    # A `tile` (or other non-object) sheet that carries HAND-AUTHORED regions still gets a sidecar
+    # entry, passed through verbatim (plan 028). Detection is NEVER run on such sheets — only the
+    # authored regions flow through. This is how a mixed sheet (terrain grid + baked props) declares
+    # `role:'object'` prop regions while staying `type:'tile'`.
+    authored_non_object = [
+        rel
+        for rel in kept
+        if rel in region_overrides and not is_object_sheet(rel, rules, overrides)
+    ]
+    to_process = sorted(set(object_sheets) | set(authored_non_object))
 
     sheets = {}
     warnings = []
-    for rel in object_sheets:
+    for rel in to_process:
         if rel in region_overrides:
             # Hand-authored — used verbatim, no detection pass. `params` records the detection
             # params it WOULD have used, for reference only (irrelevant once hand-authored).
+            # `role` is passed through ONLY when the author set it (kept absent otherwise so
+            # pre-plan-028 object sidecars stay byte-identical; consumers treat absent as 'object').
             params = {**DEFAULT_PARAMS, **region_param_overrides.get(rel, {})}
             regions = sorted(
                 (
@@ -174,6 +186,7 @@ def process_pack(pack_dir):
                         "y": r["y"],
                         "w": r["w"],
                         "h": r["h"],
+                        **({"role": r["role"]} if "role" in r else {}),
                     }
                     for r in region_overrides[rel]
                 ),

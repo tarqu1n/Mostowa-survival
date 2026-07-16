@@ -221,12 +221,15 @@ export interface AssetOverrideResult {
 
 /** A bare sprite bounding box — exactly the shape `pack.json`'s `regions[relPath]` stores (plan 014
  *  step 7a; the wire type for plan 017 step 4's in-app region editing). No `key`: that's a
- *  catalog-only, coordinate-derived field (`catalog.ts`'s `CatalogRegion`). */
+ *  catalog-only, coordinate-derived field (`catalog.ts`'s `CatalogRegion`). Optional `role: 'object'`
+ *  (plan 028) marks an object-role region on an otherwise `tile`-classed mixed sheet; omitted for a
+ *  region on a plain object sheet — absence means "object" by consumer-side default, never written. */
 export interface RegionRect {
   x: number;
   y: number;
   w: number;
   h: number;
+  role?: 'object';
 }
 
 /** Patches `<pack>/pack.json`'s `overrides[relPath]` and reruns `gen_regions.py` +

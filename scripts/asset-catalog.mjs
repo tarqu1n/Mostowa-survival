@@ -342,17 +342,23 @@ function loadRegionsSidecar(pack) {
  */
 function mergeRegions(pack, packAssets, warnings) {
   const sidecar = loadRegionsSidecar(pack);
-  const objectAssets = new Map(
-    packAssets.filter((a) => a.type === 'object').map((a) => [a.id.slice(pack.id.length + 1), a]),
+  // Both `object` and `tile` assets can carry regions (plan 028): on an object atlas the regions are
+  // its detected sprites; on a mixed `tile` sheet they are `role:'object'` props baked alongside the
+  // terrain grid. gen_regions.py only emits sidecar entries for object sheets + hand-authored tile
+  // sheets, so this map spans both types.
+  const regionableAssets = new Map(
+    packAssets
+      .filter((a) => a.type === 'object' || a.type === 'tile')
+      .map((a) => [a.id.slice(pack.id.length + 1), a]),
   );
 
   if (sidecar) {
     for (const [relPath, entry] of Object.entries(sidecar.sheets)) {
-      const asset = objectAssets.get(relPath);
+      const asset = regionableAssets.get(relPath);
       if (!asset) {
         throw new Error(
-          `${pack.id}/regions.json references "${relPath}", which is not a current object-type ` +
-            `asset (stale sidecar — rerun scripts/pixel-crawler/gen_regions.py)`,
+          `${pack.id}/regions.json references "${relPath}", which is not a current object- or ` +
+            `tile-type asset (stale sidecar — rerun scripts/pixel-crawler/gen_regions.py)`,
         );
       }
       const regions = entry.regions ?? [];
@@ -370,15 +376,28 @@ function mergeRegions(pack, packAssets, warnings) {
           );
         }
       }
-      if (regions.length >= 2) {
+      // A `tile` sheet keeps even a single object-role region — its props are placeable regardless
+      // of count. A pure `object` atlas still needs >=2 to become a multi-sprite atlas (1/0 stays a
+      // plain single object). The `...role` spread is a no-op for pre-028 sidecars (no `role` key),
+      // so existing object catalogs stay byte-identical.
+      const keep = asset.type === 'tile' ? regions.length >= 1 : regions.length >= 2;
+      if (keep) {
         asset.regions = regions
-          .map((r) => ({ key: r.key, x: r.x, y: r.y, w: r.w, h: r.h }))
+          .map((r) => ({
+            key: r.key,
+            x: r.x,
+            y: r.y,
+            w: r.w,
+            h: r.h,
+            ...(r.role ? { role: r.role } : {}),
+          }))
           .sort((a, b) => a.y - b.y || a.x - b.x);
       }
     }
   }
 
-  for (const asset of objectAssets.values()) {
+  for (const asset of regionableAssets.values()) {
+    if (asset.type !== 'object') continue; // large-object-needs-regions nudge is object-only
     const relPath = asset.id.slice(pack.id.length + 1);
     const hasEntry = sidecar?.sheets?.[relPath] !== undefined;
     if (!hasEntry && asset.w * asset.h >= LARGE_OBJECT_AREA) {
@@ -448,9 +467,16 @@ function assertValidCatalog(catalog) {
       }
     }
     if (a.regions !== undefined) {
-      if (a.type !== 'object') throw new Error(`asset ${a.id} has regions but isn't type 'object'`);
-      if (!Array.isArray(a.regions) || a.regions.length < 2) {
-        throw new Error(`asset ${a.id} regions must be an array of >=2 entries when present`);
+      // plan 028: `tile` assets may carry `role:'object'` regions too (mixed sheet). `strip` still
+      // can't. A pure `object` atlas still requires >=2 regions; a `tile` sheet may carry a single
+      // object region (its props are placeable regardless of count).
+      if (a.type !== 'object' && a.type !== 'tile')
+        throw new Error(`asset ${a.id} has regions but isn't type 'object' or 'tile'`);
+      if (!Array.isArray(a.regions) || a.regions.length < 1) {
+        throw new Error(`asset ${a.id} regions must be a non-empty array when present`);
+      }
+      if (a.type === 'object' && a.regions.length < 2) {
+        throw new Error(`asset ${a.id} (object) regions must be an array of >=2 entries when present`);
       }
       for (const r of a.regions) {
         if (
@@ -461,6 +487,9 @@ function assertValidCatalog(catalog) {
           typeof r.h !== 'number'
         ) {
           throw new Error(`asset ${a.id} has a malformed region entry`);
+        }
+        if (r.role !== undefined && r.role !== 'object') {
+          throw new Error(`asset ${a.id} region ${r.key} has unsupported role ${r.role}`);
         }
       }
     }

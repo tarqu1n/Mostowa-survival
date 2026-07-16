@@ -122,6 +122,9 @@ function ObjectEditorForm({ asset }: { asset: CatalogAsset }) {
   const [cols, setCols] = useState(() => seedCols(asset));
   const [rows, setRows] = useState(() => seedRows(asset));
   const [omit, setOmit] = useState<number[]>(() => seedOmit(asset));
+  // plan 028: on a `tile` sheet, open the Regions editor to author `object`-role prop regions
+  // WITHOUT demoting the sheet to `type:'object'`. Only meaningful while the draft type is `tile`.
+  const [regionMode, setRegionMode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -137,6 +140,7 @@ function ObjectEditorForm({ asset }: { asset: CatalogAsset }) {
     setCols(seedCols(asset));
     setRows(seedRows(asset));
     setOmit(seedOmit(asset));
+    setRegionMode(false);
     setWarnings([]);
     setErr(null);
   }, [asset.type, asset.frames, asset.frameWidth, asset.frameHeight, (asset.omit ?? []).join(',')]);
@@ -154,6 +158,7 @@ function ObjectEditorForm({ asset }: { asset: CatalogAsset }) {
   const grid = reclassifyGrid(asset, type, cols, rows, omitInRange);
   const isStrip = type === 'strip';
   const isObject = type === 'object';
+  const isTile = type === 'tile';
 
   // Set a grid dimension and prune any omit index the new geometry no longer contains, so a later grow
   // can't resurrect a stale omission at a cell the user never intended.
@@ -222,6 +227,23 @@ function ObjectEditorForm({ asset }: { asset: CatalogAsset }) {
             </Select>
           </ObjField>
 
+          {/* plan 028: a mixed `tile` sheet can author `object`-role prop regions without becoming an
+              object. Toggling this swaps the frame-grid preview for the Regions editor while the type
+              stays `tile` (Save writes object-role regions, no demotion). */}
+          {isTile && (
+            <ObjField label="Object regions">
+              <Button
+                type="button"
+                variant={regionMode ? 'default' : 'outline'}
+                size="sm"
+                aria-pressed={regionMode}
+                onClick={() => setRegionMode((v) => !v)}
+              >
+                {regionMode ? 'Editing regions' : 'Edit regions'}
+              </Button>
+            </ObjField>
+          )}
+
           {isStrip && (
             <>
               <ObjField label="Columns">
@@ -249,9 +271,12 @@ function ObjectEditorForm({ asset }: { asset: CatalogAsset }) {
         {/* type:object → the Regions editor (plan 017 step 4); strip/tile keep the step-3 frame-grid
             preview. Branches on the DRAFT type, so picking `object` in the dropdown makes the sheet's
             regions editable even for an asset currently classified strip/tile (Save also forces the
-            `object` type override in that case). */}
+            `object` type override in that case). plan 028: a `tile` sheet in `regionMode` also opens
+            the Regions editor, but in object-ROLE mode — Save keeps the sheet `tile`. */}
         {isObject ? (
           <RegionsEditor asset={asset} sheetUrl={sheetUrl} />
+        ) : isTile && regionMode ? (
+          <RegionsEditor asset={asset} sheetUrl={sheetUrl} objectRoleRegions />
         ) : (
           <>
             {isStrip && (
@@ -460,7 +485,19 @@ function resizeBox(orig: Box, handle: Handle, sx: number, sy: number, w: number,
  * scale/positioning math mirrors the Library's `AtlasSheetPicker` (deliberately not shared — the
  * pointer editing diverges enough that a focused copy is cleaner than a forced abstraction).
  */
-function RegionsEditor({ asset, sheetUrl }: { asset: CatalogAsset; sheetUrl: string }) {
+function RegionsEditor({
+  asset,
+  sheetUrl,
+  objectRoleRegions = false,
+}: {
+  asset: CatalogAsset;
+  sheetUrl: string;
+  /** plan 028: these regions are `object`-role decor on a sheet that KEEPS its `type` (a mixed
+   *  `tile` sheet declaring placeable props). When set, Save tags each region `role:'object'` and
+   *  does NOT demote the sheet to `type:'object'`. Default false = the classic reclassify path
+   *  (regions ARE the object atlas; Save forces `type:'object'`). */
+  objectRoleRegions?: boolean;
+}) {
   const [boxes, setBoxes] = useState<Box[]>(() => seedRegions(asset));
   const [selected, setSelected] = useState<number | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -779,11 +816,16 @@ function RegionsEditor({ asset, sheetUrl }: { asset: CatalogAsset; sheetUrl: str
     setBusy(true);
     setErr(null);
     try {
-      const clean = sanitiseClientRegions(boxes, asset.w, asset.h);
+      const cleaned = sanitiseClientRegions(boxes, asset.w, asset.h);
       const relPath = assetRelPath(asset);
-      // Regions only take effect on an `object`-classified sheet — if the user switched the dropdown
-      // to `object` on a strip/tile asset, force that classification first (separate serialised regen).
-      if (asset.type !== 'object') {
+      // plan 028: object-role regions on a mixed `tile` sheet keep the sheet tiling — tag every
+      // region `role:'object'` and do NOT demote the type. The classic path (regions ARE the object
+      // atlas) forces `type:'object'` first when the sheet isn't already one (separate serialised
+      // regen) and writes bare rects (implicit object role).
+      const clean = objectRoleRegions
+        ? cleaned.map((b) => ({ ...b, role: 'object' as const }))
+        : cleaned;
+      if (!objectRoleRegions && asset.type !== 'object') {
         await putAssetOverride(asset.pack, relPath, { type: 'object' });
       }
       const result = await putAssetRegions(asset.pack, relPath, clean);
@@ -950,6 +992,16 @@ function RegionsEditor({ asset, sheetUrl }: { asset: CatalogAsset; sheetUrl: str
                   </ObjField>
                 ))}
               </div>
+              {/* plan 028: per-region role. One role in this MVP (`object`), so a read-only badge —
+                  the field exists + persists (Save tags every region `object`), extensible to a
+                  Select when `tile`-role regions land. */}
+              {objectRoleRegions && (
+                <ObjField label="Role">
+                  <span className="inline-flex w-fit items-center rounded-[3px] border border-border bg-panel-2 px-1.5 py-0.5 text-[0.72rem] text-fg-dim">
+                    object
+                  </span>
+                </ObjField>
+              )}
               <Button
                 type="button"
                 variant="destructive"

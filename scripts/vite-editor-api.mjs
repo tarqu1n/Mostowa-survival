@@ -184,21 +184,25 @@ function readPngSize(pngPath) {
 }
 
 /** Narrows an untrusted PUT body's `regions` down to a clean array of bare `{x,y,w,h}` integer rects
- *  (plan 017 step 4) — mirrors `sanitiseOverridePatch`'s all-or-nothing posture: returns `null` if the
- *  input isn't an array, or ANY rect is non-integer, has `x<0/y<0/w<1/h<1`, or falls outside the
- *  `sheetW`×`sheetH` sheet — so a malformed/out-of-bounds box can never reach the written `pack.json`.
- *  Reads only x/y/w/h (ignoring any stray keys like the catalog's `key`). An empty array is VALID
- *  (the caller uses it to delete the override). */
+ *  plus an optional `role` (plan 017 step 4; `role` added plan 028) — mirrors `sanitiseOverridePatch`'s
+ *  all-or-nothing posture: returns `null` if the input isn't an array, or ANY rect is non-integer, has
+ *  `x<0/y<0/w<1/h<1`, falls outside the `sheetW`×`sheetH` sheet, or carries a `role` other than
+ *  `undefined`/`'object'` — so a malformed/out-of-bounds/unsupported-role box can never reach the
+ *  written `pack.json`. Reads x/y/w/h plus `role` (ignoring any other stray keys like the catalog's
+ *  `key`); a missing `role` is passed through as absent (no default written), keeping a pure-object
+ *  sheet's round-tripped `pack.json` byte-identical. An empty array is VALID (the caller uses it to
+ *  delete the override). */
 function sanitiseRegions(regions, sheetW, sheetH) {
   if (!Array.isArray(regions)) return null;
   const out = [];
   for (const r of regions) {
     if (typeof r !== 'object' || r === null || Array.isArray(r)) return null;
-    const { x, y, w, h } = r;
+    const { x, y, w, h, role } = r;
     if (![x, y, w, h].every(Number.isInteger)) return null;
     if (x < 0 || y < 0 || w < 1 || h < 1) return null;
     if (x + w > sheetW || y + h > sheetH) return null;
-    out.push({ x, y, w, h });
+    if (role !== undefined && role !== 'object') return null;
+    out.push({ x, y, w, h, ...(role ? { role } : {}) });
   }
   return out;
 }

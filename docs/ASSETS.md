@@ -312,6 +312,15 @@ bounding boxes, detected by connected-components analysis; `asset-catalog.mjs` m
 object). Editor/game crop the chosen region at render — the sheet stays the load/dedupe unit
 (`collectTextureSources` doc in `mapFormat.ts` has the mobile-memory trade-off this implies).
 
+**A region carries an optional `role` (`'object'`)** — a `tile`-classed sheet may declare object-role
+regions (plan 028), so a mixed sheet (true 16px terrain **and** large multi-cell props, e.g.
+`garden-environment/Assets/Tiles.png`) stays classed `tile` while its props become placeable decor.
+`gen_regions.py` runs no detection pass on a `tile` sheet — its regions are always hand-authored,
+tagged `role:'object'` verbatim. In the Library/tile picker, an object region **hides** every 16px
+cell it overlaps (cell-centre-inside-region test), so terrain keeps tiling cleanly around the prop.
+MVP is object-role only — no `tile`-role regions yet (schema left extensible). Decision + invariant
+(a tile frame index is always a whole-sheet index, unaffected by object regions): DECISIONS.md.
+
 **Regen (always both, in order):**
 ```
 python3 scripts/pixel-crawler/gen_regions.py && npm run assets:catalog
@@ -337,9 +346,12 @@ cols×rows grid of equal cells (one action splits a whole merged crop/seed row �
 server clamps every rect in-bounds of the sheet PNG and rejects an out-of-bounds one) then reruns
 both generators server-side, serialised, with the same `python3`-ENOENT graceful degrade as
 `/__editor/asset-override`. **Reset to auto-detect** saves an EMPTY list, which deletes the key so
-the sheet falls back to connected-component detection. (Picking `object` in the type dropdown for a
-strip/tile asset makes the Regions editor reachable; Save then forces the `object` type override
-first.)
+the sheet falls back to connected-component detection. Reachable two ways now: picking `object` in
+the type dropdown for a strip/tile asset (Save then forces the `object` type override — a genuine
+reclassify); or, for a `tile` asset, the **"Edit regions" toggle** beside the Type dropdown, which
+opens the same editor **without demoting the asset's type** — Save tags every region `role:'object'`
+instead (see "Atlas sprite regions" above). The per-selected-box panel shows a read-only "Role:
+object" badge in this mode.
 
 **Content-drift caveat:** the catalog build validates a sidecar region is in-bounds for its sheet
 (fatal if not — a stale sidecar after a sheet shrunk), but it can't detect a sprite that moved

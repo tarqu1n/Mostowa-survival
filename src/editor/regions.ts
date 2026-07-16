@@ -37,7 +37,15 @@ export function sliceBox(box: Box, cols: number, rows: number): Box[] {
   const out: Box[] = [];
   for (let j = 0; j < r; j++) {
     for (let i = 0; i < c; i++) {
-      out.push({ x: xs[i], y: ys[j], w: xs[i + 1] - xs[i], h: ys[j + 1] - ys[j] });
+      // Cells inherit the source box's role (plan 028) — slicing an object-role prop into a grid
+      // keeps every cell object-role.
+      out.push({
+        x: xs[i],
+        y: ys[j],
+        w: xs[i + 1] - xs[i],
+        h: ys[j + 1] - ys[j],
+        ...(box.role ? { role: box.role } : {}),
+      });
     }
   }
   return out;
@@ -47,12 +55,19 @@ export function sliceBox(box: Box, cols: number, rows: number): Box[] {
  * Seed the editable box list for an asset from its current catalog `regions` (dropping the catalog's
  * coordinate-derived `key` — pack.json stores bare rects). An asset with no regions (a plain
  * single-sprite `object`, or a freshly-classified `object` with 0/1 detected sprites) seeds ONE box
- * covering the whole sheet, so the author can subdivide from there.
+ * covering the whole sheet, so the author can subdivide from there. Each seeded box preserves its
+ * catalog region's `role` (plan 028) so an existing object-role region on a `tile` sheet round-trips.
  */
 export function seedRegions(asset: CatalogAsset): Box[] {
   const regions = asset.regions;
   if (regions && regions.length > 0) {
-    return regions.map((rgn) => ({ x: rgn.x, y: rgn.y, w: rgn.w, h: rgn.h }));
+    return regions.map((rgn) => ({
+      x: rgn.x,
+      y: rgn.y,
+      w: rgn.w,
+      h: rgn.h,
+      ...(rgn.role ? { role: rgn.role } : {}),
+    }));
   }
   return [{ x: 0, y: 0, w: asset.w, h: asset.h }];
 }
@@ -206,7 +221,9 @@ export function sanitiseClientRegions(boxes: Box[], sheetW: number, sheetH: numb
     const y = clampInt(b.y, 0, sheetH - 1);
     const w = clampInt(w0, 1, sheetW - x);
     const h = clampInt(h0, 1, sheetH - y);
-    out.push({ x, y, w, h });
+    // Preserve a region's `role` (plan 028); only `'object'` is valid in this MVP, matching the
+    // server's `sanitiseRegions`, so anything else is dropped rather than sent.
+    out.push({ x, y, w, h, ...(b.role === 'object' ? { role: b.role } : {}) });
   }
   return out;
 }

@@ -31,6 +31,11 @@ export interface CatalogRegion {
   y: number;
   w: number;
   h: number;
+  /** What the region IS within its sheet (plan 028). A union of one member today — deliberately
+   *  extensible to `'tile'` later. Absent ⇒ `'object'` (the implicit default on a pure `object`
+   *  atlas, whose regions predate this field). Present-and-`'object'` is how a `tile`-classed sheet
+   *  declares a placeable prop region (see `CatalogAsset.regions`). */
+  role?: 'object';
 }
 
 /** Unique list/React key for a region: the full rect, NOT just the `key` field. Two distinct sprites
@@ -72,7 +77,11 @@ export interface CatalogAsset {
   /** Present on `object` assets detected as multi-sprite atlases (>=2 regions merged from
    *  `<pack>/regions.json`) — see `scripts/pixel-crawler/gen_regions.py`. Absent ⇒ a plain
    *  single-sprite object (place the whole image), including every `object` asset with 0 or 1
-   *  detected region. */
+   *  detected region. A `tile`-classed sheet may ALSO carry regions (plan 028): a mixed sheet
+   *  (true terrain grid + baked props) stays `type:'tile'` for its terrain frames while declaring
+   *  `role:'object'` regions for the props. On a tile asset the `>=2` and default-role rules don't
+   *  apply — even a single `role:'object'` region is kept, and each such region hides the tile
+   *  cells it covers in the picker. MVP: all authored roles are `'object'`. */
   regions?: CatalogRegion[];
   category: string;
   tags: string[];

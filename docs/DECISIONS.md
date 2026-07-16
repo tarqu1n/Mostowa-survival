@@ -7,6 +7,23 @@ Format: `YYYY-MM-DD — [DECIDED|PROPOSED|OPEN] Title` then a short rationale.
 
 ---
 
+## 2026-07-16 — [DECIDED] Per-region roles on mixed tile/object sheets, not physically splitting the sheet (plan 028)
+
+Some stock Anokolisa sheets are **mixed**: one PNG classed `tile` holds both true 16px terrain and
+large multi-cell props (e.g. `garden-environment/Assets/Tiles.png` — fountains/statues/trees/a bench
+alongside grass/cobble). **Chose option B — per-region roles on the one sheet — over physically
+splitting the PNG.** Splitting fights the **load-in-place rule** (a re-downloaded pack won't
+reproduce split files; they'd have to live under `_derived/`, duplicating pixels + a second texture
+load, with no generator to catch drift); region-roles reuse the existing region machinery and change
+no map format; on mobile/single-texture terms, one PNG loaded once under two keys beats two textures.
+
+**Invariant (collapses the complexity — don't re-litigate):** a `tile` sheet is already 16px
+grid-sliced, so a tile frame index is **always** a whole-sheet index — object regions never re-index
+the tile grid. A `tile` sheet may therefore carry `object`-role regions (MVP: object-role only;
+`tile`-role deferred, schema left extensible). "Regions on a tile sheet" is purely a catalog +
+editor-UI concern; no Preload/EditorScene/map-format change was needed. Full detail:
+[ASSETS.md](ASSETS.md#atlas-sprite-regions-plan-014-step-7a), `plans/028-editor-tile-sheet-object-regions.md`.
+
 ## 2026-07-15 — [DECIDED] Map Builder editor + map/world file format (plan 014)
 
 Resolves the 2026-07-11 [OPEN] "want a map editor" steer below. The editor is a **React chrome over

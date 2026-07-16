@@ -27,23 +27,32 @@ const cache = new Map<string, GlowTexture>();
  * Bake (or return the cached) glow texture for `srcKey`. `radius` is the halo reach in **source**
  * texels; `color` is 0xRRGGBB. Requires a 2D canvas + readable source image (same-origin assets),
  * which holds under Vite dev, the GitHub Pages build, and the headless smoke's real browser.
+ *
+ * `frame` is the sprite's actual texture frame — pass `sprite.frame` so the halo is baked from just
+ * that frame's cut rectangle. This matters for region/atlas skins (plan 028): a node sprite is now
+ * often one crop of a larger mixed tile sheet, so baking the full source image would smear the halo
+ * across the whole sheet. Omit it only for genuinely whole-image single-frame textures (the base
+ * `__BASE` frame is then used, which is the full image — the previous behaviour).
  */
 export function bakeGlowTexture(
   scene: Phaser.Scene,
   srcKey: string,
   color: number,
   radius: number,
+  frame?: Phaser.Textures.Frame,
 ): GlowTexture {
-  const cacheKey = `${srcKey}|${color}|${radius}`;
+  const f = frame ?? scene.textures.get(srcKey).get(); // default: the texture's base frame (full image)
+  const cacheKey = `${srcKey}|${f.name}|${color}|${radius}`;
   const cached = cache.get(cacheKey);
   if (cached && scene.textures.exists(cached.key)) return cached;
 
   const pad = Math.ceil(radius);
   const glowKey = `glow:${cacheKey}`;
-  const srcImg = scene.textures.get(srcKey).getSourceImage() as
-    HTMLImageElement | HTMLCanvasElement;
-  const w = srcImg.width;
-  const h = srcImg.height;
+  // Bake from the frame's *cut rectangle* within its source image, not the whole sheet — `cutX/cutY`
+  // is the frame's top-left in the source; `cutWidth/cutHeight` its extent.
+  const srcImg = f.source.image as HTMLImageElement | HTMLCanvasElement;
+  const w = f.cutWidth;
+  const h = f.cutHeight;
   const gw = w + pad * 2;
   const gh = h + pad * 2;
 
@@ -52,7 +61,7 @@ export function bakeGlowTexture(
   read.width = gw;
   read.height = gh;
   const rctx = read.getContext('2d')!;
-  rctx.drawImage(srcImg, pad, pad);
+  rctx.drawImage(srcImg, f.cutX, f.cutY, w, h, pad, pad, w, h);
   const srcData = rctx.getImageData(0, 0, gw, gh).data;
   const alphaAt = (x: number, y: number): number =>
     x < 0 || y < 0 || x >= gw || y >= gh ? 0 : srcData[(y * gw + x) * 4 + 3] / 255;

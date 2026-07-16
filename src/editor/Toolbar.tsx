@@ -12,8 +12,19 @@ import { OpenMapDialog } from './OpenMapDialog';
 import { EditMapDialog } from './EditMapDialog';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { toast } from 'sonner';
+import { ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
+import { useIsCompact } from './hooks/useIsCompact';
 import { cn } from './lib/utils';
 
 /** The paint tools + pan + the step-7 object tools + the step-8 collision/zone/shape tools, in
@@ -29,6 +40,12 @@ const TOOLS: Array<{ id: EditorTool; label: string; title: string }> = [
   { id: 'eraser', label: 'Eraser', title: 'Clear cells to empty (drag)' },
   { id: 'fill', label: 'Fill', title: 'Flood-fill same-value cells' },
   { id: 'rect', label: 'Rect', title: 'Paint a rectangle (drag)' },
+  {
+    id: 'eyedropper',
+    label: 'Pick',
+    title:
+      'Eyedropper — click a tile or object to sample it and arm it (then switches to the matching paint tool). On desktop: Alt+click with a tile-paint tool.',
+  },
   {
     id: 'place',
     label: 'Place',
@@ -112,6 +129,7 @@ export function Toolbar() {
   const snapToTileCenter = useEditorStore((s) => s.snapToTileCenter);
   const paintMode = useEditorStore((s) => s.paintMode);
   const overlays = useEditorStore((s) => s.overlays);
+  const isCompact = useIsCompact();
 
   const [showNew, setShowNew] = useState(false);
   const [showOpen, setShowOpen] = useState(false);
@@ -177,11 +195,239 @@ export function Toolbar() {
     toast.success(`Created "${fields.name}" — remember to Save.`);
   }
 
+  // ── Reusable clusters (plan 027 Step 6) — defined once, arranged differently per breakpoint ──
+
+  const activeToolMeta = TOOLS.find((t) => t.id === activeTool);
+
+  /** The 12-tool strip. On compact this lives inside a horizontally-scrollable rail. */
+  const toolStrip = (
+    <div className={groupClass}>
+      {TOOLS.map((tool) => {
+        const active = activeTool === tool.id;
+        return (
+          <Button
+            key={tool.id}
+            variant="ghost"
+            size="sm"
+            className={cn(
+              'font-normal',
+              active
+                ? 'bg-active text-fg-bright hover:bg-active'
+                : 'text-fg-muted hover:bg-surface',
+            )}
+            title={tool.title}
+            disabled={!map || (tool.id === 'place' && !armedObjectAsset && !armedNodeRef)}
+            onClick={() => useEditorStore.getState().setActiveTool(tool.id)}
+          >
+            {tool.label}
+          </Button>
+        );
+      })}
+    </div>
+  );
+
+  // Tool-contextual controls (paint-mode gesture, brush rotation). Desktop keeps them inline on the
+  // toolbar; on compact they move to the bottom ContextBar (plan 027 Step 9), so the compact header
+  // no longer renders these two groups.
+  const paintModeGroup = PAINT_MODE_TOOLS.has(activeTool) ? (
+    <div className={groupClass} title="Gesture for the Collision/Zone/Shape tools">
+      {PAINT_MODES.map((mode) => (
+        <Button
+          key={mode.id}
+          variant="ghost"
+          size="sm"
+          className={cn(
+            'font-normal',
+            paintMode === mode.id
+              ? 'bg-active text-fg-bright hover:bg-active'
+              : 'text-fg-muted hover:bg-surface',
+          )}
+          onClick={() => useEditorStore.getState().setPaintMode(mode.id)}
+        >
+          {mode.label}
+        </Button>
+      ))}
+    </div>
+  ) : null;
+
+  const rotateGroup =
+    activeTool === 'brush' ? (
+      <div className={groupClass} title="Rotate the tile the brush paints (R / Shift+R)">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!brushAsset}
+          title="Rotate the painted tile −90° (Shift+R)"
+          onClick={() => useEditorStore.getState().rotateBrush(-90)}
+        >
+          ⟲ −90°
+        </Button>
+        <span className="w-9 text-center text-[0.85rem] text-fg-muted tabular-nums">
+          {brushRotation}°
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!brushAsset}
+          title="Rotate the painted tile +90° (R)"
+          onClick={() => useEditorStore.getState().rotateBrush(90)}
+        >
+          ⟳ +90°
+        </Button>
+      </div>
+    ) : null;
+
+  /** Overflow "⋯" menu — the least-used View controls (overlay toggles + Snap), plus Keys on
+   *  compact where the standalone Keys button is dropped. Overlay/Snap items `preventDefault` on
+   *  select so the menu stays open while toggling several. */
+  const overflowMenu = (includeKeys: boolean) => (
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button variant="secondary" size="sm" aria-label="View & display options">
+              <SlidersHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>View & display options</TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Overlays</DropdownMenuLabel>
+        {OVERLAYS.map((overlay) => (
+          <DropdownMenuCheckboxItem
+            key={overlay.id}
+            checked={overlays[overlay.id]}
+            title={overlay.title}
+            onSelect={(e) => e.preventDefault()}
+            onCheckedChange={() => useEditorStore.getState().toggleOverlay(overlay.id)}
+          >
+            {overlay.label}
+          </DropdownMenuCheckboxItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem
+          checked={snapToTileCenter}
+          title="Snap decor placement/drag to tile centres (hold Alt for free pixels). Nodes/portals are always tile-snapped."
+          onSelect={(e) => e.preventDefault()}
+          onCheckedChange={() => useEditorStore.getState().setSnapToTileCenter(!snapToTileCenter)}
+        >
+          Snap to tile centre
+        </DropdownMenuCheckboxItem>
+        {includeKeys && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => setShowShortcuts(true)}>
+              ⌨ Keyboard & mouse shortcuts
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  const undoRedoGroup = (
+    <div className={groupClass}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => useEditorStore.getState().undo()}
+            disabled={!canUndo}
+          >
+            Undo
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Undo (Ctrl/Cmd+Z)</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => useEditorStore.getState().redo()}
+            disabled={!canRedo}
+          >
+            Redo
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Redo (Shift+Ctrl/Cmd+Z)</TooltipContent>
+      </Tooltip>
+    </div>
+  );
+
+  const dialogs = (
+    <>
+      {showNew && <NewMapDialog onCreate={handleCreate} onCancel={() => setShowNew(false)} />}
+      {showEdit && <EditMapDialog onCancel={() => setShowEdit(false)} />}
+      {showOpen && (
+        <OpenMapDialog onOpen={(id) => void handleOpen(id)} onCancel={() => setShowOpen(false)} />
+      )}
+      {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
+    </>
+  );
+
+  // ── Compact (phone/tablet) shell: File collapses to a menu, the tool strip becomes a scrollable
+  //    rail, and the standalone View checkboxes + Keys button fold into the overflow menu. ──
+  if (isCompact) {
+    return (
+      <header className="flex items-center gap-2 border-b border-surface bg-raised px-2 py-1.5">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="secondary" size="sm" className="shrink-0">
+              File
+              <ChevronDown />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onSelect={() => setShowNew(true)}>New…</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setShowOpen(true)}>Open…</DropdownMenuItem>
+            <DropdownMenuItem disabled={!map || saving} onSelect={() => void handleSave()}>
+              Save
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={!map} onSelect={() => setShowEdit(true)}>
+              Edit map…
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {undoRedoGroup}
+
+        {/* Active-tool indicator — always visible even when the rail is scrolled off. */}
+        <span className="shrink-0 text-[0.8rem] font-medium text-fg-bright">
+          {activeToolMeta?.label ?? '—'}
+        </span>
+
+        {/* Horizontally-scrollable tool rail. The tool-contextual controls (paint-mode gesture,
+            brush rotation) live in the bottom ContextBar on compact (plan 027 Step 9), not here. */}
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">{toolStrip}</div>
+
+        {/* Map name + dirty dot stays visible (truncated). */}
+        <span className="flex shrink items-center gap-1 overflow-hidden text-[0.8rem]">
+          {map ? (
+            <>
+              <span className="truncate text-fg-muted">{map.meta.name}</span>
+              {dirty && <span className="shrink-0 text-gold">●</span>}
+            </>
+          ) : (
+            <span className="text-muted-2">No map</span>
+          )}
+        </span>
+
+        {overflowMenu(true)}
+        {dialogs}
+      </header>
+    );
+  }
+
+  // ── Desktop shell: grouped clusters on one tightened row; the View checkboxes move into the "⋯"
+  //    overflow menu (declutter), Keys stays a discrete button. ──
   return (
-    // The shadcn Tooltips on the sparse chrome controls (Undo/Redo, Keys, Snap, the dirty dot) are
-    // powered by the single TooltipProvider mounted at the EditorApp root (plan 020 Step 5). The
-    // paint-tool strip below keeps native `title`s instead — it's a repeated list, not discrete chrome.
-    <header className="flex items-center gap-4 border-b border-surface bg-raised px-3 py-1.5">
+    // The shadcn Tooltips on the sparse chrome controls (Undo/Redo, Keys, the dirty dot) are powered
+    // by the single TooltipProvider mounted at the EditorApp root (plan 020 Step 5). The paint-tool
+    // strip keeps native `title`s instead — it's a repeated list, not discrete chrome.
+    <header className="flex items-center gap-3 border-b border-surface bg-raised px-3 py-1.5">
       <div className={groupClass}>
         <Button variant="secondary" size="sm" onClick={() => setShowNew(true)}>
           New
@@ -202,142 +448,11 @@ export function Toolbar() {
         </Button>
       </div>
 
-      <div className={groupClass}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => useEditorStore.getState().undo()}
-              disabled={!canUndo}
-            >
-              Undo
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Undo (Ctrl/Cmd+Z)</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => useEditorStore.getState().redo()}
-              disabled={!canRedo}
-            >
-              Redo
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Redo (Shift+Ctrl/Cmd+Z)</TooltipContent>
-        </Tooltip>
-      </div>
+      {undoRedoGroup}
 
-      <div className={groupClass}>
-        {TOOLS.map((tool) => {
-          const active = activeTool === tool.id;
-          return (
-            <Button
-              key={tool.id}
-              variant="ghost"
-              size="sm"
-              className={cn(
-                'font-normal',
-                active
-                  ? 'bg-active text-fg-bright hover:bg-active'
-                  : 'text-fg-muted hover:bg-surface',
-              )}
-              title={tool.title}
-              disabled={!map || (tool.id === 'place' && !armedObjectAsset && !armedNodeRef)}
-              onClick={() => useEditorStore.getState().setActiveTool(tool.id)}
-            >
-              {tool.label}
-            </Button>
-          );
-        })}
-      </div>
-
-      {PAINT_MODE_TOOLS.has(activeTool) && (
-        <div className={groupClass} title="Gesture for the Collision/Zone/Shape tools">
-          {PAINT_MODES.map((mode) => (
-            <Button
-              key={mode.id}
-              variant="ghost"
-              size="sm"
-              className={cn(
-                'font-normal',
-                paintMode === mode.id
-                  ? 'bg-active text-fg-bright hover:bg-active'
-                  : 'text-fg-muted hover:bg-surface',
-              )}
-              onClick={() => useEditorStore.getState().setPaintMode(mode.id)}
-            >
-              {mode.label}
-            </Button>
-          ))}
-        </div>
-      )}
-
-      {activeTool === 'brush' && (
-        <div className={groupClass} title="Rotate the tile the brush paints (R / Shift+R)">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!brushAsset}
-            title="Rotate the painted tile −90° (Shift+R)"
-            onClick={() => useEditorStore.getState().rotateBrush(-90)}
-          >
-            ⟲ −90°
-          </Button>
-          <span className="w-9 text-center text-[0.85rem] text-fg-muted tabular-nums">
-            {brushRotation}°
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!brushAsset}
-            title="Rotate the painted tile +90° (R)"
-            onClick={() => useEditorStore.getState().rotateBrush(90)}
-          >
-            ⟳ +90°
-          </Button>
-        </div>
-      )}
-
-      <div className={groupClass}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <label className="flex cursor-pointer items-center gap-1 text-[0.85rem]">
-              <input
-                type="checkbox"
-                checked={snapToTileCenter}
-                onChange={() => useEditorStore.getState().setSnapToTileCenter(!snapToTileCenter)}
-              />
-              Snap
-            </label>
-          </TooltipTrigger>
-          <TooltipContent>
-            Snap decor placement/drag to tile centres (hold Alt for free pixels). Nodes/portals are
-            always tile-snapped.
-          </TooltipContent>
-        </Tooltip>
-      </div>
-
-      <div className={groupClass}>
-        {OVERLAYS.map((overlay) => (
-          <Tooltip key={overlay.id}>
-            <TooltipTrigger asChild>
-              <label className="flex cursor-pointer items-center gap-1 text-[0.85rem]">
-                <input
-                  type="checkbox"
-                  checked={overlays[overlay.id]}
-                  onChange={() => useEditorStore.getState().toggleOverlay(overlay.id)}
-                />
-                {overlay.label}
-              </label>
-            </TooltipTrigger>
-            <TooltipContent>{overlay.title}</TooltipContent>
-          </Tooltip>
-        ))}
-      </div>
+      {toolStrip}
+      {paintModeGroup}
+      {rotateGroup}
 
       <div className={cn(groupClass, 'flex-1 justify-center text-[0.9rem]')}>
         {map ? (
@@ -357,6 +472,8 @@ export function Toolbar() {
         )}
       </div>
 
+      {overflowMenu(false)}
+
       <div className={groupClass}>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -368,12 +485,7 @@ export function Toolbar() {
         </Tooltip>
       </div>
 
-      {showNew && <NewMapDialog onCreate={handleCreate} onCancel={() => setShowNew(false)} />}
-      {showEdit && <EditMapDialog onCancel={() => setShowEdit(false)} />}
-      {showOpen && (
-        <OpenMapDialog onOpen={(id) => void handleOpen(id)} onCancel={() => setShowOpen(false)} />
-      )}
-      {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
+      {dialogs}
     </header>
   );
 }

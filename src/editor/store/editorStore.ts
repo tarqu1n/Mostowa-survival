@@ -116,7 +116,11 @@ export type EditorTool =
   | 'shape'
   | 'terrain'
   | 'place'
-  | 'portal';
+  | 'portal'
+  /** Eyedropper: click/tap a cell or object to sample what's there and arm it (then auto-switch to
+   *  the matching paint tool). The touch-reachable equivalent of the Alt-click modifier that the
+   *  tile-paint tools expose — see `EditorScene.sampleUnderPointer`. */
+  | 'eyedropper';
 
 /** Which gesture the `collision`/`zone`/`shape`/`terrain` tools paint with (plan 014 step 8, extended
  *  step 10) — mirrors the brush/rect/fill distinction that tile painting expresses as separate
@@ -268,6 +272,30 @@ export interface EditorState {
   selectedObjectIds: string[];
   /** Gesture for the `collision`/`zone`/`shape` tools (step 8) — see `PaintMode`'s doc. */
   paintMode: PaintMode;
+
+  // ---- input-modifier intent (plan 027 step 2) — the sticky/momentary split ----
+  // The context bar's toggles (touch parity) and a physically-held Alt/Shift are TWO independent
+  // sources of the same intent; they must never share one boolean or a keyup/blur would silently
+  // wipe a bar toggle. So the sticky context-bar toggles below are the source of truth, the
+  // `*Held` momentary fields track the physical key, and `EditorScene` reads the EFFECTIVE intent
+  // as the OR of the two (`eraseActive || altHeld`, etc.). A `window` blur clears ONLY the
+  // momentary `*Held` fields — never the sticky toggles.
+  /** Sticky "erase / inverse action" toggle set by the context bar (collision/zone/terrain clear,
+   *  shape restore-to-inside). OR'd with `altHeld` for the effective read. */
+  eraseActive: boolean;
+  /** Sticky "free-pixel placement" toggle set by the context bar (place/drag ignore tile-snap).
+   *  OR'd with `altHeld` for the effective read. */
+  freePixelActive: boolean;
+  /** Sticky "multi-select" toggle set by the context bar (select tool toggles into the set).
+   *  OR'd with `shiftHeld` for the effective read. */
+  multiSelectActive: boolean;
+  /** Momentary: Alt is physically held right now (set on keydown, cleared on keyup + `window` blur).
+   *  A separate override OR'd into `eraseActive`/`freePixelActive` at read time — never the same
+   *  boolean as the sticky toggles. */
+  altHeld: boolean;
+  /** Momentary: Shift is physically held right now (keydown/keyup/blur, like `altHeld`). OR'd into
+   *  `multiSelectActive` at read time. */
+  shiftHeld: boolean;
   activeZoneId: number | null;
   overlays: EditorOverlays;
   /** Editor VIEW state, not map data — which layer ids are hidden in the viewport. Never touches
@@ -327,6 +355,16 @@ export interface EditorState {
   setPendingPortalRect(rect: PortalRect | null): void;
   setSelectedObjectIds(ids: string[]): void;
   setPaintMode(mode: PaintMode): void;
+  /** Set the sticky erase/inverse toggle (context bar). */
+  setEraseActive(active: boolean): void;
+  /** Set the sticky free-pixel toggle (context bar). */
+  setFreePixelActive(active: boolean): void;
+  /** Set the sticky multi-select toggle (context bar). */
+  setMultiSelectActive(active: boolean): void;
+  /** Set the momentary Alt-held field (keyboard). Blur clears this, never the sticky toggle. */
+  setAltHeld(held: boolean): void;
+  /** Set the momentary Shift-held field (keyboard). Blur clears this, never the sticky toggle. */
+  setShiftHeld(held: boolean): void;
   setActiveZoneId(id: number | null): void;
   toggleOverlay(key: keyof EditorOverlays): void;
   toggleLayerVisibility(layerId: string): void;
@@ -1096,6 +1134,11 @@ export const useEditorStore = create<EditorState>()(
     pendingPortalRect: null,
     selectedObjectIds: [],
     paintMode: 'brush',
+    eraseActive: false,
+    freePixelActive: false,
+    multiSelectActive: false,
+    altHeld: false,
+    shiftHeld: false,
     activeZoneId: null,
     overlays: { grid: true, walkability: false, zones: false, ghosts: false },
     hiddenLayerIds: [],
@@ -1224,6 +1267,11 @@ export const useEditorStore = create<EditorState>()(
     setPendingPortalRect: (pendingPortalRect) => set({ pendingPortalRect }),
     setSelectedObjectIds: (selectedObjectIds) => set({ selectedObjectIds }),
     setPaintMode: (paintMode) => set({ paintMode }),
+    setEraseActive: (eraseActive) => set({ eraseActive }),
+    setFreePixelActive: (freePixelActive) => set({ freePixelActive }),
+    setMultiSelectActive: (multiSelectActive) => set({ multiSelectActive }),
+    setAltHeld: (altHeld) => set({ altHeld }),
+    setShiftHeld: (shiftHeld) => set({ shiftHeld }),
     setActiveZoneId: (activeZoneId) => set({ activeZoneId }),
     toggleOverlay: (key) =>
       set((s): Partial<EditorState> => ({ overlays: { ...s.overlays, [key]: !s.overlays[key] } })),

@@ -22,12 +22,34 @@ undo/redo, tool strip, overlay toggles.
 
 ## Tools & shortcuts
 
-Tools: pan, brush, eraser, fill, rect, select, place, portal, collision, zone, shape, terrain.
+Tools: pan, brush, eraser, fill, rect, eyedropper ("Pick"), select, place, portal, collision, zone, shape, terrain.
+The **eyedropper** ("Pick") samples the tile or object under the cursor and arms it (then switches to the matching paint tool) — a click/tap works on touch; on desktop, Alt+click while a tile-paint tool is active does the same.
 The **authoritative, always-current** shortcut list is the in-app **Shortcuts** panel, driven by
 `src/editor/shortcuts.ts` — keep that file in sync when a shortcut changes (don't duplicate the
 bindings here).
 
 **Brush tool** — arm a tileset piece and rotate it in 90° steps (see Shortcuts panel for keys and toolbar buttons); a rotated tile becomes a distinct palette entry; ghost preview shows the pending angle. Fill and rect gestures paint at angle 0.
+
+## Touch / mobile (plan 027)
+
+Below a compact breakpoint (`src/editor/hooks/useIsCompact.ts`,
+`(max-width: 960px), (pointer: coarse) and (max-width: 1200px)`) the shell goes full-bleed: Library
+and the tabbed Inspector/Layers/Zones/Reference column collapse into slide-in **Sheet drawers**
+(edge-handle buttons), and the World tab's map tray becomes a drawer too. Above it, desktop is
+**unchanged** (resizable Library split, fixed Inspector column).
+
+Map viewport gestures: single-finger = the active tool's paint/place (same as left-click drag);
+two-finger = pan by midpoint + pinch-zoom (integer ×1–4, snapped). World tab: two-finger pinch-zoom
+about the midpoint only (no two-finger pan there); desktop mouse-drag-to-place + wheel-zoom
+unchanged. **Limitation:** placing a map from the tray is drag-based and stays desktop-only — the
+compact tray drawer is view-only on touch.
+
+A per-tool **context bar** (`src/editor/ContextBar.tsx`, compact-only, bottom/thumb-reach) mirrors
+the keyboard vocabulary on-screen: persistent Undo/Redo; brush rotate ∓90°; a paint-mode gesture
+picker + erase/invert toggle for collision/zone/shape/terrain; free-pixel toggle for place/select;
+multi-select toggle + Delete + 4-way nudge for select; underlay-visibility and skin-cycle when
+applicable. Its erase/free-pixel/multi-select toggles are sticky store flags, independent of the
+desktop-only momentary Alt/Shift modifiers they mirror.
 
 **Toolbar actions:**
 

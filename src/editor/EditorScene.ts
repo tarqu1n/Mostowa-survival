@@ -6,8 +6,10 @@ import {
   getCell,
   isInside,
   parseMap,
+  type DecorAnim,
   type MapFile,
   type PortalRect,
+  type TilePaletteEntry,
 } from '../systems/mapFormat';
 import { worldToTile, snapToTileCenter } from '../systems/grid';
 import { useEditorStore, type PaintMode, type UnderlayState } from './store/editorStore';
@@ -22,6 +24,15 @@ import { objectFootprintCells } from './objectOps';
  *  the active tile layer's real cells) rather than a standalone grid, but shares the exact same
  *  brush/rect/fill + on/off gesture shape as the other three, so it rides the same dispatch. */
 type PaintTarget = 'collision' | 'zone' | 'shape' | 'terrain';
+
+/** Reconstruct the Library asset-id string (`<pack>/<path>[#frame]`) for a palette entry — the exact
+ *  inverse of the `parseAssetId → TileSource` chain `resolveBrushValue` (editorStore) uses to turn a
+ *  `brushAsset` into a palette slot. Used by the eyedropper to re-arm the Brush with a sampled tile. */
+function paletteEntryAssetId(entry: TilePaletteEntry): string {
+  return entry.source.kind === 'image'
+    ? `${entry.pack}/${entry.source.path}`
+    : `${entry.pack}/${entry.source.sheet}#${entry.source.frame}`;
+}
 
 /**
  * The editor's single Phaser scene (plan 014 step 5). Renders the open map pixel-identically to the
@@ -94,6 +105,13 @@ const SHAPE_BOUNDARY_COLOUR = 0xfff05a;
 const NODE_MARKER = 0x66bb66;
 const PORTAL_MARKER = 0x7aa6ff;
 
+/** Cursor shown while the eyedropper is armed (the `eyedropper` tool, or Alt held over a tile-paint
+ *  tool). A hand-drawn pipette as an inline SVG data-URI (tapered tip→bulb, white halo so it reads on
+ *  any tile), hotspot at the tip `(3,21)`, falling back to `crosshair` if the data-URI cursor is
+ *  unsupported. `#` is `%23`-encoded (a raw `#` would start a URL fragment). */
+const EYEDROPPER_CURSOR =
+  "url(\"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'><path d='M3 21 8 16' stroke='%23fff' stroke-width='5'/><path d='M8 16 16 8' stroke='%23fff' stroke-width='7'/><path d='M16 8 20 4' stroke='%23fff' stroke-width='9'/><path d='M3 21 8 16' stroke='%23000' stroke-width='2.5'/><path d='M8 16 16 8' stroke='%23000' stroke-width='4.5'/><path d='M16 8 20 4' stroke='%23000' stroke-width='6.5'/></svg>\") 3 21, crosshair";
+
 export class EditorScene extends Phaser.Scene {
   private unsubs: Array<() => void> = [];
   private currentEpoch = -1;
@@ -151,6 +169,20 @@ export class EditorScene extends Phaser.Scene {
   private panning = false;
   private panLast = { x: 0, y: 0 };
   private spaceDown = false;
+
+  // ---- Multi-touch camera gestures (plan 027 step 3) ----
+  /** Ids of touch pointers currently pressed. Two down = a camera gesture (pinch + two-finger pan);
+   *  one = a normal single-finger tool interaction (step 4). Tracked by pointer id so a desktop mouse
+   *  (a single 'mouse' pointer, never added here) can never reach 2 and desktop input is untouched. */
+  private readonly touchIdsDown = new Set<number>();
+  /** The live two-finger gesture, or null. `startDist`/`startZoom` anchor the pinch ratio (fractional
+   *  zoom accumulated over the gesture, snapped to the integer MIN..MAX clamp); `lastMid` tracks the
+   *  two-finger midpoint so pan follows the midpoint delta. Re-seated when the pointer set changes. */
+  private gesture: {
+    startDist: number;
+    startZoom: number;
+    lastMid: { x: number; y: number };
+  } | null = null;
   private readonly onKeyDown = (e: KeyboardEvent): void => this.handleSpaceKey(e, true);
   private readonly onKeyUp = (e: KeyboardEvent): void => this.handleSpaceKey(e, false);
 
@@ -225,14 +257,16 @@ export class EditorScene extends Phaser.Scene {
     this.rectPreviewGfx = this.add.graphics().setDepth(DEPTH_RECT_PREVIEW);
 
     // Input wiring: wheel = zoom, middle/space/pan-tool drag = pan, and the pointer-tool modifiers
-    // (Alt = free-pixel, Shift-click = multi-select). NOTE: any shortcut/gesture added or changed
-    // below must be reflected in `shortcuts.ts` (the Shortcuts panel).
+    // (Alt = free-pixel on place/select, complement-value on collision/zone/shape/terrain, or
+    // eyedropper-sample on the tile-paint tools; Shift-click = multi-select). NOTE: any shortcut/
+    // gesture added or changed below must be reflected in `shortcuts.ts` (the Shortcuts panel).
     this.input.on(Phaser.Input.Events.POINTER_WHEEL, this.handleWheel, this);
     this.input.on(Phaser.Input.Events.POINTER_DOWN, this.handlePointerDown, this);
     this.input.on(Phaser.Input.Events.POINTER_MOVE, this.handlePointerMove, this);
     this.input.on(Phaser.Input.Events.POINTER_UP, this.handlePointerUp, this);
     this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.handlePointerUp, this);
     this.input.mouse?.disableContextMenu(); // right-click reserved for future tools; no browser menu
+    this.input.addPointer(2); // plan 027 step 3: ≥2 live pointers for pinch-zoom / two-finger pan
     // A texture that 404s (an authored map may reference an asset that doesn't exist yet) is logged
     // and skipped — the bake checks `textures.exists` before drawing, so a missing tile just no-ops.
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
@@ -276,7 +310,15 @@ export class EditorScene extends Phaser.Scene {
         () => {
           this.redrawOverlays();
           this.refreshBrushGhost(); // hide/show the tile preview when entering/leaving the brush tool
+          this.updateToolCursor(); // eyedropper pipette when the eyedropper tool is active
         },
+      ),
+      // Eyedropper cursor: reflect the physical Alt modifier over a tile-paint tool the moment it's
+      // pressed/released (a pointer-move also refreshes it from the click's native event — see
+      // handlePointerMove — so it still tracks even if this store flag ever desyncs via a blur).
+      useEditorStore.subscribe(
+        (s) => s.altHeld,
+        () => this.updateToolCursor(),
       ),
       // Brush ghost preview (plan 026): re-render when the armed asset or its pending rotation changes,
       // so pressing R / re-arming updates the preview without needing a pointer move.
@@ -747,6 +789,87 @@ export class EditorScene extends Phaser.Scene {
       }
     });
     return best ? (best as { id: string }).id : null;
+  }
+
+  /**
+   * Eyedropper — sample whatever is under the pointer and arm it, mirroring the Library's "arm the
+   * asset AND switch to the tool that paints it" convention. Reached two ways: the `eyedropper`
+   * toolbar tool (a plain click/tap — mobile-friendly) or Alt-click while a tile-paint tool is
+   * active (a desktop power-user modifier). Picks
+   * the visually topmost thing first:
+   *  - a `decor` object → re-arm it (with its `region`/`anim`, minus the placement-stamped `fps`) and
+   *    switch to the `place` tool;
+   *  - a `node` object → re-arm its `ref` and switch to `place`;
+   *  - a `portal` (or an unresolved pick) is NOT arm-placeable, so it's skipped and sampling falls
+   *    through to the tile beneath it.
+   * With no object, the tile at that cell is sampled — the ACTIVE layer first (what a subsequent
+   * paint stroke would target), then the topmost VISIBLE painted layer as a fallback — and the Brush
+   * is armed with that palette piece and its rotation. A no-op when there's nothing to pick (an empty
+   * cell, or a void/out-of-bounds cell).
+   */
+  private sampleUnderPointer(pointer: Phaser.Input.Pointer, map: MapFile): void {
+    const store = useEditorStore.getState();
+    const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+
+    // 1) Topmost object under the cursor (same hit-test the Select tool uses).
+    const pickedId = this.pickObjectAt(map, world.x, world.y);
+    if (pickedId) {
+      const obj = map.objects.find((o) => o.id === pickedId);
+      if (obj?.kind === 'decor') {
+        // Drop the placement-stamped `fps` — `ArmedObjectAsset.anim` is `Omit<DecorAnim, 'fps'>`
+        // (re-stamped at placement, see editorStore's DECOR_ANIM_DEFAULT_FPS); keep `omit` only when
+        // present so a subsequent placement round-trips identically.
+        let anim: Omit<DecorAnim, 'fps'> | undefined;
+        if (obj.anim) {
+          anim = {
+            frameWidth: obj.anim.frameWidth,
+            frameHeight: obj.anim.frameHeight,
+            frames: obj.anim.frames,
+            ...(obj.anim.omit ? { omit: obj.anim.omit } : {}),
+          };
+        }
+        store.setArmedObjectAsset({
+          assetId: obj.asset,
+          ...(obj.region ? { region: { ...obj.region } } : {}),
+          ...(anim ? { anim } : {}),
+        });
+        store.setActiveTool('place');
+        return;
+      }
+      if (obj?.kind === 'node') {
+        store.setArmedNodeRef(obj.ref);
+        store.setActiveTool('place');
+        return;
+      }
+      // portal / unresolved — fall through to the tile beneath.
+    }
+
+    // 2) Tile under the cursor: active layer first, then topmost visible painted layer.
+    const { col, row } = this.pointerTile(pointer);
+    if (!isInside(map, col, row)) return;
+    const idx = cellIndex(col, row, map.meta.width);
+    const cellAt = (layerIndex: number): number => map.layers[layerIndex]?.cells[idx] ?? 0;
+
+    let paletteIndex = 0;
+    const activeIndex = map.layers.findIndex((l) => l.id === store.activeLayerId);
+    if (activeIndex >= 0) paletteIndex = cellAt(activeIndex);
+    if (paletteIndex === 0) {
+      for (let i = map.layers.length - 1; i >= 0; i--) {
+        if (store.hiddenLayerIds.includes(map.layers[i].id)) continue;
+        const v = cellAt(i);
+        if (v !== 0) {
+          paletteIndex = v;
+          break;
+        }
+      }
+    }
+    if (paletteIndex === 0) return; // empty here — nothing to sample
+
+    const entry = map.palette[paletteIndex];
+    if (!entry) return;
+    store.setBrushAsset(paletteEntryAssetId(entry));
+    store.setBrushRotation(entry.rotation ?? 0);
+    store.setActiveTool('brush');
   }
 
   /** Strokes an outline around each selected object's current display bounds. Redrawn on selection
@@ -1383,24 +1506,99 @@ export class EditorScene extends Phaser.Scene {
     _dx: number,
     dy: number,
   ): void {
+    const next = Phaser.Math.Clamp(
+      Math.round(this.cameras.main.zoom) + (dy > 0 ? -1 : 1),
+      MIN_ZOOM,
+      MAX_ZOOM,
+    );
+    this.zoomAnchored(next, pointer.x, pointer.y);
+    this.updateHover(pointer);
+  }
+
+  /**
+   * Set the camera zoom to `next` (already clamped/rounded) while keeping the world point under the
+   * given screen anchor fixed. Shared by wheel-zoom (anchor = cursor) and pinch-zoom (anchor =
+   * two-finger midpoint). getWorldPoint() inverts a matrix that's only rebuilt once per frame in
+   * preRender(), so it can't be trusted immediately after setZoom() in the same tick. Re-derive the
+   * same transform preRender() builds (Camera#preRender in phaser.esm.js): zoom pivots around the
+   * viewport's origin (default centre), so world = scroll + origin + (screen - camXY - origin) / zoom.
+   */
+  private zoomAnchored(next: number, screenX: number, screenY: number): void {
     const cam = this.cameras.main;
     const zoomBefore = cam.zoom;
-    const next = Phaser.Math.Clamp(Math.round(zoomBefore) + (dy > 0 ? -1 : 1), MIN_ZOOM, MAX_ZOOM);
     if (next === zoomBefore) return;
-    // getWorldPoint() inverts a matrix that's only rebuilt once per frame in preRender(), so it
-    // can't be trusted immediately after setZoom() in the same tick. Re-derive the same transform
-    // preRender() builds (Camera#preRender in phaser.esm.js): zoom pivots around the viewport's
-    // origin (default centre), so world = scroll + origin + (screen - camXY - origin) / zoom.
     const originX = cam.width * cam.originX;
     const originY = cam.height * cam.originY;
-    const relX = pointer.x - cam.x - originX;
-    const relY = pointer.y - cam.y - originY;
+    const relX = screenX - cam.x - originX;
+    const relY = screenY - cam.y - originY;
     const worldX = cam.scrollX + originX + relX / zoomBefore;
     const worldY = cam.scrollY + originY + relY / zoomBefore;
     cam.setZoom(next);
     cam.scrollX = worldX - originX - relX / next;
     cam.scrollY = worldY - originY - relY / next;
-    this.updateHover(pointer);
+  }
+
+  /** Screen-space spread + midpoint of the two currently-down touch pointers, or null if fewer than
+   *  two are down. Guards a zero distance (both fingers on one pixel) so the pinch ratio never divides
+   *  by zero. */
+  private twoPointerSpread(): { dist: number; mid: { x: number; y: number } } | null {
+    const active = this.input.manager.pointers.filter((p) => this.touchIdsDown.has(p.id));
+    if (active.length < 2) return null;
+    const [a, b] = active;
+    return {
+      dist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+      mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+    };
+  }
+
+  /** Begin (or re-seat) a two-finger camera gesture: cancel any in-progress single-finger tool
+   *  interaction first (so a paint stroke can never turn into a zoom), then snapshot the pinch
+   *  baseline from the current fingers. Called on the 2nd pointer-down and whenever the pointer set
+   *  changes while ≥2 remain down, so the ongoing gesture never jumps. */
+  private beginGesture(): void {
+    this.cancelActiveInteraction();
+    const s = this.twoPointerSpread();
+    if (!s) return;
+    this.gesture = { startDist: s.dist, startZoom: this.cameras.main.zoom, lastMid: s.mid };
+  }
+
+  /** Advance the live gesture: two-finger pan by the midpoint delta, plus pinch-zoom to the integer
+   *  step nearest the accumulated distance ratio, anchored on the midpoint so the map stays put under
+   *  the fingers. */
+  private updateGesture(): void {
+    if (!this.gesture) return;
+    const s = this.twoPointerSpread();
+    if (!s) return;
+    const cam = this.cameras.main;
+    cam.scrollX -= (s.mid.x - this.gesture.lastMid.x) / cam.zoom;
+    cam.scrollY -= (s.mid.y - this.gesture.lastMid.y) / cam.zoom;
+    this.gesture.lastMid = s.mid;
+    const target = this.gesture.startZoom * (s.dist / this.gesture.startDist);
+    this.zoomAnchored(Phaser.Math.Clamp(Math.round(target), MIN_ZOOM, MAX_ZOOM), s.mid.x, s.mid.y);
+  }
+
+  /** Abort any in-progress single-finger tool interaction WITHOUT committing it — used when a second
+   *  finger arrives and the camera gesture takes over. Clears live preview graphics; a brush/eraser
+   *  leaves whatever cell the initial tap already coalesced (undoable via history). */
+  private cancelActiveInteraction(): void {
+    this.activeStroke = null;
+    this.activeTargetStroke = null;
+    if (this.rectDrag || this.targetRectDrag || this.portalDrag) {
+      this.rectDrag = null;
+      this.targetRectDrag = null;
+      this.portalDrag = null;
+      this.rectPreviewGfx?.clear();
+    }
+    if (this.objectDrag) {
+      // The drag never commits — snap the live-preview sprites back to their stored positions.
+      this.objectDrag = null;
+      const map = useEditorStore.getState().map;
+      if (map) this.placeObjects(map);
+    }
+    if (this.panning) {
+      this.panning = false;
+      this.setCursor(this.spaceDown ? 'grab' : this.desiredIdleCursor());
+    }
   }
 
   /**
@@ -1411,6 +1609,15 @@ export class EditorScene extends Phaser.Scene {
    * tool (mirrors `updateHover`'s cursor rejection).
    */
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
+    // Multi-touch arbitration (plan 027 step 3): track touch pointers; the moment two are down the
+    // camera gesture owns the interaction and no tool fires. A mouse pointer is `wasTouch === false`,
+    // never tracked here, so it can never reach two — desktop input is unchanged.
+    if (pointer.wasTouch) this.touchIdsDown.add(pointer.id);
+    if (this.gesture || this.touchIdsDown.size >= 2) {
+      this.beginGesture(); // (re)snapshot the pinch baseline; cancels any in-progress tool
+      return;
+    }
+
     const state = useEditorStore.getState();
     if (
       pointer.middleButtonDown() ||
@@ -1424,6 +1631,40 @@ export class EditorScene extends Phaser.Scene {
     }
 
     if (!pointer.leftButtonDown() || !state.map) return;
+
+    // Touch has no hover-move to position the cursor before contact, so snap the hover outline +
+    // brush ghost under the finger the moment it lands — a stationary tap gets the same feedback a
+    // desktop hover already gives, and a drag shows it from the first cell rather than the second.
+    // Touch-only so desktop input is byte-identical (the mouse already drives updateHover on move).
+    // Plan 027 step 4.
+    if (pointer.wasTouch) this.updateHover(pointer);
+
+    // Eyedropper: Alt-click while a tile-paint tool (brush/eraser/fill/rect) is active samples the
+    // tile or object under the cursor and arms it, INSTEAD of painting (see shortcuts.ts). Alt is
+    // otherwise unused by these four tools — the free-pixel/complement Alt modifiers apply only to
+    // place/select and collision/zone/shape/terrain — so there's no conflict. We read Alt off the
+    // click's OWN native event (authoritative at click time), not just the store's `altHeld`, which
+    // a stray `window` blur (Alt focusing browser chrome on some OSes) can silently clear.
+    const altDown = EditorScene.pointerAlt(pointer) || state.altHeld;
+    if (
+      altDown &&
+      (state.activeTool === 'brush' ||
+        state.activeTool === 'eraser' ||
+        state.activeTool === 'fill' ||
+        state.activeTool === 'rect')
+    ) {
+      this.sampleUnderPointer(pointer, state.map);
+      return;
+    }
+
+    // Eyedropper TOOL — the touch/toolbar equivalent of the Alt modifier above (there's no Alt key on
+    // mobile). A plain tap samples the tile/object under the cursor. Whole-viewport like select;
+    // `sampleUnderPointer` does its own inside check on the tile path and auto-switches to the
+    // matching paint tool once something is armed.
+    if (state.activeTool === 'eyedropper') {
+      this.sampleUnderPointer(pointer, state.map);
+      return;
+    }
 
     // The select tool operates over the WHOLE viewport (including void — e.g. clicking empty void
     // space still clears the selection), so it's handled before the paint tools' shared isInside
@@ -1469,8 +1710,10 @@ export class EditorScene extends Phaser.Scene {
       case 'place': {
         if (state.armedObjectAsset) {
           const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-          const alt = pointer.event instanceof MouseEvent && pointer.event.altKey;
-          const snap = state.snapToTileCenter && !alt;
+          // Effective free-pixel intent: sticky context-bar toggle OR a held Alt (plan 027 step 2;
+          // `altDown` reads the click's native event so a desynced store `altHeld` can't drop it).
+          const freePixel = state.freePixelActive || altDown;
+          const snap = state.snapToTileCenter && !freePixel;
           const x = snap ? snapToTileCenter(world.x) : world.x;
           const y = snap ? snapToTileCenter(world.y) : world.y;
           const { assetId, region, anim } = state.armedObjectAsset;
@@ -1490,25 +1733,25 @@ export class EditorScene extends Phaser.Scene {
         break;
       case 'collision': {
         // Default (no modifier) marks the cell blocked — the primary "add an obstacle" action;
-        // Alt clears it, mirroring the free-pixel-placement modifier convention (step 7). Locked for
-        // the whole gesture at press time (see `activeTargetStroke`'s doc).
-        const alt = pointer.event instanceof MouseEvent && pointer.event.altKey;
-        this.dispatchTargetPaint('collision', col, row, !alt, state.paintMode);
+        // erase (context-bar toggle OR held Alt, plan 027 step 2) clears it. Locked for the whole
+        // gesture at press time (see `activeTargetStroke`'s doc).
+        const erase = state.eraseActive || altDown;
+        this.dispatchTargetPaint('collision', col, row, !erase, state.paintMode);
         break;
       }
       case 'zone': {
-        // Default paints the active zone id; Alt clears the cell's zone assignment regardless of
-        // which zone owned it.
-        const alt = pointer.event instanceof MouseEvent && pointer.event.altKey;
-        this.dispatchTargetPaint('zone', col, row, !alt, state.paintMode);
+        // Default paints the active zone id; erase (context-bar toggle OR held Alt) clears the
+        // cell's zone assignment regardless of which zone owned it.
+        const erase = state.eraseActive || altDown;
+        this.dispatchTargetPaint('zone', col, row, !erase, state.paintMode);
         break;
       }
       case 'terrain': {
-        // Default paints the armed terrain's mask; Alt erases it (clears the mask cell + rebakes),
-        // mirroring the collision/zone modifier convention. Both directions require an armed terrain
-        // (see paintTerrainLine's doc) — the store warns + no-ops otherwise.
-        const alt = pointer.event instanceof MouseEvent && pointer.event.altKey;
-        this.dispatchTargetPaint('terrain', col, row, !alt, state.paintMode);
+        // Default paints the armed terrain's mask; erase (context-bar toggle OR held Alt) clears it
+        // (clears the mask cell + rebakes), mirroring the collision/zone modifier convention. Both
+        // directions require an armed terrain (see paintTerrainLine's doc) — the store warns/no-ops.
+        const erase = state.eraseActive || altDown;
+        this.dispatchTargetPaint('terrain', col, row, !erase, state.paintMode);
         break;
       }
       default:
@@ -1527,8 +1770,11 @@ export class EditorScene extends Phaser.Scene {
   ): void {
     const { col, row } = this.pointerTile(pointer);
     if (col < 0 || row < 0 || col >= map.meta.width || row >= map.meta.height) return;
-    const alt = pointer.event instanceof MouseEvent && pointer.event.altKey;
-    this.dispatchTargetPaint('shape', col, row, alt, paintMode);
+    // Default carves void (on=false); erase (context-bar toggle OR held Alt) restores to inside
+    // (on=true) — plan 027 step 2.
+    const store = useEditorStore.getState();
+    const restore = store.eraseActive || EditorScene.pointerAlt(pointer) || store.altHeld;
+    this.dispatchTargetPaint('shape', col, row, restore, paintMode);
   }
 
   /** Dispatches a collision/zone/shape tool press to the right gesture (step 8) — generalises the
@@ -1611,8 +1857,9 @@ export class EditorScene extends Phaser.Scene {
   private handleSelectPointerDown(pointer: Phaser.Input.Pointer, map: MapFile): void {
     const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
     const pickedId = this.pickObjectAt(map, world.x, world.y);
-    const shift = pointer.event instanceof MouseEvent && pointer.event.shiftKey;
     const store = useEditorStore.getState();
+    // Effective multi-select intent: sticky context-bar toggle OR a held Shift (plan 027 step 2).
+    const shift = store.multiSelectActive || store.shiftHeld;
 
     if (!pickedId) {
       if (!shift) store.setSelectedObjectIds([]);
@@ -1648,6 +1895,10 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private handlePointerMove(pointer: Phaser.Input.Pointer): void {
+    if (this.gesture) {
+      this.updateGesture();
+      return;
+    }
     if (this.panning) {
       const cam = this.cameras.main;
       cam.scrollX -= (pointer.x - this.panLast.x) / cam.zoom;
@@ -1735,12 +1986,45 @@ export class EditorScene extends Phaser.Scene {
     }
 
     this.updateHover(pointer);
+    // Keep the eyedropper cursor in step with the LIVE Alt state off this move's native event, so it
+    // shows/hides even if the store's `altHeld` tracking missed a keydown/keyup (blur/focus).
+    this.updateToolCursor(EditorScene.pointerAlt(pointer));
   }
 
   private handlePointerUp(pointer: Phaser.Input.Pointer): void {
+    const wasTouch = pointer.wasTouch;
+    if (wasTouch) this.touchIdsDown.delete(pointer.id);
+    if (this.gesture) {
+      // A finger lifted mid-gesture: if two are still down, re-seat the baseline so the remaining
+      // pair continues without a jump; otherwise the gesture ends. The still-down finger fires no new
+      // pointer-down, so no tool starts on gesture end (no accidental paint on release).
+      if (this.touchIdsDown.size >= 2) {
+        this.beginGesture();
+        return;
+      }
+      this.gesture = null;
+    } else {
+      this.dispatchToolPointerUp(pointer);
+    }
+    // Touch has no hover state once the finger lifts (no cursor sitting over a cell), so clear the
+    // hover outline + brush ghost that tracked the finger during the drag — otherwise they linger
+    // under an absent finger. Desktop keeps its hover: the mouse is still over the cell after a
+    // click, and this is gated to touch. Plan 027 step 4.
+    if (wasTouch) {
+      this.hoverTile = null;
+      this.hoverGfx?.clear();
+      this.refreshBrushGhost();
+    }
+  }
+
+  /** The tool-release dispatch (commit rect/portal/object drags, end strokes/pans). Split out of
+   *  `handlePointerUp` so the wrapper can run a touch-only hover/ghost clear afterwards regardless of
+   *  which release branch fired. Runs only for a single-pointer release (a two-finger gesture is
+   *  handled by the caller). */
+  private dispatchToolPointerUp(pointer: Phaser.Input.Pointer): void {
     if (this.panning) {
       this.panning = false;
-      this.setCursor(this.spaceDown ? 'grab' : 'default');
+      this.setCursor(this.spaceDown ? 'grab' : this.desiredIdleCursor());
       return;
     }
     if (this.activeStroke) {
@@ -1802,9 +2086,11 @@ export class EditorScene extends Phaser.Scene {
     const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
     const rawDx = world.x - drag.startWorld.x;
     const rawDy = world.y - drag.startWorld.y;
-    const alt = pointer.event instanceof MouseEvent && pointer.event.altKey;
     const state = useEditorStore.getState();
-    const snap = state.snapToTileCenter && !alt;
+    // Effective free-pixel intent: sticky context-bar toggle OR a held Alt (plan 027 step 2), Alt
+    // read off this release's native event so a desynced store `altHeld` can't drop it.
+    const freePixel = state.freePixelActive || EditorScene.pointerAlt(pointer) || state.altHeld;
+    const snap = state.snapToTileCenter && !freePixel;
     const dxPx = snap ? Math.round(rawDx / TILE_SIZE) * TILE_SIZE : rawDx;
     const dyPx = snap ? Math.round(rawDy / TILE_SIZE) * TILE_SIZE : rawDy;
     // Nodes/portals are always tile-snapped regardless of the snap toggle (see module doc).
@@ -1831,10 +2117,40 @@ export class EditorScene extends Phaser.Scene {
     }
     if (down) e.preventDefault(); // stop the page from scrolling while space-panning
     this.spaceDown = down;
-    if (!this.panning) this.setCursor(down ? 'grab' : 'default');
+    if (!this.panning) this.setCursor(down ? 'grab' : this.desiredIdleCursor());
   }
 
   private setCursor(cursor: string): void {
     if (this.game.canvas) this.game.canvas.style.cursor = cursor;
+  }
+
+  /** Whether Alt is held per a pointer's OWN native DOM event — the authoritative read at click time,
+   *  independent of the store's `altHeld` tracking (which a `window` blur can clear). `pointer.event`
+   *  is the native Mouse/Touch event; all carry an `altKey`. */
+  private static pointerAlt(pointer: Phaser.Input.Pointer): boolean {
+    const ev = pointer.event as { altKey?: boolean } | undefined;
+    return ev?.altKey === true;
+  }
+
+  /** The idle (non-drag) cursor for the active tool: the eyedropper pipette when the `eyedropper`
+   *  tool is active OR Alt is held over a tile-paint tool (brush/eraser/fill/rect); `default`
+   *  otherwise. `altOverride` lets a pointer-move pass the click's live native Alt state so the
+   *  cursor tracks the physical key even if the store's `altHeld` desynced. */
+  private desiredIdleCursor(altOverride?: boolean): string {
+    const { activeTool, altHeld } = useEditorStore.getState();
+    const alt = altOverride ?? altHeld;
+    const tilePaint =
+      activeTool === 'brush' ||
+      activeTool === 'eraser' ||
+      activeTool === 'fill' ||
+      activeTool === 'rect';
+    return activeTool === 'eyedropper' || (alt && tilePaint) ? EYEDROPPER_CURSOR : 'default';
+  }
+
+  /** Apply `desiredIdleCursor` — unless a pan/space-drag currently owns the cursor (grab/grabbing),
+   *  which takes priority and restores the idle cursor itself on release. */
+  private updateToolCursor(altOverride?: boolean): void {
+    if (this.panning || this.spaceDown) return;
+    this.setCursor(this.desiredIdleCursor(altOverride));
   }
 }

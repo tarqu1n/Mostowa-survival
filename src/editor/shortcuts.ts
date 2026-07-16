@@ -8,11 +8,15 @@
  * The shortcuts are actually handled in two places:
  *   - `EditorApp.tsx`   — the window `keydown` handler (undo/redo, delete, arrow-nudge).
  *   - `EditorScene.ts`  — the Phaser input wiring (wheel-zoom, pan, and the pointer-tool modifiers:
- *                          Alt = free-pixel, Shift-click = multi-select, drag = move; plus the
+ *                          Alt = free-pixel, Shift-click = multi-select, drag = move; the
  *                          Collision/Zone/Shape/Terrain tools' Alt = paint-the-complement-value
- *                          modifier).
+ *                          modifier; and the tile-paint tools' Alt = eyedropper-sample modifier).
  * Both sites carry a comment pointing back here. If the two ever drift, THIS file is the one that's
  * wrong — fix it to match the handlers.
+ *
+ * The 'Touch / compact shell' group documents the on-screen ContextBar equivalents shown only below
+ * the compact breakpoint (`ContextBar.tsx`, `hooks/useIsCompact.ts`) — no new bindings, just how the
+ * same actions above surface on a touch/coarse-pointer screen. Keep it in sync too.
  */
 
 export interface Shortcut {
@@ -62,6 +66,11 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
           'Rotate the tile the Brush paints +90° (a rotated tile is a distinct palette entry)',
       },
       { keys: ['Shift + R'], action: 'Rotate the painted tile −90°' },
+      {
+        keys: ['Alt + Click'],
+        action:
+          'Eyedropper — sample the tile (or object) under the cursor and arm it: with a tile-paint tool active (Brush/Eraser/Fill/Rect), picks the topmost object → the active layer’s tile → any visible tile. (No Alt key? Use the “Pick” toolbar tool — a plain click/tap does the same, works on touch.)',
+      },
     ],
   },
   {
@@ -112,6 +121,33 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ['Middle-drag'], action: 'Pan the viewport' },
       { keys: ['Space + Drag'], action: 'Pan the viewport' },
       { keys: ['Pan tool + Drag'], action: 'Pan the viewport' },
+    ],
+  },
+  {
+    // Compact/touch shell (plan 027). These aren't new bindings — every entry above still works
+    // exactly as listed; this group documents the on-screen equivalents that appear ONLY below the
+    // compact breakpoint (`useIsCompact`), where a mouse/keyboard may not be available.
+    title: 'Touch / compact shell',
+    shortcuts: [
+      {
+        keys: ['1 finger'],
+        action: 'Paint/place with the active tool — same as Click + Drag above',
+      },
+      {
+        keys: ['2 fingers'],
+        action:
+          'Map viewport: pan by midpoint + pinch-zoom (×1–4, snapped). World tab: pinch-zoom about the midpoint only (no two-finger pan there)',
+      },
+      {
+        keys: ['Context bar (bottom)'],
+        action:
+          'Per-tool on-screen bar mirroring the keyboard vocabulary: Undo/Redo always; brush rotate ∓90°; erase/invert toggle for Collision/Zone/Shape/Terrain (mirrors Alt + Drag); free-pixel toggle for Place/Select (mirrors Alt hold); multi-select toggle (mirrors Shift + Click) + Delete + 4-way nudge for Select; underlay toggle (mirrors U); skin-cycle (mirrors S) when one node is selected',
+      },
+      {
+        keys: ['Drag from tray'],
+        action:
+          'Placing a map onto the World grid stays desktop-only — the compact tray drawer is view-only on touch',
+      },
     ],
   },
 ];

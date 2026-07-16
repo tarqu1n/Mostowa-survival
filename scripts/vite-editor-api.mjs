@@ -444,17 +444,52 @@ async function runAutoCommit(root, labels) {
       return;
     }
     console.log('[editor autocommit] committed:', labels.join(', '));
-    if (AUTOCOMMIT_PUSH) {
-      const push = await git(['push', 'origin', 'HEAD']);
-      if (!push.ok) {
-        console.warn('[editor autocommit] push failed (saved locally, will retry next save):', push.stderr.trim());
-      } else {
-        console.log('[editor autocommit] pushed to origin');
-      }
-    }
+    if (AUTOCOMMIT_PUSH) await pushWithRebase(git, labels);
   } catch (err) {
     // e.g. git not on PATH (ENOENT). Never break the editor over a bookkeeping step.
     console.warn('[editor autocommit] skipped:', err && err.message ? err.message : String(err));
+  }
+}
+
+/** Push the just-made autosave commit, self-healing a diverged branch (option B):
+ *  1. `git push`. If it's a clean fast-forward, done.
+ *  2. If it's rejected *non-fast-forward* (the remote branch moved — another device/session/web
+ *     edit pushed), `git pull --rebase --autostash` to replay this commit on top of the remote,
+ *     then push again. This succeeds whenever the remote touched *different* files (the common case).
+ *  3. If the rebase hits a real content conflict on the same file, `git rebase --abort` to restore a
+ *     clean, committed state (nothing lost — the commit is still in local history) and log LOUDLY so
+ *     a human reconciles rather than an unattended process silently mis-merging map JSON.
+ *  A non-rejection push failure (e.g. transient network) is just logged; the next save retries. */
+async function pushWithRebase(git, labels) {
+  const push = await git(['push', 'origin', 'HEAD']);
+  if (push.ok) {
+    console.log('[editor autocommit] pushed to origin');
+    return;
+  }
+  const rejected = /non-fast-forward|fetch first|\[rejected\]|Updates were rejected/i.test(
+    push.stderr,
+  );
+  if (!rejected) {
+    console.warn('[editor autocommit] push failed (saved locally, will retry next save):', push.stderr.trim());
+    return;
+  }
+  // Diverged remote — replay our commit on top of it.
+  const branch = (await git(['rev-parse', '--abbrev-ref', 'HEAD'])).stdout.trim();
+  console.warn(`[editor autocommit] remote moved; rebasing autosave onto origin/${branch}…`);
+  const rebase = await git(['pull', '--rebase', '--autostash', 'origin', branch]);
+  if (!rebase.ok) {
+    await git(['rebase', '--abort']); // best-effort; harmless if no rebase is in progress
+    console.warn(
+      `[editor autocommit] ⚠ branch DIVERGED with a conflicting change on the same file — auto-rebase aborted. ` +
+        `Your save is committed locally (safe) but NOT pushed. Reconcile origin/${branch} (pull/rebase) before further saves can push.`,
+    );
+    return;
+  }
+  const push2 = await git(['push', 'origin', 'HEAD']);
+  if (push2.ok) {
+    console.log(`[editor autocommit] rebased onto origin/${branch} and pushed:`, labels.join(', '));
+  } else {
+    console.warn('[editor autocommit] push still failing after rebase (will retry next save):', push2.stderr.trim());
   }
 }
 

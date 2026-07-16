@@ -79,6 +79,18 @@ git proxy, not the TLS egress.
 Without auto-commit (e.g. `EDITOR_AUTOCOMMIT=0`), fall back to saying **"save"** to Claude at
 checkpoints, and ask for periodic **auto-checkpoints** on long sessions.
 
+### Conflicts (diverged branch)
+
+One writer per branch and every push is a clean fast-forward — no conflicts. If the branch is
+**also written elsewhere** (another session/device, or a GitHub web edit), a push can be rejected.
+The autosave push self-heals: on a non-fast-forward rejection it runs `git pull --rebase
+--autostash` to replay the save on top of the remote, then pushes again — which succeeds whenever
+the remote touched **different** files. If there's a **true content conflict on the same file**, it
+`git rebase --abort`s (restoring a clean, committed state — the save is safe in local history, just
+not pushed) and logs a loud `⚠ branch DIVERGED` warning so a human reconciles it, rather than an
+unattended process silently mis-merging map JSON. So: don't edit one branch from two places at once;
+if you see the divergence warning, reconcile the branch before further saves can push.
+
 ## Running the editor locally instead (no cloud, no Tailscale)
 
 If you're on your own machine on the same Wi-Fi as the phone, skip all of the above:

@@ -371,7 +371,7 @@ export class GameScene extends Phaser.Scene {
       allSites: () => this.buildManager.allSites(),
       siteById: (id) => this.buildManager.siteById(id),
       campfireById: (id) => this.campfireManager.campfireById(id),
-      nodeScale: (sprite, def) => this.resourceNodeManager.nodeScale(sprite, def),
+      nodeScale: (def, skin) => this.resourceNodeManager.nodeScale(def, skin),
     });
 
     // Gesture + camera controller (plan 013 Step 5) — constructed fresh each (re)start; wires its own

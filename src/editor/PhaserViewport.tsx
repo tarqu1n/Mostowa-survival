@@ -32,5 +32,7 @@ export function PhaserViewport() {
     };
   }, []);
 
-  return <div ref={hostRef} className="w-full h-full pixelated" />;
+  // `touch-none` (touch-action: none) on the host AND the canvas Phaser injects into it stops the
+  // browser hijacking pan/pinch/double-tap-zoom, so those gestures reach EditorScene (plan 027 step 3).
+  return <div ref={hostRef} className="w-full h-full pixelated touch-none [&_canvas]:touch-none" />;
 }

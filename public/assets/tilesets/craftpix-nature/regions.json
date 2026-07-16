@@ -1,0 +1,3925 @@
+{
+  "schemaVersion": 1,
+  "sheets": {
+    "Bushes/Autumn_bush1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_14_31_29",
+          "x": 16,
+          "y": 14,
+          "w": 31,
+          "h": 29
+        }
+      ]
+    },
+    "Bushes/Autumn_bush2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_3_24_22",
+          "x": 5,
+          "y": 3,
+          "w": 24,
+          "h": 22
+        }
+      ]
+    },
+    "Bushes/Autumn_bush3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_16_14",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 14
+        }
+      ]
+    },
+    "Bushes/Broken_tree1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_0_15_14",
+          "x": 1,
+          "y": 0,
+          "w": 15,
+          "h": 14
+        }
+      ]
+    },
+    "Bushes/Broken_tree2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_1_13_13",
+          "x": 2,
+          "y": 1,
+          "w": 13,
+          "h": 13
+        }
+      ]
+    },
+    "Bushes/Burned_tree1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_2_20_26",
+          "x": 7,
+          "y": 2,
+          "w": 20,
+          "h": 26
+        }
+      ]
+    },
+    "Bushes/Burned_tree2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_8_15_17",
+          "x": 9,
+          "y": 8,
+          "w": 15,
+          "h": 17
+        }
+      ]
+    },
+    "Bushes/Bush_blue_flowers1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_15_35_36",
+          "x": 15,
+          "y": 15,
+          "w": 35,
+          "h": 36
+        }
+      ]
+    },
+    "Bushes/Bush_blue_flowers2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_3_28_27",
+          "x": 2,
+          "y": 3,
+          "w": 28,
+          "h": 27
+        }
+      ]
+    },
+    "Bushes/Bush_blue_flowers3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_16_14",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 14
+        }
+      ]
+    },
+    "Bushes/Bush_orange_flowers1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "14_14_35_34",
+          "x": 14,
+          "y": 14,
+          "w": 35,
+          "h": 34
+        }
+      ]
+    },
+    "Bushes/Bush_orange_flowers2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_2_26_26",
+          "x": 3,
+          "y": 2,
+          "w": 26,
+          "h": 26
+        }
+      ]
+    },
+    "Bushes/Bush_orange_flowers3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_0_15_14",
+          "x": 1,
+          "y": 0,
+          "w": 15,
+          "h": 14
+        }
+      ]
+    },
+    "Bushes/Bush_pink_flowers1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "17_17_30_28",
+          "x": 17,
+          "y": 17,
+          "w": 30,
+          "h": 28
+        }
+      ]
+    },
+    "Bushes/Bush_pink_flowers2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_5_22_20",
+          "x": 5,
+          "y": 5,
+          "w": 22,
+          "h": 20
+        }
+      ]
+    },
+    "Bushes/Bush_pink_flowers3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_14_13",
+          "x": 1,
+          "y": 1,
+          "w": 14,
+          "h": 13
+        }
+      ]
+    },
+    "Bushes/Bush_red_flowers1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_14_39_37",
+          "x": 12,
+          "y": 14,
+          "w": 39,
+          "h": 37
+        }
+      ]
+    },
+    "Bushes/Bush_red_flowers2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_4_28_25",
+          "x": 3,
+          "y": 4,
+          "w": 28,
+          "h": 25
+        }
+      ]
+    },
+    "Bushes/Bush_red_flowers3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_16_14",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 14
+        }
+      ]
+    },
+    "Bushes/Bush_simple1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_0_27_28",
+          "x": 2,
+          "y": 0,
+          "w": 27,
+          "h": 28
+        }
+      ]
+    },
+    "Bushes/Bush_simple1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_5_20_20",
+          "x": 6,
+          "y": 5,
+          "w": 20,
+          "h": 20
+        }
+      ]
+    },
+    "Bushes/Bush_simple1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_1_12_12",
+          "x": 2,
+          "y": 1,
+          "w": 12,
+          "h": 12
+        }
+      ]
+    },
+    "Bushes/Bush_simple2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_0_29_30",
+          "x": 2,
+          "y": 0,
+          "w": 29,
+          "h": 30
+        }
+      ]
+    },
+    "Bushes/Bush_simple2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_5_21_22",
+          "x": 6,
+          "y": 5,
+          "w": 21,
+          "h": 22
+        }
+      ]
+    },
+    "Bushes/Bush_simple2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_0_14_14",
+          "x": 2,
+          "y": 0,
+          "w": 14,
+          "h": 14
+        }
+      ]
+    },
+    "Bushes/Cactus1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_1_29_27",
+          "x": 2,
+          "y": 1,
+          "w": 29,
+          "h": 27
+        }
+      ]
+    },
+    "Bushes/Cactus1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_4_21_21",
+          "x": 6,
+          "y": 4,
+          "w": 21,
+          "h": 21
+        }
+      ]
+    },
+    "Bushes/Cactus1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_14_12",
+          "x": 1,
+          "y": 1,
+          "w": 14,
+          "h": 12
+        }
+      ]
+    },
+    "Bushes/Cactus2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "17_18_31_31",
+          "x": 17,
+          "y": 18,
+          "w": 31,
+          "h": 31
+        }
+      ]
+    },
+    "Bushes/Cactus2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_3_26_25",
+          "x": 3,
+          "y": 3,
+          "w": 26,
+          "h": 25
+        }
+      ]
+    },
+    "Bushes/Cactus2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_14_14",
+          "x": 1,
+          "y": 1,
+          "w": 14,
+          "h": 14
+        }
+      ]
+    },
+    "Bushes/Fern1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_14_40_34",
+          "x": 12,
+          "y": 14,
+          "w": 40,
+          "h": 34
+        }
+      ]
+    },
+    "Bushes/Fern1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_3_22_23",
+          "x": 5,
+          "y": 3,
+          "w": 22,
+          "h": 23
+        }
+      ]
+    },
+    "Bushes/Fern1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_14_15",
+          "x": 0,
+          "y": 0,
+          "w": 14,
+          "h": 15
+        }
+      ]
+    },
+    "Bushes/Fern2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_15_36_32",
+          "x": 15,
+          "y": 15,
+          "w": 36,
+          "h": 32
+        }
+      ]
+    },
+    "Bushes/Fern2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_6_21_18",
+          "x": 5,
+          "y": 6,
+          "w": 21,
+          "h": 18
+        }
+      ]
+    },
+    "Bushes/Fern2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_0_12_13",
+          "x": 2,
+          "y": 0,
+          "w": 12,
+          "h": 13
+        }
+      ]
+    },
+    "Bushes/Snow_bush1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_16_32_30",
+          "x": 15,
+          "y": 16,
+          "w": 32,
+          "h": 30
+        }
+      ]
+    },
+    "Bushes/Snow_bush2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_6_23_19",
+          "x": 5,
+          "y": 6,
+          "w": 23,
+          "h": 19
+        }
+      ]
+    },
+    "Bushes/Snow_bush3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_0_15_14",
+          "x": 1,
+          "y": 0,
+          "w": 15,
+          "h": 14
+        }
+      ]
+    },
+    "Crystals/Black_crystal1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "13_9_37_49",
+          "x": 13,
+          "y": 9,
+          "w": 37,
+          "h": 49
+        }
+      ]
+    },
+    "Crystals/Black_crystal2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "18_13_29_38",
+          "x": 18,
+          "y": 13,
+          "w": 29,
+          "h": 38
+        }
+      ]
+    },
+    "Crystals/Black_crystal3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_2_18_26",
+          "x": 6,
+          "y": 2,
+          "w": 18,
+          "h": 26
+        }
+      ]
+    },
+    "Crystals/Black_crystal4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_0_10_14",
+          "x": 2,
+          "y": 0,
+          "w": 10,
+          "h": 14
+        }
+      ]
+    },
+    "Crystals/Blue_crystal1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_11_46_43",
+          "x": 9,
+          "y": 11,
+          "w": 46,
+          "h": 43
+        }
+      ]
+    },
+    "Crystals/Blue_crystal2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_17_33_30",
+          "x": 16,
+          "y": 17,
+          "w": 33,
+          "h": 30
+        }
+      ]
+    },
+    "Crystals/Blue_crystal3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_5_23_21",
+          "x": 4,
+          "y": 5,
+          "w": 23,
+          "h": 21
+        }
+      ]
+    },
+    "Crystals/Blue_crystal4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_13_12",
+          "x": 1,
+          "y": 1,
+          "w": 13,
+          "h": 12
+        }
+      ]
+    },
+    "Crystals/Dark_red_ crystal1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_6_46_48",
+          "x": 12,
+          "y": 6,
+          "w": 46,
+          "h": 48
+        }
+      ]
+    },
+    "Crystals/Dark_red_ crystal2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_13_37_35",
+          "x": 15,
+          "y": 13,
+          "w": 37,
+          "h": 35
+        }
+      ]
+    },
+    "Crystals/Dark_red_ crystal3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_5_26_24",
+          "x": 4,
+          "y": 5,
+          "w": 26,
+          "h": 24
+        }
+      ]
+    },
+    "Crystals/Dark_red_ crystal4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_1_12_13",
+          "x": 3,
+          "y": 1,
+          "w": 12,
+          "h": 13
+        }
+      ]
+    },
+    "Crystals/Green_crystal1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "14_12_37_40",
+          "x": 14,
+          "y": 12,
+          "w": 37,
+          "h": 40
+        }
+      ]
+    },
+    "Crystals/Green_crystal2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_16_30_31",
+          "x": 16,
+          "y": 16,
+          "w": 30,
+          "h": 31
+        }
+      ]
+    },
+    "Crystals/Green_crystal3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_8_17_19",
+          "x": 8,
+          "y": 8,
+          "w": 17,
+          "h": 19
+        }
+      ]
+    },
+    "Crystals/Green_crystal4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_2_11_12",
+          "x": 3,
+          "y": 2,
+          "w": 11,
+          "h": 12
+        }
+      ]
+    },
+    "Crystals/Pink_crystal1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_9_48_45",
+          "x": 8,
+          "y": 9,
+          "w": 48,
+          "h": 45
+        }
+      ]
+    },
+    "Crystals/Pink_crystal2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "13_15_38_37",
+          "x": 13,
+          "y": 15,
+          "w": 38,
+          "h": 37
+        }
+      ]
+    },
+    "Crystals/Pink_crystal3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_5_28_22",
+          "x": 1,
+          "y": 5,
+          "w": 28,
+          "h": 22
+        }
+      ]
+    },
+    "Crystals/Pink_crystal4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_0_12_14",
+          "x": 2,
+          "y": 0,
+          "w": 12,
+          "h": 14
+        }
+      ]
+    },
+    "Crystals/Red_crystal1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_8_40_48",
+          "x": 12,
+          "y": 8,
+          "w": 40,
+          "h": 48
+        }
+      ]
+    },
+    "Crystals/Red_crystal2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_13_33_39",
+          "x": 15,
+          "y": 13,
+          "w": 33,
+          "h": 39
+        }
+      ]
+    },
+    "Crystals/Red_crystal3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_3_21_27",
+          "x": 7,
+          "y": 3,
+          "w": 21,
+          "h": 27
+        }
+      ]
+    },
+    "Crystals/Red_crystal4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_13_14",
+          "x": 1,
+          "y": 1,
+          "w": 13,
+          "h": 14
+        }
+      ]
+    },
+    "Crystals/Violet_crystal1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_10_42_43",
+          "x": 12,
+          "y": 10,
+          "w": 42,
+          "h": 43
+        }
+      ]
+    },
+    "Crystals/Violet_crystal2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "13_12_38_37",
+          "x": 13,
+          "y": 12,
+          "w": 38,
+          "h": 37
+        }
+      ]
+    },
+    "Crystals/Violet_crystal3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_3_24_24",
+          "x": 4,
+          "y": 3,
+          "w": 24,
+          "h": 24
+        }
+      ]
+    },
+    "Crystals/Violet_crystal4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_0_10_14",
+          "x": 3,
+          "y": 0,
+          "w": 10,
+          "h": 14
+        }
+      ]
+    },
+    "Crystals/White_crystal1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_7_54_49",
+          "x": 5,
+          "y": 7,
+          "w": 54,
+          "h": 49
+        }
+      ]
+    },
+    "Crystals/White_crystal2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_14_39_34",
+          "x": 12,
+          "y": 14,
+          "w": 39,
+          "h": 34
+        }
+      ]
+    },
+    "Crystals/White_crystal3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_6_22_21",
+          "x": 6,
+          "y": 6,
+          "w": 22,
+          "h": 21
+        }
+      ]
+    },
+    "Crystals/White_crystal4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_2_12_11",
+          "x": 2,
+          "y": 2,
+          "w": 12,
+          "h": 11
+        }
+      ]
+    },
+    "Crystals/Yellow-green_crystal1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_7_49_47",
+          "x": 7,
+          "y": 7,
+          "w": 49,
+          "h": 47
+        }
+      ]
+    },
+    "Crystals/Yellow-green_crystal2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_12_40_37",
+          "x": 12,
+          "y": 12,
+          "w": 40,
+          "h": 37
+        }
+      ]
+    },
+    "Crystals/Yellow-green_crystal3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_2_27_27",
+          "x": 2,
+          "y": 2,
+          "w": 27,
+          "h": 27
+        }
+      ]
+    },
+    "Crystals/Yellow-green_crystal4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_0_13_14",
+          "x": 2,
+          "y": 0,
+          "w": 13,
+          "h": 14
+        }
+      ]
+    },
+    "Crystals/Yellow_crystal1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_1_48_57",
+          "x": 8,
+          "y": 1,
+          "w": 48,
+          "h": 57
+        }
+      ]
+    },
+    "Crystals/Yellow_crystal2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "17_11_34_39",
+          "x": 17,
+          "y": 11,
+          "w": 34,
+          "h": 39
+        }
+      ]
+    },
+    "Crystals/Yellow_crystal3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_0_23_29",
+          "x": 6,
+          "y": 0,
+          "w": 23,
+          "h": 29
+        }
+      ]
+    },
+    "Crystals/Yellow_crystal4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_0_10_14",
+          "x": 4,
+          "y": 0,
+          "w": 10,
+          "h": 14
+        }
+      ]
+    },
+    "Rocks/Rock1_1_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "10_2_46_58",
+          "x": 10,
+          "y": 2,
+          "w": 46,
+          "h": 58
+        }
+      ]
+    },
+    "Rocks/Rock1_2_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_9_31_43",
+          "x": 16,
+          "y": 9,
+          "w": 31,
+          "h": 43
+        }
+      ]
+    },
+    "Rocks/Rock1_3_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_0_26_31",
+          "x": 4,
+          "y": 0,
+          "w": 26,
+          "h": 31
+        }
+      ]
+    },
+    "Rocks/Rock1_4_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_5_16_22",
+          "x": 9,
+          "y": 5,
+          "w": 16,
+          "h": 22
+        }
+      ]
+    },
+    "Rocks/Rock1_5_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_0_13_15",
+          "x": 3,
+          "y": 0,
+          "w": 13,
+          "h": 15
+        }
+      ]
+    },
+    "Rocks/Rock2_1_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_2_53_55",
+          "x": 8,
+          "y": 2,
+          "w": 53,
+          "h": 55
+        }
+      ]
+    },
+    "Rocks/Rock2_2_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_10_43_42",
+          "x": 12,
+          "y": 10,
+          "w": 43,
+          "h": 42
+        }
+      ]
+    },
+    "Rocks/Rock2_3_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_0_28_30",
+          "x": 4,
+          "y": 0,
+          "w": 28,
+          "h": 30
+        }
+      ]
+    },
+    "Rocks/Rock2_4_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "10_6_15_20",
+          "x": 10,
+          "y": 6,
+          "w": 15,
+          "h": 20
+        }
+      ]
+    },
+    "Rocks/Rock2_5_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_0_10_13",
+          "x": 4,
+          "y": 0,
+          "w": 10,
+          "h": 13
+        }
+      ]
+    },
+    "Rocks/Rock3_1_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "10_2_50_58",
+          "x": 10,
+          "y": 2,
+          "w": 50,
+          "h": 58
+        }
+      ]
+    },
+    "Rocks/Rock3_2_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_8_44_46",
+          "x": 11,
+          "y": 8,
+          "w": 44,
+          "h": 46
+        }
+      ]
+    },
+    "Rocks/Rock3_3_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_0_29_30",
+          "x": 2,
+          "y": 0,
+          "w": 29,
+          "h": 30
+        }
+      ]
+    },
+    "Rocks/Rock3_4_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_3_20_22",
+          "x": 7,
+          "y": 3,
+          "w": 20,
+          "h": 22
+        }
+      ]
+    },
+    "Rocks/Rock3_5_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_0_12_15",
+          "x": 2,
+          "y": 0,
+          "w": 12,
+          "h": 15
+        }
+      ]
+    },
+    "Rocks/Rock4_1_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_6_52_50",
+          "x": 7,
+          "y": 6,
+          "w": 52,
+          "h": 50
+        }
+      ]
+    },
+    "Rocks/Rock4_2_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "13_12_42_38",
+          "x": 13,
+          "y": 12,
+          "w": 42,
+          "h": 38
+        }
+      ]
+    },
+    "Rocks/Rock4_3_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_0_30_30",
+          "x": 1,
+          "y": 0,
+          "w": 30,
+          "h": 30
+        }
+      ]
+    },
+    "Rocks/Rock4_4_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_2_22_22",
+          "x": 6,
+          "y": 2,
+          "w": 22,
+          "h": 22
+        }
+      ]
+    },
+    "Rocks/Rock4_5_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_0_15_14",
+          "x": 1,
+          "y": 0,
+          "w": 15,
+          "h": 14
+        }
+      ]
+    },
+    "Rocks/Rock5_1_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_0_53_62",
+          "x": 7,
+          "y": 0,
+          "w": 53,
+          "h": 62
+        }
+      ]
+    },
+    "Rocks/Rock5_2_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_5_39_52",
+          "x": 16,
+          "y": 5,
+          "w": 39,
+          "h": 52
+        }
+      ]
+    },
+    "Rocks/Rock5_3_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_0_28_31",
+          "x": 3,
+          "y": 0,
+          "w": 28,
+          "h": 31
+        }
+      ]
+    },
+    "Rocks/Rock5_4_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_2_20_25",
+          "x": 7,
+          "y": 2,
+          "w": 20,
+          "h": 25
+        }
+      ]
+    },
+    "Rocks/Rock5_5_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_0_13_15",
+          "x": 2,
+          "y": 0,
+          "w": 13,
+          "h": 15
+        }
+      ]
+    },
+    "Rocks/Rock6_1_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_4_53_54",
+          "x": 7,
+          "y": 4,
+          "w": 53,
+          "h": 54
+        }
+      ]
+    },
+    "Rocks/Rock6_2_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "14_8_41_42",
+          "x": 14,
+          "y": 8,
+          "w": 41,
+          "h": 42
+        }
+      ]
+    },
+    "Rocks/Rock6_3_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_0_30_31",
+          "x": 2,
+          "y": 0,
+          "w": 30,
+          "h": 31
+        }
+      ]
+    },
+    "Rocks/Rock6_4_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_3_22_25",
+          "x": 6,
+          "y": 3,
+          "w": 22,
+          "h": 25
+        }
+      ]
+    },
+    "Rocks/Rock6_5_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_0_12_14",
+          "x": 3,
+          "y": 0,
+          "w": 12,
+          "h": 14
+        }
+      ]
+    },
+    "Rocks/Rock7_1_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_3_52_52",
+          "x": 8,
+          "y": 3,
+          "w": 52,
+          "h": 52
+        }
+      ]
+    },
+    "Rocks/Rock7_2_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "13_8_38_41",
+          "x": 13,
+          "y": 8,
+          "w": 38,
+          "h": 41
+        }
+      ]
+    },
+    "Rocks/Rock7_3_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_2_24_24",
+          "x": 4,
+          "y": 2,
+          "w": 24,
+          "h": 24
+        }
+      ]
+    },
+    "Rocks/Rock7_4_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_8_13_16",
+          "x": 9,
+          "y": 8,
+          "w": 13,
+          "h": 16
+        }
+      ]
+    },
+    "Rocks/Rock7_5_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_1_9_9",
+          "x": 4,
+          "y": 1,
+          "w": 9,
+          "h": 9
+        }
+      ]
+    },
+    "Rocks/Rock8_1_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_3_61_56",
+          "x": 2,
+          "y": 3,
+          "w": 61,
+          "h": 56
+        }
+      ]
+    },
+    "Rocks/Rock8_2_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_6_49_48",
+          "x": 9,
+          "y": 6,
+          "w": 49,
+          "h": 48
+        }
+      ]
+    },
+    "Rocks/Rock8_3_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_30_28",
+          "x": 1,
+          "y": 1,
+          "w": 30,
+          "h": 28
+        }
+      ]
+    },
+    "Rocks/Rock8_4_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_30_29",
+          "x": 1,
+          "y": 1,
+          "w": 30,
+          "h": 29
+        }
+      ]
+    },
+    "Rocks/Rock8_5_no_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_0_14_14",
+          "x": 1,
+          "y": 0,
+          "w": 14,
+          "h": 14
+        }
+      ]
+    },
+    "RockyArea/Black_mushrooms1_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "10_7_44_50",
+          "x": 10,
+          "y": 7,
+          "w": 44,
+          "h": 50
+        }
+      ]
+    },
+    "RockyArea/Black_mushrooms2_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "17_15_30_34",
+          "x": 17,
+          "y": 15,
+          "w": 30,
+          "h": 34
+        }
+      ]
+    },
+    "RockyArea/Caury_pearl1_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_13_45_37",
+          "x": 9,
+          "y": 13,
+          "w": 45,
+          "h": 37
+        }
+      ]
+    },
+    "RockyArea/Caury_pearl2_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_32_31",
+          "x": 0,
+          "y": 0,
+          "w": 32,
+          "h": 31
+        }
+      ]
+    },
+    "RockyArea/Caury_white1_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "29_35_70_57",
+          "x": 29,
+          "y": 35,
+          "w": 70,
+          "h": 57
+        }
+      ]
+    },
+    "RockyArea/Caury_white2_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "13_15_38_33",
+          "x": 13,
+          "y": 15,
+          "w": 38,
+          "h": 33
+        }
+      ]
+    },
+    "RockyArea/Cave_entrance1_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "23_16_82_96",
+          "x": 23,
+          "y": 16,
+          "w": 82,
+          "h": 96
+        }
+      ]
+    },
+    "RockyArea/Cave_entrance2_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_3_42_57",
+          "x": 11,
+          "y": 3,
+          "w": 42,
+          "h": 57
+        }
+      ]
+    },
+    "RockyArea/Cave_entrance3_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_7_41_49",
+          "x": 11,
+          "y": 7,
+          "w": 41,
+          "h": 49
+        }
+      ]
+    },
+    "RockyArea/Dragon_bones_body_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "61_105_133_46",
+          "x": 61,
+          "y": 105,
+          "w": 133,
+          "h": 46
+        }
+      ]
+    },
+    "RockyArea/Dragon_bones_full_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "20_40_216_176",
+          "x": 20,
+          "y": 40,
+          "w": 216,
+          "h": 176
+        }
+      ]
+    },
+    "RockyArea/Dragon_bones_tail_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "26_31_75_65",
+          "x": 26,
+          "y": 31,
+          "w": 75,
+          "h": 65
+        }
+      ]
+    },
+    "RockyArea/Dragon_bones_wing1_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "57_105_142_46",
+          "x": 57,
+          "y": 105,
+          "w": 142,
+          "h": 46
+        }
+      ]
+    },
+    "RockyArea/Dragon_bones_wing2_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_14_121_99",
+          "x": 3,
+          "y": 14,
+          "w": 121,
+          "h": 99
+        }
+      ]
+    },
+    "RockyArea/Liana_bridges1_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "20_42_88_43",
+          "x": 20,
+          "y": 42,
+          "w": 88,
+          "h": 43
+        }
+      ]
+    },
+    "RockyArea/Liana_bridges2_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "22_41_83_46",
+          "x": 22,
+          "y": 41,
+          "w": 83,
+          "h": 46
+        }
+      ]
+    },
+    "RockyArea/Liana_bridges3_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_26_98_76",
+          "x": 15,
+          "y": 26,
+          "w": 98,
+          "h": 76
+        }
+      ]
+    },
+    "RockyArea/Liana_bridges4_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "31_36_65_55",
+          "x": 31,
+          "y": 36,
+          "w": 65,
+          "h": 55
+        }
+      ]
+    },
+    "RockyArea/Liana_bridges5_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "20_33_87_62",
+          "x": 20,
+          "y": 33,
+          "w": 87,
+          "h": 62
+        }
+      ]
+    },
+    "RockyArea/Liana_bridges6_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "30_36_67_56",
+          "x": 30,
+          "y": 36,
+          "w": 67,
+          "h": 56
+        }
+      ]
+    },
+    "RockyArea/Liana_bridges7_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_14_56_35",
+          "x": 4,
+          "y": 14,
+          "w": 56,
+          "h": 35
+        }
+      ]
+    },
+    "RockyArea/Orange_mushrooms1_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_1_27_29",
+          "x": 2,
+          "y": 1,
+          "w": 27,
+          "h": 29
+        }
+      ]
+    },
+    "RockyArea/Orange_mushrooms2_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_5_19_21",
+          "x": 6,
+          "y": 5,
+          "w": 19,
+          "h": 21
+        }
+      ]
+    },
+    "RockyArea/Oval_rock1_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "25_37_77_54",
+          "x": 25,
+          "y": 37,
+          "w": 77,
+          "h": 54
+        }
+      ]
+    },
+    "RockyArea/Oval_rock2_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_11_64_42",
+          "x": 0,
+          "y": 11,
+          "w": 64,
+          "h": 42
+        }
+      ]
+    },
+    "RockyArea/Oval_rock3_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_17_48_30",
+          "x": 8,
+          "y": 17,
+          "w": 48,
+          "h": 30
+        }
+      ]
+    },
+    "RockyArea/Oval_rock4_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_19_39_26",
+          "x": 12,
+          "y": 19,
+          "w": 39,
+          "h": 26
+        }
+      ]
+    },
+    "RockyArea/Oval_rock5_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_6_32_20",
+          "x": 0,
+          "y": 6,
+          "w": 32,
+          "h": 20
+        }
+      ]
+    },
+    "RockyArea/Rock_statue_deer_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_4_97_120",
+          "x": 15,
+          "y": 4,
+          "w": 97,
+          "h": 120
+        }
+      ]
+    },
+    "RockyArea/Rock_statue_fox_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_1_41_61",
+          "x": 11,
+          "y": 1,
+          "w": 41,
+          "h": 61
+        }
+      ]
+    },
+    "RockyArea/Rock_statue_head_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_11_45_42",
+          "x": 9,
+          "y": 11,
+          "w": 45,
+          "h": 42
+        }
+      ]
+    },
+    "RockyArea/Rock_statue_mother_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "88_59_80_137",
+          "x": 88,
+          "y": 59,
+          "w": 80,
+          "h": 137
+        }
+      ]
+    },
+    "RockyArea/Rock_statue_old_man_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "28_17_71_94",
+          "x": 28,
+          "y": 17,
+          "w": 71,
+          "h": 94
+        }
+      ]
+    },
+    "RockyArea/Stone_pyramid1_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_31_32",
+          "x": 0,
+          "y": 0,
+          "w": 31,
+          "h": 32
+        }
+      ]
+    },
+    "RockyArea/Stone_pyramid2_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_2_29_27",
+          "x": 1,
+          "y": 2,
+          "w": 29,
+          "h": 27
+        }
+      ]
+    },
+    "RockyArea/Stone_pyramid3_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_6_26_20",
+          "x": 3,
+          "y": 6,
+          "w": 26,
+          "h": 20
+        }
+      ]
+    },
+    "RockyArea/Yurt1_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "24_26_80_76",
+          "x": 24,
+          "y": 26,
+          "w": 80,
+          "h": 76
+        }
+      ]
+    },
+    "RockyArea/Yurt2_grass_shadow.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "26_20_75_87",
+          "x": 26,
+          "y": 20,
+          "w": 75,
+          "h": 87
+        }
+      ]
+    },
+    "Ruins/Blue-gray_ruins1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_2_95_111",
+          "x": 11,
+          "y": 2,
+          "w": 95,
+          "h": 111
+        },
+        {
+          "key": "7_66_7_8",
+          "x": 7,
+          "y": 66,
+          "w": 7,
+          "h": 8
+        },
+        {
+          "key": "21_103_11_17",
+          "x": 21,
+          "y": 103,
+          "w": 11,
+          "h": 17
+        },
+        {
+          "key": "74_106_13_12",
+          "x": 74,
+          "y": 106,
+          "w": 13,
+          "h": 12
+        }
+      ]
+    },
+    "Ruins/Blue-gray_ruins2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_1_69_77",
+          "x": 5,
+          "y": 1,
+          "w": 69,
+          "h": 77
+        },
+        {
+          "key": "14_65_7_10",
+          "x": 14,
+          "y": 65,
+          "w": 7,
+          "h": 10
+        }
+      ]
+    },
+    "Ruins/Blue-gray_ruins3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_1_42_60",
+          "x": 5,
+          "y": 1,
+          "w": 42,
+          "h": 60
+        }
+      ]
+    },
+    "Ruins/Blue-gray_ruins4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_0_42_45",
+          "x": 3,
+          "y": 0,
+          "w": 42,
+          "h": 45
+        }
+      ]
+    },
+    "Ruins/Blue-gray_ruins5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_0_26_29",
+          "x": 4,
+          "y": 0,
+          "w": 26,
+          "h": 29
+        }
+      ]
+    },
+    "Ruins/Brown-gray_ruins1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "37_7_49_39",
+          "x": 37,
+          "y": 7,
+          "w": 49,
+          "h": 39
+        },
+        {
+          "key": "11_19_99_84",
+          "x": 11,
+          "y": 19,
+          "w": 99,
+          "h": 84
+        },
+        {
+          "key": "90_27_8_6",
+          "x": 90,
+          "y": 27,
+          "w": 8,
+          "h": 6
+        },
+        {
+          "key": "60_43_19_12",
+          "x": 60,
+          "y": 43,
+          "w": 19,
+          "h": 12
+        }
+      ]
+    },
+    "Ruins/Brown-gray_ruins2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_3_73_68",
+          "x": 2,
+          "y": 3,
+          "w": 73,
+          "h": 68
+        },
+        {
+          "key": "11_39_15_12",
+          "x": 11,
+          "y": 39,
+          "w": 15,
+          "h": 12
+        },
+        {
+          "key": "27_49_12_10",
+          "x": 27,
+          "y": 49,
+          "w": 12,
+          "h": 10
+        },
+        {
+          "key": "17_58_9_7",
+          "x": 17,
+          "y": 58,
+          "w": 9,
+          "h": 7
+        }
+      ]
+    },
+    "Ruins/Brown-gray_ruins3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_8_54_48",
+          "x": 4,
+          "y": 8,
+          "w": 54,
+          "h": 48
+        }
+      ]
+    },
+    "Ruins/Brown-gray_ruins4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_1_40_42",
+          "x": 4,
+          "y": 1,
+          "w": 40,
+          "h": 42
+        }
+      ]
+    },
+    "Ruins/Brown-gray_ruins5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_8_25_18",
+          "x": 4,
+          "y": 8,
+          "w": 25,
+          "h": 18
+        }
+      ]
+    },
+    "Ruins/Brown_ruins1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_5_97_103",
+          "x": 3,
+          "y": 5,
+          "w": 97,
+          "h": 103
+        },
+        {
+          "key": "9_74_13_12",
+          "x": 9,
+          "y": 74,
+          "w": 13,
+          "h": 12
+        }
+      ]
+    },
+    "Ruins/Brown_ruins2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_5_54_68",
+          "x": 11,
+          "y": 5,
+          "w": 54,
+          "h": 68
+        },
+        {
+          "key": "18_62_12_11",
+          "x": 18,
+          "y": 62,
+          "w": 12,
+          "h": 11
+        }
+      ]
+    },
+    "Ruins/Brown_ruins3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_5_54_53",
+          "x": 4,
+          "y": 5,
+          "w": 54,
+          "h": 53
+        }
+      ]
+    },
+    "Ruins/Brown_ruins4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_5_38_41",
+          "x": 3,
+          "y": 5,
+          "w": 38,
+          "h": 41
+        }
+      ]
+    },
+    "Ruins/Brown_ruins5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_0_29_29",
+          "x": 2,
+          "y": 0,
+          "w": 29,
+          "h": 29
+        }
+      ]
+    },
+    "Ruins/Sand_ruins1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_7_82_81",
+          "x": 8,
+          "y": 7,
+          "w": 82,
+          "h": 81
+        }
+      ]
+    },
+    "Ruins/Sand_ruins2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_0_69_64",
+          "x": 3,
+          "y": 0,
+          "w": 69,
+          "h": 64
+        }
+      ]
+    },
+    "Ruins/Sand_ruins3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_3_53_57",
+          "x": 4,
+          "y": 3,
+          "w": 53,
+          "h": 57
+        }
+      ]
+    },
+    "Ruins/Sand_ruins4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_1_43_43",
+          "x": 3,
+          "y": 1,
+          "w": 43,
+          "h": 43
+        }
+      ]
+    },
+    "Ruins/Sand_ruins5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_2_26_28",
+          "x": 3,
+          "y": 2,
+          "w": 26,
+          "h": 28
+        }
+      ]
+    },
+    "Ruins/Snow_ruins1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_0_102_93",
+          "x": 4,
+          "y": 0,
+          "w": 102,
+          "h": 93
+        },
+        {
+          "key": "53_81_13_11",
+          "x": 53,
+          "y": 81,
+          "w": 13,
+          "h": 11
+        }
+      ]
+    },
+    "Ruins/Snow_ruins2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_5_63_64",
+          "x": 7,
+          "y": 5,
+          "w": 63,
+          "h": 64
+        },
+        {
+          "key": "66_51_7_7",
+          "x": 66,
+          "y": 51,
+          "w": 7,
+          "h": 7
+        }
+      ]
+    },
+    "Ruins/Snow_ruins3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_3_54_56",
+          "x": 4,
+          "y": 3,
+          "w": 54,
+          "h": 56
+        }
+      ]
+    },
+    "Ruins/Snow_ruins4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_0_40_43",
+          "x": 4,
+          "y": 0,
+          "w": 40,
+          "h": 43
+        }
+      ]
+    },
+    "Ruins/Snow_ruins5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_1_23_28",
+          "x": 4,
+          "y": 1,
+          "w": 23,
+          "h": 28
+        }
+      ]
+    },
+    "Ruins/Water_ruins1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_1_67_92",
+          "x": 9,
+          "y": 1,
+          "w": 67,
+          "h": 92
+        }
+      ]
+    },
+    "Ruins/Water_ruins2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "10_6_51_63",
+          "x": 10,
+          "y": 6,
+          "w": 51,
+          "h": 63
+        }
+      ]
+    },
+    "Ruins/Water_ruins3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "10_9_29_47",
+          "x": 10,
+          "y": 9,
+          "w": 29,
+          "h": 47
+        },
+        {
+          "key": "33_45_6_11",
+          "x": 33,
+          "y": 45,
+          "w": 6,
+          "h": 11
+        }
+      ]
+    },
+    "Ruins/Water_ruins4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_4_24_36",
+          "x": 11,
+          "y": 4,
+          "w": 24,
+          "h": 36
+        }
+      ]
+    },
+    "Ruins/Water_ruins5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_4_23_22",
+          "x": 3,
+          "y": 4,
+          "w": 23,
+          "h": 22
+        }
+      ]
+    },
+    "Ruins/White_ruins1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_0_79_93",
+          "x": 9,
+          "y": 0,
+          "w": 79,
+          "h": 93
+        },
+        {
+          "key": "14_78_12_15",
+          "x": 14,
+          "y": 78,
+          "w": 12,
+          "h": 15
+        }
+      ]
+    },
+    "Ruins/White_ruins2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_1_76_61",
+          "x": 2,
+          "y": 1,
+          "w": 76,
+          "h": 61
+        }
+      ]
+    },
+    "Ruins/White_ruins3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_3_53_53",
+          "x": 6,
+          "y": 3,
+          "w": 53,
+          "h": 53
+        }
+      ]
+    },
+    "Ruins/White_ruins4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_1_44_45",
+          "x": 2,
+          "y": 1,
+          "w": 44,
+          "h": 45
+        }
+      ]
+    },
+    "Ruins/White_ruins5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_3_27_20",
+          "x": 3,
+          "y": 3,
+          "w": 27,
+          "h": 20
+        }
+      ]
+    },
+    "Ruins/Yellow_ruins1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "10_2_101_107",
+          "x": 10,
+          "y": 2,
+          "w": 101,
+          "h": 107
+        }
+      ]
+    },
+    "Ruins/Yellow_ruins2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_2_72_72",
+          "x": 5,
+          "y": 2,
+          "w": 72,
+          "h": 72
+        }
+      ]
+    },
+    "Ruins/Yellow_ruins3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_0_57_61",
+          "x": 5,
+          "y": 0,
+          "w": 57,
+          "h": 61
+        }
+      ]
+    },
+    "Ruins/Yellow_ruins4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_0_42_44",
+          "x": 5,
+          "y": 0,
+          "w": 42,
+          "h": 44
+        }
+      ]
+    },
+    "Ruins/Yellow_ruins5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_0_30_31",
+          "x": 1,
+          "y": 0,
+          "w": 30,
+          "h": 31
+        }
+      ]
+    },
+    "Trees/Autumn_tree1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "29_25_70_74",
+          "x": 29,
+          "y": 25,
+          "w": 70,
+          "h": 74
+        }
+      ]
+    },
+    "Trees/Autumn_tree2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_0_60_62",
+          "x": 2,
+          "y": 0,
+          "w": 60,
+          "h": 62
+        }
+      ]
+    },
+    "Trees/Autumn_tree3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_9_39_42",
+          "x": 12,
+          "y": 9,
+          "w": 39,
+          "h": 42
+        }
+      ]
+    },
+    "Trees/Broken_tree1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_1_23_28",
+          "x": 5,
+          "y": 1,
+          "w": 23,
+          "h": 28
+        }
+      ]
+    },
+    "Trees/Broken_tree2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_3_24_25",
+          "x": 4,
+          "y": 3,
+          "w": 24,
+          "h": 25
+        }
+      ]
+    },
+    "Trees/Broken_tree3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_11_32_26",
+          "x": 8,
+          "y": 11,
+          "w": 32,
+          "h": 26
+        }
+      ]
+    },
+    "Trees/Broken_tree4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "17_22_34_20",
+          "x": 17,
+          "y": 22,
+          "w": 34,
+          "h": 20
+        }
+      ]
+    },
+    "Trees/Broken_tree5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_6_24_19",
+          "x": 3,
+          "y": 6,
+          "w": 24,
+          "h": 19
+        }
+      ]
+    },
+    "Trees/Broken_tree6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_14_12",
+          "x": 1,
+          "y": 1,
+          "w": 14,
+          "h": 12
+        }
+      ]
+    },
+    "Trees/Broken_tree7.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "26_44_77_35",
+          "x": 26,
+          "y": 44,
+          "w": 77,
+          "h": 35
+        }
+      ]
+    },
+    "Trees/Burned_tree1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "37_32_56_64",
+          "x": 37,
+          "y": 32,
+          "w": 56,
+          "h": 64
+        }
+      ]
+    },
+    "Trees/Burned_tree2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_0_49_60",
+          "x": 7,
+          "y": 0,
+          "w": 49,
+          "h": 60
+        }
+      ]
+    },
+    "Trees/Burned_tree3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "17_11_28_37",
+          "x": 17,
+          "y": 11,
+          "w": 28,
+          "h": 37
+        }
+      ]
+    },
+    "Trees/Christmas_tree1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "33_26_63_74",
+          "x": 33,
+          "y": 26,
+          "w": 63,
+          "h": 74
+        }
+      ]
+    },
+    "Trees/Christmas_tree2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_2_48_54",
+          "x": 8,
+          "y": 2,
+          "w": 48,
+          "h": 54
+        }
+      ]
+    },
+    "Trees/Christmas_tree3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_0_30_30",
+          "x": 1,
+          "y": 0,
+          "w": 30,
+          "h": 30
+        }
+      ]
+    },
+    "Trees/Flower_tree1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "35_26_58_71",
+          "x": 35,
+          "y": 26,
+          "w": 58,
+          "h": 71
+        }
+      ]
+    },
+    "Trees/Flower_tree2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_1_47_58",
+          "x": 9,
+          "y": 1,
+          "w": 47,
+          "h": 58
+        }
+      ]
+    },
+    "Trees/Flower_tree3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "19_14_27_33",
+          "x": 19,
+          "y": 14,
+          "w": 27,
+          "h": 33
+        }
+      ]
+    },
+    "Trees/Fruit_tree1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "33_29_61_69",
+          "x": 33,
+          "y": 29,
+          "w": 61,
+          "h": 69
+        }
+      ]
+    },
+    "Trees/Fruit_tree2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "39_31_49_62",
+          "x": 39,
+          "y": 31,
+          "w": 49,
+          "h": 62
+        }
+      ]
+    },
+    "Trees/Fruit_tree3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "17_13_30_35",
+          "x": 17,
+          "y": 13,
+          "w": 30,
+          "h": 35
+        }
+      ]
+    },
+    "Trees/Moss_tree1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "33_26_61_71",
+          "x": 33,
+          "y": 26,
+          "w": 61,
+          "h": 71
+        }
+      ]
+    },
+    "Trees/Moss_tree2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_2_48_58",
+          "x": 8,
+          "y": 2,
+          "w": 48,
+          "h": 58
+        }
+      ]
+    },
+    "Trees/Moss_tree3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "14_10_38_40",
+          "x": 14,
+          "y": 10,
+          "w": 38,
+          "h": 40
+        }
+      ]
+    },
+    "Trees/Palm_tree1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "33_28_62_69",
+          "x": 33,
+          "y": 28,
+          "w": 62,
+          "h": 69
+        }
+      ]
+    },
+    "Trees/Palm_tree1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_2_50_58",
+          "x": 6,
+          "y": 2,
+          "w": 50,
+          "h": 58
+        }
+      ]
+    },
+    "Trees/Palm_tree1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "17_14_31_34",
+          "x": 17,
+          "y": 14,
+          "w": 31,
+          "h": 34
+        }
+      ]
+    },
+    "Trees/Palm_tree2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "33_29_63_68",
+          "x": 33,
+          "y": 29,
+          "w": 63,
+          "h": 68
+        }
+      ]
+    },
+    "Trees/Palm_tree2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_4_53_54",
+          "x": 4,
+          "y": 4,
+          "w": 53,
+          "h": 54
+        }
+      ]
+    },
+    "Trees/Palm_tree2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_14_33_32",
+          "x": 16,
+          "y": 14,
+          "w": 33,
+          "h": 32
+        }
+      ]
+    },
+    "Trees/Snow_christmass_tree1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "32_25_63_74",
+          "x": 32,
+          "y": 25,
+          "w": 63,
+          "h": 74
+        }
+      ]
+    },
+    "Trees/Snow_christmass_tree2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_2_49_55",
+          "x": 8,
+          "y": 2,
+          "w": 49,
+          "h": 55
+        }
+      ]
+    },
+    "Trees/Snow_christmass_tree3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_30_30",
+          "x": 0,
+          "y": 0,
+          "w": 30,
+          "h": 30
+        }
+      ]
+    },
+    "Trees/Snow_tree1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "30_26_66_71",
+          "x": 30,
+          "y": 26,
+          "w": 66,
+          "h": 71
+        }
+      ]
+    },
+    "Trees/Snow_tree2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_0_54_61",
+          "x": 5,
+          "y": 0,
+          "w": 54,
+          "h": 61
+        }
+      ]
+    },
+    "Trees/Snow_tree3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_12_33_39",
+          "x": 15,
+          "y": 12,
+          "w": 33,
+          "h": 39
+        }
+      ]
+    },
+    "Trees/Tree1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "33_25_62_74",
+          "x": 33,
+          "y": 25,
+          "w": 62,
+          "h": 74
+        }
+      ]
+    },
+    "Trees/Tree2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_0_53_62",
+          "x": 3,
+          "y": 0,
+          "w": 53,
+          "h": 62
+        }
+      ]
+    },
+    "Trees/Tree3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "13_8_39_43",
+          "x": 13,
+          "y": 8,
+          "w": 39,
+          "h": 43
+        }
+      ]
+    }
+  }
+}

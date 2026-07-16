@@ -7,12 +7,13 @@ import {
   type MapFile,
   type NodeObject,
 } from '../../../systems/mapFormat';
-import nodesJson from '../../../data/maps/nodes.json';
-import type { AuthoredNodeDef, NodeDefsFile } from '../../../systems/nodeDefs';
+import type { AuthoredNodeDef } from '../../../systems/nodeDefs';
+import { NODE_DEFS_SEED } from './fixtures/nodeDefsSeed';
 
-/** Committed seed defs (tree/rock/berryBush, each single-skin) — deep-cloned per test so a mutation
- *  of the singleton `nodeDefs` registry can't bleed across tests. */
-const SEED_NODE_DEFS = (nodesJson as NodeDefsFile).defs;
+/** Frozen single-skin seed defs (tree/rock/berryBush) — deep-cloned per test so a mutation of the
+ *  singleton `nodeDefs` registry can't bleed across tests. A dedicated fixture (not the live
+ *  `nodes.json`) keeps the roll/cycle/skin-count assertions immune to real content edits. */
+const SEED_NODE_DEFS = NODE_DEFS_SEED;
 
 const DECOR_ASSET = 'pixel-crawler/Environment/Props/Static/Rocks.png#5';
 const ATLAS_ASSET = 'pixel-crawler/Environment/Props/Static/Furniture.png';
@@ -64,6 +65,29 @@ describe('editorStore objects: placement', () => {
     const map = useEditorStore.getState().map!;
     expect(map.objects.map((o) => o.id)).toEqual(['node_0001', 'node_0002']);
     expect(useEditorStore.getState().selectedObjectIds).toEqual(['node_0002']);
+  });
+
+  it('placeDecor stamps the sticky placeRotation angle', () => {
+    useEditorStore.getState().setPlaceRotation(45);
+    useEditorStore.getState().placeDecor(DECOR_ASSET, 40, 56);
+    const obj = useEditorStore.getState().map!.objects[0] as DecorObject;
+    expect(obj.rotation).toBe(45);
+    useEditorStore.getState().setPlaceRotation(0); // restore sticky default for later tests
+  });
+
+  it('placeNode stamps placeRotation, omitting it when 0 (byte-identical legacy placement)', () => {
+    // Angle 0 (the default): no rotation key.
+    useEditorStore.getState().placeNode('tree', 2, 3);
+    const upright = useEditorStore.getState().map!.objects[0] as NodeObject;
+    expect(upright.rotation).toBeUndefined();
+    expect('rotation' in upright).toBe(false);
+
+    // A non-zero sticky angle is stamped onto the next placement.
+    useEditorStore.getState().setPlaceRotation(90);
+    useEditorStore.getState().placeNode('rock', 4, 4);
+    const spun = useEditorStore.getState().map!.objects[1] as NodeObject;
+    expect(spun.rotation).toBe(90);
+    useEditorStore.getState().setPlaceRotation(0);
   });
 
   it('placeNode refuses when the target cell is void', () => {
@@ -278,6 +302,22 @@ describe('editorStore objects: updateDecor/updateNode/updatePortal', () => {
     expect(map.objects[0]).toMatchObject({ col: 3, row: 3 });
     useEditorStore.getState().undo();
     expect(map.objects[0]).toMatchObject({ col: 1, row: 1 });
+  });
+
+  it('updateNode sets rotation undoably; a zero angle drops the key', () => {
+    useEditorStore.getState().placeNode('tree', 1, 1);
+    const map = useEditorStore.getState().map!;
+    const id = map.objects[0].id;
+    expect(useEditorStore.getState().updateNode(id, { rotation: 30 })).toBe(true);
+    expect((map.objects[0] as NodeObject).rotation).toBe(30);
+
+    // Setting it back to 0 removes the key rather than persisting `rotation: 0`.
+    expect(useEditorStore.getState().updateNode(id, { rotation: 0 })).toBe(true);
+    expect((map.objects[0] as NodeObject).rotation).toBeUndefined();
+
+    // Undo restores the 30° state (not just col/row — the whole patched key set is snapshotted).
+    useEditorStore.getState().undo();
+    expect((map.objects[0] as NodeObject).rotation).toBe(30);
   });
 
   it('updatePortal patches name/facing freely and validates rect changes', () => {

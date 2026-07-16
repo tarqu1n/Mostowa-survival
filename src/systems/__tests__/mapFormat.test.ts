@@ -310,6 +310,44 @@ describe('parseMap', () => {
     });
   });
 
+  /** Node rotation (arbitrary-angle placement) — `node_0001` (objects index 0) is the fixture node. */
+  describe('node rotation', () => {
+    function nodeAt(map: MapFile, id: string) {
+      const obj = map.objects.find((o) => o.id === id);
+      if (!obj || obj.kind !== 'node') throw new Error(`expected a node object "${id}"`);
+      return obj;
+    }
+
+    it('round-trips a node WITH rotation', () => {
+      const raw = withRaw((r) => {
+        r.objects[0].rotation = 37;
+      });
+      const map = parseMap(raw);
+      expect(nodeAt(map, 'node_0001').rotation).toBe(37);
+      const reparsed = parseMap(JSON.parse(serializeMap(map)));
+      expect(reparsed).toEqual(map);
+    });
+
+    it('round-trips a node WITHOUT rotation, serializing without the key', () => {
+      const map = parseMap(validRaw()); // the base fixture node never sets rotation
+      expect(nodeAt(map, 'node_0001').rotation).toBeUndefined();
+      const json = serializeMap(map);
+      const parsedJson = JSON.parse(json) as { objects: Array<Record<string, unknown>> };
+      expect(Object.prototype.hasOwnProperty.call(parsedJson.objects[0], 'rotation')).toBe(false);
+      const reparsed = parseMap(JSON.parse(json));
+      expect(reparsed).toEqual(map);
+    });
+
+    it('drops a zero rotation on parse (0 = upright default, omitted like the absent case)', () => {
+      const raw = withRaw((r) => {
+        r.objects[0].rotation = 0;
+      });
+      const node = nodeAt(parseMap(raw), 'node_0001');
+      expect(node.rotation).toBeUndefined();
+      expect('rotation' in node).toBe(false);
+    });
+  });
+
   /** `decor_0002` (index 2 of the fixture's objects) has no `collision` — a convenient bare decor
    *  to hang `region`/`anim` mutations off without disturbing the other invariant tests. */
   describe('decor region/anim (plan 014 step 7a)', () => {

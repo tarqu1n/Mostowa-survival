@@ -1,6 +1,8 @@
 import { SHORTCUT_GROUPS } from './shortcuts';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { useIsCompact } from './hooks/useIsCompact';
+import { cn } from './lib/utils';
 
 /**
  * Keyboard + mouse shortcuts reference (opened from the toolbar's "⌨ Keys" button). Pure lookup — it
@@ -15,6 +17,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
  * to the existing `onClose` prop so the toolbar's contract is unchanged.
  */
 export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
+  const isCompact = useIsCompact();
   return (
     <Dialog
       open
@@ -22,7 +25,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
         if (!open) onClose();
       }}
     >
-      <DialogContent className="bg-popover text-popover-foreground sm:max-w-[560px]">
+      <DialogContent className="bg-popover text-popover-foreground max-h-[90dvh] overflow-y-auto sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>Shortcuts</DialogTitle>
         </DialogHeader>
@@ -36,7 +39,10 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
                 {group.shortcuts.map((sc) => (
                   <div
                     key={sc.action}
-                    className="grid grid-cols-[190px_1fr] items-baseline gap-2.5 py-[3px] text-[0.85rem]"
+                    className={cn(
+                      'grid grid-cols-[190px_1fr] items-baseline gap-2.5 py-[3px] text-[0.85rem]',
+                      isCompact && 'grid-cols-[128px_1fr] gap-2 py-1.5',
+                    )}
                   >
                     <dt className="m-0">
                       {sc.keys.map((k, i) => (
@@ -56,7 +62,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
           ))}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" className={cn(isCompact && 'h-11')} onClick={onClose}>
             Close
           </Button>
         </DialogFooter>

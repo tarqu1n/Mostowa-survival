@@ -266,6 +266,11 @@ export interface EditorState {
    *  this flag. Nodes/portals are always tile-snapped (col/row addressed) — this flag only affects
    *  decor. */
   snapToTileCenter: boolean;
+  /** Clockwise rotation (deg, arbitrary angle) stamped onto the next decor/node placed with the `place`
+   *  tool — set by the placement rotation wheel (Toolbar/ContextBar). STICKY across arming a new
+   *  asset/node (place a whole row at the same angle without re-setting it). Applies to decor AND nodes
+   *  (both carry a `rotation` field); portals have no rotation and ignore it. Normalised to `[0,360)`. */
+  placeRotation: number;
   /** A tile rect just drawn with the Portal tool, awaiting the name/facing dialog (`PortalDialog`).
    *  Set on pointer-up of a valid (non-void) portal drag; cleared on dialog confirm/cancel. */
   pendingPortalRect: PortalRect | null;
@@ -352,6 +357,9 @@ export interface EditorState {
   setArmedObjectAsset(armed: ArmedObjectAsset | null): void;
   setArmedNodeRef(ref: string | null): void;
   setSnapToTileCenter(enabled: boolean): void;
+  /** Set the sticky placement rotation (deg) applied to the next placed decor/node. Any real number is
+   *  accepted and normalised to `[0,360)`. */
+  setPlaceRotation(deg: number): void;
   setPendingPortalRect(rect: PortalRect | null): void;
   setSelectedObjectIds(ids: string[]): void;
   setPaintMode(mode: PaintMode): void;
@@ -685,9 +693,13 @@ export interface EditorState {
    *  void); patches to purely cosmetic fields (scale/rotation/flip/depth) always apply. One undoable
    *  command per call. */
   updateDecor(id: string, patch: Partial<Omit<DecorObject, 'id' | 'kind' | 'asset'>>): boolean;
-  /** Patches a `node` object's `col`/`row`/`skin` (Inspector fields); footprint-validated. A `skin`
-   *  patch overrides the placement-rolled skin (plan 021 step 9). */
-  updateNode(id: string, patch: Partial<Pick<NodeObject, 'col' | 'row' | 'skin'>>): boolean;
+  /** Patches a `node` object's `col`/`row`/`skin`/`rotation` (Inspector fields); footprint-validated. A
+   *  `skin` patch overrides the placement-rolled skin (plan 021 step 9); a `rotation` patch spins the
+   *  placed sprite (arbitrary degrees, like decor). */
+  updateNode(
+    id: string,
+    patch: Partial<Pick<NodeObject, 'col' | 'row' | 'skin' | 'rotation'>>,
+  ): boolean;
   /** Advances the selected node's `skin` to the next one in its def's `skins` list (wraps), acting on
    *  the placement-rolled/overridden skin. Drives the cycle-skin shortcut (plan 021 step 9). No-op
    *  (returns false) if the node's def has 0/1 skins. One undoable command per call (via `updateNode`). */
@@ -1020,7 +1032,7 @@ function defaultAuthoredNodeDef(id: string): AuthoredNodeDef {
     blocksPath: true,
     color: 0xffffff,
     stumpColor: 0x808080,
-    tilesTall: 1,
+    scale: 1,
     originX: 0.5,
     originY: 1,
     skins: [{ id: 'default', asset: PLACEHOLDER_SKIN_ASSET, weight: 1 }],
@@ -1131,6 +1143,7 @@ export const useEditorStore = create<EditorState>()(
     armedObjectAsset: null,
     armedNodeRef: null,
     snapToTileCenter: true,
+    placeRotation: 0,
     pendingPortalRect: null,
     selectedObjectIds: [],
     paintMode: 'brush',
@@ -1264,6 +1277,8 @@ export const useEditorStore = create<EditorState>()(
         armedObjectAsset: armedNodeRef ? null : s.armedObjectAsset,
       })),
     setSnapToTileCenter: (snapToTileCenter) => set({ snapToTileCenter }),
+    setPlaceRotation: (deg) =>
+      set({ placeRotation: Number.isFinite(deg) ? ((deg % 360) + 360) % 360 : 0 }),
     setPendingPortalRect: (pendingPortalRect) => set({ pendingPortalRect }),
     setSelectedObjectIds: (selectedObjectIds) => set({ selectedObjectIds }),
     setPaintMode: (paintMode) => set({ paintMode }),
@@ -2625,7 +2640,7 @@ export const useEditorStore = create<EditorState>()(
         y,
         scaleX: 1,
         scaleY: 1,
-        rotation: 0,
+        rotation: get().placeRotation, // sticky placement-wheel angle (deg); 0 = upright default
         flipX: false,
         flipY: false,
         depth: 0,
@@ -2659,6 +2674,9 @@ export const useEditorStore = create<EditorState>()(
       const def = get().nodeDefsParsed[ref];
       const rolled = def && def.skins.length > 0 ? pickWeighted(def.skins).id : undefined;
       const skin = rolled !== undefined && def && rolled !== def.skins[0].id ? rolled : undefined;
+      // Stamp the sticky placement-wheel angle, omitted when 0 so an upright node stays byte-identical
+      // to a legacy (rotation-less) placement — mirrors `skin`'s omitted-when-default treatment.
+      const rotation = get().placeRotation;
       const obj: NodeObject = {
         id,
         kind: 'node',
@@ -2666,6 +2684,7 @@ export const useEditorStore = create<EditorState>()(
         col,
         row,
         ...(skin !== undefined ? { skin } : {}),
+        ...(rotation ? { rotation } : {}),
       };
       if (!footprintIsValid(map, obj)) return false;
       const cmd: Command = {
@@ -2887,15 +2906,20 @@ export const useEditorStore = create<EditorState>()(
       const obj = map.objects.find((o) => o.id === id && o.kind === 'node') as
         NodeObject | undefined;
       if (!obj) return false;
-      const candidate: NodeObject = { ...obj, ...patch };
+      // rotation is optional: a zero angle is stored as `undefined` (key dropped by JSON.stringify) so
+      // an unrotated node round-trips byte-identical, matching how `skin`/placement omit their defaults.
+      const norm: Partial<NodeObject> = { ...patch };
+      if ('rotation' in norm && !norm.rotation) norm.rotation = undefined;
+      const candidate: NodeObject = { ...obj, ...norm };
       if (!footprintIsValid(map, candidate)) return false;
-      const prev: Partial<Pick<NodeObject, 'col' | 'row' | 'skin'>> = {
-        col: obj.col,
-        row: obj.row,
-        skin: obj.skin,
-      };
+      // Snapshot exactly the keys being patched (mirrors `updateDecor`) so undo restores rotation/skin
+      // too, not just col/row.
+      const prev: Partial<NodeObject> = {};
+      for (const key of Object.keys(norm) as Array<keyof NodeObject>) {
+        (prev as Record<string, unknown>)[key] = obj[key];
+      }
       const cmd: Command = {
-        do: () => Object.assign(obj, patch),
+        do: () => Object.assign(obj, norm),
         undo: () => Object.assign(obj, prev),
       };
       get().applyCommand(cmd);

@@ -1,0 +1,16 @@
+Zelda-like Tilesets and Sprites
+Author: ArMM1998
+Source: https://opengameart.org/content/zelda-like-tilesets-and-sprites
+Licence: CC0 1.0 Universal (Public Domain Dedication)
+         https://creativecommons.org/publicdomain/zero/1.0/
+
+CC0: no rights reserved. Free to use, modify, and redistribute for any purpose,
+including commercially, with no attribution required. Crediting the author is
+appreciated but not obligatory.
+
+NOTE: licence recorded from the OpenGameArt listing. Re-confirm the exact licence
+text on the source page above before shipping a public build.
+
+Ingested files (non-game assets from the original gfx.zip were dropped):
+  - font.png  (bitmap font, not game art)
+  - log.png   (changelog image, not game art)

@@ -2525,7 +2525,8 @@
       "ref": "tree",
       "col": 108,
       "row": 140,
-      "skin": "skin_3"
+      "skin": "skin_3",
+      "rotation": 348.9954236574042
     },
     {
       "id": "node_0004",
@@ -2533,7 +2534,21 @@
       "ref": "tree",
       "col": 108,
       "row": 141,
-      "skin": "skin_4"
+      "skin": "skin_4",
+      "rotation": 338.5963813989207
+    },
+    {
+      "id": "decor_0022",
+      "kind": "decor",
+      "asset": "craftpix-nature/Trees/Broken_tree5.png",
+      "x": 1848,
+      "y": 2424,
+      "scaleX": 1,
+      "scaleY": 1,
+      "rotation": 0,
+      "flipX": false,
+      "flipY": false,
+      "depth": 0
     }
   ]
 }

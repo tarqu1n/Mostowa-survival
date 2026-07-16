@@ -28,8 +28,9 @@ export interface TaskGlowRendererDeps {
   /** Look up a built campfire by id (undefined once gone) — for the queued-refuel outline. */
   campfireById(id: string): CampfireUnit | undefined;
   /** Base display scale for a node's sprite (see GameScene.nodeScale) — the glow halo's radius is
-   *  converted to source texels through this, so it reads the same regardless of source resolution. */
-  nodeScale(sprite: Phaser.GameObjects.Image, def: ResourceNodeDef): number;
+   *  converted to source texels through this, so it reads the same regardless of source resolution.
+   *  Pass the instance's skin so a per-skin `scale` override sizes the halo correctly. */
+  nodeScale(def: ResourceNodeDef, skin?: { scale?: number }): number;
 }
 
 /**
@@ -99,8 +100,9 @@ export class TaskGlowRenderer {
    * per-frame OutlineFX PostFX — no shader runs in the frame loop.
    */
   addTreeGlow(tree: TreeNode, pulse: boolean): void {
+    const skin = tree.def.skins.find((s) => s.id === tree.skin);
     const radius = Phaser.Math.Clamp(
-      Math.round(GLOW_SCREEN_PX / this.deps.nodeScale(tree.sprite, tree.def)),
+      Math.round(GLOW_SCREEN_PX / this.deps.nodeScale(tree.def, skin)),
       2,
       16,
     );

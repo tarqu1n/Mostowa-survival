@@ -1,4 +1,53 @@
 {
   "schemaVersion": 1,
-  "sheets": {}
+  "sheets": {
+    "Environment/Props/Static/log_pile.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_28_21",
+          "x": 0,
+          "y": 0,
+          "w": 28,
+          "h": 21
+        }
+      ]
+    },
+    "Environment/Props/Static/log_pile_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_1_16_29",
+          "x": 0,
+          "y": 1,
+          "w": 16,
+          "h": 29
+        }
+      ]
+    },
+    "Environment/Props/Static/log_pile_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_1_16_30",
+          "x": 0,
+          "y": 1,
+          "w": 16,
+          "h": 30
+        }
+      ]
+    }
+  }
 }

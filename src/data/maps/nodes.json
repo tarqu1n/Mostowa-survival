@@ -11,7 +11,6 @@
       "blocksPath": true,
       "color": 3104052,
       "stumpColor": 5914408,
-      "tilesTall": 5,
       "originX": 0.5,
       "originY": 0.92,
       "standOffsets": [
@@ -24,7 +23,108 @@
       "skins": [
         {
           "id": "default",
-          "asset": "pixel-crawler/_derived/tree_pine.png"
+          "asset": "pixel-crawler/_derived/tree_pine.png",
+          "weight": 3
+        },
+        {
+          "id": "skin",
+          "asset": "pixel-crawler/Environment/Props/Static/Trees/Model_02/Size_05.png",
+          "weight": 3,
+          "region": {
+            "x": 1,
+            "y": 3,
+            "w": 92,
+            "h": 157
+          },
+          "depleted": {
+            "asset": "pixel-crawler/Environment/Props/Static/Trees/Model_02/Size_05.png",
+            "region": {
+              "x": 229,
+              "y": 304,
+              "w": 19,
+              "h": 16
+            }
+          }
+        },
+        {
+          "id": "skin_2",
+          "asset": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_02.png",
+          "weight": 3,
+          "region": {
+            "x": 0,
+            "y": 5,
+            "w": 30,
+            "h": 75
+          },
+          "depleted": {
+            "asset": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_02.png",
+            "region": {
+              "x": 52,
+              "y": 55,
+              "w": 9,
+              "h": 9
+            }
+          }
+        },
+        {
+          "id": "skin_3",
+          "asset": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_02.png",
+          "weight": 3,
+          "region": {
+            "x": 64,
+            "y": 5,
+            "w": 30,
+            "h": 75
+          },
+          "depleted": {
+            "asset": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_02.png",
+            "region": {
+              "x": 116,
+              "y": 55,
+              "w": 9,
+              "h": 9
+            }
+          }
+        },
+        {
+          "id": "skin_4",
+          "asset": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_02.png",
+          "weight": 1,
+          "region": {
+            "x": 32,
+            "y": 48,
+            "w": 16,
+            "h": 32
+          },
+          "depleted": {
+            "asset": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_02.png",
+            "region": {
+              "x": 52,
+              "y": 55,
+              "w": 9,
+              "h": 9
+            }
+          }
+        },
+        {
+          "id": "skin_5",
+          "asset": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_02.png",
+          "weight": 1,
+          "region": {
+            "x": 96,
+            "y": 48,
+            "w": 16,
+            "h": 32
+          },
+          "depleted": {
+            "asset": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_02.png",
+            "region": {
+              "x": 116,
+              "y": 55,
+              "w": 9,
+              "h": 9
+            }
+          }
         }
       ]
     },
@@ -39,7 +139,6 @@
       "harvestAnim": "mine",
       "color": 9079434,
       "stumpColor": 5921370,
-      "tilesTall": 1.2,
       "originX": 0.5,
       "originY": 0.8,
       "skins": [
@@ -60,7 +159,6 @@
       "harvestAnim": "gather",
       "color": 4156724,
       "stumpColor": 4872762,
-      "tilesTall": 1.2,
       "originX": 0.5,
       "originY": 0.72,
       "skins": [

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useEditorStore } from '../store/editorStore';
 import { Button } from '../ui/button';
 import { cn } from '../lib/utils';
+import { useIsCompact } from '../hooks/useIsCompact';
 
 /**
  * Layers panel (plan 014 step 6) — lists the open map's tile layers, select/add/rename/delete/
@@ -22,6 +23,7 @@ import { cn } from '../lib/utils';
 const headingClass = 'mb-2 text-[0.85rem] uppercase tracking-[0.04em] text-fg-dim';
 
 export function LayersPanel() {
+  const isCompact = useIsCompact();
   const activeLayerId = useEditorStore((s) => s.activeLayerId);
   const hiddenLayerIds = useEditorStore((s) => s.hiddenLayerIds);
   useEditorStore((s) => s.docRevision);
@@ -52,10 +54,14 @@ export function LayersPanel() {
   return (
     <>
       <h2 className={headingClass}>Layers</h2>
-      <Button size="sm" onClick={() => useEditorStore.getState().addLayer()}>
+      <Button
+        size="sm"
+        className={cn(isCompact && 'h-11 w-full')}
+        onClick={() => useEditorStore.getState().addLayer()}
+      >
         + Add layer
       </Button>
-      <ul className="mt-2.5 flex list-none flex-col gap-0.5 p-0">
+      <ul className={cn('mt-2.5 flex list-none flex-col gap-0.5 p-0', isCompact && 'gap-1.5')}>
         {[...layers].reverse().map((layer) => {
           const index = layers.indexOf(layer);
           const isActive = layer.id === activeLayerId;
@@ -67,12 +73,17 @@ export function LayersPanel() {
               className={cn(
                 'flex items-center gap-1 rounded-md px-1 py-[3px]',
                 isActive && 'bg-surface',
+                // On compact, the name gets its own full-width line (basis-full forces the wrap) and
+                // the eye/OH/reorder/delete controls flow onto a second line at a bigger tap size —
+                // fitting all of them at 44px on ONE line alongside the name doesn't fit a ~320px
+                // drawer, so this reflows rather than shrinking the icons back down.
+                isCompact && 'flex-wrap gap-y-1.5 gap-x-2 px-2 py-2',
               )}
             >
               <Button
                 variant="ghost"
                 size="icon-xs"
-                className="shrink-0"
+                className={cn('shrink-0', isCompact && 'order-2 size-10')}
                 title={isHidden ? 'Show layer' : 'Hide layer (view only — not saved)'}
                 onClick={() => useEditorStore.getState().toggleLayerVisibility(layer.id)}
               >
@@ -81,7 +92,10 @@ export function LayersPanel() {
 
               {isRenaming ? (
                 <input
-                  className="min-w-0 flex-1 rounded-[3px] border border-border bg-inset px-1 py-0.5 font-[inherit] text-fg"
+                  className={cn(
+                    'min-w-0 flex-1 rounded-[3px] border border-border bg-inset px-1 py-0.5 font-[inherit] text-fg',
+                    isCompact && 'order-1 h-11 basis-full px-2 text-[0.95rem]',
+                  )}
                   autoFocus
                   value={renameValue}
                   onChange={(e) => setRenameValue(e.target.value)}
@@ -95,7 +109,10 @@ export function LayersPanel() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-auto flex-1 justify-start overflow-hidden px-1 py-0.5 text-left font-normal text-ellipsis whitespace-nowrap"
+                  className={cn(
+                    'h-auto flex-1 justify-start overflow-hidden px-1 py-0.5 text-left font-normal text-ellipsis whitespace-nowrap',
+                    isCompact && 'order-1 h-11 basis-full px-2 text-[0.95rem]',
+                  )}
                   onClick={() => useEditorStore.getState().setActiveLayer(layer.id)}
                   onDoubleClick={() => {
                     setRenamingId(layer.id);
@@ -108,11 +125,15 @@ export function LayersPanel() {
               )}
 
               <label
-                className="flex flex-none items-center gap-0.5 text-[0.7rem] text-fg-dim"
+                className={cn(
+                  'flex flex-none items-center gap-0.5 text-[0.7rem] text-fg-dim',
+                  isCompact && 'order-3 h-10 gap-1.5 px-1 text-[0.8rem]',
+                )}
                 title="Renders above entities in-game (overhead)"
               >
                 <input
                   type="checkbox"
+                  className={cn(isCompact && 'size-4')}
                   checked={layer.overhead}
                   onChange={() => useEditorStore.getState().toggleLayerOverhead(layer.id)}
                 />
@@ -122,7 +143,7 @@ export function LayersPanel() {
               <Button
                 variant="ghost"
                 size="icon-xs"
-                className="shrink-0"
+                className={cn('shrink-0', isCompact && 'order-4 size-10')}
                 title="Bring forward (render on top)"
                 disabled={index === layers.length - 1}
                 onClick={() => useEditorStore.getState().moveLayer(layer.id, 'forward')}
@@ -132,7 +153,7 @@ export function LayersPanel() {
               <Button
                 variant="ghost"
                 size="icon-xs"
-                className="shrink-0"
+                className={cn('shrink-0', isCompact && 'order-5 size-10')}
                 title="Send backward (render underneath)"
                 disabled={index === 0}
                 onClick={() => useEditorStore.getState().moveLayer(layer.id, 'backward')}
@@ -142,7 +163,7 @@ export function LayersPanel() {
               <Button
                 variant="ghost"
                 size="icon-xs"
-                className="shrink-0"
+                className={cn('shrink-0', isCompact && 'order-6 size-10')}
                 title="Delete layer"
                 disabled={layers.length <= 1}
                 onClick={() => useEditorStore.getState().deleteLayer(layer.id)}

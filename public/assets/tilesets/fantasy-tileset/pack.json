@@ -1,0 +1,75 @@
+{
+  "id": "fantasy-tileset",
+  "name": "The Fan-tasy Tileset (Free Trial)",
+  "author": "Valerio Colonna",
+  "sourceUrl": "",
+  "licence": "Free trial of 'The Fan-tasy Tileset' by Valerio Colonna (valeriocolona_art). Free-trial usage terms — see included PDFs; CONFIRM exact redistribution/commercial terms on the source page before any public release.",
+  "tileSize": 16,
+  "rules": {
+    "tile": [
+      "Tiles/**"
+    ],
+    "strip": [
+      "**/Fx/**",
+      "**/Characters/**",
+      "**/*-Sheet.png"
+    ]
+  },
+  "overrides": {
+    "Characters/Character_Idle_down.png": {
+      "frames": 4
+    },
+    "Characters/Character_Idle_left.png": {
+      "frames": 4
+    },
+    "Characters/Character_Idle_right.png": {
+      "frames": 4
+    },
+    "Characters/Character_Idle_up.png": {
+      "frames": 4
+    },
+    "Characters/Character_Slash_down.png": {
+      "frames": 6
+    },
+    "Characters/Character_Slash_left.png": {
+      "frames": 6
+    },
+    "Characters/Character_Slash_right.png": {
+      "frames": 6
+    },
+    "Characters/Character_Slash_up.png": {
+      "frames": 6
+    },
+    "Characters/Character_Walk_down.png": {
+      "frames": 4
+    },
+    "Characters/Character_Walk_left.png": {
+      "frames": 4
+    },
+    "Characters/Character_Walk_right.png": {
+      "frames": 4
+    },
+    "Characters/Character_Walk_up.png": {
+      "frames": 4
+    },
+    "Props/Fx/Flowers_Red.png": {
+      "type": "tile"
+    },
+    "Props/Fx/Flowers_White.png": {
+      "type": "object"
+    }
+  },
+  "exclude": [
+    "**/_src/**"
+  ],
+  "regions": {
+    "Props/Fx/Flowers_White.png": [
+      {
+        "x": 0,
+        "y": 0,
+        "w": 768,
+        "h": 32
+      }
+    ]
+  }
+}

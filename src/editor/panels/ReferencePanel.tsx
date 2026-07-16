@@ -15,6 +15,7 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Slider } from '../ui/slider';
 import { cn } from '../lib/utils';
+import { useIsCompact } from '../hooks/useIsCompact';
 
 // Reference name shape — mirrors the middleware's `sanitiseId` (`ID_RE` in vite-editor-api.mjs), so a
 // name the panel accepts is one the `POST /__editor/map-references` endpoint will accept too.
@@ -108,6 +109,7 @@ function NumberField({
   disabled?: boolean;
 }) {
   const id = useId();
+  const isCompact = useIsCompact();
   return (
     <div className={cn(fieldClass, 'min-w-0 flex-1')}>
       <Label htmlFor={id} className={fieldLabelClass}>
@@ -120,7 +122,7 @@ function NumberField({
         defaultValue={value}
         key={value}
         disabled={disabled}
-        className={fieldInputClass}
+        className={cn(fieldInputClass, isCompact && 'h-11 px-2 text-[0.95rem]')}
         onBlur={(e) => {
           const n = Number(e.target.value);
           if (Number.isFinite(n) && n !== value) onCommit(n);
@@ -134,6 +136,7 @@ function NumberField({
 }
 
 export function ReferencePanel() {
+  const isCompact = useIsCompact();
   useEditorStore((s) => s.underlayRevision);
   useEditorStore((s) => s.mapEpoch);
   const { underlay, mapId } = useEditorStore.getState();
@@ -291,7 +294,11 @@ export function ReferencePanel() {
     <>
       <button
         type="button"
-        className={cn(headingClass, 'mb-2 flex w-full items-center gap-1.5 hover:text-fg-muted')}
+        className={cn(
+          headingClass,
+          'mb-2 flex w-full items-center gap-1.5 hover:text-fg-muted',
+          isCompact && 'py-2 text-[0.9rem]',
+        )}
         onClick={() => setCollapsed((c) => !c)}
         aria-expanded={!collapsed}
       >
@@ -300,7 +307,7 @@ export function ReferencePanel() {
       </button>
 
       {!collapsed && (
-        <div className="flex flex-col gap-2.5">
+        <div className={cn('flex flex-col gap-2.5', isCompact && 'gap-3')}>
           {!mapId && <p className={placeholderClass}>No map open.</p>}
 
           {mapId && (
@@ -308,7 +315,7 @@ export function ReferencePanel() {
               {/* Primary path: pick a committed reference and Load it. */}
               <div className={fieldClass}>
                 <Label className={fieldLabelClass}>Committed reference</Label>
-                <div className="flex gap-1.5">
+                <div className={cn('flex gap-1.5', isCompact && 'flex-wrap gap-2')}>
                   <Select
                     value={selectedRef ?? undefined}
                     onValueChange={(v) => setSelectedRef(v)}
@@ -316,7 +323,11 @@ export function ReferencePanel() {
                   >
                     <SelectTrigger
                       size="sm"
-                      className={cn(fieldInputClass, 'min-w-0 flex-1 justify-between font-normal')}
+                      className={cn(
+                        fieldInputClass,
+                        'min-w-0 flex-1 justify-between font-normal',
+                        isCompact && 'h-11 basis-full px-2 text-[0.95rem]',
+                      )}
                     >
                       <SelectValue
                         placeholder={
@@ -326,7 +337,11 @@ export function ReferencePanel() {
                     </SelectTrigger>
                     <SelectContent>
                       {references.map((name) => (
-                        <SelectItem key={name} value={name}>
+                        <SelectItem
+                          key={name}
+                          value={name}
+                          className={cn(isCompact && 'py-2.5 text-base')}
+                        >
                           {name}
                         </SelectItem>
                       ))}
@@ -335,6 +350,7 @@ export function ReferencePanel() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className={cn(isCompact && 'h-11 flex-1')}
                     disabled={!selectedRef}
                     onClick={() => {
                       if (selectedRef) void store().setUnderlayReference(selectedRef);
@@ -345,11 +361,11 @@ export function ReferencePanel() {
                 </div>
                 {/* Manage the selected committed reference (plan 022): re-capture it in place from
                     its own sidecar, or delete it from the repo. */}
-                <div className="flex gap-1.5">
+                <div className={cn('flex gap-1.5', isCompact && 'gap-2')}>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1"
+                    className={cn('flex-1', isCompact && 'h-11')}
                     disabled={!selectedRef || capturing || deleting}
                     onClick={() => void onRecapture()}
                     title="Re-run the OSM capture from this reference's saved location, overwriting its image"
@@ -359,7 +375,7 @@ export function ReferencePanel() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 text-red-400 hover:text-red-300"
+                    className={cn('flex-1 text-red-400 hover:text-red-300', isCompact && 'h-11')}
                     disabled={!selectedRef || capturing || deleting}
                     onClick={() => void onDelete()}
                     title="Delete this committed reference (image + sidecar) from the repo"
@@ -378,7 +394,10 @@ export function ReferencePanel() {
                   id={fileId}
                   type="file"
                   accept="image/png,image/jpeg"
-                  className="text-[0.75rem] text-fg-dim file:mr-2 file:rounded file:border file:border-border file:bg-inset file:px-1.5 file:py-0.5 file:text-fg"
+                  className={cn(
+                    'text-[0.75rem] text-fg-dim file:mr-2 file:rounded file:border file:border-border file:bg-inset file:px-1.5 file:py-0.5 file:text-fg',
+                    isCompact && 'text-[0.85rem] file:px-3 file:py-2',
+                  )}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) void store().setUnderlayImageFromFile(file);
@@ -392,7 +411,11 @@ export function ReferencePanel() {
               <div className="flex flex-col gap-1.5 border-t border-border pt-2">
                 <button
                   type="button"
-                  className={cn(fieldLabelClass, 'flex w-full items-center gap-1.5 hover:text-fg')}
+                  className={cn(
+                    fieldLabelClass,
+                    'flex w-full items-center gap-1.5 hover:text-fg',
+                    isCompact && 'py-1.5 text-[0.85rem]',
+                  )}
                   onClick={() => setCaptureCollapsed((c) => !c)}
                   aria-expanded={!captureCollapsed}
                 >
@@ -401,7 +424,7 @@ export function ReferencePanel() {
                 </button>
 
                 {!captureCollapsed && (
-                  <div className="flex flex-col gap-2">
+                  <div className={cn('flex flex-col gap-2', isCompact && 'gap-3')}>
                     <div className={fieldClass}>
                       <Label htmlFor={newNameId} className={fieldLabelClass}>
                         Name
@@ -410,7 +433,7 @@ export function ReferencePanel() {
                         id={newNameId}
                         value={newName}
                         placeholder="e.g. mostowo-north"
-                        className={fieldInputClass}
+                        className={cn(fieldInputClass, isCompact && 'h-11 px-2 text-[0.95rem]')}
                         onChange={(e) => setNewName(e.target.value)}
                       />
                       {newName && !nameValid && (
@@ -428,7 +451,7 @@ export function ReferencePanel() {
                         id={coordId}
                         value={coord}
                         placeholder="54.0726, 16.3603"
-                        className={fieldInputClass}
+                        className={cn(fieldInputClass, isCompact && 'h-11 px-2 text-[0.95rem]')}
                         onChange={(e) => setCoord(e.target.value)}
                       />
                       {coord && !parsedCoord && (
@@ -448,7 +471,7 @@ export function ReferencePanel() {
                         step={10}
                         min={1}
                         value={radiusStr}
-                        className={fieldInputClass}
+                        className={cn(fieldInputClass, isCompact && 'h-11 px-2 text-[0.95rem]')}
                         onChange={(e) => setRadiusStr(e.target.value)}
                       />
                       {radiusStr && !radiusValid && (
@@ -461,7 +484,7 @@ export function ReferencePanel() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="self-start"
+                      className={cn('self-start', isCompact && 'h-11 w-full')}
                       disabled={captureDisabled}
                       onClick={onCapture}
                     >
@@ -477,7 +500,7 @@ export function ReferencePanel() {
                     Showing: {underlay.referenceName ?? 'ad-hoc image'}
                   </p>
 
-                  <div className={fieldClass}>
+                  <div className={cn(fieldClass, isCompact && 'py-1')}>
                     <Label className={fieldLabelClass}>
                       Opacity: {Math.round(underlay.opacity * 100)}%
                     </Label>
@@ -486,11 +509,12 @@ export function ReferencePanel() {
                       max={1}
                       step={0.05}
                       value={[underlay.opacity]}
+                      className={cn(isCompact && 'py-2 [&_[data-slot=slider-thumb]]:size-5')}
                       onValueChange={([v]) => store().setUnderlayOpacity(v)}
                     />
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className={cn('flex gap-2', isCompact && 'gap-3')}>
                     <NumberField
                       label="Offset X (tiles)"
                       value={underlay.offsetX}
@@ -513,18 +537,25 @@ export function ReferencePanel() {
                     onCommit={(s) => store().setUnderlayScale(s)}
                   />
 
-                  <div className="flex items-center gap-3 text-[0.8rem] text-fg-muted">
-                    <label className="flex items-center gap-1">
+                  <div
+                    className={cn(
+                      'flex items-center gap-3 text-[0.8rem] text-fg-muted',
+                      isCompact && 'gap-4 text-[0.9rem]',
+                    )}
+                  >
+                    <label className={cn('flex items-center gap-1', isCompact && 'gap-2 py-1.5')}>
                       <input
                         type="checkbox"
+                        className={cn(isCompact && 'size-4')}
                         checked={underlay.visible}
                         onChange={() => store().toggleUnderlayVisible()}
                       />
                       Visible
                     </label>
-                    <label className="flex items-center gap-1">
+                    <label className={cn('flex items-center gap-1', isCompact && 'gap-2 py-1.5')}>
                       <input
                         type="checkbox"
+                        className={cn(isCompact && 'size-4')}
                         checked={underlay.locked}
                         onChange={() => store().toggleUnderlayLock()}
                       />
@@ -535,7 +566,7 @@ export function ReferencePanel() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="self-start"
+                    className={cn('self-start', isCompact && 'h-11 w-full')}
                     onClick={() => store().clearUnderlay()}
                   >
                     Clear

@@ -109,6 +109,10 @@ export interface NodeObject {
   /** Chosen skin id within the referenced def's `skins`; omit ⇒ the def's first/default skin.
    *  Per-placed-instance art (plan 021). Omitted-when-absent for byte-identical legacy round-trip. */
   skin?: string;
+  /** Clockwise rotation in degrees applied to the placed sprite (arbitrary angle, like `DecorObject`).
+   *  Absent ⇒ 0 (upright). Always LAST and optional-omitted-when-absent so a node authored before node
+   *  rotation existed round-trips byte-identical. */
+  rotation?: number;
 }
 
 /** A crop rect (sheet-local px) into `DecorObject.asset`'s source PNG — plan 014 step 7a's
@@ -541,6 +545,11 @@ function parseMapObject(value: unknown, path: string): MapObject {
     // skin is optional and read only when present, so the key is never added when absent — that's
     // what keeps a node authored before plan 021 step 4 byte-identical on round-trip.
     const skin = obj.skin === undefined ? undefined : expectString(obj.skin, `${path}.skin`);
+    // rotation is optional and read only when present, so the key is never added when absent — that's
+    // what keeps a node authored before node rotation existed byte-identical on round-trip. Built LAST
+    // (after skin) to preserve legacy key order.
+    const rotation =
+      obj.rotation === undefined ? undefined : expectNumber(obj.rotation, `${path}.rotation`);
     return {
       id,
       kind: 'node',
@@ -548,6 +557,7 @@ function parseMapObject(value: unknown, path: string): MapObject {
       col: expectInt(obj.col, `${path}.col`),
       row: expectInt(obj.row, `${path}.row`),
       ...(skin !== undefined ? { skin } : {}),
+      ...(rotation ? { rotation } : {}),
     };
   }
 

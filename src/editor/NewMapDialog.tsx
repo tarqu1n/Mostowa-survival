@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { MAX_MAP_DIM, MAP_ID_PATTERN } from '../systems/mapFormat';
+import { useIsCompact } from './hooks/useIsCompact';
+import { cn } from './lib/utils';
 
 export interface NewMapFields {
   id: string;
@@ -27,6 +29,7 @@ export function NewMapDialog({
   onCreate: (fields: NewMapFields) => void;
   onCancel: () => void;
 }) {
+  const isCompact = useIsCompact();
   const [id, setId] = useState('');
   const [name, setName] = useState('');
   const [width, setWidth] = useState(45);
@@ -43,15 +46,20 @@ export function NewMapDialog({
         if (!open) onCancel();
       }}
     >
-      <DialogContent className="bg-popover text-popover-foreground sm:max-w-[360px]">
+      <DialogContent
+        className={cn(
+          'bg-popover text-popover-foreground max-h-[90dvh] overflow-y-auto sm:max-w-[360px]',
+        )}
+      >
         <DialogHeader>
           <DialogTitle>New map</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col gap-3">
+        <div className={cn('flex flex-col gap-3', isCompact && 'gap-4')}>
           <div className={fieldClass}>
             <Label htmlFor="new-map-id">Id</Label>
             <Input
               id="new-map-id"
+              className={cn(isCompact && 'h-11')}
               value={id}
               onChange={(e) => setId(e.target.value)}
               placeholder="test-camp"
@@ -66,6 +74,7 @@ export function NewMapDialog({
             <Label htmlFor="new-map-name">Name</Label>
             <Input
               id="new-map-name"
+              className={cn(isCompact && 'h-11')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Test Camp"
@@ -76,6 +85,7 @@ export function NewMapDialog({
             <Input
               id="new-map-width"
               type="number"
+              className={cn(isCompact && 'h-11')}
               min={1}
               max={MAX_MAP_DIM}
               value={width}
@@ -87,6 +97,7 @@ export function NewMapDialog({
             <Input
               id="new-map-height"
               type="number"
+              className={cn(isCompact && 'h-11')}
               min={1}
               max={MAX_MAP_DIM}
               value={height}
@@ -95,11 +106,12 @@ export function NewMapDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" className={cn(isCompact && 'h-11')} onClick={onCancel}>
             Cancel
           </Button>
           <Button
             disabled={!valid}
+            className={cn(isCompact && 'h-11')}
             onClick={() => onCreate({ id, name: name.trim(), width, height })}
           >
             Create

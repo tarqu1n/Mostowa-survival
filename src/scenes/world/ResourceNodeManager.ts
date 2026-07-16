@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TILE_SIZE, COLORS } from '../../config';
+import { COLORS } from '../../config';
 import { breadcrumb } from '../../debug/crashReporter';
 import { NODES } from '../../data/nodes';
 import type { ResourceNodeDef } from '../../data/types';
@@ -89,7 +89,7 @@ export class ResourceNodeManager {
         }
         continue;
       }
-      this.addNode(def, obj.col, obj.row, obj.skin);
+      this.addNode(def, obj.col, obj.row, obj.skin, obj.rotation);
     }
   }
 
@@ -98,7 +98,7 @@ export class ResourceNodeManager {
    * chosen skin (plan 021 step 5). `skinId` picks which of `def.skins` to render (given id → that
    * skin; absent/unknown → `def.skins[0]`, so legacy maps with no authored `skin` still render).
    */
-  addNode(def: ParsedNodeDef, col: number, row: number, skinId?: string): void {
+  addNode(def: ParsedNodeDef, col: number, row: number, skinId?: string, rotation = 0): void {
     const skin = this.resolveSkin(def, skinId);
     // Seed `add.image` with the skin's own (preloaded) texture — `applySkinAppearance` below then
     // sizes/anchors it. Falls back to Phaser's always-present `__WHITE` if the asset can't be
@@ -107,9 +107,13 @@ export class ResourceNodeManager {
     const seed = this.resolveSkinTexture(skin.asset, skin.region);
     const sprite = this.scene.add
       .image(tileToWorldCenter(col), tileToWorldCenter(row), seed?.key ?? '__WHITE', seed?.frame)
-      .setDepth(1);
-    // Each species sizes/anchors itself from its def/skin (critique #2): a pine scales to ~2.6 tiles
-    // and anchors near its base so the canopy overhangs up; a rock is ~1 tile, centred. sprite.x/y
+      .setDepth(1)
+      // Placement rotation (deg). Set once here — the chop tween animates scale only and depleted swaps
+      // re-texture without touching angle, so it persists; the queued glow halo mirrors it each frame
+      // via `TaskGlowRenderer.syncGlowTransforms` (reads `sprite.rotation`), so nothing else to wire.
+      .setAngle(rotation);
+    // Each species sizes/anchors itself from its def/skin (critique #2): a pine renders at its native
+    // size and anchors near its base so the canopy overhangs up; a rock is base-anchored. sprite.x/y
     // stay the tile centre, so treeAt()'s distance check is unaffected regardless of scale/origin.
     this.applySkinAppearance(sprite, def, skin, 'live');
     this.trees.push({
@@ -134,7 +138,7 @@ export class ResourceNodeManager {
   /**
    * Point `sprite` at the skin's live (or, `variant === 'depleted'`, its stump) texture and size/anchor
    * it. The `depleted` sub-shape carries only `asset`/`region`, so a stump reuses the skin's/def's
-   * sizing (`tilesTall`/`originX`/`originY`). If the catalog asset isn't resident (a content error —
+   * sizing (`scale`/`originX`/`originY`). If the catalog asset isn't resident (a content error —
    * PreloadScene loads every referenced skin's textures), the texture is left unchanged and a DEV
    * warning is logged, rather than hard-failing.
    */
@@ -156,7 +160,7 @@ export class ResourceNodeManager {
       );
     }
     sprite
-      .setScale(this.nodeScale(sprite, def, skin))
+      .setScale(this.nodeScale(def, skin))
       .setOrigin(skin.originX ?? def.originX, skin.originY ?? def.originY);
   }
 
@@ -182,15 +186,11 @@ export class ResourceNodeManager {
     return { key: draw.key }; // 'whole' (skins never carry an anim)
   }
 
-  /** Base display scale for a node image (derived from its source height + the skin's `tilesTall`
-   *  override, falling back to the def's `tilesTall`). `skin` omitted ⇒ def default (the shared glow
-   *  seam calls it that way — see `TaskGlowRenderer`). */
-  nodeScale(
-    sprite: Phaser.GameObjects.Image,
-    def: ResourceNodeDef,
-    skin?: { tilesTall?: number },
-  ): number {
-    return (TILE_SIZE * (skin?.tilesTall ?? def.tilesTall)) / sprite.frame.height;
+  /** Base display scale for a node image — the skin's `scale` override, falling back to the def's
+   *  `scale` (a multiplier on the sprite's native source pixels; `1.0` = native size). `skin` omitted
+   *  ⇒ def default (the shared glow seam calls it that way — see `TaskGlowRenderer`). */
+  nodeScale(def: ResourceNodeDef, skin?: { scale?: number }): number {
+    return skin?.scale ?? def.scale;
   }
 
   // --- Queries -------------------------------------------------------------------
@@ -230,7 +230,7 @@ export class ResourceNodeManager {
     // Animate only the node — its queued glow halo mirrors this (and any future sway/fall) each frame
     // via syncGlowTransforms(), so animations never have to drive the glow themselves.
     const skin = this.resolveSkin(tree.def, tree.skin);
-    const base = this.nodeScale(tree.sprite, tree.def, skin);
+    const base = this.nodeScale(tree.def, skin);
     this.scene.tweens.add({ targets: tree.sprite, scale: base * 1.18, duration: 80, yoyo: true });
     if (tree.hp <= 0) {
       tree.alive = false;

@@ -21,6 +21,7 @@ import { TILE_SIZE } from '../config';
 import { cn } from './lib/utils';
 import { useEditorStore, type EditorTool, type PaintMode } from './store/editorStore';
 import { Button } from './ui/button';
+import { RotationWheel } from './ui/RotationWheel';
 
 /**
  * Per-tool context bar (plan 027 Step 9) — a compact action bar anchored to the bottom edge of the
@@ -117,6 +118,9 @@ export function ContextBar() {
   const brushAsset = useEditorStore((s) => s.brushAsset);
   const brushRotation = useEditorStore((s) => s.brushRotation);
   const paintMode = useEditorStore((s) => s.paintMode);
+  const armedObjectAsset = useEditorStore((s) => s.armedObjectAsset);
+  const armedNodeRef = useEditorStore((s) => s.armedNodeRef);
+  const placeRotation = useEditorStore((s) => s.placeRotation);
   const eraseActive = useEditorStore((s) => s.eraseActive);
   const freePixelActive = useEditorStore((s) => s.freePixelActive);
   const multiSelectActive = useEditorStore((s) => s.multiSelectActive);
@@ -244,6 +248,16 @@ export function ContextBar() {
             <Move />
             Free px
           </ToggleButton>
+        )}
+
+        {/* Place: rotation wheel for the next placed decor/node (arbitrary angle). */}
+        {activeTool === 'place' && (armedObjectAsset || armedNodeRef) && (
+          <RotationWheel
+            value={placeRotation}
+            onChange={(deg) => st().setPlaceRotation(deg)}
+            size={44}
+            ariaLabel="Placement rotation"
+          />
         )}
 
         {/* Select: multi-select toggle + Delete + tile-step nudge. */}

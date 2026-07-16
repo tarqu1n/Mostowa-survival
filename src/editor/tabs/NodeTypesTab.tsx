@@ -227,7 +227,7 @@ interface StatsDraft {
   harvestAnim: HarvestAnimOption;
   colorHex: string;
   stumpColorHex: string;
-  tilesTallText: string;
+  scaleText: string;
   originXText: string;
   originYText: string;
 }
@@ -243,7 +243,7 @@ function draftOf(def: AuthoredNodeDef): StatsDraft {
     harvestAnim: def.harvestAnim ?? '',
     colorHex: colorToHex(def.color),
     stumpColorHex: colorToHex(def.stumpColor),
-    tilesTallText: String(def.tilesTall),
+    scaleText: String(def.scale ?? 1),
     originXText: String(def.originX),
     originYText: String(def.originY),
   };
@@ -264,7 +264,7 @@ function draftToPatch(d: StatsDraft): Partial<Omit<AuthoredNodeDef, 'id' | 'skin
     harvestAnim: d.harvestAnim === '' ? undefined : d.harvestAnim,
     color: hexToColor(d.colorHex),
     stumpColor: hexToColor(d.stumpColorHex),
-    tilesTall: Number(d.tilesTallText),
+    scale: Number(d.scaleText),
     originX: Number(d.originXText),
     originY: Number(d.originYText),
   };
@@ -281,7 +281,7 @@ function statsEqual(a: StatsDraft, b: StatsDraft): boolean {
     a.harvestAnim === b.harvestAnim &&
     a.colorHex === b.colorHex &&
     a.stumpColorHex === b.stumpColorHex &&
-    a.tilesTallText === b.tilesTallText &&
+    a.scaleText === b.scaleText &&
     a.originXText === b.originXText &&
     a.originYText === b.originYText
   );
@@ -435,12 +435,13 @@ function NodeStatsForm({ def, allDefs }: { def: AuthoredNodeDef; allDefs: Author
 
       <div className="flex gap-2">
         <div className={cn(fieldClass, 'flex-1')}>
-          <Label className={fieldLabelClass}>Tiles tall</Label>
+          <Label className={fieldLabelClass}>Scale</Label>
           <Input
             type="number"
+            step={0.1}
             className={fieldInputClass}
-            value={draft.tilesTallText}
-            onChange={(e) => set('tilesTallText', e.target.value)}
+            value={draft.scaleText}
+            onChange={(e) => set('scaleText', e.target.value)}
           />
         </div>
         <div className={cn(fieldClass, 'flex-1')}>
@@ -508,18 +509,22 @@ function SpriteThumb({
   const path = asset.source.kind === 'sheetFrame' ? asset.source.sheet : asset.source.path;
   const url = tilesetAssetUrl(asset.pack, path);
   if (region) {
+    // Scale so the region's LARGER dimension fits the 40px slot, then clip to the region's own
+    // scaled size (NOT a fixed 40×40) — a fixed square clip on a non-square region (e.g. a tall,
+    // narrow tree) leaves the box wider/taller than the region and reveals adjacent sheet content
+    // (the neighbouring sprite). The region-sized crop is centred in the 40px slot.
     const scale = size / Math.max(region.w, region.h);
     return (
       <div
-        className="pixelated overflow-hidden rounded-[2px] bg-inset"
+        className="flex items-center justify-center rounded-[2px] bg-inset"
         style={{ width: size, height: size }}
         title={assetId}
       >
         <div
-          className="bg-no-repeat"
+          className="pixelated overflow-hidden bg-no-repeat"
           style={{
-            width: asset.w * scale,
-            height: asset.h * scale,
+            width: region.w * scale,
+            height: region.h * scale,
             backgroundImage: `url(${url})`,
             backgroundPosition: `${-region.x * scale}px ${-region.y * scale}px`,
             backgroundSize: `${asset.w * scale}px ${asset.h * scale}px`,
@@ -747,11 +752,9 @@ function SkinRow({
           />
           <div className="flex gap-1.5">
             <OptionalNumField
-              label="Tiles tall (override)"
-              value={skin.tilesTall}
-              onCommit={(tilesTall) =>
-                useEditorStore.getState().updateSkin(def.id, skin.id, { tilesTall })
-              }
+              label="Scale (override)"
+              value={skin.scale}
+              onCommit={(scale) => useEditorStore.getState().updateSkin(def.id, skin.id, { scale })}
             />
             <OptionalNumField
               label="Origin X (override)"
@@ -809,7 +812,7 @@ function NumField({
   );
 }
 
-/** An OPTIONAL numeric override field (a skin's `tilesTall`/`originX`/`originY`) — blank commits
+/** An OPTIONAL numeric override field (a skin's `scale`/`originX`/`originY`) — blank commits
  *  `undefined` ("use the def's default"), matching `NodeSkinDef`'s "omitted ⇒ inherit" semantics. */
 function OptionalNumField({
   label,

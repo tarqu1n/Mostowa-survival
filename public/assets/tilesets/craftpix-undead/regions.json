@@ -1,0 +1,5877 @@
+{
+  "schemaVersion": 1,
+  "sheets": {
+    "Cursed/Objects/Bones_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "59_71_137_114",
+          "x": 59,
+          "y": 71,
+          "w": 137,
+          "h": 114
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow1_10.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_16_16",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow1_11.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_6_19_19",
+          "x": 6,
+          "y": 6,
+          "w": 19,
+          "h": 19
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_13_41_38",
+          "x": 11,
+          "y": 13,
+          "w": 41,
+          "h": 38
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "10_15_44_33",
+          "x": 10,
+          "y": 15,
+          "w": 44,
+          "h": 33
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "14_16_36_32",
+          "x": 14,
+          "y": 16,
+          "w": 36,
+          "h": 32
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow1_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_17_41_29",
+          "x": 11,
+          "y": 17,
+          "w": 41,
+          "h": 29
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow1_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "14_14_35_35",
+          "x": 14,
+          "y": 14,
+          "w": 35,
+          "h": 35
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow1_7.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_4_30_23",
+          "x": 1,
+          "y": 4,
+          "w": 30,
+          "h": 23
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow1_8.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_4_20_23",
+          "x": 6,
+          "y": 4,
+          "w": 20,
+          "h": 23
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow1_9.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_3_29_26",
+          "x": 1,
+          "y": 3,
+          "w": 29,
+          "h": 26
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "59_71_137_114",
+          "x": 59,
+          "y": 71,
+          "w": 137,
+          "h": 114
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow2_10.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_16_16",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 16
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow2_11.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_6_19_19",
+          "x": 6,
+          "y": 6,
+          "w": 19,
+          "h": 19
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_13_41_38",
+          "x": 11,
+          "y": 13,
+          "w": 41,
+          "h": 38
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "10_15_44_33",
+          "x": 10,
+          "y": 15,
+          "w": 44,
+          "h": 33
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "14_16_36_32",
+          "x": 14,
+          "y": 16,
+          "w": 36,
+          "h": 32
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow2_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_17_41_29",
+          "x": 11,
+          "y": 17,
+          "w": 41,
+          "h": 29
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow2_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "14_14_35_35",
+          "x": 14,
+          "y": 14,
+          "w": 35,
+          "h": 35
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow2_7.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_4_30_23",
+          "x": 1,
+          "y": 4,
+          "w": 30,
+          "h": 23
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow2_8.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_4_20_23",
+          "x": 6,
+          "y": 4,
+          "w": 20,
+          "h": 23
+        }
+      ]
+    },
+    "Cursed/Objects/Bones_shadow2_9.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_3_29_26",
+          "x": 1,
+          "y": 3,
+          "w": 29,
+          "h": 26
+        }
+      ]
+    },
+    "Cursed/Objects/Eye_plant_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_4_51_56",
+          "x": 6,
+          "y": 4,
+          "w": 51,
+          "h": 56
+        }
+      ]
+    },
+    "Cursed/Objects/Eye_plant_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_3_39_57",
+          "x": 12,
+          "y": 3,
+          "w": 39,
+          "h": 57
+        }
+      ]
+    },
+    "Cursed/Objects/Eye_plant_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_12_31_40",
+          "x": 16,
+          "y": 12,
+          "w": 31,
+          "h": 40
+        }
+      ]
+    },
+    "Cursed/Objects/Eye_plant_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_4_51_56",
+          "x": 6,
+          "y": 4,
+          "w": 51,
+          "h": 56
+        }
+      ]
+    },
+    "Cursed/Objects/Eye_plant_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_3_39_57",
+          "x": 12,
+          "y": 3,
+          "w": 39,
+          "h": 57
+        }
+      ]
+    },
+    "Cursed/Objects/Eye_plant_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_12_31_40",
+          "x": 16,
+          "y": 12,
+          "w": 31,
+          "h": 40
+        }
+      ]
+    },
+    "Cursed/Objects/Fetus_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "29_35_69_58",
+          "x": 29,
+          "y": 35,
+          "w": 69,
+          "h": 58
+        }
+      ]
+    },
+    "Cursed/Objects/Fetus_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_11_42_42",
+          "x": 11,
+          "y": 11,
+          "w": 42,
+          "h": 42
+        }
+      ]
+    },
+    "Cursed/Objects/Fetus_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_31_32",
+          "x": 0,
+          "y": 0,
+          "w": 31,
+          "h": 32
+        }
+      ]
+    },
+    "Cursed/Objects/Fetus_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "29_35_69_58",
+          "x": 29,
+          "y": 35,
+          "w": 69,
+          "h": 58
+        }
+      ]
+    },
+    "Cursed/Objects/Fetus_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_11_42_42",
+          "x": 11,
+          "y": 11,
+          "w": 42,
+          "h": 42
+        }
+      ]
+    },
+    "Cursed/Objects/Fetus_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_31_32",
+          "x": 0,
+          "y": 0,
+          "w": 31,
+          "h": 32
+        }
+      ]
+    },
+    "Cursed/Objects/Jaws_plant_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_0_109_127",
+          "x": 9,
+          "y": 0,
+          "w": 109,
+          "h": 127
+        }
+      ]
+    },
+    "Cursed/Objects/Jaws_plant_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "26_18_75_92",
+          "x": 26,
+          "y": 18,
+          "w": 75,
+          "h": 92
+        }
+      ]
+    },
+    "Cursed/Objects/Jaws_plant_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "38_27_51_74",
+          "x": 38,
+          "y": 27,
+          "w": 51,
+          "h": 74
+        }
+      ]
+    },
+    "Cursed/Objects/Jaws_plant_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_0_109_127",
+          "x": 9,
+          "y": 0,
+          "w": 109,
+          "h": 127
+        }
+      ]
+    },
+    "Cursed/Objects/Jaws_plant_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "26_18_75_92",
+          "x": 26,
+          "y": 18,
+          "w": 75,
+          "h": 92
+        }
+      ]
+    },
+    "Cursed/Objects/Jaws_plant_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "38_27_51_74",
+          "x": 38,
+          "y": 27,
+          "w": 51,
+          "h": 74
+        }
+      ]
+    },
+    "Cursed/Objects/Many_eyes_plant_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_1_45_62",
+          "x": 9,
+          "y": 1,
+          "w": 45,
+          "h": 62
+        }
+      ]
+    },
+    "Cursed/Objects/Many_eyes_plant_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_4_32_56",
+          "x": 16,
+          "y": 4,
+          "w": 32,
+          "h": 56
+        }
+      ]
+    },
+    "Cursed/Objects/Many_eyes_plant_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "18_12_28_40",
+          "x": 18,
+          "y": 12,
+          "w": 28,
+          "h": 40
+        }
+      ]
+    },
+    "Cursed/Objects/Many_eyes_plant_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_1_45_62",
+          "x": 9,
+          "y": 1,
+          "w": 45,
+          "h": 62
+        }
+      ]
+    },
+    "Cursed/Objects/Many_eyes_plant_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_4_32_56",
+          "x": 16,
+          "y": 4,
+          "w": 32,
+          "h": 56
+        }
+      ]
+    },
+    "Cursed/Objects/Many_eyes_plant_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "18_12_28_40",
+          "x": 18,
+          "y": 12,
+          "w": 28,
+          "h": 40
+        }
+      ]
+    },
+    "Cursed/Objects/Meat_flower_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "27_29_74_69",
+          "x": 27,
+          "y": 29,
+          "w": 74,
+          "h": 69
+        }
+      ]
+    },
+    "Cursed/Objects/Meat_flower_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_4_60_56",
+          "x": 2,
+          "y": 4,
+          "w": 60,
+          "h": 56
+        }
+      ]
+    },
+    "Cursed/Objects/Meat_flower_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_13_41_38",
+          "x": 11,
+          "y": 13,
+          "w": 41,
+          "h": 38
+        }
+      ]
+    },
+    "Cursed/Objects/Meat_flower_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "27_29_74_69",
+          "x": 27,
+          "y": 29,
+          "w": 74,
+          "h": 69
+        }
+      ]
+    },
+    "Cursed/Objects/Meat_flower_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_4_60_56",
+          "x": 2,
+          "y": 4,
+          "w": 60,
+          "h": 56
+        }
+      ]
+    },
+    "Cursed/Objects/Meat_flower_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_13_41_38",
+          "x": 11,
+          "y": 13,
+          "w": 41,
+          "h": 38
+        }
+      ]
+    },
+    "Cursed/Objects/Pustules_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_15_39_34",
+          "x": 12,
+          "y": 15,
+          "w": 39,
+          "h": 34
+        }
+      ]
+    },
+    "Cursed/Objects/Pustules_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_2_30_28",
+          "x": 1,
+          "y": 2,
+          "w": 30,
+          "h": 28
+        }
+      ]
+    },
+    "Cursed/Objects/Pustules_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_7_19_18",
+          "x": 6,
+          "y": 7,
+          "w": 19,
+          "h": 18
+        }
+      ]
+    },
+    "Cursed/Objects/Pustules_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_15_39_34",
+          "x": 12,
+          "y": 15,
+          "w": 39,
+          "h": 34
+        }
+      ]
+    },
+    "Cursed/Objects/Pustules_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_2_30_28",
+          "x": 1,
+          "y": 2,
+          "w": 30,
+          "h": 28
+        }
+      ]
+    },
+    "Cursed/Objects/Pustules_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_7_19_18",
+          "x": 6,
+          "y": 7,
+          "w": 19,
+          "h": 18
+        }
+      ]
+    },
+    "Cursed/Objects/Rock1_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "26_28_75_71",
+          "x": 26,
+          "y": 28,
+          "w": 75,
+          "h": 71
+        }
+      ]
+    },
+    "Cursed/Objects/Rock1_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_2_51_59",
+          "x": 6,
+          "y": 2,
+          "w": 51,
+          "h": 59
+        }
+      ]
+    },
+    "Cursed/Objects/Rock1_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "13_12_38_39",
+          "x": 13,
+          "y": 12,
+          "w": 38,
+          "h": 39
+        }
+      ]
+    },
+    "Cursed/Objects/Rock1_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_29_29",
+          "x": 1,
+          "y": 1,
+          "w": 29,
+          "h": 29
+        }
+      ]
+    },
+    "Cursed/Objects/Rock1_shadow1_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_5_22_22",
+          "x": 5,
+          "y": 5,
+          "w": 22,
+          "h": 22
+        }
+      ]
+    },
+    "Cursed/Objects/Rock2_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "26_28_75_71",
+          "x": 26,
+          "y": 28,
+          "w": 75,
+          "h": 71
+        }
+      ]
+    },
+    "Cursed/Objects/Rock2_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_2_51_59",
+          "x": 6,
+          "y": 2,
+          "w": 51,
+          "h": 59
+        }
+      ]
+    },
+    "Cursed/Objects/Rock2_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "13_12_38_39",
+          "x": 13,
+          "y": 12,
+          "w": 38,
+          "h": 39
+        }
+      ]
+    },
+    "Cursed/Objects/Rock2_shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_29_29",
+          "x": 1,
+          "y": 1,
+          "w": 29,
+          "h": 29
+        }
+      ]
+    },
+    "Cursed/Objects/Rock2_shadow2_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_5_22_22",
+          "x": 5,
+          "y": 5,
+          "w": 22,
+          "h": 22
+        }
+      ]
+    },
+    "Cursed/Objects/Rock3_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_64_77",
+          "x": 0,
+          "y": 0,
+          "w": 64,
+          "h": 77
+        }
+      ]
+    },
+    "Cursed/Objects/Rock3_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "30_32_67_64",
+          "x": 30,
+          "y": 32,
+          "w": 67,
+          "h": 64
+        }
+      ]
+    },
+    "Cursed/Objects/Rock3_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_4_53_56",
+          "x": 5,
+          "y": 4,
+          "w": 53,
+          "h": 56
+        }
+      ]
+    },
+    "Cursed/Objects/Rock3_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_13_46_37",
+          "x": 9,
+          "y": 13,
+          "w": 46,
+          "h": 37
+        }
+      ]
+    },
+    "Cursed/Objects/Rock3_shadow1_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_14_39_36",
+          "x": 12,
+          "y": 14,
+          "w": 39,
+          "h": 36
+        }
+      ]
+    },
+    "Cursed/Objects/Rock3_shadow1_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_18_34_28",
+          "x": 15,
+          "y": 18,
+          "w": 34,
+          "h": 28
+        }
+      ]
+    },
+    "Cursed/Objects/Rock3_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_64_77",
+          "x": 0,
+          "y": 0,
+          "w": 64,
+          "h": 77
+        }
+      ]
+    },
+    "Cursed/Objects/Rock3_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "30_32_67_64",
+          "x": 30,
+          "y": 32,
+          "w": 67,
+          "h": 64
+        }
+      ]
+    },
+    "Cursed/Objects/Rock3_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_4_53_56",
+          "x": 5,
+          "y": 4,
+          "w": 53,
+          "h": 56
+        }
+      ]
+    },
+    "Cursed/Objects/Rock3_shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_13_46_37",
+          "x": 9,
+          "y": 13,
+          "w": 46,
+          "h": 37
+        }
+      ]
+    },
+    "Cursed/Objects/Rock3_shadow2_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_14_39_36",
+          "x": 12,
+          "y": 14,
+          "w": 39,
+          "h": 36
+        }
+      ]
+    },
+    "Cursed/Objects/Rock3_shadow2_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_18_34_28",
+          "x": 15,
+          "y": 18,
+          "w": 34,
+          "h": 28
+        }
+      ]
+    },
+    "Cursed/Objects/Rock_eyes_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "31_34_66_60",
+          "x": 31,
+          "y": 34,
+          "w": 66,
+          "h": 60
+        }
+      ]
+    },
+    "Cursed/Objects/Rock_eyes_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_7_54_49",
+          "x": 5,
+          "y": 7,
+          "w": 54,
+          "h": 49
+        }
+      ]
+    },
+    "Cursed/Objects/Rock_eyes_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_1_32_30",
+          "x": 0,
+          "y": 1,
+          "w": 32,
+          "h": 30
+        }
+      ]
+    },
+    "Cursed/Objects/Rock_eyes_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_6_20_19",
+          "x": 6,
+          "y": 6,
+          "w": 20,
+          "h": 19
+        }
+      ]
+    },
+    "Cursed/Objects/Rock_eyes_shadow1_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_1_15_14",
+          "x": 0,
+          "y": 1,
+          "w": 15,
+          "h": 14
+        }
+      ]
+    },
+    "Cursed/Objects/Rock_eyes_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_2_64_60",
+          "x": 0,
+          "y": 2,
+          "w": 64,
+          "h": 60
+        }
+      ]
+    },
+    "Cursed/Objects/Rock_eyes_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_7_54_49",
+          "x": 5,
+          "y": 7,
+          "w": 54,
+          "h": 49
+        }
+      ]
+    },
+    "Cursed/Objects/Rock_eyes_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_1_32_30",
+          "x": 0,
+          "y": 1,
+          "w": 32,
+          "h": 30
+        }
+      ]
+    },
+    "Cursed/Objects/Rock_eyes_shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_6_20_19",
+          "x": 6,
+          "y": 6,
+          "w": 20,
+          "h": 19
+        }
+      ]
+    },
+    "Cursed/Objects/Rock_eyes_shadow2_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_1_15_14",
+          "x": 0,
+          "y": 1,
+          "w": 15,
+          "h": 14
+        }
+      ]
+    },
+    "Cursed/Objects/Ruins_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_4_64_55",
+          "x": 0,
+          "y": 4,
+          "w": 64,
+          "h": 55
+        }
+      ]
+    },
+    "Cursed/Objects/Ruins_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_4_64_55",
+          "x": 0,
+          "y": 4,
+          "w": 64,
+          "h": 55
+        }
+      ]
+    },
+    "Cursed/Objects/Ruins_shadow1_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_8_51_48",
+          "x": 6,
+          "y": 8,
+          "w": 51,
+          "h": 48
+        }
+      ]
+    },
+    "Cursed/Objects/Ruins_shadow1_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_3_32_26",
+          "x": 0,
+          "y": 3,
+          "w": 32,
+          "h": 26
+        }
+      ]
+    },
+    "Cursed/Objects/Ruins_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_11_109_105",
+          "x": 9,
+          "y": 11,
+          "w": 109,
+          "h": 105
+        }
+      ]
+    },
+    "Cursed/Objects/Ruins_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "25_25_77_77",
+          "x": 25,
+          "y": 25,
+          "w": 77,
+          "h": 77
+        }
+      ]
+    },
+    "Cursed/Objects/Ruins_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_4_64_55",
+          "x": 0,
+          "y": 4,
+          "w": 64,
+          "h": 55
+        }
+      ]
+    },
+    "Cursed/Objects/Ruins_shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_8_51_48",
+          "x": 6,
+          "y": 8,
+          "w": 51,
+          "h": 48
+        }
+      ]
+    },
+    "Cursed/Objects/Ruins_shadow2_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_3_32_26",
+          "x": 0,
+          "y": 3,
+          "w": 32,
+          "h": 26
+        }
+      ]
+    },
+    "Cursed/Objects/Spike_plant_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "50_66_156_123",
+          "x": 50,
+          "y": 66,
+          "w": 156,
+          "h": 123
+        }
+      ]
+    },
+    "Cursed/Objects/Spike_plant_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "19_20_89_88",
+          "x": 19,
+          "y": 20,
+          "w": 89,
+          "h": 88
+        }
+      ]
+    },
+    "Cursed/Objects/Spike_plant_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "26_34_75_59",
+          "x": 26,
+          "y": 34,
+          "w": 75,
+          "h": 59
+        }
+      ]
+    },
+    "Cursed/Objects/Spike_plant_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_2_33_60",
+          "x": 15,
+          "y": 2,
+          "w": 33,
+          "h": 60
+        }
+      ]
+    },
+    "Cursed/Objects/Spike_plant_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "50_66_156_123",
+          "x": 50,
+          "y": 66,
+          "w": 156,
+          "h": 123
+        }
+      ]
+    },
+    "Cursed/Objects/Spike_plant_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "19_20_89_88",
+          "x": 19,
+          "y": 20,
+          "w": 89,
+          "h": 88
+        }
+      ]
+    },
+    "Cursed/Objects/Spike_plant_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "26_34_75_59",
+          "x": 26,
+          "y": 34,
+          "w": 75,
+          "h": 59
+        }
+      ]
+    },
+    "Cursed/Objects/Spike_plant_shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_2_33_60",
+          "x": 15,
+          "y": 2,
+          "w": 33,
+          "h": 60
+        }
+      ]
+    },
+    "Cursed/Objects/Tentacle_plant_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_17_98_93",
+          "x": 15,
+          "y": 17,
+          "w": 98,
+          "h": 93
+        }
+      ]
+    },
+    "Cursed/Objects/Tentacle_plant_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "24_23_79_81",
+          "x": 24,
+          "y": 23,
+          "w": 79,
+          "h": 81
+        }
+      ]
+    },
+    "Cursed/Objects/Tentacle_plant_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_4_51_56",
+          "x": 6,
+          "y": 4,
+          "w": 51,
+          "h": 56
+        }
+      ]
+    },
+    "Cursed/Objects/Tentacle_plant_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_17_98_93",
+          "x": 15,
+          "y": 17,
+          "w": 98,
+          "h": 93
+        }
+      ]
+    },
+    "Cursed/Objects/Tentacle_plant_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "24_23_79_81",
+          "x": 24,
+          "y": 23,
+          "w": 79,
+          "h": 81
+        }
+      ]
+    },
+    "Cursed/Objects/Tentacle_plant_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_4_51_56",
+          "x": 6,
+          "y": 4,
+          "w": 51,
+          "h": 56
+        }
+      ]
+    },
+    "Cursed/Objects/Tubular_plant_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "18_15_27_34",
+          "x": 18,
+          "y": 15,
+          "w": 27,
+          "h": 34
+        }
+      ]
+    },
+    "Cursed/Objects/Tubular_plant_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_3_20_25",
+          "x": 6,
+          "y": 3,
+          "w": 20,
+          "h": 25
+        }
+      ]
+    },
+    "Cursed/Objects/Tubular_plant_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_6_17_20",
+          "x": 7,
+          "y": 6,
+          "w": 17,
+          "h": 20
+        }
+      ]
+    },
+    "Cursed/Objects/Tubular_plant_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "18_15_27_34",
+          "x": 18,
+          "y": 15,
+          "w": 27,
+          "h": 34
+        }
+      ]
+    },
+    "Cursed/Objects/Tubular_plant_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_3_20_25",
+          "x": 6,
+          "y": 3,
+          "w": 20,
+          "h": 25
+        }
+      ]
+    },
+    "Cursed/Objects/Tubular_plant_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_6_17_20",
+          "x": 7,
+          "y": 6,
+          "w": 17,
+          "h": 20
+        }
+      ]
+    },
+    "Cursed/Objects/Veins_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "44_23_168_209",
+          "x": 44,
+          "y": 23,
+          "w": 168,
+          "h": 209
+        }
+      ]
+    },
+    "Cursed/Objects/Veins_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "45_42_165_171",
+          "x": 45,
+          "y": 42,
+          "w": 165,
+          "h": 171
+        }
+      ]
+    },
+    "Cursed/Objects/Veins_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "60_64_135_128",
+          "x": 60,
+          "y": 64,
+          "w": 135,
+          "h": 128
+        }
+      ]
+    },
+    "Cursed/Objects/Veins_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_29_116_70",
+          "x": 6,
+          "y": 29,
+          "w": 116,
+          "h": 70
+        }
+      ]
+    },
+    "Cursed/Objects/Veins_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "44_23_168_209",
+          "x": 44,
+          "y": 23,
+          "w": 168,
+          "h": 209
+        }
+      ]
+    },
+    "Cursed/Objects/Veins_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "45_42_165_171",
+          "x": 45,
+          "y": 42,
+          "w": 165,
+          "h": 171
+        }
+      ]
+    },
+    "Cursed/Objects/Veins_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "60_64_135_128",
+          "x": 60,
+          "y": 64,
+          "w": 135,
+          "h": 128
+        }
+      ]
+    },
+    "Cursed/Objects/Veins_shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_29_116_70",
+          "x": 6,
+          "y": 29,
+          "w": 116,
+          "h": 70
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_5_26_22",
+          "x": 3,
+          "y": 5,
+          "w": 26,
+          "h": 22
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_10.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "17_0_30_64",
+          "x": 17,
+          "y": 0,
+          "w": 30,
+          "h": 64
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_11.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "10_15_44_33",
+          "x": 10,
+          "y": 15,
+          "w": 44,
+          "h": 33
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_12.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "10_12_43_39",
+          "x": 10,
+          "y": 12,
+          "w": 43,
+          "h": 39
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_13.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_15_32_34",
+          "x": 16,
+          "y": 15,
+          "w": 32,
+          "h": 34
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_14.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "13_17_37_30",
+          "x": 13,
+          "y": 17,
+          "w": 37,
+          "h": 30
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_15.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_0_30_31",
+          "x": 1,
+          "y": 0,
+          "w": 30,
+          "h": 31
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_16.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_4_24_24",
+          "x": 4,
+          "y": 4,
+          "w": 24,
+          "h": 24
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_17.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_1_22_30",
+          "x": 5,
+          "y": 1,
+          "w": 22,
+          "h": 30
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_18.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_7_19_18",
+          "x": 6,
+          "y": 7,
+          "w": 19,
+          "h": 18
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_1_15_13",
+          "x": 0,
+          "y": 1,
+          "w": 15,
+          "h": 13
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_5_25_22",
+          "x": 3,
+          "y": 5,
+          "w": 25,
+          "h": 22
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_1_32_29",
+          "x": 0,
+          "y": 1,
+          "w": 32,
+          "h": 29
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_2_22_28",
+          "x": 5,
+          "y": 2,
+          "w": 22,
+          "h": 28
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_8_48_48",
+          "x": 8,
+          "y": 8,
+          "w": 48,
+          "h": 48
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_7.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_14_34_35",
+          "x": 15,
+          "y": 14,
+          "w": 34,
+          "h": 35
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_8.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "18_10_27_44",
+          "x": 18,
+          "y": 10,
+          "w": 27,
+          "h": 44
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow1_9.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_0_31_64",
+          "x": 16,
+          "y": 0,
+          "w": 31,
+          "h": 64
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_5_26_22",
+          "x": 3,
+          "y": 5,
+          "w": 26,
+          "h": 22
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_10.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_0_31_64",
+          "x": 16,
+          "y": 0,
+          "w": 31,
+          "h": 64
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_11.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "10_12_43_39",
+          "x": 10,
+          "y": 12,
+          "w": 43,
+          "h": 39
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_12.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_15_32_34",
+          "x": 16,
+          "y": 15,
+          "w": 32,
+          "h": 34
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_13.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "13_17_37_30",
+          "x": 13,
+          "y": 17,
+          "w": 37,
+          "h": 30
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_15.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_4_24_24",
+          "x": 4,
+          "y": 4,
+          "w": 24,
+          "h": 24
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_16.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_1_22_30",
+          "x": 5,
+          "y": 1,
+          "w": 22,
+          "h": 30
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_17.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_7_19_18",
+          "x": 6,
+          "y": 7,
+          "w": 19,
+          "h": 18
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_18.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "18_10_27_44",
+          "x": 18,
+          "y": 10,
+          "w": 27,
+          "h": 44
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_1_15_13",
+          "x": 0,
+          "y": 1,
+          "w": 15,
+          "h": 13
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_5_25_22",
+          "x": 3,
+          "y": 5,
+          "w": 25,
+          "h": 22
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_4-1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_0_30_31",
+          "x": 1,
+          "y": 0,
+          "w": 30,
+          "h": 31
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_17_32_29",
+          "x": 16,
+          "y": 17,
+          "w": 32,
+          "h": 29
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_2_22_28",
+          "x": 5,
+          "y": 2,
+          "w": 22,
+          "h": 28
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_8_48_48",
+          "x": 8,
+          "y": 8,
+          "w": 48,
+          "h": 48
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_7.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_14_34_35",
+          "x": 15,
+          "y": 14,
+          "w": 34,
+          "h": 35
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_8.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "17_0_30_64",
+          "x": 17,
+          "y": 0,
+          "w": 30,
+          "h": 64
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow2_9.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "10_15_44_33",
+          "x": 10,
+          "y": 15,
+          "w": 44,
+          "h": 33
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_5_26_22",
+          "x": 3,
+          "y": 5,
+          "w": 26,
+          "h": 22
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_10.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "17_0_30_64",
+          "x": 17,
+          "y": 0,
+          "w": 30,
+          "h": 64
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_11.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "10_15_44_33",
+          "x": 10,
+          "y": 15,
+          "w": 44,
+          "h": 33
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_12.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "10_12_43_39",
+          "x": 10,
+          "y": 12,
+          "w": 43,
+          "h": 39
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_13.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_15_32_34",
+          "x": 16,
+          "y": 15,
+          "w": 32,
+          "h": 34
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_14.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "13_17_37_30",
+          "x": 13,
+          "y": 17,
+          "w": 37,
+          "h": 30
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_15.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_0_30_31",
+          "x": 1,
+          "y": 0,
+          "w": 30,
+          "h": 31
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_16.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_4_24_24",
+          "x": 4,
+          "y": 4,
+          "w": 24,
+          "h": 24
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_17.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_1_22_30",
+          "x": 5,
+          "y": 1,
+          "w": 22,
+          "h": 30
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_18.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "6_7_19_18",
+          "x": 6,
+          "y": 7,
+          "w": 19,
+          "h": 18
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_1_15_13",
+          "x": 0,
+          "y": 1,
+          "w": 15,
+          "h": 13
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_5_25_22",
+          "x": 3,
+          "y": 5,
+          "w": 25,
+          "h": 22
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_1_32_29",
+          "x": 0,
+          "y": 1,
+          "w": 32,
+          "h": 29
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_2_22_28",
+          "x": 5,
+          "y": 2,
+          "w": 22,
+          "h": 28
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_8_48_48",
+          "x": 8,
+          "y": 8,
+          "w": 48,
+          "h": 48
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_7.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_14_34_35",
+          "x": 15,
+          "y": 14,
+          "w": 34,
+          "h": 35
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_8.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "18_10_27_44",
+          "x": 18,
+          "y": 10,
+          "w": 27,
+          "h": 44
+        }
+      ]
+    },
+    "Undead/Objects/Bones_shadow3_9.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_0_31_64",
+          "x": 16,
+          "y": 0,
+          "w": 31,
+          "h": 64
+        }
+      ]
+    },
+    "Undead/Objects/Broken_ tree_shadow3_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "22_44_84_39",
+          "x": 22,
+          "y": 44,
+          "w": 84,
+          "h": 39
+        }
+      ]
+    },
+    "Undead/Objects/Broken_ tree_shadow3_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_0_23_32",
+          "x": 4,
+          "y": 0,
+          "w": 23,
+          "h": 32
+        }
+      ]
+    },
+    "Undead/Objects/Broken_ tree_shadow3_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_30_29",
+          "x": 1,
+          "y": 1,
+          "w": 30,
+          "h": 29
+        }
+      ]
+    },
+    "Undead/Objects/Broken_ tree_shadow3_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_16_41_31",
+          "x": 11,
+          "y": 16,
+          "w": 41,
+          "h": 31
+        }
+      ]
+    },
+    "Undead/Objects/Broken_ tree_shadow3_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_19_42_26",
+          "x": 11,
+          "y": 19,
+          "w": 42,
+          "h": 26
+        }
+      ]
+    },
+    "Undead/Objects/Broken_ tree_shadow3_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_4_30_23",
+          "x": 1,
+          "y": 4,
+          "w": 30,
+          "h": 23
+        }
+      ]
+    },
+    "Undead/Objects/Broken_ tree_shadow3_7.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_16_15",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 15
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "22_44_84_39",
+          "x": 22,
+          "y": 44,
+          "w": 84,
+          "h": 39
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_0_23_32",
+          "x": 4,
+          "y": 0,
+          "w": 23,
+          "h": 32
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_30_29",
+          "x": 1,
+          "y": 1,
+          "w": 30,
+          "h": 29
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_16_41_31",
+          "x": 11,
+          "y": 16,
+          "w": 41,
+          "h": 31
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow1_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_19_42_26",
+          "x": 11,
+          "y": 19,
+          "w": 42,
+          "h": 26
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow1_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_4_30_23",
+          "x": 1,
+          "y": 4,
+          "w": 30,
+          "h": 23
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow1_7.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_16_15",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 15
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow2_1-1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "32_19_63_89",
+          "x": 32,
+          "y": 19,
+          "w": 63,
+          "h": 89
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "22_44_84_39",
+          "x": 22,
+          "y": 44,
+          "w": 84,
+          "h": 39
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow2_2-1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "34_29_59_69",
+          "x": 34,
+          "y": 29,
+          "w": 59,
+          "h": 69
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_0_23_32",
+          "x": 4,
+          "y": 0,
+          "w": 23,
+          "h": 32
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow2_3-1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_9_46_45",
+          "x": 9,
+          "y": 9,
+          "w": 46,
+          "h": 45
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_30_29",
+          "x": 1,
+          "y": 1,
+          "w": 30,
+          "h": 29
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_16_41_31",
+          "x": 11,
+          "y": 16,
+          "w": 41,
+          "h": 31
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow2_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_19_42_26",
+          "x": 11,
+          "y": 19,
+          "w": 42,
+          "h": 26
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow2_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_4_30_23",
+          "x": 1,
+          "y": 4,
+          "w": 30,
+          "h": 23
+        }
+      ]
+    },
+    "Undead/Objects/Broken_tree_shadow2_7.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_16_15",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 15
+        }
+      ]
+    },
+    "Undead/Objects/Crystal_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_7_46_50",
+          "x": 9,
+          "y": 7,
+          "w": 46,
+          "h": 50
+        }
+      ]
+    },
+    "Undead/Objects/Crystal_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_14_39_36",
+          "x": 12,
+          "y": 14,
+          "w": 39,
+          "h": 36
+        }
+      ]
+    },
+    "Undead/Objects/Crystal_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_3_27_25",
+          "x": 2,
+          "y": 3,
+          "w": 27,
+          "h": 25
+        }
+      ]
+    },
+    "Undead/Objects/Crystal_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_13_14",
+          "x": 1,
+          "y": 1,
+          "w": 13,
+          "h": 14
+        }
+      ]
+    },
+    "Undead/Objects/Crystal_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_7_46_50",
+          "x": 9,
+          "y": 7,
+          "w": 46,
+          "h": 50
+        }
+      ]
+    },
+    "Undead/Objects/Crystal_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_14_39_36",
+          "x": 12,
+          "y": 14,
+          "w": 39,
+          "h": 36
+        }
+      ]
+    },
+    "Undead/Objects/Crystal_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_3_27_25",
+          "x": 2,
+          "y": 3,
+          "w": 27,
+          "h": 25
+        }
+      ]
+    },
+    "Undead/Objects/Crystal_shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_13_14",
+          "x": 1,
+          "y": 1,
+          "w": 13,
+          "h": 14
+        }
+      ]
+    },
+    "Undead/Objects/Crystal_shadow3_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_7_46_50",
+          "x": 9,
+          "y": 7,
+          "w": 46,
+          "h": 50
+        }
+      ]
+    },
+    "Undead/Objects/Crystal_shadow3_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "12_14_39_36",
+          "x": 12,
+          "y": 14,
+          "w": 39,
+          "h": 36
+        }
+      ]
+    },
+    "Undead/Objects/Crystal_shadow3_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_3_27_25",
+          "x": 2,
+          "y": 3,
+          "w": 27,
+          "h": 25
+        }
+      ]
+    },
+    "Undead/Objects/Crystal_shadow3_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_13_14",
+          "x": 1,
+          "y": 1,
+          "w": 13,
+          "h": 14
+        }
+      ]
+    },
+    "Undead/Objects/Dead_arm_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_61_62",
+          "x": 1,
+          "y": 1,
+          "w": 61,
+          "h": 62
+        }
+      ]
+    },
+    "Undead/Objects/Dead_arm_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_3_45_57",
+          "x": 9,
+          "y": 3,
+          "w": 45,
+          "h": 57
+        }
+      ]
+    },
+    "Undead/Objects/Dead_arm_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_5_31_53",
+          "x": 16,
+          "y": 5,
+          "w": 31,
+          "h": 53
+        }
+      ]
+    },
+    "Undead/Objects/Dead_arm_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "18_10_28_43",
+          "x": 18,
+          "y": 10,
+          "w": 28,
+          "h": 43
+        }
+      ]
+    },
+    "Undead/Objects/Dead_arm_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_61_62",
+          "x": 1,
+          "y": 1,
+          "w": 61,
+          "h": 62
+        }
+      ]
+    },
+    "Undead/Objects/Dead_arm_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_3_45_57",
+          "x": 9,
+          "y": 3,
+          "w": 45,
+          "h": 57
+        }
+      ]
+    },
+    "Undead/Objects/Dead_arm_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_5_31_53",
+          "x": 16,
+          "y": 5,
+          "w": 31,
+          "h": 53
+        }
+      ]
+    },
+    "Undead/Objects/Dead_arm_shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "18_10_28_43",
+          "x": 18,
+          "y": 10,
+          "w": 28,
+          "h": 43
+        }
+      ]
+    },
+    "Undead/Objects/Dead_arm_shadow3_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_1_61_62",
+          "x": 1,
+          "y": 1,
+          "w": 61,
+          "h": 62
+        }
+      ]
+    },
+    "Undead/Objects/Dead_arm_shadow3_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_3_45_57",
+          "x": 9,
+          "y": 3,
+          "w": 45,
+          "h": 57
+        }
+      ]
+    },
+    "Undead/Objects/Dead_arm_shadow3_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_5_31_53",
+          "x": 16,
+          "y": 5,
+          "w": 31,
+          "h": 53
+        }
+      ]
+    },
+    "Undead/Objects/Dead_arm_shadow3_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "18_10_28_43",
+          "x": 18,
+          "y": 10,
+          "w": 28,
+          "h": 43
+        }
+      ]
+    },
+    "Undead/Objects/Dead_tree_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "32_19_63_89",
+          "x": 32,
+          "y": 19,
+          "w": 63,
+          "h": 89
+        }
+      ]
+    },
+    "Undead/Objects/Dead_tree_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "34_29_59_69",
+          "x": 34,
+          "y": 29,
+          "w": 59,
+          "h": 69
+        }
+      ]
+    },
+    "Undead/Objects/Dead_tree_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_9_46_45",
+          "x": 9,
+          "y": 9,
+          "w": 46,
+          "h": 45
+        }
+      ]
+    },
+    "Undead/Objects/Dead_tree_shadow3_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "32_19_63_89",
+          "x": 32,
+          "y": 19,
+          "w": 63,
+          "h": 89
+        }
+      ]
+    },
+    "Undead/Objects/Dead_tree_shadow3_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "34_29_59_69",
+          "x": 34,
+          "y": 29,
+          "w": 59,
+          "h": 69
+        }
+      ]
+    },
+    "Undead/Objects/Dead_tree_shadow3_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_9_46_45",
+          "x": 9,
+          "y": 9,
+          "w": 46,
+          "h": 45
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_7_16_18",
+          "x": 8,
+          "y": 7,
+          "w": 16,
+          "h": 18
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_10.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_4_21_23",
+          "x": 5,
+          "y": 4,
+          "w": 21,
+          "h": 23
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_11.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_4_24_23",
+          "x": 4,
+          "y": 4,
+          "w": 24,
+          "h": 23
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_12.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_4_17_24",
+          "x": 7,
+          "y": 4,
+          "w": 17,
+          "h": 24
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_13.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_6_18_20",
+          "x": 7,
+          "y": 6,
+          "w": 18,
+          "h": 20
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_14.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_4_18_24",
+          "x": 7,
+          "y": 4,
+          "w": 18,
+          "h": 24
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_15.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_5_21_21",
+          "x": 5,
+          "y": 5,
+          "w": 21,
+          "h": 21
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_16.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_3_18_25",
+          "x": 7,
+          "y": 3,
+          "w": 18,
+          "h": 25
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_17.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_4_18_24",
+          "x": 7,
+          "y": 4,
+          "w": 18,
+          "h": 24
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_7_15_18",
+          "x": 8,
+          "y": 7,
+          "w": 15,
+          "h": 18
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_6_16_19",
+          "x": 8,
+          "y": 6,
+          "w": 16,
+          "h": 19
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_5_16_21",
+          "x": 8,
+          "y": 5,
+          "w": 16,
+          "h": 21
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_7_13_18",
+          "x": 9,
+          "y": 7,
+          "w": 13,
+          "h": 18
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_8_15_16",
+          "x": 8,
+          "y": 8,
+          "w": 15,
+          "h": 16
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_7.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_7_14_17",
+          "x": 9,
+          "y": 7,
+          "w": 14,
+          "h": 17
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_8.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_7_16_17",
+          "x": 8,
+          "y": 7,
+          "w": 16,
+          "h": 17
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow1_9.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_2_16_28",
+          "x": 8,
+          "y": 2,
+          "w": 16,
+          "h": 28
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_7_16_18",
+          "x": 8,
+          "y": 7,
+          "w": 16,
+          "h": 18
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_10.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_4_21_23",
+          "x": 5,
+          "y": 4,
+          "w": 21,
+          "h": 23
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_11.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_4_24_23",
+          "x": 4,
+          "y": 4,
+          "w": 24,
+          "h": 23
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_12.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_4_17_24",
+          "x": 7,
+          "y": 4,
+          "w": 17,
+          "h": 24
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_13.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_6_18_20",
+          "x": 7,
+          "y": 6,
+          "w": 18,
+          "h": 20
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_14.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_4_18_24",
+          "x": 7,
+          "y": 4,
+          "w": 18,
+          "h": 24
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_15.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_5_21_21",
+          "x": 5,
+          "y": 5,
+          "w": 21,
+          "h": 21
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_16.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_3_18_25",
+          "x": 7,
+          "y": 3,
+          "w": 18,
+          "h": 25
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_17.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_4_18_24",
+          "x": 7,
+          "y": 4,
+          "w": 18,
+          "h": 24
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_7_15_18",
+          "x": 8,
+          "y": 7,
+          "w": 15,
+          "h": 18
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_6_16_19",
+          "x": 8,
+          "y": 6,
+          "w": 16,
+          "h": 19
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_5_16_21",
+          "x": 8,
+          "y": 5,
+          "w": 16,
+          "h": 21
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_7_13_18",
+          "x": 9,
+          "y": 7,
+          "w": 13,
+          "h": 18
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_8_15_16",
+          "x": 8,
+          "y": 8,
+          "w": 15,
+          "h": 16
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_7.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_7_14_17",
+          "x": 9,
+          "y": 7,
+          "w": 14,
+          "h": 17
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_8.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_7_16_17",
+          "x": 8,
+          "y": 7,
+          "w": 16,
+          "h": 17
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow2_9.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_2_16_28",
+          "x": 8,
+          "y": 2,
+          "w": 16,
+          "h": 28
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_7_16_18",
+          "x": 8,
+          "y": 7,
+          "w": 16,
+          "h": 18
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_10.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_4_21_23",
+          "x": 5,
+          "y": 4,
+          "w": 21,
+          "h": 23
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_11.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_4_24_23",
+          "x": 4,
+          "y": 4,
+          "w": 24,
+          "h": 23
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_12.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_4_17_24",
+          "x": 7,
+          "y": 4,
+          "w": 17,
+          "h": 24
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_13.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_6_18_20",
+          "x": 7,
+          "y": 6,
+          "w": 18,
+          "h": 20
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_14.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_4_18_24",
+          "x": 7,
+          "y": 4,
+          "w": 18,
+          "h": 24
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_15.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "5_5_21_21",
+          "x": 5,
+          "y": 5,
+          "w": 21,
+          "h": 21
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_16.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_3_18_25",
+          "x": 7,
+          "y": 3,
+          "w": 18,
+          "h": 25
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_17.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_4_18_24",
+          "x": 7,
+          "y": 4,
+          "w": 18,
+          "h": 24
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_7_15_18",
+          "x": 8,
+          "y": 7,
+          "w": 15,
+          "h": 18
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_6_16_19",
+          "x": 8,
+          "y": 6,
+          "w": 16,
+          "h": 19
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_5_16_21",
+          "x": 8,
+          "y": 5,
+          "w": 16,
+          "h": 21
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_7_13_18",
+          "x": 9,
+          "y": 7,
+          "w": 13,
+          "h": 18
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_8_15_16",
+          "x": 8,
+          "y": 8,
+          "w": 15,
+          "h": 16
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_7.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_7_14_17",
+          "x": 9,
+          "y": 7,
+          "w": 14,
+          "h": 17
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_8.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_7_16_17",
+          "x": 8,
+          "y": 7,
+          "w": 16,
+          "h": 17
+        }
+      ]
+    },
+    "Undead/Objects/Grave_shadow3_9.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_2_16_28",
+          "x": 8,
+          "y": 2,
+          "w": 16,
+          "h": 28
+        }
+      ]
+    },
+    "Undead/Objects/Lich_shadow1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "53_71_150_113",
+          "x": 53,
+          "y": 71,
+          "w": 150,
+          "h": 113
+        }
+      ]
+    },
+    "Undead/Objects/Lich_shadow2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "53_71_150_113",
+          "x": 53,
+          "y": 71,
+          "w": 150,
+          "h": 113
+        }
+      ]
+    },
+    "Undead/Objects/Lich_shadow3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "53_71_150_113",
+          "x": 53,
+          "y": 71,
+          "w": 150,
+          "h": 113
+        }
+      ]
+    },
+    "Undead/Objects/Pile_sculls_shadow1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "28_38_71_51",
+          "x": 28,
+          "y": 38,
+          "w": 71,
+          "h": 51
+        }
+      ]
+    },
+    "Undead/Objects/Pile_sculls_shadow2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "28_38_71_51",
+          "x": 28,
+          "y": 38,
+          "w": 71,
+          "h": 51
+        }
+      ]
+    },
+    "Undead/Objects/Pile_sculls_shadow3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "28_38_71_51",
+          "x": 28,
+          "y": 38,
+          "w": 71,
+          "h": 51
+        }
+      ]
+    },
+    "Undead/Objects/Plant__shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "32_35_64_58",
+          "x": 32,
+          "y": 35,
+          "w": 64,
+          "h": 58
+        }
+      ]
+    },
+    "Undead/Objects/Plant__shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_13_42_37",
+          "x": 11,
+          "y": 13,
+          "w": 42,
+          "h": 37
+        }
+      ]
+    },
+    "Undead/Objects/Plant__shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_2_30_28",
+          "x": 1,
+          "y": 2,
+          "w": 30,
+          "h": 28
+        }
+      ]
+    },
+    "Undead/Objects/Plant__shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_7_15_17",
+          "x": 8,
+          "y": 7,
+          "w": 15,
+          "h": 17
+        }
+      ]
+    },
+    "Undead/Objects/Plant__shadow2_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_1_11_14",
+          "x": 2,
+          "y": 1,
+          "w": 11,
+          "h": 14
+        }
+      ]
+    },
+    "Undead/Objects/Plant_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "32_35_64_58",
+          "x": 32,
+          "y": 35,
+          "w": 64,
+          "h": 58
+        }
+      ]
+    },
+    "Undead/Objects/Plant_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "11_13_42_37",
+          "x": 11,
+          "y": 13,
+          "w": 42,
+          "h": 37
+        }
+      ]
+    },
+    "Undead/Objects/Plant_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_2_30_28",
+          "x": 1,
+          "y": 2,
+          "w": 30,
+          "h": 28
+        }
+      ]
+    },
+    "Undead/Objects/Plant_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_7_15_17",
+          "x": 8,
+          "y": 7,
+          "w": 15,
+          "h": 17
+        }
+      ]
+    },
+    "Undead/Objects/Plant_shadow1_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_1_11_14",
+          "x": 2,
+          "y": 1,
+          "w": 11,
+          "h": 14
+        }
+      ]
+    },
+    "Undead/Objects/Plant_shadow3_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_3_64_58",
+          "x": 0,
+          "y": 3,
+          "w": 64,
+          "h": 58
+        }
+      ]
+    },
+    "Undead/Objects/Plant_shadow3_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "43_45_42_37",
+          "x": 43,
+          "y": 45,
+          "w": 42,
+          "h": 37
+        }
+      ]
+    },
+    "Undead/Objects/Plant_shadow3_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_2_30_28",
+          "x": 1,
+          "y": 2,
+          "w": 30,
+          "h": 28
+        }
+      ]
+    },
+    "Undead/Objects/Plant_shadow3_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_7_15_17",
+          "x": 8,
+          "y": 7,
+          "w": 15,
+          "h": 17
+        }
+      ]
+    },
+    "Undead/Objects/Plant_shadow3_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "2_1_11_14",
+          "x": 2,
+          "y": 1,
+          "w": 11,
+          "h": 14
+        }
+      ]
+    },
+    "Undead/Objects/Rock_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_4_57_56",
+          "x": 3,
+          "y": 4,
+          "w": 57,
+          "h": 56
+        }
+      ]
+    },
+    "Undead/Objects/Rock_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_10_45_44",
+          "x": 9,
+          "y": 10,
+          "w": 45,
+          "h": 44
+        }
+      ]
+    },
+    "Undead/Objects/Rock_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_15_34_33",
+          "x": 15,
+          "y": 15,
+          "w": 34,
+          "h": 33
+        }
+      ]
+    },
+    "Undead/Objects/Rock_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_2_26_27",
+          "x": 3,
+          "y": 2,
+          "w": 26,
+          "h": 27
+        }
+      ]
+    },
+    "Undead/Objects/Rock_shadow1_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_15_16",
+          "x": 0,
+          "y": 0,
+          "w": 15,
+          "h": 16
+        }
+      ]
+    },
+    "Undead/Objects/Rock_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_4_57_56",
+          "x": 3,
+          "y": 4,
+          "w": 57,
+          "h": 56
+        }
+      ]
+    },
+    "Undead/Objects/Rock_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_10_45_44",
+          "x": 9,
+          "y": 10,
+          "w": 45,
+          "h": 44
+        }
+      ]
+    },
+    "Undead/Objects/Rock_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_15_34_33",
+          "x": 15,
+          "y": 15,
+          "w": 34,
+          "h": 33
+        }
+      ]
+    },
+    "Undead/Objects/Rock_shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_2_26_27",
+          "x": 3,
+          "y": 2,
+          "w": 26,
+          "h": 27
+        }
+      ]
+    },
+    "Undead/Objects/Rock_shadow2_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_15_16",
+          "x": 0,
+          "y": 0,
+          "w": 15,
+          "h": 16
+        }
+      ]
+    },
+    "Undead/Objects/Rock_shadow3_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_4_57_56",
+          "x": 3,
+          "y": 4,
+          "w": 57,
+          "h": 56
+        }
+      ]
+    },
+    "Undead/Objects/Rock_shadow3_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_10_45_44",
+          "x": 9,
+          "y": 10,
+          "w": 45,
+          "h": 44
+        }
+      ]
+    },
+    "Undead/Objects/Rock_shadow3_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "15_15_34_33",
+          "x": 15,
+          "y": 15,
+          "w": 34,
+          "h": 33
+        }
+      ]
+    },
+    "Undead/Objects/Rock_shadow3_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "19_18_26_27",
+          "x": 19,
+          "y": 18,
+          "w": 26,
+          "h": 27
+        }
+      ]
+    },
+    "Undead/Objects/Rock_shadow3_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_15_16",
+          "x": 0,
+          "y": 0,
+          "w": 15,
+          "h": 16
+        }
+      ]
+    },
+    "Undead/Objects/Ruin_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "24_16_80_95",
+          "x": 24,
+          "y": 16,
+          "w": 80,
+          "h": 95
+        }
+      ]
+    },
+    "Undead/Objects/Ruin_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "24_33_79_62",
+          "x": 24,
+          "y": 33,
+          "w": 79,
+          "h": 62
+        }
+      ]
+    },
+    "Undead/Objects/Ruin_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_5_55_54",
+          "x": 4,
+          "y": 5,
+          "w": 55,
+          "h": 54
+        }
+      ]
+    },
+    "Undead/Objects/Ruin_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_9_47_46",
+          "x": 8,
+          "y": 9,
+          "w": 47,
+          "h": 46
+        }
+      ]
+    },
+    "Undead/Objects/Ruin_shadow1_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_5_29_22",
+          "x": 1,
+          "y": 5,
+          "w": 29,
+          "h": 22
+        }
+      ]
+    },
+    "Undead/Objects/Ruin_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "24_16_80_95",
+          "x": 24,
+          "y": 16,
+          "w": 80,
+          "h": 95
+        }
+      ]
+    },
+    "Undead/Objects/Ruin_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "24_33_79_62",
+          "x": 24,
+          "y": 33,
+          "w": 79,
+          "h": 62
+        }
+      ]
+    },
+    "Undead/Objects/Ruin_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_5_55_54",
+          "x": 4,
+          "y": 5,
+          "w": 55,
+          "h": 54
+        }
+      ]
+    },
+    "Undead/Objects/Ruin_shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_9_47_46",
+          "x": 8,
+          "y": 9,
+          "w": 47,
+          "h": 46
+        }
+      ]
+    },
+    "Undead/Objects/Ruin_shadow2_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_5_29_22",
+          "x": 1,
+          "y": 5,
+          "w": 29,
+          "h": 22
+        }
+      ]
+    },
+    "Undead/Objects/Ruin_shadow3_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "24_16_80_95",
+          "x": 24,
+          "y": 16,
+          "w": 80,
+          "h": 95
+        }
+      ]
+    },
+    "Undead/Objects/Ruin_shadow3_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "24_33_79_62",
+          "x": 24,
+          "y": 33,
+          "w": 79,
+          "h": 62
+        }
+      ]
+    },
+    "Undead/Objects/Ruin_shadow3_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_5_55_54",
+          "x": 4,
+          "y": 5,
+          "w": 55,
+          "h": 54
+        }
+      ]
+    },
+    "Undead/Objects/Ruin_shadow3_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "8_9_47_46",
+          "x": 8,
+          "y": 9,
+          "w": 47,
+          "h": 46
+        }
+      ]
+    },
+    "Undead/Objects/Ruin_shadow3_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_5_29_22",
+          "x": 1,
+          "y": 5,
+          "w": 29,
+          "h": 22
+        }
+      ]
+    },
+    "Undead/Objects/Scull_door_shadow1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_8_31_47",
+          "x": 16,
+          "y": 8,
+          "w": 31,
+          "h": 47
+        }
+      ]
+    },
+    "Undead/Objects/Scull_door_shadow2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_8_31_47",
+          "x": 16,
+          "y": 8,
+          "w": 31,
+          "h": 47
+        }
+      ]
+    },
+    "Undead/Objects/Scull_door_shadow3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_8_31_47",
+          "x": 16,
+          "y": 8,
+          "w": 31,
+          "h": 47
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_palnt_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_24_110_80",
+          "x": 9,
+          "y": 24,
+          "w": 110,
+          "h": 80
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_palnt_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "17_37_94_53",
+          "x": 17,
+          "y": 37,
+          "w": 94,
+          "h": 53
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_palnt_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_4_24_23",
+          "x": 4,
+          "y": 4,
+          "w": 24,
+          "h": 23
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_palnt_shadow2_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_9_58_46",
+          "x": 3,
+          "y": 9,
+          "w": 58,
+          "h": 46
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_palnt_shadow2_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "14_18_35_27",
+          "x": 14,
+          "y": 18,
+          "w": 35,
+          "h": 27
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_palnt_shadow2_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_6_13_19",
+          "x": 9,
+          "y": 6,
+          "w": 13,
+          "h": 19
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_plant_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_24_110_80",
+          "x": 9,
+          "y": 24,
+          "w": 110,
+          "h": 80
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_plant_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "17_37_94_53",
+          "x": 17,
+          "y": 37,
+          "w": 94,
+          "h": 53
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_plant_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_4_24_23",
+          "x": 4,
+          "y": 4,
+          "w": 24,
+          "h": 23
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_plant_shadow1_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_9_58_46",
+          "x": 3,
+          "y": 9,
+          "w": 58,
+          "h": 46
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_plant_shadow1_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "14_18_35_27",
+          "x": 14,
+          "y": 18,
+          "w": 35,
+          "h": 27
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_plant_shadow1_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_6_13_19",
+          "x": 9,
+          "y": 6,
+          "w": 13,
+          "h": 19
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_plant_shadow3_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_24_110_80",
+          "x": 9,
+          "y": 24,
+          "w": 110,
+          "h": 80
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_plant_shadow3_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "17_37_94_53",
+          "x": 17,
+          "y": 37,
+          "w": 94,
+          "h": 53
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_plant_shadow3_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "4_4_24_23",
+          "x": 4,
+          "y": 4,
+          "w": 24,
+          "h": 23
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_plant_shadow3_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_9_58_46",
+          "x": 3,
+          "y": 9,
+          "w": 58,
+          "h": 46
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_plant_shadow3_5.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "14_18_35_27",
+          "x": 14,
+          "y": 18,
+          "w": 35,
+          "h": 27
+        }
+      ]
+    },
+    "Undead/Objects/Thorn_plant_shadow3_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "9_6_13_19",
+          "x": 9,
+          "y": 6,
+          "w": 13,
+          "h": 19
+        }
+      ]
+    },
+    "Undead/Objects/Tree_shadow1_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "34_27_59_74",
+          "x": 34,
+          "y": 27,
+          "w": 59,
+          "h": 74
+        }
+      ]
+    },
+    "Undead/Objects/Tree_shadow1_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_0_49_63",
+          "x": 7,
+          "y": 0,
+          "w": 49,
+          "h": 63
+        }
+      ]
+    },
+    "Undead/Objects/Tree_shadow1_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_11_32_41",
+          "x": 16,
+          "y": 11,
+          "w": 32,
+          "h": 41
+        }
+      ]
+    },
+    "Undead/Objects/Tree_shadow2_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "34_27_59_74",
+          "x": 34,
+          "y": 27,
+          "w": 59,
+          "h": 74
+        }
+      ]
+    },
+    "Undead/Objects/Tree_shadow2_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_0_49_63",
+          "x": 7,
+          "y": 0,
+          "w": 49,
+          "h": 63
+        }
+      ]
+    },
+    "Undead/Objects/Tree_shadow2_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_11_32_41",
+          "x": 16,
+          "y": 11,
+          "w": 32,
+          "h": 41
+        }
+      ]
+    },
+    "Undead/Objects/Tree_shadow3_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "34_27_59_74",
+          "x": 34,
+          "y": 27,
+          "w": 59,
+          "h": 74
+        }
+      ]
+    },
+    "Undead/Objects/Tree_shadow3_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "7_0_49_63",
+          "x": 7,
+          "y": 0,
+          "w": 49,
+          "h": 63
+        }
+      ]
+    },
+    "Undead/Objects/Tree_shadow3_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "16_11_32_41",
+          "x": 16,
+          "y": 11,
+          "w": 32,
+          "h": 41
+        }
+      ]
+    }
+  }
+}

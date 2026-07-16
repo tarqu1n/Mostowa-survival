@@ -1,0 +1,16 @@
+{
+  "id": "craftpix-nature",
+  "name": "CraftPix \u2014 Nature (trees, bushes, rocks, crystals)",
+  "author": "CraftPix.net",
+  "sourceUrl": "https://craftpix.net/freebies/free-top-down-trees-pixel-art/",
+  "licence": "Free for personal & commercial use, may be altered; assets may not be resold/redistributed standalone. See License.txt / https://craftpix.net/file-licenses/",
+  "tileSize": 16,
+  "rules": {
+    "tile": [],
+    "strip": [
+      "**/*-Sheet.png"
+    ]
+  },
+  "overrides": {},
+  "exclude": []
+}

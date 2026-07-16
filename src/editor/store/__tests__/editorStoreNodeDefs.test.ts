@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useEditorStore } from '../editorStore';
-import nodesJson from '../../../data/maps/nodes.json';
-import type { AuthoredNodeDef, NodeDefsFile } from '../../../systems/nodeDefs';
+import type { AuthoredNodeDef } from '../../../systems/nodeDefs';
+import { NODE_DEFS_SEED } from './fixtures/nodeDefsSeed';
 
-/** The committed seed (`tree`/`rock`/`berryBush`, each with exactly one `default` skin) — deep-cloned
- *  per `reset()` so a test's mutation of `nodeDefs`/its skins can never bleed into another test. */
-const SEED_DEFS = (nodesJson as NodeDefsFile).defs;
+/** Frozen single-skin seed (`tree`/`rock`/`berryBush`) — deep-cloned per `reset()` so a test's
+ *  mutation of `nodeDefs`/its skins can never bleed into another test. A dedicated fixture (not the
+ *  live `nodes.json`) keeps these skin-count assertions immune to real content edits. */
+const SEED_DEFS = NODE_DEFS_SEED;
 
 /** Resets BOTH the node-defs registry (back to the committed `nodes.json` seed) and the open map
  *  (fresh 6x6 scratch, mirrors `editorStoreObjects.test.ts`'s reset) — the delete/remove-skin guards

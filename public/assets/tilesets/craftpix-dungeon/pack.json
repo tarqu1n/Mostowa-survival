@@ -1,0 +1,69 @@
+{
+  "id": "craftpix-dungeon",
+  "name": "CraftPix \u2014 Structures, Props, NPCs & Defenses (dungeon, guild, chapel, workshop, home, traps)",
+  "author": "CraftPix.net",
+  "sourceUrl": "https://craftpix.net/freebies/free-pixel-art-dungeon-objects-asset-pack/",
+  "licence": "Free for personal & commercial use, may be altered; assets may not be resold/redistributed standalone. See License.txt / https://craftpix.net/file-licenses/",
+  "tileSize": 16,
+  "rules": {
+    "tile": [],
+    "strip": [
+      "**/Characters/**",
+      "**/Fx/**",
+      "**/*-Sheet.png"
+    ]
+  },
+  "overrides": {
+    "GuildHall/Characters/Mage1_down.png": {
+      "frames": 7
+    },
+    "GuildHall/Characters/Mage1_left.png": {
+      "frames": 7
+    },
+    "GuildHall/Characters/Mage1_right.png": {
+      "frames": 7
+    },
+    "GuildHall/Characters/Mage1_up.png": {
+      "frames": 7
+    },
+    "GuildHall/Characters/Mage2_down.png": {
+      "frames": 7
+    },
+    "GuildHall/Characters/Mage2_left.png": {
+      "frames": 7
+    },
+    "GuildHall/Characters/Mage2_right.png": {
+      "frames": 7
+    },
+    "GuildHall/Characters/Mage2_up.png": {
+      "frames": 7
+    },
+    "GuildHall/Characters/Mage3_down.png": {
+      "frames": 7
+    },
+    "GuildHall/Characters/Mage3_left.png": {
+      "frames": 7
+    },
+    "GuildHall/Characters/Mage3_right.png": {
+      "frames": 7
+    },
+    "GuildHall/Characters/Mage3_up.png": {
+      "frames": 7
+    },
+    "GuildHall/Characters/Mage4_down.png": {
+      "frames": 7
+    },
+    "GuildHall/Characters/Mage4_left.png": {
+      "frames": 7
+    },
+    "GuildHall/Characters/Mage4_right.png": {
+      "frames": 7
+    },
+    "GuildHall/Characters/Mage4_up.png": {
+      "frames": 7
+    }
+  },
+  "exclude": [
+    "**/_src/**"
+  ]
+}

@@ -229,8 +229,9 @@ Full decision rationale (this supersedes plan 010's anchor-stamp tool for rigid 
 [DECISIONS.md](DECISIONS.md).
 
 > **Sourcing / generating new art?** The tileset candidates weighed up, the AI-gen service trials
-> (Retro Diffusion / PixelLab), and the Gemini bespoke-asset pipeline live in the R&D log:
-> [ASSET-EXPERIMENTS.md](ASSET-EXPERIMENTS.md).
+> (Retro Diffusion / PixelLab), the Gemini bespoke-asset pipeline, and **`style_match.py`** (snaps
+> off-palette gen art onto the pack's look — reach for it whenever generated art's shape is right but
+> the colours/shading are off) all live in the R&D log: [ASSET-EXPERIMENTS.md](ASSET-EXPERIMENTS.md).
 
 ## Pack manifests & asset catalog
 
@@ -256,6 +257,30 @@ pack palette. **How to author terrain tiles that match a stock pack and tile sea
 global-band + connector-tile technique, the seamlessness rules, and the wire-into-editor recipe):
 [TILE-AUTHORING.md](TILE-AUTHORING.md).** Generator:
 [`scripts/mostowo-custom/gen_water_diagonal.py`](../scripts/mostowo-custom/gen_water_diagonal.py).
+
+Also resident: `Environment/Props/Static/log_pile{,_2,_3}.png` — three log-pile props.
+**Origin:** generated with **Retro Diffusion** (see [ASSET-EXPERIMENTS.md](ASSET-EXPERIMENTS.md)),
+prompted for a top-down log pile with the pack's tree sheet as the *style-reference image*, then
+post-processed (all steps reproducible from the Downloaded gen + the scripts below):
+
+- **De-inflate:** RD emits a 4×-upscaled PNG (native pixel size 4). Recover the real grid with a
+  `/4` nearest-neighbour downscale *before* anything else, else it fights nearest-neighbour scaling.
+- **Ground:** `log_pile.png` shipped a baked grass disc — stripped (green-dominant pixels removed)
+  and replaced with a soft translucent drop shadow, so it's terrain-agnostic like the pack props.
+  `_2`/`_3` had no ground disc (`_3`'s green is *moss on the wood* — kept, not stripped).
+- **Size:** props are baked to a whole-tile footprint (`log_pile` ~2×1.3 tiles; `_2`/`_3` exactly
+  16×32 = 1×2 tiles). Placed decor snapshots its size, so **re-place after any resize**.
+- **Style-match:** run through
+  [`scripts/mostowo-custom/style_match.py`](../scripts/mostowo-custom/style_match.py) — flattens
+  painterly shading to N bands, snaps every colour onto a palette auto-extracted from the pack's
+  own wood/foliage sprites, and recolours the black silhouette outline to the pack's dark-brown.
+  This is the general fix for "the gen art's palette is off" — reusable over any new gen asset
+  (`--bands`, `--no-outline`, `--grimy` knobs; `--out-dir` to preview without overwriting).
+
+> **Editor-serving gotcha:** Vite caches its `public/` file list at dev-server **startup**, so a
+> brand-new asset file (or dir) returns the HTML SPA-fallback (black thumbnail) until you restart
+> `npm run editor`. *Edits* to an already-served file go live without a restart. Drop file in →
+> regen catalog → restart editor.
 
 ### Additional Anokolisa packs (ingested for the editor Library)
 
@@ -301,6 +326,50 @@ carrying a `pack.json` (matching `asset-catalog.mjs`), writing one `regions.json
 pack-id argv restricts the run. It previously only did `pixel-crawler`. The two-command regen
 (`python3 scripts/pixel-crawler/gen_regions.py && npm run assets:catalog`) is unchanged and now covers
 all packs at once.
+
+### CraftPix packs (ingested for the editor Library)
+
+18 **[CraftPix.net](https://craftpix.net)** downloads are consolidated into **4 theme packs** —
+`craftpix-nature` (trees/bushes/crystals/rocks/rocky-area/ruins), `craftpix-undead` (undead +
+cursed-land tilesets + horror props), `craftpix-dungeon` (dungeon objects/props + guild/chapel/
+workshop/home structures + magic-and-traps defenses), and `craftpix-creatures` (wildlife + orc/slime
+mob actors) — ~1150 catalogued assets, each pack with per-source subfolders.
+Same "ingested = browsable/placeable now, terrain-roles + actors need wiring later" caveat as the
+Anokolisa paid packs above. Three CraftPix-specific choices: we take the **no-shadow** variant
+wherever one ships (our wired art is shadowless), and CraftPix **directional actor sheets** (rows =
+facings, columns = frames) are **sliced into per-direction strips at ingest** so the existing
+one-file-one-clip StripAnim model handles them with no new schema. The whole ingest is scripted
+([`scripts/craftpix/ingest.py`](../scripts/craftpix/ingest.py) +
+[`slice.py`](../scripts/craftpix/slice.py)). **Full recipe, decisions, and per-pack record:
+[CRAFTPIX.md](CRAFTPIX.md)** (decision log: [DECISIONS.md](DECISIONS.md) 2026-07-16). Licence (all):
+free personal/commercial, alterable, no reselling standalone (`License.txt` travels with each pack).
+
+### Zelda-like pack (OpenGameArt, CC0)
+
+One **[CC0](https://opengameart.org/content/zelda-like-tilesets-and-sprites)** pack by **ArMM1998**
+staged at `public/assets/tilesets/zelda-like/` — a 16×16 top-down set. Ingested the ordinary way (no
+special script): the download's game PNGs mapped onto the standard layout — `Environment/Tilesets/`
+(`Overworld`/`Inner`/`Cave` → `tile`), `Environment/Props/Objects.png` + `Entities/{Characters,Npcs}/`
+(`object`, region-detected). The non-game files (`font.png`, `log.png`) were dropped. Terrain + props
+are usable in-game now via map authoring; the character/NPC sheets are browsable but **need actor
+wiring** to spawn (same caveat as the other packs). **Style note:** it's GBA-bright — recolour toward
+the dark Pixel Crawler palette (`scripts/mostowo-custom/style_match.py`) before mixing it into a map.
+CC0 = no attribution required (`LICENSE.txt` in the pack; re-confirm at source before a public build).
+
+### The Fan-tasy Tileset (Valerio Colonna)
+
+One pack from a **different creator** (not CraftPix), so it's its own top-level pack
+`public/assets/tilesets/fantasy-tileset/` — a **16×16** medieval-village set (ground/road/water/rock-slope
+terrain, buildings, props, rocks, trees/bushes, a directional main character). Ingested by its own
+reproducible script [`scripts/fantasy-tileset/ingest.py`](../scripts/fantasy-tileset/ingest.py), which
+reuses the CraftPix directional slicer. Conventions match the rest: **no-shadow** (the pack ships a
+separate `Shadows/` decal folder, so the sprites are shadowless — `Shadows/` skipped); prefer the
+individually-named PNGs over the packed `Atlas/` copies (Trees/Bushes ships only an atlas, so that one's
+region-detected); the main-character sheets (`4×4 @ 40×48`, non-square → `frames` overrides) are
+**sliced** to per-direction strips. Tiled project files + `Tileset_Layout*` previews dropped. 52
+catalogued assets. **Licence:** it's a **free trial** by Valerio Colonna (valeriocolona_art) — the
+bundled PDFs (kept in the pack as the provenance record) state no explicit redistribution/commercial
+terms, so **confirm the exact licence at source before any public build.**
 
 ### Atlas sprite regions (plan 014 step 7a)
 

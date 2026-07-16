@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { useIsCompact } from './hooks/useIsCompact';
+import { RotationWheel } from './ui/RotationWheel';
 import { cn } from './lib/utils';
 
 /** The paint tools + pan + the step-7 object tools + the step-8 collision/zone/shape tools, in
@@ -127,6 +128,7 @@ export function Toolbar() {
   const armedObjectAsset = useEditorStore((s) => s.armedObjectAsset);
   const armedNodeRef = useEditorStore((s) => s.armedNodeRef);
   const snapToTileCenter = useEditorStore((s) => s.snapToTileCenter);
+  const placeRotation = useEditorStore((s) => s.placeRotation);
   const paintMode = useEditorStore((s) => s.paintMode);
   const overlays = useEditorStore((s) => s.overlays);
   const isCompact = useIsCompact();
@@ -274,6 +276,22 @@ export function Toolbar() {
         >
           ⟳ +90°
         </Button>
+      </div>
+    ) : null;
+
+  // Place tool: a rotation wheel setting the angle stamped onto the next decor/node placed (arbitrary
+  // degrees). Only shown once something is armed — an unarmed place tool has nothing to rotate.
+  const placeRotateGroup =
+    activeTool === 'place' && (armedObjectAsset || armedNodeRef) ? (
+      <div
+        className={groupClass}
+        title="Rotation applied to placed objects — drag the wheel or type"
+      >
+        <RotationWheel
+          value={placeRotation}
+          onChange={(deg) => useEditorStore.getState().setPlaceRotation(deg)}
+          ariaLabel="Placement rotation"
+        />
       </div>
     ) : null;
 
@@ -453,6 +471,7 @@ export function Toolbar() {
       {toolStrip}
       {paintModeGroup}
       {rotateGroup}
+      {placeRotateGroup}
 
       <div className={cn(groupClass, 'flex-1 justify-center text-[0.9rem]')}>
         {map ? (

@@ -1,9 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDefaultLayout } from 'react-resizable-panels';
+import { PanelLeftOpen, PanelRightOpen } from 'lucide-react';
 import { TILE_SIZE } from '../config';
 import { cn } from './lib/utils';
+import { useIsCompact } from './hooks/useIsCompact';
 import { useEditorStore } from './store/editorStore';
 import { Toolbar } from './Toolbar';
+import { ContextBar } from './ContextBar';
 import { PhaserViewport } from './PhaserViewport';
 import { ObjectEditorTab } from './tabs/ObjectEditorTab';
 import { WorldViewTab } from './tabs/WorldViewTab';
@@ -15,7 +18,8 @@ import { InspectorPanel } from './panels/InspectorPanel';
 import { ReferencePanel } from './panels/ReferencePanel';
 import { PortalDialog } from './PortalDialog';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from './ui/resizable';
-import { Separator } from './ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Sheet, SheetContent, SheetTitle } from './ui/sheet';
 import { Toaster } from './ui/sonner';
 import { TooltipProvider } from './ui/tooltip';
 
@@ -41,11 +45,204 @@ const NUDGE_DIRS: Record<string, { x: number; y: number }> = {
   ArrowDown: { x: 0, y: 1 },
 };
 
-export function EditorApp() {
+/**
+ * The central tabbed pane (Map / World / Node Types / object-editor tabs) holding the single
+ * `Phaser.Game` (plan 027 Step 8: extracted so BOTH the desktop resizable shell and the compact
+ * full-bleed shell render the *same* subtree). Every tab panel is mounted at once, `absolute inset-0`,
+ * hidden with `invisible pointer-events-none` (never `display:none`) so the Scale.RESIZE Phaser canvas
+ * survives every tab switch. Switching breakpoint remounts this (rare, and lossless — map/camera state
+ * lives in the store and the scene reloads on create).
+ */
+function CenterPane() {
   const tabs = useEditorStore((s) => s.tabs);
   const activeTabId = useEditorStore((s) => s.activeTabId);
   const map = useEditorStore((s) => s.map);
+
+  return (
+    <main className="flex h-full flex-col overflow-hidden bg-inset">
+      <div
+        className="flex flex-none items-stretch gap-0.5 overflow-x-auto border-b border-surface bg-raised px-1.5 pt-1"
+        role="tablist"
+      >
+        {tabs.map((tab) => {
+          const isActive = tab.id === activeTabId;
+          const closable = tab.kind === 'object';
+          const label =
+            tab.kind === 'map'
+              ? 'Map'
+              : tab.kind === 'world'
+                ? 'World'
+                : tab.kind === 'nodeTypes'
+                  ? 'Node Types'
+                  : (tab.assetId.split('/').pop() ?? tab.assetId);
+          return (
+            <button
+              key={tab.id}
+              role="tab"
+              aria-selected={isActive}
+              className={cn(
+                'flex max-w-[200px] flex-none cursor-pointer items-center gap-1.5 rounded-t-[5px] border border-b-0 px-2.5 py-1 text-[0.8rem]',
+                isActive
+                  ? 'border-border bg-inset text-fg-bright'
+                  : 'border-surface bg-surface-subtle text-fg-dim hover:bg-surface hover:text-fg-muted',
+              )}
+              title={tab.kind === 'object' ? tab.assetId : label}
+              onClick={() => useEditorStore.getState().activateTab(tab.id)}
+              // Middle-click closes an object tab (a common tab-strip convention). onAuxClick
+              // fires for non-primary buttons; guard on button === 1 (middle).
+              onAuxClick={(e) => {
+                if (closable && e.button === 1) {
+                  e.preventDefault();
+                  useEditorStore.getState().closeTab(tab.id);
+                }
+              }}
+            >
+              <span className="truncate">{label}</span>
+              {closable && (
+                <span
+                  className="inline-flex size-4 flex-none cursor-pointer items-center justify-center rounded-[3px] text-[0.7rem] leading-none text-muted-2 hover:bg-danger-bg hover:text-danger-fg"
+                  role="button"
+                  aria-label="Close tab"
+                  title="Close tab"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    useEditorStore.getState().closeTab(tab.id);
+                  }}
+                >
+                  ✕
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {/* Every tab's panel is mounted at once, absolutely filling the panel area; only the active one
+          is visible. Inactive panels are hidden with `invisible` (visibility:hidden), NEVER
+          `hidden`/display:none — display:none would collapse the Scale.RESIZE Phaser canvas to 0×0. */}
+      <div className="relative min-h-0 flex-1">
+        {tabs.map((tab) => {
+          const hidden = tab.id !== activeTabId;
+          const panelClass = cn('absolute inset-0', hidden && 'invisible pointer-events-none');
+          if (tab.kind === 'map') {
+            return (
+              <div
+                key={tab.id}
+                className={panelClass}
+                // Drag-drop an image onto the Map viewport → reference underlay (plan 022, desktop
+                // convenience). onDragOver must preventDefault for onDrop to fire; only image files
+                // route through, and the store no-ops if no map is open.
+                onDragOver={(e) => {
+                  if (Array.from(e.dataTransfer.types).includes('Files')) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'copy';
+                  }
+                }}
+                onDrop={(e) => {
+                  const file = Array.from(e.dataTransfer.files).find((f) =>
+                    f.type.startsWith('image/'),
+                  );
+                  if (file) {
+                    e.preventDefault();
+                    void useEditorStore.getState().setUnderlayImageFromFile(file);
+                  }
+                }}
+              >
+                <PhaserViewport />
+                {!map && (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[0.95rem] text-border-muted">
+                    New or Open a map to begin.
+                  </div>
+                )}
+              </div>
+            );
+          }
+          if (tab.kind === 'world') {
+            return (
+              <div key={tab.id} className={panelClass}>
+                <WorldViewTab />
+              </div>
+            );
+          }
+          if (tab.kind === 'nodeTypes') {
+            return (
+              <div key={tab.id} className={panelClass}>
+                <NodeTypesTab />
+              </div>
+            );
+          }
+          return (
+            <div key={tab.id} className={panelClass}>
+              <ObjectEditorTab assetId={tab.assetId} />
+            </div>
+          );
+        })}
+      </div>
+    </main>
+  );
+}
+
+/**
+ * The consolidated right-column panels (plan 027 Step 7) — Inspector / Layers / Zones / Reference as
+ * one tabbed container. Extracted (Step 8) so it can be docked in the desktop aside OR hosted inside a
+ * compact slide-in Sheet. All four `forceMount` + `data-[state=inactive]:hidden` so each panel's local
+ * state survives tab switches. `className` lets the host tune height/padding (docked vs. drawer).
+ */
+function InspectorTabs({ className }: { className?: string }) {
+  return (
+    <Tabs defaultValue="inspector" className={cn('flex min-h-0 flex-1 flex-col gap-0', className)}>
+      <TabsList className="m-2 grid shrink-0 grid-cols-4">
+        <TabsTrigger value="inspector" className="px-1 text-xs">
+          Inspector
+        </TabsTrigger>
+        <TabsTrigger value="layers" className="px-1 text-xs">
+          Layers
+        </TabsTrigger>
+        <TabsTrigger value="zones" className="px-1 text-xs">
+          Zones
+        </TabsTrigger>
+        <TabsTrigger value="reference" className="px-1 text-xs">
+          Reference
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent
+        forceMount
+        value="inspector"
+        className="min-h-0 overflow-auto p-3 data-[state=inactive]:hidden"
+      >
+        <InspectorPanel />
+      </TabsContent>
+      <TabsContent
+        forceMount
+        value="layers"
+        className="min-h-0 overflow-auto p-3 data-[state=inactive]:hidden"
+      >
+        <LayersPanel />
+      </TabsContent>
+      <TabsContent
+        forceMount
+        value="zones"
+        className="min-h-0 overflow-auto p-3 data-[state=inactive]:hidden"
+      >
+        <ZonesPanel />
+      </TabsContent>
+      <TabsContent
+        forceMount
+        value="reference"
+        className="min-h-0 overflow-auto p-3 data-[state=inactive]:hidden"
+      >
+        <ReferencePanel />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+export function EditorApp() {
   const pendingPortalRect = useEditorStore((s) => s.pendingPortalRect);
+  const isCompact = useIsCompact();
+  // Compact-only slide-in drawer state (plan 027 Step 8). Local, not in the store: flipping back to
+  // desktop unmounts the compact branch, which closes both Sheets — no reset logic needed.
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
 
   // react-resizable-panels v4 persistence: restores the Library/centre split on load and saves it
   // after each drag (localStorage). Replaces the old hand-rolled pixel-width + localStorage logic.
@@ -139,164 +336,125 @@ export function EditorApp() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Track the physical Alt/Shift modifiers into the store's MOMENTARY fields (plan 027 step 2). These
+  // are a separate override OR'd into the sticky context-bar toggles at read time in EditorScene —
+  // so a keyup/blur here can never wipe a toggle the (future) context bar set. Read `e.altKey`/
+  // `e.shiftKey` off every key event (robust to key-repeat and to the modifier's own down/up), and
+  // clear both on `window` blur so a modifier held while focus leaves doesn't get stuck on. The
+  // INPUT/TEXTAREA/SELECT guard is deliberately NOT applied — modifier intent should track globally,
+  // and these writes have no effect on text editing.
+  useEffect(() => {
+    const syncMods = (e: KeyboardEvent): void => {
+      const st = useEditorStore.getState();
+      if (st.altHeld !== e.altKey) st.setAltHeld(e.altKey);
+      if (st.shiftHeld !== e.shiftKey) st.setShiftHeld(e.shiftKey);
+    };
+    const clearMods = (): void => {
+      const st = useEditorStore.getState();
+      if (st.altHeld) st.setAltHeld(false);
+      if (st.shiftHeld) st.setShiftHeld(false);
+    };
+    window.addEventListener('keydown', syncMods);
+    window.addEventListener('keyup', syncMods);
+    window.addEventListener('blur', clearMods);
+    return () => {
+      window.removeEventListener('keydown', syncMods);
+      window.removeEventListener('keyup', syncMods);
+      window.removeEventListener('blur', clearMods);
+    };
+  }, []);
+
   return (
     // One TooltipProvider for the whole editor — steps 6-11 use <Tooltip> without adding their own.
     <TooltipProvider delayDuration={300}>
-      <div className="flex h-screen flex-col">
+      {/* h-dvh (not h-screen/100vh): a 100vh inner child re-introduces the mobile browser-chrome
+          clip that #editor-root's 100dvh avoids (plan 027, Step 1). 100dvh == 100vh on desktop. */}
+      <div className="flex h-dvh flex-col">
         <Toolbar />
         {/* min-h-0 lets the viewport pane shrink instead of overflowing the shell. */}
         <div className="flex min-h-0 flex-1">
-          {/* Library ↔ centre split; the Inspector (right) is a fixed 280px column outside the group,
-              matching the original single-handle layout. autoSaveId persists the split across reloads. */}
-          <ResizablePanelGroup
-            orientation="horizontal"
-            className="min-w-0 flex-1"
-            defaultLayout={layout.defaultLayout}
-            onLayoutChanged={layout.onLayoutChanged}
-          >
-            {/* String sizes are percentages in v4 (numbers would be pixels). */}
-            <ResizablePanel id="library" defaultSize="20" minSize="13" maxSize="45">
-              <aside className="box-border h-full overflow-auto border-r border-surface bg-raised p-3">
-                <LibraryPanel />
-              </aside>
-            </ResizablePanel>
-            <ResizableHandle className="hover:bg-active" />
-            <ResizablePanel id="center" minSize="30">
-              <main className="flex h-full flex-col overflow-hidden bg-inset">
-                <div
-                  className="flex flex-none items-stretch gap-0.5 overflow-x-auto border-b border-surface bg-raised px-1.5 pt-1"
-                  role="tablist"
+          {isCompact ? (
+            // ── Compact shell (plan 027 Step 8): full-bleed CenterPane with Library / Inspector as
+            //    slide-in Sheet drawers reached by persistent edge handles. Sheets are modal (Radix
+            //    default) so a tap on the scrim closes them and can't paint through to the Phaser
+            //    canvas beneath. A per-tool ContextBar (Step 9) sits along the bottom edge for thumb
+            //    reach, giving touch users an on-screen equivalent of every keyboard action. ──
+            <div className="flex min-h-0 w-full flex-1 flex-col">
+              <div className="relative min-h-0 w-full flex-1">
+                <CenterPane />
+
+                <button
+                  type="button"
+                  aria-label="Open Library"
+                  className="absolute top-1/2 left-0 z-10 -translate-y-1/2 rounded-r-md border border-l-0 border-surface bg-raised/90 px-1 py-4 text-fg-muted shadow-md hover:text-fg-bright"
+                  onClick={() => setLibraryOpen(true)}
                 >
-                  {tabs.map((tab) => {
-                    const isActive = tab.id === activeTabId;
-                    const closable = tab.kind === 'object';
-                    const label =
-                      tab.kind === 'map'
-                        ? 'Map'
-                        : tab.kind === 'world'
-                          ? 'World'
-                          : tab.kind === 'nodeTypes'
-                            ? 'Node Types'
-                            : (tab.assetId.split('/').pop() ?? tab.assetId);
-                    return (
-                      <button
-                        key={tab.id}
-                        role="tab"
-                        aria-selected={isActive}
-                        className={cn(
-                          'flex max-w-[200px] flex-none cursor-pointer items-center gap-1.5 rounded-t-[5px] border border-b-0 px-2.5 py-1 text-[0.8rem]',
-                          isActive
-                            ? 'border-border bg-inset text-fg-bright'
-                            : 'border-surface bg-surface-subtle text-fg-dim hover:bg-surface hover:text-fg-muted',
-                        )}
-                        title={tab.kind === 'object' ? tab.assetId : label}
-                        onClick={() => useEditorStore.getState().activateTab(tab.id)}
-                        // Middle-click closes an object tab (a common tab-strip convention). onAuxClick
-                        // fires for non-primary buttons; guard on button === 1 (middle).
-                        onAuxClick={(e) => {
-                          if (closable && e.button === 1) {
-                            e.preventDefault();
-                            useEditorStore.getState().closeTab(tab.id);
-                          }
-                        }}
-                      >
-                        <span className="truncate">{label}</span>
-                        {closable && (
-                          <span
-                            className="inline-flex size-4 flex-none cursor-pointer items-center justify-center rounded-[3px] text-[0.7rem] leading-none text-muted-2 hover:bg-danger-bg hover:text-danger-fg"
-                            role="button"
-                            aria-label="Close tab"
-                            title="Close tab"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              useEditorStore.getState().closeTab(tab.id);
-                            }}
-                          >
-                            ✕
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* Every tab's panel is mounted at once, absolutely filling the panel area; only the
-                    active one is visible. Inactive panels are hidden with `invisible` (visibility:hidden),
-                    NEVER `hidden`/display:none — display:none would collapse the Scale.RESIZE Phaser
-                    canvas to 0×0. So the Map panel (and its live Phaser game) stays mounted regardless
-                    of the active tab. */}
-                <div className="relative min-h-0 flex-1">
-                  {tabs.map((tab) => {
-                    const hidden = tab.id !== activeTabId;
-                    const panelClass = cn(
-                      'absolute inset-0',
-                      hidden && 'invisible pointer-events-none',
-                    );
-                    if (tab.kind === 'map') {
-                      return (
-                        <div
-                          key={tab.id}
-                          className={panelClass}
-                          // Drag-drop an image onto the Map viewport → reference underlay (plan 022,
-                          // desktop convenience). onDragOver must preventDefault for onDrop to fire;
-                          // only image files route through, and the store no-ops if no map is open.
-                          onDragOver={(e) => {
-                            if (Array.from(e.dataTransfer.types).includes('Files')) {
-                              e.preventDefault();
-                              e.dataTransfer.dropEffect = 'copy';
-                            }
-                          }}
-                          onDrop={(e) => {
-                            const file = Array.from(e.dataTransfer.files).find((f) =>
-                              f.type.startsWith('image/'),
-                            );
-                            if (file) {
-                              e.preventDefault();
-                              void useEditorStore.getState().setUnderlayImageFromFile(file);
-                            }
-                          }}
-                        >
-                          <PhaserViewport />
-                          {!map && (
-                            <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[0.95rem] text-border-muted">
-                              New or Open a map to begin.
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                    if (tab.kind === 'world') {
-                      return (
-                        <div key={tab.id} className={panelClass}>
-                          <WorldViewTab />
-                        </div>
-                      );
-                    }
-                    if (tab.kind === 'nodeTypes') {
-                      return (
-                        <div key={tab.id} className={panelClass}>
-                          <NodeTypesTab />
-                        </div>
-                      );
-                    }
-                    return (
-                      <div key={tab.id} className={panelClass}>
-                        <ObjectEditorTab assetId={tab.assetId} />
-                      </div>
-                    );
-                  })}
-                </div>
-              </main>
-            </ResizablePanel>
-          </ResizablePanelGroup>
-          <aside className="box-border w-[280px] shrink-0 overflow-auto border-l border-surface bg-raised p-3">
-            <InspectorPanel />
-            <Separator className="my-3.5" />
-            <LayersPanel />
-            <Separator className="my-3.5" />
-            <ZonesPanel />
-            <Separator className="my-3.5" />
-            <ReferencePanel />
-          </aside>
+                  <PanelLeftOpen className="size-5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Open Inspector"
+                  className="absolute top-1/2 right-0 z-10 -translate-y-1/2 rounded-l-md border border-r-0 border-surface bg-raised/90 px-1 py-4 text-fg-muted shadow-md hover:text-fg-bright"
+                  onClick={() => setInspectorOpen(true)}
+                >
+                  <PanelRightOpen className="size-5" />
+                </button>
+
+                <Sheet open={libraryOpen} onOpenChange={setLibraryOpen}>
+                  <SheetContent
+                    side="left"
+                    className="w-[min(85vw,320px)] gap-0 border-surface bg-raised p-0 sm:max-w-none"
+                  >
+                    <div className="flex-none border-b border-surface px-3 py-2">
+                      <SheetTitle className="text-sm">Library</SheetTitle>
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-auto p-3">
+                      <LibraryPanel />
+                    </div>
+                  </SheetContent>
+                </Sheet>
+
+                <Sheet open={inspectorOpen} onOpenChange={setInspectorOpen}>
+                  <SheetContent
+                    side="right"
+                    className="w-[min(85vw,320px)] gap-0 border-surface bg-raised p-0 sm:max-w-none"
+                  >
+                    <div className="flex-none border-b border-surface px-3 py-2 pr-9">
+                      <SheetTitle className="text-sm">Inspector</SheetTitle>
+                    </div>
+                    <InspectorTabs className="flex-1" />
+                  </SheetContent>
+                </Sheet>
+              </div>
+
+              <ContextBar />
+            </div>
+          ) : (
+            // ── Desktop shell: today's exact layout — Library ↔ centre resizable split (persisted via
+            //    autoSaveId), Inspector a fixed 280px column outside the group. ──
+            <>
+              <ResizablePanelGroup
+                orientation="horizontal"
+                className="min-w-0 flex-1"
+                defaultLayout={layout.defaultLayout}
+                onLayoutChanged={layout.onLayoutChanged}
+              >
+                {/* String sizes are percentages in v4 (numbers would be pixels). */}
+                <ResizablePanel id="library" defaultSize="20" minSize="13" maxSize="45">
+                  <aside className="box-border h-full overflow-auto border-r border-surface bg-raised p-3">
+                    <LibraryPanel />
+                  </aside>
+                </ResizablePanel>
+                <ResizableHandle className="hover:bg-active" />
+                <ResizablePanel id="center" minSize="30">
+                  <CenterPane />
+                </ResizablePanel>
+              </ResizablePanelGroup>
+              <aside className="box-border flex w-[280px] shrink-0 flex-col border-l border-surface bg-raised">
+                <InspectorTabs />
+              </aside>
+            </>
+          )}
         </div>
         {/* Match the old toast colours: green success / red error (the shared brown popover would make
             the two indistinguishable). `!` beats sonner's runtime-injected --normal-bg. */}

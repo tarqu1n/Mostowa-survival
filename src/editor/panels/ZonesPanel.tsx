@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useEditorStore } from '../store/editorStore';
 import { Button } from '../ui/button';
 import { cn } from '../lib/utils';
+import { useIsCompact } from '../hooks/useIsCompact';
 
 /**
  * Zones panel (plan 014 step 8) — create/rename/recolour/delete zone defs (lowest-free uint8 id,
@@ -23,6 +24,7 @@ const headingClass = 'mb-2 text-[0.85rem] uppercase tracking-[0.04em] text-fg-di
 const placeholderClass = 'text-[0.9rem] text-muted-2';
 
 export function ZonesPanel() {
+  const isCompact = useIsCompact();
   const activeZoneId = useEditorStore((s) => s.activeZoneId);
   useEditorStore((s) => s.docRevision);
   useEditorStore((s) => s.mapEpoch);
@@ -52,7 +54,11 @@ export function ZonesPanel() {
   return (
     <>
       <h2 className={headingClass}>Zones</h2>
-      <Button size="sm" onClick={() => useEditorStore.getState().createZone()}>
+      <Button
+        size="sm"
+        className={cn(isCompact && 'h-11 w-full')}
+        onClick={() => useEditorStore.getState().createZone()}
+      >
         + Add zone
       </Button>
       {defs.length === 0 && (
@@ -60,7 +66,7 @@ export function ZonesPanel() {
           No zones yet — add one, then use the Zone tool to paint it.
         </p>
       )}
-      <ul className="mt-2.5 flex list-none flex-col gap-0.5 p-0">
+      <ul className={cn('mt-2.5 flex list-none flex-col gap-0.5 p-0', isCompact && 'gap-1.5')}>
         {defs.map((def) => {
           const isActive = def.id === activeZoneId;
           const isRenaming = renamingId === def.id;
@@ -70,11 +76,17 @@ export function ZonesPanel() {
               className={cn(
                 'flex items-center gap-1.5 rounded-md px-1 py-[3px]',
                 isActive && 'bg-surface',
+                // Mirrors LayersPanel's compact reflow: the name takes its own full-width line, the
+                // colour swatch + delete flow onto a second line at a bigger tap size.
+                isCompact && 'flex-wrap gap-y-1.5 gap-x-2 px-2 py-2',
               )}
             >
               <input
                 type="color"
-                className="h-5 w-5 shrink-0 cursor-pointer rounded-[3px] border border-border bg-transparent p-0"
+                className={cn(
+                  'h-5 w-5 shrink-0 cursor-pointer rounded-[3px] border border-border bg-transparent p-0',
+                  isCompact && 'order-2 h-10 w-10',
+                )}
                 value={def.colour}
                 title="Zone colour"
                 onChange={(e) => useEditorStore.getState().recolourZone(def.id, e.target.value)}
@@ -82,7 +94,10 @@ export function ZonesPanel() {
 
               {isRenaming ? (
                 <input
-                  className="min-w-0 flex-1 rounded-[3px] border border-border bg-inset px-1 py-0.5 font-[inherit] text-fg"
+                  className={cn(
+                    'min-w-0 flex-1 rounded-[3px] border border-border bg-inset px-1 py-0.5 font-[inherit] text-fg',
+                    isCompact && 'order-1 h-11 basis-full px-2 text-[0.95rem]',
+                  )}
                   autoFocus
                   value={renameValue}
                   onChange={(e) => setRenameValue(e.target.value)}
@@ -99,6 +114,7 @@ export function ZonesPanel() {
                   className={cn(
                     'h-auto flex-1 justify-start overflow-hidden px-1 py-0.5 text-left font-normal text-ellipsis whitespace-nowrap',
                     isActive && 'text-fg-bright',
+                    isCompact && 'order-1 h-11 basis-full px-2 text-[0.95rem]',
                   )}
                   title="Click to set as the active zone (the Zone tool paints it), double-click to rename"
                   onClick={() =>
@@ -116,7 +132,7 @@ export function ZonesPanel() {
               <Button
                 variant="ghost"
                 size="icon-xs"
-                className="shrink-0"
+                className={cn('shrink-0', isCompact && 'order-3 size-10')}
                 title="Delete zone (clears every cell painted with it)"
                 onClick={() => useEditorStore.getState().deleteZone(def.id)}
               >

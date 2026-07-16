@@ -15,6 +15,8 @@ import { parseWorldLayout } from '../systems/worldLayout';
 import { deleteMap, listMaps, putMap, putThumb, putWorld } from './api';
 import { useEditorStore } from './store/editorStore';
 import { toast } from 'sonner';
+import { useIsCompact } from './hooks/useIsCompact';
+import { cn } from './lib/utils';
 
 /** A labelled field row (`<Label>` + control) — mirrors `NewMapDialog`/`ResizeMapDialog`. */
 const fieldClass = 'flex flex-col gap-1.5';
@@ -36,6 +38,7 @@ const fieldClass = 'flex flex-col gap-1.5';
  * close button) is wired to `onCancel`, exactly like `NewMapDialog`/`ResizeMapDialog`.
  */
 export function EditMapDialog({ onCancel }: { onCancel: () => void }) {
+  const isCompact = useIsCompact();
   const map = useEditorStore((s) => s.map);
 
   // ---- Rename section state ----
@@ -179,6 +182,7 @@ export function EditMapDialog({ onCancel }: { onCancel: () => void }) {
       <Input
         id={fieldId}
         type="number"
+        className={cn(isCompact && 'h-11')}
         value={value}
         onChange={(e) => set(Math.floor(Number(e.target.value)) || 0)}
       />
@@ -192,13 +196,17 @@ export function EditMapDialog({ onCancel }: { onCancel: () => void }) {
         if (!open) onCancel();
       }}
     >
-      <DialogContent className="bg-popover text-popover-foreground sm:max-w-[400px]">
+      <DialogContent
+        className={cn(
+          'bg-popover text-popover-foreground max-h-[90dvh] overflow-y-auto sm:max-w-[400px]',
+        )}
+      >
         <DialogHeader>
           <DialogTitle>Edit map</DialogTitle>
         </DialogHeader>
 
         {/* ---- Rename section ---- */}
-        <section className="flex flex-col gap-3">
+        <section className={cn('flex flex-col gap-3', isCompact && 'gap-4')}>
           <h3 className="text-[0.9rem] font-semibold text-fg-bright">Rename</h3>
           <p className="text-[0.8rem] text-fg-muted">
             Changes the display name and the id (the on-disk file key). Applied immediately — not
@@ -208,6 +216,7 @@ export function EditMapDialog({ onCancel }: { onCancel: () => void }) {
             <Label htmlFor="rename-name">Name</Label>
             <Input
               id="rename-name"
+              className={cn(isCompact && 'h-11')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Display name"
@@ -217,6 +226,7 @@ export function EditMapDialog({ onCancel }: { onCancel: () => void }) {
             <Label htmlFor="rename-id">Id</Label>
             <Input
               id="rename-id"
+              className={cn(isCompact && 'h-11')}
               value={id}
               onChange={(e) => setId(e.target.value)}
               placeholder="lowercase-hyphenated-id"
@@ -231,7 +241,11 @@ export function EditMapDialog({ onCancel }: { onCancel: () => void }) {
             <p className="text-[0.8rem] text-danger">A map with id “{id}” already exists.</p>
           )}
           <div className="flex justify-end">
-            <Button disabled={!canRename} onClick={() => void handleRename()}>
+            <Button
+              disabled={!canRename}
+              className={cn(isCompact && 'h-11')}
+              onClick={() => void handleRename()}
+            >
               Rename
             </Button>
           </div>
@@ -240,10 +254,10 @@ export function EditMapDialog({ onCancel }: { onCancel: () => void }) {
         <div className="my-1 h-px bg-surface" />
 
         {/* ---- Resize section (plan 024, unchanged) ---- */}
-        <section className="flex flex-col gap-3">
+        <section className={cn('flex flex-col gap-3', isCompact && 'gap-4')}>
           <h3 className="text-[0.9rem] font-semibold text-fg-bright">Resize</h3>
           <p className="text-[0.8rem] text-fg-muted">Tiles to add (+) or crop (−) per edge.</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className={cn('grid grid-cols-2 gap-3', isCompact && 'gap-4')}>
             {edgeField('resize-top', 'Top', top, setTop)}
             {edgeField('resize-right', 'Right', right, setRight)}
             {edgeField('resize-bottom', 'Bottom', bottom, setBottom)}
@@ -268,14 +282,18 @@ export function EditMapDialog({ onCancel }: { onCancel: () => void }) {
             )}
           </div>
           <div className="flex justify-end">
-            <Button disabled={!canResize} onClick={handleResize}>
+            <Button
+              disabled={!canResize}
+              className={cn(isCompact && 'h-11')}
+              onClick={handleResize}
+            >
               Apply resize
             </Button>
           </div>
         </section>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" className={cn(isCompact && 'h-11')} onClick={onCancel}>
             Cancel
           </Button>
         </DialogFooter>

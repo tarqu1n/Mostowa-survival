@@ -1,0 +1,19 @@
+{
+  "id": "craftpix-undead",
+  "name": "CraftPix \u2014 Undead & Cursed (tilesets + horror props)",
+  "author": "CraftPix.net",
+  "sourceUrl": "https://craftpix.net/freebies/free-undead-tileset-top-down-pixel-art/",
+  "licence": "Free for personal & commercial use, may be altered; assets may not be resold/redistributed standalone. See License.txt / https://craftpix.net/file-licenses/",
+  "tileSize": 16,
+  "rules": {
+    "tile": [
+      "**/Tiles/**"
+    ],
+    "strip": [
+      "**/Fx/**",
+      "**/*-Sheet.png"
+    ]
+  },
+  "overrides": {},
+  "exclude": []
+}

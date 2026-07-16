@@ -55,9 +55,9 @@ export interface ObjectStats extends BaseStats {
  * A harvestable world node (e.g. a tree, a rock). Yields an item per hit until depleted, then
  * regrows. The yield/render fields are generic over species so a rock is just another node def, not
  * a parallel system: each def carries interchangeable `skins` (art — see `ParsedNodeDef` in
- * `src/systems/nodeDefs.ts`) naming their own catalog sprite, and `tilesTall`/`originX`/`originY`
- * size and anchor it (a pine towers upward at ~5 tiles; a rock is ~1 tile, base-anchored) so no
- * species inherits another's footprint. See docs/CONVENTIONS.md (data-driven content).
+ * `src/systems/nodeDefs.ts`) naming their own catalog sprite, and `scale`/`originX`/`originY`
+ * size and anchor it (a pine renders at its native size, a rock base-anchored) so no species
+ * inherits another's footprint. See docs/CONVENTIONS.md (data-driven content).
  */
 export interface ResourceNodeDef extends ObjectStats {
   id: string;
@@ -79,8 +79,10 @@ export interface ResourceNodeDef extends ObjectStats {
    *  (pickaxe) and a bush `'gather'` (forage). Was previously inferred from the retired `tile` role;
    *  now authored explicitly (plan 021 step 6). */
   harvestAnim?: 'chop' | 'gather' | 'mine';
-  /** Height (in tiles) the sprite is scaled to stand. */
-  tilesTall: number;
+  /** Display scale — a multiplier on the source sprite's native pixels (`1.0` = native size). The
+   *  art pack is authored at the game's `TILE_SIZE`, so native scale keeps pixels crisp and
+   *  preserves each skin's relative size. Resolved (defaulted to 1.0) by `parseNodeDefs`. */
+  scale: number;
   /** Sprite anchor — trees anchor near their base so the canopy overhangs up; a rock sits centred. */
   originX: number;
   originY: number;

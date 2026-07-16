@@ -75,6 +75,40 @@ yet) is the more likely route to close the style gap for props like the tree/stu
 on an actual pack sprite; plain pixflux + text prompting isn't enough to match a specific existing
 pack's look.
 
+## Style-matching generated art to the pack — `style_match.py`
+
+**The tool for "the gen art's shape is right but the palette/shading is off."** Any generator (RD,
+PixelLab, Gemini) gives brighter, more painterly, higher-colour-count output than Anokolisa's tight,
+muted, flat-banded wood art with its dark-brown (not black) outline. Rather than re-prompt forever,
+run the sprite through a post-process that snaps it onto the pack's actual look:
+[`scripts/mostowo-custom/style_match.py`](../scripts/mostowo-custom/style_match.py).
+
+Pipeline (each pass is a lever, all reproducible):
+
+1. **flatten** — median-cut to `--bands` colours (default 10), killing painterly gradients → flat
+   pixel-art bands.
+2. **snap** — remap every band to the nearest colour in a palette **auto-extracted from the pack's
+   own wood/foliage sprites** (perceptual redmean distance), so the output uses *only* in-game
+   colours. Warm browns + natural foliage greens are kept (moss survives); grey coal / teal gems in
+   the same source sheets are filtered out.
+3. **outline** — recolour the dark silhouette edge from black → the pack's darkest wood tone (skip
+   with `--no-outline`).
+4. **grimy** — OPTIONAL global desaturate + darken toward the dark-&-grotty direction (`--grimy`,
+   off by default).
+
+```sh
+# preview without overwriting, then apply in place
+python3 scripts/mostowo-custom/style_match.py sprite.png --out-dir /tmp/preview
+python3 scripts/mostowo-custom/style_match.py a.png b.png            # in place
+python3 scripts/mostowo-custom/style_match.py a.png --bands 14 --grimy
+```
+
+Dials when a result reads wrong: **higher `--bands`** retains more tones (less flattening — use if a
+detail like moss got absorbed); `--grimy` knocks back anything still too bright/saturated; `--sources`
+repoints the palette at different pack sheets (default is the pixel-crawler wood set) for non-wood
+assets. First real use: the three `log_pile*` props — before/after and full origin chain in
+[ASSETS.md](ASSETS.md) (the mostowo-custom self-made-art section).
+
 ## Gemini asset generation (via guppi)
 
 Matt's home server (**guppi** repo / Beelink) has a working Gemini image-gen setup we can mirror.

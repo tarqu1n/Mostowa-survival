@@ -12,6 +12,9 @@ import { useEditorStore } from '../store/editorStore';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { Sheet, SheetContent, SheetTitle } from '../ui/sheet';
+import { useIsCompact } from '../hooks/useIsCompact';
+import { PanelLeftOpen } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 
@@ -82,6 +85,9 @@ export function WorldViewTab() {
   const [missingThumbs, setMissingThumbs] = useState<Set<string>>(new Set());
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [saving, setSaving] = useState(false);
+  // Compact-only: the unplaced-maps tray collapses into a slide-in Sheet drawer (plan 027 Step 8).
+  const isCompact = useIsCompact();
+  const [trayOpen, setTrayOpen] = useState(false);
   const [hoverTile, setHoverTile] = useState<{ col: number; row: number } | null>(null);
   // Live drag preview: for 'place'/'move' the projected origin of the dragged map (whole tiles).
   const [preview, setPreview] = useState<{
@@ -94,6 +100,15 @@ export function WorldViewTab() {
   const dragRef = useRef<WorldDrag | null>(null);
   // Cache-bust thumbnails once per mount so a fresh bake shows, without reloading every render.
   const thumbCacheBust = useRef(Date.now());
+
+  // ---- Pinch-zoom (plan 027 step 5) ----
+  // Mirrors EditorScene's Phaser-side gesture (step 3) in React Pointer Event terms, but zooms THIS
+  // tab's own `zoom` state via its own clamp (not the Phaser camera). Tracked via capture-phase
+  // handlers on the canvas div so a second finger is seen even though onMapPointerDown/onTrayPointerDown
+  // call stopPropagation() on the bubble phase. Gated on `pointerType === 'touch'` (never 'mouse'), so a
+  // mouse can never reach two tracked pointers — desktop drag/wheel/+- are unaffected.
+  const touchPointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchRef = useRef<{ startDist: number; startZoom: number } | null>(null);
 
   // One-shot mount fetch: all map files (for dims + validateWorld) + world.json (unless the store
   // already holds unsaved edits — never clobber those, and preserve the in-place command closures).
@@ -210,8 +225,22 @@ export function WorldViewTab() {
 
   // ---- Pointer handling (place / move / pan) ----
 
+  /** Screen-space spread + midpoint of the (up to) two tracked touch pointers, or null if fewer than
+   *  two are down. Guards a zero distance (both fingers on one pixel) so the pinch ratio never divides
+   *  by zero. */
+  const twoTouchSpread = (): { dist: number; mid: { x: number; y: number } } | null => {
+    const pts = [...touchPointersRef.current.values()];
+    if (pts.length < 2) return null;
+    const [a, b] = pts;
+    return {
+      dist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+      mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+    };
+  };
+
   const onTrayPointerDown = (e: React.PointerEvent, mapId: string): void => {
     if (e.button !== 0) return;
+    if (touchPointersRef.current.size >= 2) return; // a pinch owns the interaction (step 5)
     e.preventDefault();
     dragRef.current = { kind: 'place', mapId };
     const tile = clientToTile(e.clientX, e.clientY);
@@ -222,6 +251,7 @@ export function WorldViewTab() {
     // middle-button anywhere pans; left-button on a map body begins a reposition.
     if (e.button === 1) return; // let it bubble to the canvas pan handler
     if (e.button !== 0) return;
+    if (touchPointersRef.current.size >= 2) return; // a pinch owns the interaction (step 5)
     e.stopPropagation();
     e.preventDefault();
     canvasRef.current?.setPointerCapture(e.pointerId);
@@ -238,6 +268,7 @@ export function WorldViewTab() {
   };
 
   const onCanvasPointerDown = (e: React.PointerEvent): void => {
+    if (touchPointersRef.current.size >= 2) return; // a pinch owns the interaction (step 5)
     // Empty-grid drag pans (middle button always pans, even over a map).
     const viewport = viewportRef.current;
     if (!viewport) return;
@@ -252,6 +283,7 @@ export function WorldViewTab() {
   };
 
   const onCanvasPointerMove = (e: React.PointerEvent): void => {
+    if (touchPointersRef.current.size >= 2) return; // pinch handles this move instead (step 5)
     const tile = clientToTile(e.clientX, e.clientY);
     setHoverTile(tile);
     const drag = dragRef.current;
@@ -288,6 +320,67 @@ export function WorldViewTab() {
       useEditorStore.getState().addPlacement(drag.mapId, p.origin);
     } else {
       useEditorStore.getState().movePlacement(drag.mapId, p.origin);
+    }
+  };
+
+  // Capture-phase touch tracking on the canvas div (fires before onMapPointerDown's stopPropagation,
+  // so a 2nd finger is seen no matter what it lands on) → pinch-zoom. Only ever anchors zoom on the
+  // midpoint; it never pans (that's not this step's job — see the plan).
+  const onCanvasPointerDownCapture = (e: React.PointerEvent): void => {
+    if (e.pointerType !== 'touch') return;
+    touchPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touchPointersRef.current.size === 2) {
+      // 2nd finger down: a single-finger place/move/pan (if any) never commits — cancel it outright
+      // (mirrors EditorScene's cancelActiveInteraction/beginGesture, step 3) — then snapshot the
+      // pinch baseline.
+      dragRef.current = null;
+      setPreview(null);
+      const spread = twoTouchSpread();
+      if (spread) pinchRef.current = { startDist: spread.dist, startZoom: zoom };
+    }
+  };
+
+  const onCanvasPointerMoveCapture = (e: React.PointerEvent): void => {
+    if (e.pointerType !== 'touch' || !touchPointersRef.current.has(e.pointerId)) return;
+    touchPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (!pinchRef.current) return;
+    const spread = twoTouchSpread();
+    if (!spread) return;
+    const baseline = pinchRef.current;
+    const target = baseline.startZoom * (spread.dist / baseline.startDist);
+    const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(target)));
+    const viewport = viewportRef.current;
+    setZoom((z) => {
+      if (next === z) return z;
+      // keep the pinch midpoint's world point stationary across the zoom (same anchor math as the
+      // wheel handler below, just anchored on the two-finger midpoint instead of the cursor).
+      if (viewport) {
+        const rect = viewport.getBoundingClientRect();
+        const ox = spread.mid.x - rect.left;
+        const oy = spread.mid.y - rect.top;
+        const contentX = viewport.scrollLeft + ox;
+        const contentY = viewport.scrollTop + oy;
+        requestAnimationFrame(() => {
+          viewport.scrollLeft = (contentX / z) * next - ox;
+          viewport.scrollTop = (contentY / z) * next - oy;
+        });
+      }
+      return next;
+    });
+  };
+
+  const onCanvasPointerUpOrCancelCapture = (e: React.PointerEvent): void => {
+    if (e.pointerType !== 'touch') return;
+    touchPointersRef.current.delete(e.pointerId);
+    // A finger lifted mid-pinch: if two are still down (a 3rd finger was also down), re-seat the
+    // baseline so the remaining pair continues without a jump; otherwise the gesture ends. The
+    // still-down finger fires no new pointerdown, so no place/move/pan resumes on gesture end (no
+    // accidental place on finger-lift).
+    if (touchPointersRef.current.size >= 2) {
+      const spread = twoTouchSpread();
+      if (spread) pinchRef.current = { startDist: spread.dist, startZoom: zoom };
+    } else {
+      pinchRef.current = null;
     }
   };
 
@@ -339,40 +432,80 @@ export function WorldViewTab() {
 
   const hasErrors = validation.errors.length > 0;
 
+  // Unplaced-maps tray content — shared between the desktop docked aside and the compact Sheet
+  // drawer (plan 027 Step 8). NOTE: drag-to-place works by dragging a tray entry onto the grid; from
+  // the compact modal drawer that gesture isn't available (the scrim intercepts), so placing maps
+  // stays a desktop action — the drawer is view-only on touch. Flagged per critique #3 (world-map
+  // placement is a rare, disproportionately-costly touch interaction; not worth grinding here).
+  const trayContent = (
+    <>
+      <h2 className="text-[0.85rem] uppercase tracking-[0.04em] text-fg-dim">Unplaced maps</h2>
+      {loadError && <p className="text-[0.8rem] text-danger">{loadError}</p>}
+      {loadFailed.length > 0 && (
+        <p className="text-[0.72rem] text-danger">Failed to parse: {loadFailed.join(', ')}</p>
+      )}
+      {allMapIds.length === 0 && !loadError && (
+        <p className="text-[0.85rem] text-muted-2">No maps found.</p>
+      )}
+      {unplaced.length === 0 && allMapIds.length > 0 && (
+        <p className="text-[0.85rem] text-muted-2">Every map is placed.</p>
+      )}
+      {unplaced.map((id) => (
+        <button
+          key={id}
+          type="button"
+          className="cursor-grab touch-none rounded-md border border-border bg-inset px-2 py-1.5 text-left text-[0.8rem] text-fg hover:border-accent-border active:cursor-grabbing"
+          title="Drag onto the grid to place"
+          onPointerDown={(e) => onTrayPointerDown(e, id)}
+        >
+          {maps[id]?.meta.name ?? id}
+          <span className="block text-[0.68rem] text-muted-2">
+            {id} · {metaOf(id).width}×{metaOf(id).height}
+          </span>
+        </button>
+      ))}
+    </>
+  );
+
   return (
     <div className="flex h-full w-full">
-      {/* Side tray: unplaced maps. */}
-      <aside className="flex w-[180px] shrink-0 flex-col gap-2 overflow-auto border-r border-surface bg-raised p-3">
-        <h2 className="text-[0.85rem] uppercase tracking-[0.04em] text-fg-dim">Unplaced maps</h2>
-        {loadError && <p className="text-[0.8rem] text-danger">{loadError}</p>}
-        {loadFailed.length > 0 && (
-          <p className="text-[0.72rem] text-danger">Failed to parse: {loadFailed.join(', ')}</p>
-        )}
-        {allMapIds.length === 0 && !loadError && (
-          <p className="text-[0.85rem] text-muted-2">No maps found.</p>
-        )}
-        {unplaced.length === 0 && allMapIds.length > 0 && (
-          <p className="text-[0.85rem] text-muted-2">Every map is placed.</p>
-        )}
-        {unplaced.map((id) => (
-          <button
-            key={id}
-            type="button"
-            className="cursor-grab touch-none rounded-md border border-border bg-inset px-2 py-1.5 text-left text-[0.8rem] text-fg hover:border-accent-border active:cursor-grabbing"
-            title="Drag onto the grid to place"
-            onPointerDown={(e) => onTrayPointerDown(e, id)}
+      {/* Side tray: unplaced maps. Docked on desktop; a slide-in Sheet drawer on compact. */}
+      {!isCompact && (
+        <aside className="flex w-[180px] shrink-0 flex-col gap-2 overflow-auto border-r border-surface bg-raised p-3">
+          {trayContent}
+        </aside>
+      )}
+      {isCompact && (
+        <Sheet open={trayOpen} onOpenChange={setTrayOpen}>
+          <SheetContent
+            side="left"
+            className="w-[min(85vw,280px)] gap-0 border-surface bg-raised p-0 sm:max-w-none"
           >
-            {maps[id]?.meta.name ?? id}
-            <span className="block text-[0.68rem] text-muted-2">
-              {id} · {metaOf(id).width}×{metaOf(id).height}
-            </span>
-          </button>
-        ))}
-      </aside>
+            <div className="flex-none border-b border-surface px-3 py-2">
+              <SheetTitle className="text-sm">Unplaced maps</SheetTitle>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-3">
+              {trayContent}
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
 
       {/* Main column: controls, grid, status bar. */}
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex flex-none items-center gap-3 border-b border-surface bg-raised px-3 py-1.5">
+          {isCompact && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="shrink-0"
+              title="Show unplaced maps"
+              onClick={() => setTrayOpen(true)}
+            >
+              <PanelLeftOpen className="size-4" />
+              Maps
+            </Button>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -437,8 +570,12 @@ export function WorldViewTab() {
               backgroundSize: `${zoom}px ${zoom}px`,
             }}
             onPointerDown={onCanvasPointerDown}
+            onPointerDownCapture={onCanvasPointerDownCapture}
             onPointerMove={onCanvasPointerMove}
+            onPointerMoveCapture={onCanvasPointerMoveCapture}
             onPointerUp={onCanvasPointerUp}
+            onPointerUpCapture={onCanvasPointerUpOrCancelCapture}
+            onPointerCancelCapture={onCanvasPointerUpOrCancelCapture}
           >
             {projected.map((p) => {
               const { width, height } = metaOf(p.mapId);

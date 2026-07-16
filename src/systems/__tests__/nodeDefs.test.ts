@@ -10,7 +10,7 @@ interface RawSkinFixture {
   region?: { x: number; y: number; w: number; h: number };
   depleted?: { asset: string; region?: { x: number; y: number; w: number; h: number } };
   weight?: number;
-  tilesTall?: number;
+  scale?: number;
   originX?: number;
   originY?: number;
 }
@@ -26,7 +26,7 @@ interface RawDefFixture {
   harvestAnim?: string;
   color: number;
   stumpColor: number;
-  tilesTall: number;
+  scale?: number;
   originX: number;
   originY: number;
   standOffsets?: number[][];
@@ -53,7 +53,7 @@ function validRaw(): RawFileFixture {
         blocksPath: true,
         color: 0x2f5d34,
         stumpColor: 0x5a3f28,
-        tilesTall: 5,
+        scale: 2,
         originX: 0.5,
         originY: 0.92,
         standOffsets: [
@@ -69,7 +69,7 @@ function validRaw(): RawFileFixture {
             region: { x: 0, y: 0, w: 32, h: 48 },
             depleted: { asset: 'pixel-crawler/oak-stump.png' },
             weight: 2,
-            tilesTall: 4,
+            scale: 1.5,
             originX: 0.5,
             originY: 0.9,
           },
@@ -98,7 +98,7 @@ describe('parseNodeDefs', () => {
     expect(tree.speed).toBe(0); // injected inert field
     expect(tree.yieldItemId).toBe('wood');
     expect(tree.blocksPath).toBe(true);
-    expect(tree.tilesTall).toBe(5);
+    expect(tree.scale).toBe(2);
     expect(tree.originX).toBe(0.5);
     expect(tree.originY).toBe(0.92);
     expect(tree.standOffsets).toEqual([
@@ -114,11 +114,17 @@ describe('parseNodeDefs', () => {
     const [pine, oak] = result.tree.skins;
     expect(pine.id).toBe('pine');
     expect(pine.weight).toBe(1); // omitted in the fixture -> defaulted
+    expect(pine.scale).toBeUndefined(); // omitted per-skin -> inherits the def default (not defaulted here)
     expect(oak.id).toBe('oak');
     expect(oak.weight).toBe(2); // explicit in the fixture -> passed through
     expect(oak.region).toEqual({ x: 0, y: 0, w: 32, h: 48 });
     expect(oak.depleted).toEqual({ asset: 'pixel-crawler/oak-stump.png' });
-    expect(oak.tilesTall).toBe(4);
+    expect(oak.scale).toBe(1.5);
+  });
+
+  it('defaults a def scale to 1.0 (native) when omitted', () => {
+    const result = parseNodeDefs(withRaw((raw) => delete raw.defs[0].scale));
+    expect(result.tree.scale).toBe(1);
   });
 
   it('rejects a non-object root', () => {

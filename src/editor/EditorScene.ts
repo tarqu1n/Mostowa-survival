@@ -709,7 +709,7 @@ export class EditorScene extends Phaser.Scene {
   /** Nodes render per skin from the catalog, matching `ResourceNodeManager.applySkinAppearance`
    *  exactly (plan 021 step 6): resolve the placed skin (or the def's first/default) → its catalog
    *  sprite via the shared decor resolver; position = tile centre (both axes), scale =
-   *  `(TILE_SIZE * tilesTall) / frameHeight`, origin = `(originX, originY)` with per-skin overrides.
+   *  `skin.scale ?? def.scale` (native-pixel multiplier), origin = `(originX, originY)` with per-skin overrides.
    *  Falls back to a labelled marker (unknown ref, malformed/unresolved asset) so authoring always
    *  shows *something* pickable. */
   private placeNodeSprite(
@@ -743,8 +743,9 @@ export class EditorScene extends Phaser.Scene {
       draw.kind === 'region'
         ? this.add.image(x, y, draw.key, draw.frame)
         : this.add.image(x, y, draw.key);
-    img.setScale((TILE_SIZE * (skin.tilesTall ?? def.tilesTall)) / img.frame.height);
+    img.setScale(skin.scale ?? def.scale);
     img.setOrigin(skin.originX ?? def.originX, skin.originY ?? def.originY);
+    img.setAngle(obj.rotation ?? 0); // stored in degrees (see mapFormat NodeObject); absent ⇒ upright
     img.setDepth(DEPTH_OBJECTS);
     this.objectSprites.push(img);
     return img;

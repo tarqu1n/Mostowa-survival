@@ -1,0 +1,16 @@
+{
+  "id": "zelda-like",
+  "name": "Zelda-like Tilesets and Sprites (ArMM1998)",
+  "author": "ArMM1998",
+  "sourceUrl": "https://opengameart.org/content/zelda-like-tilesets-and-sprites",
+  "licence": "CC0 1.0 Universal (public domain) per the OpenGameArt page — no attribution required. See LICENSE.txt; verify the source page before any public release.",
+  "tileSize": 16,
+  "rules": {
+    "tile": [
+      "Environment/Tilesets/**"
+    ],
+    "strip": []
+  },
+  "overrides": {},
+  "exclude": []
+}

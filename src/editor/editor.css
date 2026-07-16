@@ -143,7 +143,11 @@
       sans-serif;
   }
 
+  /* 100dvh (not 100vh) so mobile browser chrome doesn't clip the shell; overscroll-behavior stops
+     rubber-band scroll/pull-to-refresh bleeding past the editor (plan 027, Step 1). Note the
+     EditorApp root is also on h-dvh — an inner 100vh child would re-introduce the clip. */
   #editor-root {
-    height: 100vh;
+    height: 100dvh;
+    overscroll-behavior: none;
   }
 }

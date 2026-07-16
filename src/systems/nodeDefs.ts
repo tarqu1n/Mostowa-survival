@@ -18,7 +18,7 @@ import { ITEMS } from '../data/items';
 // ---- Authored types (node defs file schema v1) ----
 
 /** One renderable "look" for a node def. Sizing fields are per-skin OVERRIDES of the def-level
- *  defaults (`AuthoredNodeDef.tilesTall`/`originX`/`originY`) — omitted here means "use the def's
+ *  defaults (`AuthoredNodeDef.scale`/`originX`/`originY`) — omitted here means "use the def's
  *  default", wired by a later step (plan 021 step 3). `weight` is optional on input (defaults to 1
  *  — see `pickWeighted` in `src/data/tileset.ts`, which requires a concrete `weight: number`); when
  *  present it must be a positive number. */
@@ -32,7 +32,8 @@ export interface NodeSkinDef {
   depleted?: { asset: string; region?: DecorRegion };
   /** Relative random-pick weight (see `pickWeighted`); omitted ⇒ defaults to 1. */
   weight?: number;
-  tilesTall?: number;
+  /** Display-scale override (see `AuthoredNodeDef.scale`); omitted ⇒ inherit the def's default. */
+  scale?: number;
   originX?: number;
   originY?: number;
 }
@@ -55,8 +56,10 @@ export interface AuthoredNodeDef {
   harvestAnim?: 'chop' | 'gather' | 'mine';
   color: number;
   stumpColor: number;
-  /** Def-level default height (in tiles); a skin's own `tilesTall` overrides it (step 3). */
-  tilesTall: number;
+  /** Def-level display scale (a multiplier on the source sprite's native pixels — the pack is
+   *  authored at the game's `TILE_SIZE`, so `1.0` = native, artist-intended size + crisp pixels).
+   *  Optional on input, defaulting to `1.0`; a skin's own `scale` overrides it (step 3). */
+  scale?: number;
   originX: number;
   originY: number;
   /** Neighbour offsets the worker may stand on to harvest this node (gameplay — stays on the def,
@@ -179,7 +182,7 @@ const NODE_SKIN_KEYS = [
   'region',
   'depleted',
   'weight',
-  'tilesTall',
+  'scale',
   'originX',
   'originY',
 ] as const;
@@ -205,10 +208,8 @@ function parseNodeSkin(value: unknown, path: string): NormalizedNodeSkinDef {
     if (weight <= 0) fail(`${path}.weight must be > 0 (got ${weight})`);
   }
 
-  const tilesTall =
-    obj.tilesTall === undefined ? undefined : expectNumber(obj.tilesTall, `${path}.tilesTall`);
-  if (tilesTall !== undefined && tilesTall <= 0)
-    fail(`${path}.tilesTall must be > 0 (got ${tilesTall})`);
+  const scale = obj.scale === undefined ? undefined : expectNumber(obj.scale, `${path}.scale`);
+  if (scale !== undefined && scale <= 0) fail(`${path}.scale must be > 0 (got ${scale})`);
   const originX =
     obj.originX === undefined ? undefined : expectNumber(obj.originX, `${path}.originX`);
   const originY =
@@ -220,7 +221,7 @@ function parseNodeSkin(value: unknown, path: string): NormalizedNodeSkinDef {
     ...(region === undefined ? {} : { region }),
     ...(depleted === undefined ? {} : { depleted }),
     weight,
-    ...(tilesTall === undefined ? {} : { tilesTall }),
+    ...(scale === undefined ? {} : { scale }),
     ...(originX === undefined ? {} : { originX }),
     ...(originY === undefined ? {} : { originY }),
   };
@@ -251,7 +252,7 @@ const AUTHORED_NODE_DEF_KEYS = [
   'harvestAnim',
   'color',
   'stumpColor',
-  'tilesTall',
+  'scale',
   'originX',
   'originY',
   'standOffsets',
@@ -299,8 +300,9 @@ function parseAuthoredNodeDef(
   const color = expectInt(obj.color, `${path}.color`);
   const stumpColor = expectInt(obj.stumpColor, `${path}.stumpColor`);
 
-  const tilesTall = expectNumber(obj.tilesTall, `${path}.tilesTall`);
-  if (tilesTall <= 0) fail(`${path}.tilesTall must be > 0 (got ${tilesTall})`);
+  // Optional on input, defaulting to native (1.0) — the pack is authored at the game's TILE_SIZE.
+  const scale = obj.scale === undefined ? 1 : expectNumber(obj.scale, `${path}.scale`);
+  if (scale <= 0) fail(`${path}.scale must be > 0 (got ${scale})`);
 
   const originX = expectNumber(obj.originX, `${path}.originX`);
   const originY = expectNumber(obj.originY, `${path}.originY`);
@@ -331,7 +333,7 @@ function parseAuthoredNodeDef(
     ...(harvestAnim === undefined ? {} : { harvestAnim }),
     color,
     stumpColor,
-    tilesTall,
+    scale,
     originX,
     originY,
     ...(standOffsets === undefined ? {} : { standOffsets }),
@@ -383,7 +385,7 @@ export function parseNodeDefs(raw: unknown): Record<string, ParsedNodeDef> {
       stumpColor: def.stumpColor,
       blocksPath: def.blocksPath,
       ...(def.harvestAnim === undefined ? {} : { harvestAnim: def.harvestAnim }),
-      tilesTall: def.tilesTall,
+      scale: def.scale ?? 1,
       originX: def.originX,
       originY: def.originY,
       ...(def.standOffsets === undefined ? {} : { standOffsets: def.standOffsets }),

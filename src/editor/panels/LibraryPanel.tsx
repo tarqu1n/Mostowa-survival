@@ -32,6 +32,7 @@ import { Button } from '../ui/button';
 import { Slider } from '../ui/slider';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { cn } from '../lib/utils';
+import { useIsCompact } from '../hooks/useIsCompact';
 
 /**
  * Library panel (plan 014 steps 6-7b) — loads the generated asset catalog, browses it by pack/category
@@ -72,6 +73,14 @@ import { cn } from '../lib/utils';
 
 /** On-screen swatch size for tile frames — an integer upscale of TILE_SIZE for legibility (16→32). */
 const PREVIEW_PX = TILE_SIZE * 2;
+/** Compact-viewport swatch size for the same frame grid (plan 027 step 10) — a real tileset sheet can
+ *  be many columns wide (e.g. a 25-col Floors sheet), and at `PREVIEW_PX` that's 800px of horizontal
+ *  scroll in a ~320px drawer. Shrinking the swatch (rather than reflowing the column count, which
+ *  would break the frame grid's 1:1 visual match to the source sheet's own row/col layout) is the
+ *  additive lever here — it's a deliberate trade against the ~44px touch-target guideline: a dense
+ *  tile-variant picker needs to show many swatches at once to be usable at all, so these stay smaller
+ *  and tap-precise rather than touch-ideal (see plan's "note it, don't grind" guidance).  */
+const COMPACT_PREVIEW_PX = 22;
 /** Sentinel `selectedCategory` value for the Favourites pseudo-category (never a real category
  *  string, which are always pack-relative path segments like "Environment/Tilesets"). */
 const FAVOURITES = '__favourites__';
@@ -92,16 +101,26 @@ const TERRAIN_SHEET_COLS_FALLBACK = 25;
  *  they still land on the right sprite. Sheets already smaller than this render at native size. */
 const ATLAS_PREVIEW_MAX_PX = 240;
 
+/** A region is object-role — a placeable prop — when it declares `role:'object'` or predates the
+ *  `role` field (absent ⇒ object, the plan-028 invariant). Only these arm as decor and occlude the
+ *  tile cells they cover; a future `tile`-role region would do neither. On a `tile`-classed mixed
+ *  sheet the authored prop regions carry `role:'object'` explicitly; on a plain `object` atlas the
+ *  older regions have no `role` and still qualify here. */
+const isObjectRegion = (r: CatalogRegion): boolean => r.role === undefined || r.role === 'object';
+
 /* Shared utility strings for the repeated Library shapes (plan 020 Step 4). Extracting them keeps the
  * per-item JSX terse and gives every card/label/swatch one definition to change. */
 const libLabelClass = 'flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem]';
 const libSwatchClass =
   'pixelated h-10 w-10 flex-none rounded-[2px] bg-inset bg-contain bg-center bg-no-repeat';
-/** `.lib-card`: a full-width row (swatch · label · heart); `is-active` gets the gold ring + surface bg. */
-const libCardClass = (active: boolean): string =>
+/** `.lib-card`: a full-width row (swatch · label · heart); `is-active` gets the gold ring + surface bg.
+ *  `compact` (plan 027 step 10) adds a touch of extra padding/gap so the whole row — already close to
+ *  44px tall via `libSwatchClass`'s 40px swatch — comfortably clears the touch-target guideline. */
+const libCardClass = (active: boolean, compact = false): string =>
   cn(
     'flex w-full items-center gap-2 rounded-md border border-transparent p-1 text-left',
     active && 'border-gold-light bg-surface',
+    compact && 'gap-3 p-1.5',
   );
 
 /** A left-aligned tree/nav row (`.lib-tree-item`) as a ghost Button; active rows get the brown fill. */
@@ -114,12 +133,14 @@ function TreeItem({
   onClick: () => void;
   children: ReactNode;
 }) {
+  const isCompact = useIsCompact();
   return (
     <Button
       variant="ghost"
       className={cn(
         'h-auto w-full justify-start whitespace-normal rounded-[3px] px-1.5 py-[3px] text-left text-[0.8rem] font-normal',
         active ? 'bg-active text-fg-bright hover:bg-active' : 'text-fg-muted hover:bg-surface',
+        isCompact && 'min-h-11 px-2 py-2 text-[0.88rem]',
       )}
       onClick={onClick}
     >
@@ -157,6 +178,7 @@ function FavHeart({
 }
 
 export function LibraryPanel() {
+  const isCompact = useIsCompact();
   // The catalog lives in the store (plan 017 step 3): the object-editor tab's Apply refetches it via
   // the shared `loadCatalog` → `setCatalog`, so reading it here (rather than a local copy) is what
   // makes a reclassify show up in the Library live. `null` until the mount fetch below lands.
@@ -307,7 +329,10 @@ export function LibraryPanel() {
     <>
       <h2 className="mb-2 text-[0.85rem] uppercase tracking-[0.04em] text-fg-dim">Library</h2>
       <input
-        className="mb-2.5 w-full rounded-md border border-border bg-inset px-2 py-[5px] text-fg"
+        className={cn(
+          'mb-2.5 w-full rounded-md border border-border bg-inset px-2 py-[5px] text-fg',
+          isCompact && 'h-11 px-3 text-[0.95rem]',
+        )}
         type="search"
         placeholder="Search id or tag…"
         value={search}
@@ -360,7 +385,10 @@ export function LibraryPanel() {
                   <div key={pack.id} className="mb-1">
                     <button
                       type="button"
-                      className="mt-1.5 mb-0.5 flex w-full items-center gap-1 text-[0.7rem] uppercase tracking-[0.03em] text-border-muted hover:text-fg-dim"
+                      className={cn(
+                        'mt-1.5 mb-0.5 flex w-full items-center gap-1 text-[0.7rem] uppercase tracking-[0.03em] text-border-muted hover:text-fg-dim',
+                        isCompact && 'min-h-11 py-2 text-[0.78rem]',
+                      )}
                       aria-expanded={expanded}
                       onClick={() => togglePack(pack.id)}
                     >
@@ -444,7 +472,12 @@ export function LibraryPanel() {
             {(showingCategory || searchLower.length > 0) &&
               visibleAssets.map((asset) => {
                 if (asset.type === 'tile') {
-                  return (
+                  // A mixed sheet (plan 028): a `tile` asset that ALSO carries object-role regions
+                  // shows BOTH — the frame grid (with the prop cells occluded out) and the props as
+                  // armable hotspots on the whole-sheet view below it. A plain tile sheet has no such
+                  // regions, so only the grid renders and it looks exactly as before.
+                  const objRegions = (asset.regions ?? []).filter(isObjectRegion);
+                  const grid = (
                     <TileFrameGrid
                       key={asset.id}
                       asset={asset}
@@ -453,6 +486,18 @@ export function LibraryPanel() {
                       onPick={pickTile}
                       onToggleFavourite={toggleFavourite}
                     />
+                  );
+                  if (objRegions.length === 0) return grid;
+                  return (
+                    <div key={asset.id} className="flex flex-col gap-2">
+                      {grid}
+                      <AtlasSheetPicker
+                        asset={asset}
+                        armedObjectAsset={armedObjectAsset}
+                        onArmRegion={armRegion}
+                        heading={`Objects on ${asset.id.split('/').pop()}`}
+                      />
+                    </div>
                   );
                 }
                 if (asset.type === 'object' && (asset.regions?.length ?? 0) > 0) {
@@ -513,12 +558,33 @@ function TileFrameGrid({
   onPick: (assetId: string) => void;
   onToggleFavourite: (assetId: string) => void;
 }) {
+  const isCompact = useIsCompact();
+  // Fixed-size offender (plan 027 step 10): the frame grid is a real spritesheet's own row/col layout,
+  // so a wide sheet (e.g. a 25-col Floors tileset) is `cols * previewPx` px wide regardless — shrinking
+  // the swatch on compact is the additive lever that keeps it usable in a ~320px drawer without
+  // reflowing the grid away from its 1:1 match to the source sheet (see `COMPACT_PREVIEW_PX`'s doc).
+  const previewPx = isCompact ? COMPACT_PREVIEW_PX : PREVIEW_PX;
   const cols = catalogTileCols(asset, TILE_SIZE);
   const nativeRows = Math.max(1, Math.round(asset.h / TILE_SIZE));
   const frames = asset.frames ?? cols * nativeRows;
   const path = asset.source.kind === 'sheetFrame' ? asset.source.sheet : asset.source.path;
   const url = tilesetAssetUrl(asset.pack, path);
-  const bgSize = `${cols * PREVIEW_PX}px ${nativeRows * PREVIEW_PX}px`;
+  const bgSize = `${cols * previewPx}px ${nativeRows * previewPx}px`;
+  // Occlusion (plan 028): on a mixed sheet, an object-role region declares a placeable prop; the 16px
+  // grid cells beneath it are unusable terrain fragments, so hide them here (the props themselves are
+  // armed from the AtlasSheetPicker rendered alongside). A cell is hidden iff its CENTRE falls inside
+  // some object region — not any-pixel overlap, so a region bleeding 1px into a neighbouring terrain
+  // cell can't silently delete that legitimate tile. `cols` is already floored (catalogTileCols), so a
+  // sheet whose width isn't a clean multiple of TILE_SIZE still yields integer col/row math — no crash.
+  const objRegions = (asset.regions ?? []).filter(isObjectRegion);
+  const isOccluded = (col: number, row: number): boolean => {
+    if (objRegions.length === 0) return false;
+    const cx = col * TILE_SIZE + TILE_SIZE / 2;
+    const cy = row * TILE_SIZE + TILE_SIZE / 2;
+    return objRegions.some(
+      (rg) => cx >= rg.x && cx < rg.x + rg.w && cy >= rg.y && cy < rg.y + rg.h,
+    );
+  };
 
   return (
     <div className="relative">
@@ -530,13 +596,17 @@ function TileFrameGrid({
         {asset.id.split('/').pop()}
       </div>
       <div
-        className="grid max-h-[260px] gap-px overflow-auto rounded-[3px] bg-inset p-0.5"
+        className={cn(
+          'grid max-h-[260px] gap-px overflow-auto rounded-[3px] bg-inset p-0.5',
+          isCompact && 'max-h-[45vh] gap-0.5 p-1',
+        )}
         // gridTemplateColumns is computed from the catalog's own tile geometry — stays inline.
-        style={{ gridTemplateColumns: `repeat(${cols}, ${PREVIEW_PX}px)` }}
+        style={{ gridTemplateColumns: `repeat(${cols}, ${previewPx}px)` }}
       >
         {Array.from({ length: frames }, (_, frame) => {
           const col = frame % cols;
           const row = Math.floor(frame / cols);
+          if (isOccluded(col, row)) return null;
           const frameId = `${asset.id}#${frame}`;
           const isFav = favourites.has(frameId);
           return (
@@ -553,10 +623,10 @@ function TileFrameGrid({
                 className="pixelated block"
                 // Per-frame sprite crop — backgroundImage/Position/Size are computed, so inline.
                 style={{
-                  width: PREVIEW_PX,
-                  height: PREVIEW_PX,
+                  width: previewPx,
+                  height: previewPx,
                   backgroundImage: `url(${url})`,
-                  backgroundPosition: `-${col * PREVIEW_PX}px -${row * PREVIEW_PX}px`,
+                  backgroundPosition: `-${col * previewPx}px -${row * previewPx}px`,
                   backgroundSize: bgSize,
                 }}
               />
@@ -602,9 +672,10 @@ function NodeCard({
   isArmed: boolean;
   onArm: () => void;
 }) {
+  const isCompact = useIsCompact();
   const url = nodePreviewUrl(def);
   return (
-    <button className={libCardClass(isArmed)} title={def.id} onClick={onArm}>
+    <button className={libCardClass(isArmed, isCompact)} title={def.id} onClick={onArm}>
       {url ? (
         <span className={libSwatchClass} style={{ backgroundImage: `url(${url})` }} />
       ) : (
@@ -640,6 +711,7 @@ function TerrainCard({
   isArmed: boolean;
   onArm: () => void;
 }) {
+  const isCompact = useIsCompact();
   const sheetAsset = catalog.assets.find(
     (a) => a.pack === def.pack && a.source.kind === 'sheetFrame' && a.source.sheet === def.sheet,
   );
@@ -649,7 +721,7 @@ function TerrainCard({
   const col = def.fillFrame % cols;
   const row = Math.floor(def.fillFrame / cols);
   return (
-    <button className={libCardClass(isArmed)} title={def.id} onClick={onArm}>
+    <button className={libCardClass(isArmed, isCompact)} title={def.id} onClick={onArm}>
       <span
         className={cn(libSwatchClass, 'pixelated')}
         // Per-frame sprite crop — overrides libSwatchClass's whole-image bg-contain/bg-center via
@@ -685,12 +757,13 @@ function AssetCard({
   onArm: () => void;
   onToggleFavourite: () => void;
 }) {
+  const isCompact = useIsCompact();
   const path = asset.source.kind === 'sheetFrame' ? asset.source.sheet : asset.source.path;
   const url = tilesetAssetUrl(asset.pack, path);
   const label = asset.id.split('/').pop() ?? asset.id;
   return (
     <div className="relative">
-      <button className={libCardClass(isArmed)} title={asset.id} onClick={onArm}>
+      <button className={libCardClass(isArmed, isCompact)} title={asset.id} onClick={onArm}>
         <span className={libSwatchClass} style={{ backgroundImage: `url(${url})` }} />
         <span className={libLabelClass}>{label}</span>
         <FavHeart fav={isFavourite} onToggle={onToggleFavourite} className="static px-0.5" />
@@ -721,6 +794,8 @@ function FavouriteItem({
   onArmObject: (assetId: string) => void;
   onToggleFavourite: (assetId: string) => void;
 }) {
+  const isCompact = useIsCompact();
+  const previewPx = isCompact ? COMPACT_PREVIEW_PX : PREVIEW_PX;
   let resolved: { asset: CatalogAsset; frame?: number } | null = null;
   try {
     const { pack, path, frame } = parseAssetId(favId);
@@ -733,7 +808,7 @@ function FavouriteItem({
 
   if (!resolved) {
     return (
-      <div className={cn(libCardClass(false), 'text-danger')} title={favId}>
+      <div className={cn(libCardClass(false, isCompact), 'text-danger')} title={favId}>
         <span className={libLabelClass}>missing: {favId}</span>
         <FavHeart fav onToggle={() => onToggleFavourite(favId)} className="static px-0.5" />
       </div>
@@ -761,11 +836,11 @@ function FavouriteItem({
           className="pixelated block"
           // Per-frame sprite crop — computed background props stay inline.
           style={{
-            width: PREVIEW_PX,
-            height: PREVIEW_PX,
+            width: previewPx,
+            height: previewPx,
             backgroundImage: `url(${url})`,
-            backgroundPosition: `-${col * PREVIEW_PX}px -${row * PREVIEW_PX}px`,
-            backgroundSize: `${cols * PREVIEW_PX}px ${nativeRows * PREVIEW_PX}px`,
+            backgroundPosition: `-${col * previewPx}px -${row * previewPx}px`,
+            backgroundSize: `${cols * previewPx}px ${nativeRows * previewPx}px`,
           }}
         />
         <FavHeart
@@ -834,11 +909,16 @@ function AtlasSheetPicker({
   asset,
   armedObjectAsset,
   onArmRegion,
+  heading,
 }: {
   asset: CatalogAsset;
   armedObjectAsset: ArmedObjectAsset | null;
   onArmRegion: (assetId: string, region: DecorRegion) => void;
+  /** Label line above the sheet. Defaults to the file name; a mixed tile sheet (plan 028) passes a
+   *  distinguishing heading so its "Objects on …" hotspot view reads apart from the frame grid above. */
+  heading?: string;
 }) {
+  const isCompact = useIsCompact();
   const [zoom, setZoom] = useState(1);
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
@@ -857,7 +937,11 @@ function AtlasSheetPicker({
 
   const path = asset.source.kind === 'sheetFrame' ? asset.source.sheet : asset.source.path;
   const url = tilesetAssetUrl(asset.pack, path);
-  const fitScale = Math.min(1, ATLAS_PREVIEW_MAX_PX / Math.max(asset.w, asset.h));
+  // On compact, fit to a bigger budget (mirrors NodeSpritePickerDialog's RegionStep) — the sheet is the
+  // same "click the sprite on the sheet" hotspot picker, so a bigger base render gives every hotspot a
+  // bigger tap target before the user even reaches for the zoom control.
+  const previewMaxPx = isCompact ? ATLAS_PREVIEW_MAX_PX * 1.4 : ATLAS_PREVIEW_MAX_PX;
+  const fitScale = Math.min(1, previewMaxPx / Math.max(asset.w, asset.h));
   const scale = fitScale * zoom;
   const dispW = Math.round(asset.w * scale);
   const dispH = Math.round(asset.h * scale);
@@ -952,19 +1036,20 @@ function AtlasSheetPicker({
         className="mb-1 overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-fg-dim"
         title={asset.id}
       >
-        {asset.id.split('/').pop()}
+        {heading ?? asset.id.split('/').pop()}
       </div>
       {/* Zoom-row controls all share a 22px height so the row keeps ONE baseline, and the whole row is
           budgeted to ~200px because the Library column is a fixed 240px — every control size below is
-          picked to fit that budget with the cog on the end. */}
-      <div className="mb-1.5 flex items-center gap-1.5">
+          picked to fit that budget with the cog on the end. On compact the Library is a full-width
+          drawer (Step 8), not the fixed 240px column, so the row is freed up to use bigger controls. */}
+      <div className={cn('mb-1.5 flex items-center gap-1.5', isCompact && 'gap-2.5')}>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               type="button"
               variant="outline"
               size="icon-xs"
-              className="size-[22px] shrink-0"
+              className={cn('size-[22px] shrink-0', isCompact && 'size-10')}
               disabled={zoom <= ATLAS_ZOOM_MIN}
               onClick={() => setZoom((z) => clampZoom(z - ATLAS_ZOOM_STEP))}
             >
@@ -974,7 +1059,7 @@ function AtlasSheetPicker({
           <TooltipContent>Zoom out</TooltipContent>
         </Tooltip>
         <Slider
-          className="w-[78px] shrink-0"
+          className={cn('w-[78px] shrink-0', isCompact && 'w-[110px]')}
           min={ATLAS_ZOOM_MIN}
           max={ATLAS_ZOOM_MAX}
           step={ATLAS_ZOOM_STEP}
@@ -988,7 +1073,7 @@ function AtlasSheetPicker({
               type="button"
               variant="outline"
               size="icon-xs"
-              className="size-[22px] shrink-0"
+              className={cn('size-[22px] shrink-0', isCompact && 'size-10')}
               disabled={zoom >= ATLAS_ZOOM_MAX}
               onClick={() => setZoom((z) => clampZoom(z + ATLAS_ZOOM_STEP))}
             >
@@ -997,7 +1082,14 @@ function AtlasSheetPicker({
           </TooltipTrigger>
           <TooltipContent>Zoom in</TooltipContent>
         </Tooltip>
-        <span className="min-w-6 flex-none text-right text-[0.7rem] text-fg-dim">{zoom}×</span>
+        <span
+          className={cn(
+            'min-w-6 flex-none text-right text-[0.7rem] text-fg-dim',
+            isCompact && 'text-[0.8rem]',
+          )}
+        >
+          {zoom}×
+        </span>
         <AssetReclassify asset={asset} inline />
       </div>
       {/* Plain overflow div, NOT shadcn ScrollArea: this viewport's scroll offset is driven imperatively
@@ -1007,7 +1099,10 @@ function AtlasSheetPicker({
           this logic. (Convention: ScrollArea is for simple overflow; keep a plain div for ref-driven
           imperative scroll/pan/zoom.) */}
       <div
-        className="max-h-[320px] overflow-auto rounded-[3px] bg-inset"
+        className={cn(
+          'max-h-[320px] overflow-auto rounded-[3px] bg-inset',
+          isCompact && 'max-h-[50vh]',
+        )}
         ref={viewportRef}
         onPointerEnter={() => {
           hoveringRef.current = true;
@@ -1033,7 +1128,7 @@ function AtlasSheetPicker({
           onPointerMove={onCanvasPointerMove}
           onPointerUp={onCanvasPointerUp}
         >
-          {(asset.regions ?? []).map((region: CatalogRegion) => {
+          {(asset.regions ?? []).filter(isObjectRegion).map((region: CatalogRegion) => {
             const isArmed =
               armedRegion !== undefined &&
               armedRegion.x === region.x &&
@@ -1096,9 +1191,10 @@ function AnimatedStripPicker({
   isArmed: boolean;
   onArm: (assetId: string, anim: Omit<DecorAnim, 'fps'>) => void;
 }) {
+  const isCompact = useIsCompact();
   const path = asset.source.kind === 'sheetFrame' ? asset.source.sheet : asset.source.path;
   const url = tilesetAssetUrl(asset.pack, path);
-  const scale = PREVIEW_PX / asset.frameHeight;
+  const scale = (isCompact ? COMPACT_PREVIEW_PX : PREVIEW_PX) / asset.frameHeight;
   const dispW = Math.round(asset.frameWidth * scale);
   const dispH = Math.round(asset.frameHeight * scale);
   const label = asset.id.split('/').pop() ?? asset.id;
@@ -1139,7 +1235,7 @@ function AnimatedStripPicker({
     <div className="relative">
       <button
         // `.lib-strip-anim` was column layout on the card — flex-col/items-start override libCardClass.
-        className={cn(libCardClass(isArmed), 'flex-col items-start')}
+        className={cn(libCardClass(isArmed, isCompact), 'flex-col items-start')}
         title={asset.id}
         onClick={() =>
           onArm(asset.id, {
@@ -1170,6 +1266,7 @@ function AnimatedStripPicker({
  * arms/paints the underlying card.
  */
 function AssetReclassify({ asset, inline = false }: { asset: CatalogAsset; inline?: boolean }) {
+  const isCompact = useIsCompact();
   function open(): void {
     useEditorStore.getState().openObjectTab(asset.id);
   }
@@ -1179,10 +1276,14 @@ function AssetReclassify({ asset, inline = false }: { asset: CatalogAsset; inlin
         <span
           // Flex-centered square (not a bare font-size bump) so the ⚙ — which sits off-centre in its
           // own em-box — lands dead-centre. `inline` (atlas zoom row) drops the corner anchoring and
-          // matches the row's 22px baseline; default self-anchors to the card's top-right corner.
+          // matches the row's 22px baseline; default self-anchors to the card's top-right corner. On
+          // compact both grow towards a real tap target (the `inline` row already grew to size-10 to
+          // match its neighbouring zoom buttons; the default corner badge grows to size-8 — it can't
+          // reach the full size-10 without overrunning a small swatch's own corner).
           className={cn(
             'z-[5] flex cursor-pointer items-center justify-center rounded-md border border-border bg-inset leading-none text-muted-2 hover:border-active hover:text-gold',
             inline ? 'size-[22px] text-[14px]' : 'absolute top-0.5 right-0.5 size-5 text-[12px]',
+            isCompact && (inline ? 'size-10 text-[18px]' : 'size-8 text-[15px]'),
           )}
           role="button"
           tabIndex={0}

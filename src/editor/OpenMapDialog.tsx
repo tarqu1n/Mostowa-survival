@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { listMaps } from './api';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { useIsCompact } from './hooks/useIsCompact';
+import { cn } from './lib/utils';
 
 /** Modal for Open: lists map ids from `GET /__editor/maps`; picking one loads it (in the toolbar).
  *  Rendered conditionally by the toolbar (`{showOpen && <OpenMapDialog .../>}`), so it's only ever
@@ -15,6 +17,7 @@ export function OpenMapDialog({
   onOpen: (id: string) => void;
   onCancel: () => void;
 }) {
+  const isCompact = useIsCompact();
   const [ids, setIds] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +34,7 @@ export function OpenMapDialog({
         if (!open) onCancel();
       }}
     >
-      <DialogContent className="bg-popover text-popover-foreground sm:max-w-[360px]">
+      <DialogContent className="bg-popover text-popover-foreground max-h-[90dvh] overflow-y-auto sm:max-w-[360px]">
         <DialogHeader>
           <DialogTitle>Open map</DialogTitle>
         </DialogHeader>
@@ -41,12 +44,17 @@ export function OpenMapDialog({
           <p className="text-[0.9rem] text-muted-2">No maps yet — create one with New.</p>
         )}
         {ids && ids.length > 0 && (
-          <ul className="m-0 flex max-h-[260px] list-none flex-col gap-1 overflow-auto p-0">
+          <ul
+            className={cn(
+              'm-0 flex max-h-[260px] list-none flex-col gap-1 overflow-auto p-0',
+              isCompact && 'max-h-[45vh] gap-2',
+            )}
+          >
             {ids.map((id) => (
               <li key={id}>
                 <Button
                   variant="outline"
-                  className="w-full justify-start"
+                  className={cn('w-full justify-start', isCompact && 'h-11')}
                   onClick={() => onOpen(id)}
                 >
                   {id}
@@ -56,7 +64,7 @@ export function OpenMapDialog({
           </ul>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" className={cn(isCompact && 'h-11')} onClick={onCancel}>
             Cancel
           </Button>
         </DialogFooter>

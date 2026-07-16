@@ -11,7 +11,9 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { RotationWheel } from '../ui/RotationWheel';
 import { cn } from '../lib/utils';
+import { useIsCompact } from '../hooks/useIsCompact';
 
 /**
  * Inspector panel (plan 014 step 7) — shows/edits the selected object(s). Empty selection shows a
@@ -47,6 +49,7 @@ const fieldInputClass =
   'h-auto border-border bg-inset px-1.5 py-1 text-[0.8rem] text-fg shadow-none md:text-[0.8rem]';
 
 export function InspectorPanel() {
+  const isCompact = useIsCompact();
   const selectedObjectIds = useEditorStore((s) => s.selectedObjectIds);
   useEditorStore((s) => s.docRevision);
   useEditorStore((s) => s.mapEpoch);
@@ -84,10 +87,11 @@ export function InspectorPanel() {
       ) : (
         <p className={placeholderClass}>{selected.length} objects selected.</p>
       )}
-      <div className="flex flex-wrap gap-1.5">
+      <div className={cn('flex flex-wrap gap-1.5', isCompact && 'gap-2')}>
         <Button
           variant="outline"
           size="sm"
+          className={cn(isCompact && 'h-11')}
           disabled={!hasDecor}
           title="Rotate the selected decor -90°"
           onClick={() => useEditorStore.getState().rotateObjects(ids, -90)}
@@ -97,6 +101,7 @@ export function InspectorPanel() {
         <Button
           variant="outline"
           size="sm"
+          className={cn(isCompact && 'h-11')}
           disabled={!hasDecor}
           title="Rotate the selected decor +90°"
           onClick={() => useEditorStore.getState().rotateObjects(ids, 90)}
@@ -106,6 +111,7 @@ export function InspectorPanel() {
         <Button
           variant="outline"
           size="sm"
+          className={cn(isCompact && 'h-11')}
           disabled={!hasDecor}
           onClick={() => useEditorStore.getState().flipObjects(ids, 'x')}
         >
@@ -114,6 +120,7 @@ export function InspectorPanel() {
         <Button
           variant="outline"
           size="sm"
+          className={cn(isCompact && 'h-11')}
           disabled={!hasDecor}
           onClick={() => useEditorStore.getState().flipObjects(ids, 'y')}
         >
@@ -122,6 +129,7 @@ export function InspectorPanel() {
         <Button
           variant="outline"
           size="sm"
+          className={cn(isCompact && 'h-11')}
           disabled={!hasDecor}
           title="Bring forward (stack on top)"
           onClick={() => useEditorStore.getState().bumpDepth(ids, 1)}
@@ -131,6 +139,7 @@ export function InspectorPanel() {
         <Button
           variant="outline"
           size="sm"
+          className={cn(isCompact && 'h-11')}
           disabled={!hasDecor}
           title="Send backward (stack underneath)"
           onClick={() => useEditorStore.getState().bumpDepth(ids, -1)}
@@ -140,6 +149,7 @@ export function InspectorPanel() {
         <Button
           variant="outline"
           size="sm"
+          className={cn(isCompact && 'h-11')}
           onClick={() => useEditorStore.getState().duplicateObjects(ids)}
         >
           Duplicate
@@ -147,6 +157,7 @@ export function InspectorPanel() {
         <Button
           variant="outline"
           size="sm"
+          className={cn(isCompact && 'h-11')}
           onClick={() => useEditorStore.getState().deleteObjects(ids)}
         >
           Delete
@@ -178,6 +189,7 @@ function NumberField({
   step?: number;
 }) {
   const id = useId();
+  const isCompact = useIsCompact();
   return (
     <div className={cn(fieldClass, 'min-w-0 flex-1')}>
       <Label htmlFor={id} className={fieldLabelClass}>
@@ -189,7 +201,7 @@ function NumberField({
         step={step}
         defaultValue={value}
         key={value}
-        className={fieldInputClass}
+        className={cn(fieldInputClass, isCompact && 'h-11 px-2 text-[0.95rem]')}
         onBlur={(e) => {
           const n = Number(e.target.value);
           if (Number.isFinite(n) && n !== value) onCommit(n);
@@ -203,6 +215,7 @@ function NumberField({
 }
 
 function DecorFields({ obj }: { obj: DecorObject }) {
+  const isCompact = useIsCompact();
   const update = (patch: Partial<Omit<DecorObject, 'id' | 'kind' | 'asset'>>): void => {
     if (!useEditorStore.getState().updateDecor(obj.id, patch)) {
       console.warn('[editor] decor edit refused — would land on void/out-of-bounds');
@@ -244,26 +257,34 @@ function DecorFields({ obj }: { obj: DecorObject }) {
           onCommit={(scaleY) => update({ scaleY })}
         />
       </div>
-      <div className={rowClass}>
-        <NumberField
-          label="Rotation°"
-          value={obj.rotation}
-          onCommit={(rotation) => update({ rotation })}
-        />
+      <div className={cn(rowClass, 'items-start')}>
+        <div className={cn(fieldClass, 'min-w-0 flex-1')}>
+          <span className={fieldLabelClass}>Rotation</span>
+          {/* onCommit (not onChange) so a whole wheel drag is ONE undoable command, like NumberField's
+              commit-on-blur — see RotationWheel's contract. */}
+          <RotationWheel
+            value={obj.rotation}
+            onCommit={(rotation) => update({ rotation })}
+            size={isCompact ? 60 : 52}
+            ariaLabel="Decor rotation"
+          />
+        </div>
         <NumberField label="Depth" value={obj.depth} onCommit={(depth) => update({ depth })} />
       </div>
       <div className={cn(rowClass, 'items-center text-[0.8rem] text-fg-muted')}>
-        <label className="flex items-center gap-1">
+        <label className={cn('flex items-center gap-1', isCompact && 'gap-2 py-1.5 text-[0.9rem]')}>
           <input
             type="checkbox"
+            className={cn(isCompact && 'size-4')}
             checked={obj.flipX}
             onChange={(e) => update({ flipX: e.target.checked })}
           />
           Flip X
         </label>
-        <label className="flex items-center gap-1">
+        <label className={cn('flex items-center gap-1', isCompact && 'gap-2 py-1.5 text-[0.9rem]')}>
           <input
             type="checkbox"
+            className={cn(isCompact && 'size-4')}
             checked={obj.flipY}
             onChange={(e) => update({ flipY: e.target.checked })}
           />
@@ -276,9 +297,10 @@ function DecorFields({ obj }: { obj: DecorObject }) {
 
 function NodeFields({ obj }: { obj: NodeObject }) {
   const skinId = useId();
+  const isCompact = useIsCompact();
   // Subscribe so the picker refreshes if the def's skins change while a node is selected.
   const def = useEditorStore((s) => s.nodeDefsParsed[obj.ref]);
-  const update = (patch: Partial<Pick<NodeObject, 'col' | 'row' | 'skin'>>): void => {
+  const update = (patch: Partial<Pick<NodeObject, 'col' | 'row' | 'skin' | 'rotation'>>): void => {
     if (!useEditorStore.getState().updateNode(obj.id, patch)) {
       console.warn('[editor] node edit refused — would land on void/out-of-bounds');
     }
@@ -290,6 +312,16 @@ function NodeFields({ obj }: { obj: NodeObject }) {
       <div className={rowClass}>
         <NumberField label="Col" value={obj.col} onCommit={(col) => update({ col })} />
         <NumberField label="Row" value={obj.row} onCommit={(row) => update({ row })} />
+      </div>
+      <div className={fieldClass}>
+        <span className={fieldLabelClass}>Rotation</span>
+        {/* onCommit → one undoable command per drag (see RotationWheel contract). */}
+        <RotationWheel
+          value={obj.rotation ?? 0}
+          onCommit={(rotation) => update({ rotation })}
+          size={isCompact ? 60 : 52}
+          ariaLabel="Node rotation"
+        />
       </div>
       {/* Skin override — placement rolls a weighted-random skin (plan 021 step 9); this picker (and the
           'S' cycle shortcut) let you override it. Only shown when the def has a real choice (≥2 skins);
@@ -304,13 +336,17 @@ function NodeFields({ obj }: { obj: NodeObject }) {
             <SelectTrigger
               id={skinId}
               size="sm"
-              className={cn(fieldInputClass, 'w-full justify-between font-normal')}
+              className={cn(
+                fieldInputClass,
+                'w-full justify-between font-normal',
+                isCompact && 'h-11 px-2 text-[0.95rem]',
+              )}
             >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {skins.map((s, i) => (
-                <SelectItem key={s.id} value={s.id}>
+                <SelectItem key={s.id} value={s.id} className={cn(isCompact && 'py-2.5 text-base')}>
                   {s.id}
                   {i === 0 ? ' (default)' : ''}
                 </SelectItem>
@@ -328,6 +364,7 @@ const FACINGS: PortalFacing[] = ['up', 'down', 'left', 'right'];
 function PortalFields({ obj }: { obj: PortalObject }) {
   const nameId = useId();
   const facingId = useId();
+  const isCompact = useIsCompact();
   const update = (patch: Partial<Pick<PortalObject, 'name' | 'facing' | 'rect'>>): void => {
     if (!useEditorStore.getState().updatePortal(obj.id, patch)) {
       console.warn('[editor] portal edit refused — would land on void/out-of-bounds');
@@ -343,7 +380,7 @@ function PortalFields({ obj }: { obj: PortalObject }) {
           id={nameId}
           defaultValue={obj.name}
           key={obj.name}
-          className={fieldInputClass}
+          className={cn(fieldInputClass, isCompact && 'h-11 px-2 text-[0.95rem]')}
           onBlur={(e) => {
             const v = e.target.value.trim();
             if (v.length > 0 && v !== obj.name) update({ name: v });
@@ -360,13 +397,17 @@ function PortalFields({ obj }: { obj: PortalObject }) {
           <SelectTrigger
             id={facingId}
             size="sm"
-            className={cn(fieldInputClass, 'w-full justify-between font-normal')}
+            className={cn(
+              fieldInputClass,
+              'w-full justify-between font-normal',
+              isCompact && 'h-11 px-2 text-[0.95rem]',
+            )}
           >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {FACINGS.map((f) => (
-              <SelectItem key={f} value={f}>
+              <SelectItem key={f} value={f} className={cn(isCompact && 'py-2.5 text-base')}>
                 {f}
               </SelectItem>
             ))}

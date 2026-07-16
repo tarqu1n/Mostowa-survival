@@ -30,6 +30,8 @@ bindings here).
 
 **Brush tool** — arm a tileset piece and rotate it in 90° steps (see Shortcuts panel for keys and toolbar buttons); a rotated tile becomes a distinct palette entry; ghost preview shows the pending angle. Fill and rect gestures paint at angle 0.
 
+**Place tool — free rotation** — a rotation **wheel** (drag the dial, or type into its centre input; hold Shift while dragging to snap to 15°) sets an arbitrary angle stamped onto the next decor/node placed. The angle is sticky (`store.placeRotation`) so a whole row goes down at one angle. Decor and nodes both carry a `rotation` field (degrees, matching Phaser's clockwise `setAngle`); portals have none. The same wheel appears in the **Inspector** for a single selected decor/node — an Inspector wheel drag is one undoable command (commit-on-release, like the numeric fields), while the placement wheel is view-state (no history). Node rotation renders in the live game too (`ResourceNodeManager`), not just the editor.
+
 ## Touch / mobile (plan 027)
 
 Below a compact breakpoint (`src/editor/hooks/useIsCompact.ts`,

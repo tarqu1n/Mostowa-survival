@@ -1,0 +1,571 @@
+{
+  "schemaVersion": 1,
+  "sheets": {
+    "Buildings/CityWall_Gate_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_4_80_92",
+          "x": 0,
+          "y": 4,
+          "w": 80,
+          "h": 92
+        }
+      ]
+    },
+    "Buildings/House_Hay_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_88_103",
+          "x": 0,
+          "y": 0,
+          "w": 88,
+          "h": 103
+        }
+      ]
+    },
+    "Buildings/House_Hay_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_157_112",
+          "x": 0,
+          "y": 0,
+          "w": 157,
+          "h": 112
+        }
+      ]
+    },
+    "Buildings/House_Hay_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_180_128",
+          "x": 0,
+          "y": 0,
+          "w": 180,
+          "h": 128
+        }
+      ]
+    },
+    "Buildings/House_Hay_4_Purple.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_128_128",
+          "x": 0,
+          "y": 0,
+          "w": 128,
+          "h": 128
+        }
+      ]
+    },
+    "Buildings/Well_Hay_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_56_75",
+          "x": 0,
+          "y": 0,
+          "w": 56,
+          "h": 75
+        }
+      ]
+    },
+    "Props/Banner_Stick_1_Purple.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_24_59",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 59
+        }
+      ]
+    },
+    "Props/Barrel_Small_Empty.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_16_20",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 20
+        }
+      ]
+    },
+    "Props/Basket_Empty.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_22_17",
+          "x": 0,
+          "y": 0,
+          "w": 22,
+          "h": 17
+        }
+      ]
+    },
+    "Props/Bench_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_14_30",
+          "x": 0,
+          "y": 0,
+          "w": 14,
+          "h": 30
+        }
+      ]
+    },
+    "Props/Bench_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_14_14",
+          "x": 0,
+          "y": 0,
+          "w": 14,
+          "h": 14
+        }
+      ]
+    },
+    "Props/BulletinBoard_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_44_42",
+          "x": 0,
+          "y": 0,
+          "w": 44,
+          "h": 42
+        }
+      ]
+    },
+    "Props/Chopped_Tree_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_32_31",
+          "x": 0,
+          "y": 0,
+          "w": 32,
+          "h": 31
+        }
+      ]
+    },
+    "Props/Crate_Large_Empty.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_24_29",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 29
+        }
+      ]
+    },
+    "Props/Crate_Medium_Closed.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_16_21",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 21
+        }
+      ]
+    },
+    "Props/Crate_Water_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_30_22",
+          "x": 0,
+          "y": 0,
+          "w": 30,
+          "h": 22
+        }
+      ]
+    },
+    "Props/Fireplace_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_30_26",
+          "x": 0,
+          "y": 0,
+          "w": 30,
+          "h": 26
+        }
+      ]
+    },
+    "Props/Fx/Flowers_White.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_768_32",
+          "x": 0,
+          "y": 0,
+          "w": 768,
+          "h": 32
+        }
+      ]
+    },
+    "Props/HayStack_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_29_32",
+          "x": 0,
+          "y": 0,
+          "w": 29,
+          "h": 32
+        }
+      ]
+    },
+    "Props/LampPost_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_46_62",
+          "x": 0,
+          "y": 0,
+          "w": 46,
+          "h": 62
+        }
+      ]
+    },
+    "Props/Plant_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_15_11",
+          "x": 0,
+          "y": 0,
+          "w": 15,
+          "h": 11
+        }
+      ]
+    },
+    "Props/Sack_3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_16_14",
+          "x": 0,
+          "y": 0,
+          "w": 16,
+          "h": 14
+        }
+      ]
+    },
+    "Props/Sign_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_24_22",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 22
+        }
+      ]
+    },
+    "Props/Sign_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_24_22",
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 22
+        }
+      ]
+    },
+    "Props/Table_Medium_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_42_39",
+          "x": 0,
+          "y": 0,
+          "w": 42,
+          "h": 39
+        }
+      ]
+    },
+    "Rocks/Rock_Brown_1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_28_13",
+          "x": 0,
+          "y": 0,
+          "w": 28,
+          "h": 13
+        }
+      ]
+    },
+    "Rocks/Rock_Brown_2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_15_29",
+          "x": 0,
+          "y": 0,
+          "w": 15,
+          "h": 29
+        }
+      ]
+    },
+    "Rocks/Rock_Brown_4.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_27_26",
+          "x": 0,
+          "y": 0,
+          "w": 27,
+          "h": 26
+        }
+      ]
+    },
+    "Rocks/Rock_Brown_6.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_14_13",
+          "x": 0,
+          "y": 0,
+          "w": 14,
+          "h": 13
+        }
+      ]
+    },
+    "Rocks/Rock_Brown_9.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_0_9_11",
+          "x": 0,
+          "y": 0,
+          "w": 9,
+          "h": 11
+        }
+      ]
+    },
+    "TreesBushes/Trees_Bushes.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "0_1_64_63",
+          "x": 0,
+          "y": 1,
+          "w": 64,
+          "h": 63
+        },
+        {
+          "key": "81_1_46_63",
+          "x": 81,
+          "y": 1,
+          "w": 46,
+          "h": 63
+        },
+        {
+          "key": "224_1_48_93",
+          "x": 224,
+          "y": 1,
+          "w": 48,
+          "h": 93
+        },
+        {
+          "key": "291_2_40_29",
+          "x": 291,
+          "y": 2,
+          "w": 40,
+          "h": 29
+        },
+        {
+          "key": "152_3_52_92",
+          "x": 152,
+          "y": 3,
+          "w": 52,
+          "h": 92
+        },
+        {
+          "key": "353_3_28_28",
+          "x": 353,
+          "y": 3,
+          "w": 28,
+          "h": 28
+        },
+        {
+          "key": "352_51_16_28",
+          "x": 352,
+          "y": 51,
+          "w": 16,
+          "h": 28
+        },
+        {
+          "key": "288_64_48_16",
+          "x": 288,
+          "y": 64,
+          "w": 48,
+          "h": 16
+        },
+        {
+          "key": "49_82_14_14",
+          "x": 49,
+          "y": 82,
+          "w": 14,
+          "h": 14
+        },
+        {
+          "key": "17_84_15_10",
+          "x": 17,
+          "y": 84,
+          "w": 15,
+          "h": 10
+        },
+        {
+          "key": "82_86_12_9",
+          "x": 82,
+          "y": 86,
+          "w": 12,
+          "h": 9
+        }
+      ]
+    }
+  }
+}

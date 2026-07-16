@@ -54,11 +54,11 @@ describe('NODES', () => {
     }
   });
 
-  it('yieldPerHit, regrowMs and tilesTall are positive', () => {
+  it('yieldPerHit, regrowMs and scale are positive', () => {
     for (const node of Object.values(NODES)) {
       expect(node.yieldPerHit).toBeGreaterThan(0);
       expect(node.regrowMs).toBeGreaterThan(0);
-      expect(node.tilesTall).toBeGreaterThan(0);
+      expect(node.scale).toBeGreaterThan(0);
     }
   });
 

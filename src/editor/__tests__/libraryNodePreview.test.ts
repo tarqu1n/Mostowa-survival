@@ -27,7 +27,7 @@ function baseDef(overrides: Partial<ParsedNodeDef> = {}): ParsedNodeDef {
     color: 0xff0000,
     stumpColor: 0x808080,
     blocksPath: true,
-    tilesTall: 1,
+    scale: 1,
     originX: 0.5,
     originY: 1,
     skins: [{ id: 'default', asset: 'pack/tree.png', weight: 1 }],

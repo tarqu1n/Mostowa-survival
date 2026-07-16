@@ -5,6 +5,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { useIsCompact } from './hooks/useIsCompact';
+import { cn } from './lib/utils';
 
 const FACINGS: PortalFacing[] = ['up', 'down', 'left', 'right'];
 
@@ -31,6 +33,7 @@ export function PortalDialog({
   onCancel: () => void;
 }) {
   const defaultFacing: PortalFacing = rect.h > rect.w ? 'right' : 'down';
+  const isCompact = useIsCompact();
   const [name, setName] = useState('');
   const [facing, setFacing] = useState<PortalFacing>(defaultFacing);
 
@@ -43,19 +46,20 @@ export function PortalDialog({
         if (!open) onCancel();
       }}
     >
-      <DialogContent className="bg-popover text-popover-foreground sm:max-w-[360px]">
+      <DialogContent className="bg-popover text-popover-foreground max-h-[90dvh] overflow-y-auto sm:max-w-[360px]">
         <DialogHeader>
           <DialogTitle>New portal</DialogTitle>
         </DialogHeader>
         <p className="text-[0.9rem] text-muted-2">
           Rect: col {rect.col}, row {rect.row}, {rect.w}×{rect.h}
         </p>
-        <div className="flex flex-col gap-3">
+        <div className={cn('flex flex-col gap-3', isCompact && 'gap-4')}>
           <div className={fieldClass}>
             <Label htmlFor="portal-name">Name</Label>
             <Input
               id="portal-name"
               autoFocus
+              className={cn(isCompact && 'h-11')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="South road"
@@ -64,12 +68,12 @@ export function PortalDialog({
           <div className={fieldClass}>
             <Label htmlFor="portal-facing">Facing</Label>
             <Select value={facing} onValueChange={(v) => setFacing(v as PortalFacing)}>
-              <SelectTrigger id="portal-facing" className="w-full">
+              <SelectTrigger id="portal-facing" className={cn('w-full', isCompact && 'h-11')}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {FACINGS.map((f) => (
-                  <SelectItem key={f} value={f}>
+                  <SelectItem key={f} value={f} className={cn(isCompact && 'py-2.5 text-base')}>
                     {f}
                   </SelectItem>
                 ))}
@@ -78,10 +82,14 @@ export function PortalDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" className={cn(isCompact && 'h-11')} onClick={onCancel}>
             Cancel
           </Button>
-          <Button disabled={!valid} onClick={() => onConfirm(name.trim(), facing)}>
+          <Button
+            disabled={!valid}
+            className={cn(isCompact && 'h-11')}
+            onClick={() => onConfirm(name.trim(), facing)}
+          >
             Create
           </Button>
         </DialogFooter>

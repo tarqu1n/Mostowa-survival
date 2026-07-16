@@ -800,6 +800,34 @@ with `gemini-2.5-flash-image` mirroring `guppi/house-helper/catalog_icons.py`. K
 server (`GEMINI_API_KEY`, gitignored, LAN-only) so generation runs from a guppi-reachable machine and
 processed sprites get committed. Detail in ASSETS.md.
 
+## 2026-07-16 — [DECIDED] CraftPix ingest: 4 theme packs, no-shadow variants, directional sheets sliced
+
+Bringing in CraftPix.net packs (18 downloads, growing). Three settled choices, all in CRAFTPIX.md:
+
+- **Consolidate into 4 theme/type packs** (`craftpix-nature`/`-undead`/`-dungeon`/`-creatures`) with
+  per-source subfolders, not one pack per download. Rationale: the pack-discovery tooling groups the
+  Library by pack; 4 themed groups are far more navigable than one-per-download, and per-source
+  subfolders keep provenance + avoid filename collisions (undead + cursed both ship
+  `Water_coasts.png`). **New downloads fold into these 4** by theme/type rather than adding packs
+  (e.g. later orc/slime mobs → `-creatures`, chapel/workshop/home/traps → `-dungeon`). The actor pack
+  was renamed `craftpix-animals` → `craftpix-creatures` once mobs joined wildlife (it's a *type*
+  group — directional sprites that get sliced — so "animals" stopped fitting); safe, nothing wired
+  referenced it.
+- **Prefer the no-shadow variant** wherever the download ships one (all nature props + all actors).
+  Rationale: our wired art (pixel-crawler trees, skeleton) has no baked shadows, so CraftPix's
+  `_shadow` disc would sit wrong. undead/cursed/rocky-area ship *only* shadowed/terrain-baked sprites
+  — kept shadowed for now, flagged for later shadow-strip (the log-pile precedent), not blocking.
+- **Slice directional sheets at ingest, don't extend the schema.** CraftPix packs actors as one sheet
+  whose ROWS are facings and COLUMNS are frames (an N×4 grid). Rather than teach the runtime/editor a
+  new "directional sheet" concept (new schema + editor UI to assign rows→facings), a re-runnable
+  slice step (`scripts/craftpix/slice.py`) normalises each sheet into per-direction strips — after
+  which the *existing* "one file = one strip = one clip" model (the wired pixel-crawler actor
+  convention) handles them with zero new code and auto-detected frame counts. This pushes every
+  vendor's packing quirk to the ingest boundary so the core sees one convention. Supersedes the
+  earlier "represent in place via a `clipRows` descriptor" lean once slicing proved simpler to
+  consume and more general across packs. Row→facing order differs per pack (animals vs guild) and is
+  recorded in `slice.py`; verify L/R when an actor is actually wired.
+
 ---
 
 ## Open questions

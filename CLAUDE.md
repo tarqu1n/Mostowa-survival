@@ -36,7 +36,8 @@ Data-driven content · pure systems · decoupled scenes:
 - **`src/render/`** — baked textures (e.g. `glowTexture.ts`), not frame-loop shaders.
 - **`src/editor/`** — dev-only Map Builder (`editor.html`), styled with **Tailwind v4 + shadcn/ui**
   (canonical palette as `@theme` tokens in `editor.css`); excluded from the prod build — the game
-  page never loads Tailwind.
+  page never loads Tailwind. Compact/touch shell below a breakpoint (`hooks/useIsCompact.ts`) swaps
+  panels for drawers and adds a per-tool `ContextBar.tsx` mirroring keyboard actions on-screen.
 - **`tests/`** — three-tier harness (unit / scenario / boot canary).
 
 Patterns each seam follows: [docs/CONVENTIONS.md](docs/CONVENTIONS.md).
@@ -66,6 +67,7 @@ vision in [docs/GAME-DESIGN.md](docs/GAME-DESIGN.md).
 - [docs/ASSETS.md](docs/ASSETS.md) — art pipeline: active pack, sprite extraction, what's wired, where assets live
 - [docs/EDITOR.md](docs/EDITOR.md) — dev-only **Map Builder** (`npm run editor`): panes, tools, map/world file format, generated artifacts, persistence contract
 - [docs/TILE-AUTHORING.md](docs/TILE-AUTHORING.md) — authoring **self-made terrain tiles** that match a stock pack + tile seamlessly (global-band + connector technique; wire-into-editor recipe)
+- [docs/CRAFTPIX.md](docs/CRAFTPIX.md) — importing **CraftPix.net** asset packs (scripted ingest): 4 theme packs, no-shadow variants, directional-sheet slicing, per-pack record
 - [docs/ASSET-EXPERIMENTS.md](docs/ASSET-EXPERIMENTS.md) — art R&D log: tileset candidates, AI-gen trials, Gemini pipeline
 - [scripts/gen-icons/README.md](scripts/gen-icons/README.md) — **item-icon generation pipeline** (Gemini): *when* to run it (add/replace an item icon), *how*, and the LAN-key gate — overview in [ASSETS.md](docs/ASSETS.md#item-icons-gemini-pipeline-plan-009)
 - [docs/GAME-MECHANICS.md](docs/GAME-MECHANICS.md) — tuned mechanics & numbers (costs, fuel, radii, base zone)

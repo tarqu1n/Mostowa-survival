@@ -34,6 +34,10 @@ bindings here).
 
 ## Touch / mobile (plan 027)
 
+> **Actually running it on a phone?** See [MOBILE-EDITOR-ACCESS.md](MOBILE-EDITOR-ACCESS.md) —
+> how to reach the editor from your phone during a cloud Claude session (Tailscale node +
+> `scripts/phone-editor.sh`), plus the save-often contract for the ephemeral container.
+
 Below a compact breakpoint (`src/editor/hooks/useIsCompact.ts`,
 `(max-width: 960px), (pointer: coarse) and (max-width: 1200px)`) the shell goes full-bleed: Library
 and the tabbed Inspector/Layers/Zones/Reference column collapse into slide-in **Sheet drawers**

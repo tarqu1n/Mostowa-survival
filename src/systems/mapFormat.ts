@@ -110,9 +110,36 @@ export interface NodeObject {
    *  Per-placed-instance art (plan 021). Omitted-when-absent for byte-identical legacy round-trip. */
   skin?: string;
   /** Clockwise rotation in degrees applied to the placed sprite (arbitrary angle, like `DecorObject`).
-   *  Absent ⇒ 0 (upright). Always LAST and optional-omitted-when-absent so a node authored before node
+   *  Absent ⇒ 0 (upright). optional-omitted-when-absent so a node authored before node
    *  rotation existed round-trips byte-identical. */
   rotation?: number;
+  /** Integer "virtual rows" nudge layered on the base-row y-sort (plan 029). Positive ⇒ drawn further
+   *  in front, as if the node sat that many rows lower. Feeds `rowDepthOffset(row, depthBias)`. Absent
+   *  ⇒ 0. Always LAST and optional-omitted-when-absent so a node authored before it existed round-trips
+   *  byte-identical. */
+  depthBias?: number;
+}
+
+/** Divisor for the base-row y-sort offset (plan 029). `MAX_MAP_DIM = 512` is the row ceiling, so `4096`
+ *  leaves huge headroom for `depthBias` while keeping the offset strictly `< 1` — a world object's depth
+ *  stays inside its renderer's integer band and never disturbs decor/monster/player layering above it. */
+export const ROW_DEPTH_DIVISOR = 4096;
+
+/** Intra-stack tiebreaker for a multi-sprite object at ONE tile (plan 029 / 5b — e.g. the campfire's
+ *  base/flame/smoke). Defined structurally as a fraction of one row's granularity so the invariant is
+ *  self-documenting: a stack may layer at most a few × this on top of its base depth and MUST stay
+ *  `< 1 / ROW_DEPTH_DIVISOR`, so the whole stack sorts as a single row against every other object and
+ *  never crosses a row boundary. */
+export const SUB_ROW_EPSILON = 1 / (ROW_DEPTH_DIVISOR * 16);
+
+/** Shared base-row y-sort law (plan 029) — single source of truth for editor AND game so their draw
+ *  order agrees, applied to any in-band world object (resource nodes, buildables). Maps a base `row`
+ *  (+ optional `bias` in "virtual rows") to a fraction in `[0, 1)`: lower on the map (higher row) ⇒
+ *  larger offset ⇒ drawn in front. Callers add the result to their own integer band base
+ *  (`DEPTH_OBJECTS` in the editor, `1` in the game). The clamp is a defensive guarantee the result
+ *  stays in `[0, 1)` even for out-of-range `row + bias`. */
+export function rowDepthOffset(row: number, bias = 0): number {
+  return Math.min(Math.max(row + bias, 0), ROW_DEPTH_DIVISOR - 1) / ROW_DEPTH_DIVISOR;
 }
 
 /** A crop rect (sheet-local px) into `DecorObject.asset`'s source PNG — plan 014 step 7a's
@@ -550,6 +577,11 @@ function parseMapObject(value: unknown, path: string): MapObject {
     // (after skin) to preserve legacy key order.
     const rotation =
       obj.rotation === undefined ? undefined : expectNumber(obj.rotation, `${path}.rotation`);
+    // depthBias is optional and read only when present, so the key is never added when absent — that's
+    // what keeps a node authored before plan 029 byte-identical on round-trip. Built LAST (after
+    // rotation) to preserve legacy key order.
+    const depthBias =
+      obj.depthBias === undefined ? undefined : expectInt(obj.depthBias, `${path}.depthBias`);
     return {
       id,
       kind: 'node',
@@ -558,6 +590,7 @@ function parseMapObject(value: unknown, path: string): MapObject {
       row: expectInt(obj.row, `${path}.row`),
       ...(skin !== undefined ? { skin } : {}),
       ...(rotation ? { rotation } : {}),
+      ...(depthBias ? { depthBias } : {}),
     };
   }
 

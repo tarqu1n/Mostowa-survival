@@ -9,6 +9,9 @@ import {
   setCell,
   isInside,
   collectTextureSources,
+  rowDepthOffset,
+  ROW_DEPTH_DIVISOR,
+  MAX_MAP_DIM,
   type MapFile,
 } from '../mapFormat';
 
@@ -22,6 +25,7 @@ interface RawObjectFixture {
   col?: number;
   row?: number;
   skin?: string;
+  depthBias?: number;
   asset?: string;
   x?: number;
   y?: number;
@@ -348,6 +352,51 @@ describe('parseMap', () => {
     });
   });
 
+  /** Node depthBias (plan 029 y-sort override) — `node_0001` (objects index 0) is the fixture node. */
+  describe('node depthBias', () => {
+    function nodeAt(map: MapFile, id: string) {
+      const obj = map.objects.find((o) => o.id === id);
+      if (!obj || obj.kind !== 'node') throw new Error(`expected a node object "${id}"`);
+      return obj;
+    }
+
+    it('round-trips a node WITH depthBias, preserving the value', () => {
+      const raw = withRaw((r) => {
+        r.objects[0].depthBias = 3;
+      });
+      const map = parseMap(raw);
+      expect(nodeAt(map, 'node_0001').depthBias).toBe(3);
+      const reparsed = parseMap(JSON.parse(serializeMap(map)));
+      expect(reparsed).toEqual(map);
+    });
+
+    it('round-trips a node WITHOUT depthBias byte-identical, serializing without the key', () => {
+      const map = parseMap(validRaw()); // the base fixture node never sets depthBias
+      expect(nodeAt(map, 'node_0001').depthBias).toBeUndefined();
+      const json = serializeMap(map);
+      const parsedJson = JSON.parse(json) as { objects: Array<Record<string, unknown>> };
+      expect(Object.prototype.hasOwnProperty.call(parsedJson.objects[0], 'depthBias')).toBe(false);
+      const reparsed = parseMap(JSON.parse(json));
+      expect(reparsed).toEqual(map);
+    });
+
+    it('drops a zero depthBias on parse (0 = default, omitted like the absent case)', () => {
+      const raw = withRaw((r) => {
+        r.objects[0].depthBias = 0;
+      });
+      const node = nodeAt(parseMap(raw), 'node_0001');
+      expect(node.depthBias).toBeUndefined();
+      expect('depthBias' in node).toBe(false);
+    });
+
+    it('rejects a non-integer depthBias', () => {
+      const raw = withRaw((r) => {
+        r.objects[0].depthBias = 1.5;
+      });
+      expect(() => parseMap(raw)).toThrow(/depthBias/);
+    });
+  });
+
   /** `decor_0002` (index 2 of the fixture's objects) has no `collision` — a convenient bare decor
    *  to hang `region`/`anim` mutations off without disturbing the other invariant tests. */
   describe('decor region/anim (plan 014 step 7a)', () => {
@@ -629,6 +678,34 @@ describe('parseMap', () => {
       });
       expect(() => parseMap(raw)).toThrow(/rotation/);
     });
+  });
+});
+
+describe('rowDepthOffset (plan 029 shared y-sort law)', () => {
+  it('is strictly monotonic in row', () => {
+    for (let row = 0; row < 100; row++) {
+      expect(rowDepthOffset(row + 1)).toBeGreaterThan(rowDepthOffset(row));
+    }
+  });
+
+  it('breaks a same-row tie by bias (higher bias ⇒ larger offset)', () => {
+    const base = rowDepthOffset(10, 0);
+    expect(rowDepthOffset(10, 1)).toBeGreaterThan(base);
+    expect(rowDepthOffset(10, -1)).toBeLessThan(base);
+  });
+
+  it('stays strictly < 1 at the max row even with a large bias', () => {
+    expect(rowDepthOffset(MAX_MAP_DIM - 1, 1000)).toBeLessThan(1);
+    expect(rowDepthOffset(ROW_DEPTH_DIVISOR + 500, 0)).toBeLessThan(1);
+  });
+
+  it('clamps to >= 0 for a negative row + bias', () => {
+    expect(rowDepthOffset(0, -5)).toBe(0);
+    expect(rowDepthOffset(2, -10)).toBe(0);
+  });
+
+  it('defaults bias to 0', () => {
+    expect(rowDepthOffset(7)).toBe(rowDepthOffset(7, 0));
   });
 });
 

@@ -7,6 +7,10 @@ Format: `YYYY-MM-DD — [DECIDED|PROPOSED|OPEN] Title` then a short rationale.
 
 ---
 
+## 2026-07-16 — [DECIDED] Node + buildable y-sort by base row via shared `rowDepthOffset`; optional `depthBias` for manual same-row node ordering (plan 029)
+
+Resource nodes and buildables now render with base-row y-sorting: an object lower on the map (higher row) draws in front. The sort law is a shared `rowDepthOffset(row, bias)` fraction in `src/systems/mapFormat.ts` — both game and editor call it so draw order agrees. Nodes have an optional `depthBias?: number` field (integer virtual rows) for manual same-row ordering; absent ⇒ 0; omitted-when-zero so legacy maps round-trip byte-identical. Decor keeps its own separate depth band (not interleaved with nodes/buildables) — deliberate. The editor's "Bring forward / Send back" buttons (nudge `depthBias ±1`) and a new "Depth bias" Inspector NumberField now work for node selections (previously decor-only). **Open item:** player (depth 10) and monsters (depth 9) are not y-sorted — player always over trees (known limitation).
+
 ## 2026-07-16 — [DECIDED] Per-region roles on mixed tile/object sheets, not physically splitting the sheet (plan 028)
 
 Some stock Anokolisa sheets are **mixed**: one PNG classed `tile` holds both true 16px terrain and

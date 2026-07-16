@@ -131,7 +131,7 @@ Do **not** treat this doc as the schema. The authoritative shapes + validators a
   invariant: a void cell has `0` in every tile layer, zone `0`, and no object footprint over it. All
   paint tools skip void. Void feeds `isBlocked` as blocked at runtime.
 - **Objects** are one array with a `kind` discriminator (`node`/`decor`/`portal`), each with a stable
-  string `id`. Anything that can change at runtime **must be an object**, never painted into tile
+  string `id`. Nodes have an optional `depthBias?: number` field for same-row draw-order control; absent ⇒ 0 (see `rowDepthOffset` in mapFormat.ts). Anything that can change at runtime **must be an object**, never painted into tile
   layers (see persistence contract).
 
 ## Generated artifacts — never hand-edit

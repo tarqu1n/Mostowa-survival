@@ -46,6 +46,11 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         keys: ['S'],
         action: "Cycle the selected node's skin to the next variant (node with ≥2 skins)",
       },
+      {
+        keys: ['Bring forward / Send back (buttons)'],
+        action:
+          "Nudge the selected decor or node's depth bias for same-row draw order (Inspector has a numeric field too)",
+      },
     ],
   },
   {

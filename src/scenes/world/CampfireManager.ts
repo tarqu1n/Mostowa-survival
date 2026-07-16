@@ -12,6 +12,7 @@ import {
   COLORS,
 } from '../../config';
 import { tileToWorldCenter } from '../../systems/grid';
+import { rowDepthOffset, SUB_ROW_EPSILON } from '../../systems/mapFormat';
 import { BUILDABLES } from '../../data/buildables';
 import {
   campfireBaseKey,
@@ -91,23 +92,30 @@ export class CampfireManager {
     const originY = def.originY ?? 1;
     const tilesTall = def.tilesTall ?? 1;
 
-    const base = this.scene.add.sprite(x, y, campfireBaseKey()).setDepth(1).setOrigin(0.5, originY);
+    // Base-row y-sort (plan 029/5b): the whole campfire sorts as one row against trees/walls, so a tree
+    // in front draws over it and one behind draws under it. Flame/smoke ride sub-row epsilons above the
+    // base so the stack keeps its internal order without ever crossing a row boundary.
+    const baseDepth = 1 + rowDepthOffset(site.row);
+    const base = this.scene.add
+      .sprite(x, y, campfireBaseKey())
+      .setDepth(baseDepth)
+      .setOrigin(0.5, originY);
     base.setScale((TILE_SIZE * EMBER_TILES) / base.frame.height).play(campfireBaseKey());
 
-    // Flame rides a few px above the stone base (depth 1.01) so it reads as rising out of the ring, not
-    // sitting in it; starts on the large sheet (full fuel). flameBaseScale = its full-fuel fit; both
-    // flame sheets share the 32×48 grid, so one scale fits either. applyFlame picks the sheet + scale.
+    // Flame rides a few px above the stone base (depth base + 1 epsilon) so it reads as rising out of the
+    // ring, not sitting in it; starts on the large sheet (full fuel). flameBaseScale = its full-fuel fit;
+    // both flame sheets share the 32×48 grid, so one scale fits either. applyFlame picks the sheet+scale.
     const flame = this.scene.add
       .sprite(x, y - CAMPFIRE_FLAME_RISE_PX, campfireFlameLargeKey())
-      .setDepth(1.01)
+      .setDepth(baseDepth + SUB_ROW_EPSILON)
       .setOrigin(0.5, originY);
     const flameBaseScale = (TILE_SIZE * tilesTall) / flame.frame.height;
     flame.play(campfireFlameLargeKey());
 
-    // Smoke always drifts above the flame (depth 1.02), independent of fuel/lit state.
+    // Smoke always drifts above the flame (depth base + 2 epsilons), independent of fuel/lit state.
     const smoke = this.scene.add
       .sprite(x, y - CAMPFIRE_SMOKE_RISE_PX, campfireSmokeKey())
-      .setDepth(1.02)
+      .setDepth(baseDepth + 2 * SUB_ROW_EPSILON)
       .setOrigin(0.5, originY);
     smoke.setScale((TILE_SIZE * tilesTall) / smoke.frame.height).play(campfireSmokeKey());
 

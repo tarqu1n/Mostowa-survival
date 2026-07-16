@@ -8,7 +8,7 @@ import { tileToWorldCenter } from '../../systems/grid';
 import { parseAssetId } from '../../render/assetPaths';
 import { resolveDecorDraw } from '../../render/decorSprites';
 import type { TreeNode } from '../../entities/types';
-import type { NodeObject } from '../../systems/mapFormat';
+import { rowDepthOffset, type NodeObject } from '../../systems/mapFormat';
 import type { GameScene } from '../GameScene';
 
 /**
@@ -89,7 +89,7 @@ export class ResourceNodeManager {
         }
         continue;
       }
-      this.addNode(def, obj.col, obj.row, obj.skin, obj.rotation);
+      this.addNode(def, obj.col, obj.row, obj.skin, obj.rotation, obj.depthBias);
     }
   }
 
@@ -97,8 +97,17 @@ export class ResourceNodeManager {
    * Spawn one resource node of `def` (tree, rock, …) at a tile; sized/anchored + textured from the
    * chosen skin (plan 021 step 5). `skinId` picks which of `def.skins` to render (given id → that
    * skin; absent/unknown → `def.skins[0]`, so legacy maps with no authored `skin` still render).
+   * `depthBias` is the authored y-sort override (plan 029) — "virtual rows" fed into
+   * {@link rowDepthOffset} alongside `row`; `0` (the default) means no override.
    */
-  addNode(def: ParsedNodeDef, col: number, row: number, skinId?: string, rotation = 0): void {
+  addNode(
+    def: ParsedNodeDef,
+    col: number,
+    row: number,
+    skinId?: string,
+    rotation = 0,
+    depthBias = 0,
+  ): void {
     const skin = this.resolveSkin(def, skinId);
     // Seed `add.image` with the skin's own (preloaded) texture — `applySkinAppearance` below then
     // sizes/anchors it. Falls back to Phaser's always-present `__WHITE` if the asset can't be
@@ -107,7 +116,10 @@ export class ResourceNodeManager {
     const seed = this.resolveSkinTexture(skin.asset, skin.region);
     const sprite = this.scene.add
       .image(tileToWorldCenter(col), tileToWorldCenter(row), seed?.key ?? '__WHITE', seed?.frame)
-      .setDepth(1)
+      // Row-ordered depth (plan 029): stays strictly inside the [1, 2) node band via
+      // `rowDepthOffset`'s [0, 1) range, so lower-on-map nodes draw in front without ever reaching
+      // the actor layer (9+) or disturbing decor's own `1 + obj.depth` band.
+      .setDepth(1 + rowDepthOffset(row, depthBias))
       // Placement rotation (deg). Set once here — the chop tween animates scale only and depleted swaps
       // re-texture without touching angle, so it persists; the queued glow halo mirrors it each frame
       // via `TaskGlowRenderer.syncGlowTransforms` (reads `sprite.rotation`), so nothing else to wire.

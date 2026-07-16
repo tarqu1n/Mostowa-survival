@@ -18,10 +18,11 @@ import { useIsCompact } from '../hooks/useIsCompact';
 /**
  * Inspector panel (plan 014 step 7) — shows/edits the selected object(s). Empty selection shows a
  * placeholder; exactly one selected shows its full editable fields (decor: x/y/scale/rotation/flip/
- * depth; node: ref read-only + col/row; portal: name/facing/rect); multiple selected shows a count
- * plus the batch buttons (rotate/flip/depth/duplicate/delete apply to every selected object, decor
- * ones for rotate/flip/depth — node/portal ids are silently skipped by the store actions since they
- * have no rotation/flip/depth concept).
+ * depth; node: ref read-only + col/row/rotation/depth bias; portal: name/facing/rect); multiple
+ * selected shows a count plus the batch buttons (rotate/flip/depth/duplicate/delete apply to every
+ * selected object — rotate/flip stay decor-only; depth (Bring forward/Send back) also applies to
+ * nodes, bumping `depthBias` instead of `depth` (plan 029) — node/portal ids are silently skipped by
+ * the store actions where they have no matching concept).
  *
  * Re-render note: mirrors `LayersPanel`/`LibraryPanel` — `map` is mutated in place by store commands,
  * so this subscribes to `docRevision`/`mapEpoch`/`selectedObjectIds` purely as re-render triggers and
@@ -78,6 +79,7 @@ export function InspectorPanel() {
 
   const ids = selected.map((o) => o.id);
   const hasDecor = selected.some((o) => o.kind === 'decor');
+  const hasNode = selected.some((o) => o.kind === 'node');
 
   return (
     <>
@@ -130,7 +132,7 @@ export function InspectorPanel() {
           variant="outline"
           size="sm"
           className={cn(isCompact && 'h-11')}
-          disabled={!hasDecor}
+          disabled={!(hasDecor || hasNode)}
           title="Bring forward (stack on top)"
           onClick={() => useEditorStore.getState().bumpDepth(ids, 1)}
         >
@@ -140,7 +142,7 @@ export function InspectorPanel() {
           variant="outline"
           size="sm"
           className={cn(isCompact && 'h-11')}
-          disabled={!hasDecor}
+          disabled={!(hasDecor || hasNode)}
           title="Send backward (stack underneath)"
           onClick={() => useEditorStore.getState().bumpDepth(ids, -1)}
         >
@@ -300,7 +302,9 @@ function NodeFields({ obj }: { obj: NodeObject }) {
   const isCompact = useIsCompact();
   // Subscribe so the picker refreshes if the def's skins change while a node is selected.
   const def = useEditorStore((s) => s.nodeDefsParsed[obj.ref]);
-  const update = (patch: Partial<Pick<NodeObject, 'col' | 'row' | 'skin' | 'rotation'>>): void => {
+  const update = (
+    patch: Partial<Pick<NodeObject, 'col' | 'row' | 'skin' | 'rotation' | 'depthBias'>>,
+  ): void => {
     if (!useEditorStore.getState().updateNode(obj.id, patch)) {
       console.warn('[editor] node edit refused — would land on void/out-of-bounds');
     }
@@ -313,14 +317,23 @@ function NodeFields({ obj }: { obj: NodeObject }) {
         <NumberField label="Col" value={obj.col} onCommit={(col) => update({ col })} />
         <NumberField label="Row" value={obj.row} onCommit={(row) => update({ row })} />
       </div>
-      <div className={fieldClass}>
-        <span className={fieldLabelClass}>Rotation</span>
-        {/* onCommit → one undoable command per drag (see RotationWheel contract). */}
-        <RotationWheel
-          value={obj.rotation ?? 0}
-          onCommit={(rotation) => update({ rotation })}
-          size={isCompact ? 60 : 52}
-          ariaLabel="Node rotation"
+      <div className={cn(rowClass, 'items-start')}>
+        <div className={cn(fieldClass, 'min-w-0 flex-1')}>
+          <span className={fieldLabelClass}>Rotation</span>
+          {/* onCommit → one undoable command per drag (see RotationWheel contract). */}
+          <RotationWheel
+            value={obj.rotation ?? 0}
+            onCommit={(rotation) => update({ rotation })}
+            size={isCompact ? 60 : 52}
+            ariaLabel="Node rotation"
+          />
+        </div>
+        {/* Manual same-row y-sort override (plan 029) — mirrors decor's Depth field; also nudged by the
+            Bring forward/Send back buttons above (`bumpDepth`). Defaults to 0 when absent (unbiased). */}
+        <NumberField
+          label="Depth bias"
+          value={obj.depthBias ?? 0}
+          onCommit={(depthBias) => update({ depthBias })}
         />
       </div>
       {/* Skin override — placement rolls a weighted-random skin (plan 021 step 9); this picker (and the

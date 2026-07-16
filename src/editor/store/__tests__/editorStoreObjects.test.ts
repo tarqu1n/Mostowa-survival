@@ -235,6 +235,36 @@ describe('editorStore objects: rotate/flip/depth/duplicate/delete', () => {
     expect((map.objects[1] as DecorObject).depth).toBe(0);
   });
 
+  it("bumpDepth adjusts a node's depthBias (plan 029), a mixed decor+node selection adjusts both, and portals are untouched", () => {
+    useEditorStore.getState().placeDecor(DECOR_ASSET, 16, 16);
+    useEditorStore.getState().placeNode('tree', 2, 2);
+    useEditorStore.getState().createPortal({ col: 0, row: 0, w: 1, h: 1 }, 'North', 'up');
+    const map = useEditorStore.getState().map!;
+    const [decorId, nodeId, portalId] = map.objects.map((o) => o.id);
+
+    // Node-only bump: absent depthBias treated as 0, incremented to 1.
+    useEditorStore.getState().bumpDepth([nodeId], 1);
+    expect((map.objects[1] as NodeObject).depthBias).toBe(1);
+
+    // Mixed decor+node selection: both adjusted in one command; portal untouched.
+    useEditorStore.getState().bumpDepth([decorId, nodeId, portalId], 2);
+    expect((map.objects[0] as DecorObject).depth).toBe(2);
+    expect((map.objects[1] as NodeObject).depthBias).toBe(3);
+    expect(map.objects[2]).not.toHaveProperty('depthBias');
+    expect(map.objects[2]).not.toHaveProperty('depth');
+
+    // Undo restores the mixed bump as a single step.
+    useEditorStore.getState().undo();
+    expect((map.objects[0] as DecorObject).depth).toBe(0);
+    expect((map.objects[1] as NodeObject).depthBias).toBe(1);
+
+    // Undo restores the node-only bump; depthBias returns to its original absent state (the key is
+    // set back to `undefined`, matching how `updateNode` normalises rotation — the object never
+    // re-acquires a real value, so this round-trips byte-identical on serialize).
+    useEditorStore.getState().undo();
+    expect((map.objects[1] as NodeObject).depthBias).toBeUndefined();
+  });
+
   it('duplicateObjects offsets by one tile when valid, mints distinct new ids, and selects the copies', () => {
     useEditorStore.getState().placeDecor(DECOR_ASSET, 16, 16);
     useEditorStore.getState().placeNode('tree', 1, 1);

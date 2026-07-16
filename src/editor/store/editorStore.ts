@@ -693,12 +693,14 @@ export interface EditorState {
    *  void); patches to purely cosmetic fields (scale/rotation/flip/depth) always apply. One undoable
    *  command per call. */
   updateDecor(id: string, patch: Partial<Omit<DecorObject, 'id' | 'kind' | 'asset'>>): boolean;
-  /** Patches a `node` object's `col`/`row`/`skin`/`rotation` (Inspector fields); footprint-validated. A
-   *  `skin` patch overrides the placement-rolled skin (plan 021 step 9); a `rotation` patch spins the
-   *  placed sprite (arbitrary degrees, like decor). */
+  /** Patches a `node` object's `col`/`row`/`skin`/`rotation`/`depthBias` (Inspector fields);
+   *  footprint-validated. A `skin` patch overrides the placement-rolled skin (plan 021 step 9); a
+   *  `rotation` patch spins the placed sprite (arbitrary degrees, like decor); a `depthBias` patch
+   *  nudges the y-sort order (plan 029), same manual-override concept as the Bring forward/Send back
+   *  buttons' `bumpDepth`. */
   updateNode(
     id: string,
-    patch: Partial<Pick<NodeObject, 'col' | 'row' | 'skin' | 'rotation'>>,
+    patch: Partial<Pick<NodeObject, 'col' | 'row' | 'skin' | 'rotation' | 'depthBias'>>,
   ): boolean;
   /** Advances the selected node's `skin` to the next one in its def's `skins` list (wraps), acting on
    *  the placement-rolled/overridden skin. Drives the cycle-skin shortcut (plan 021 step 9). No-op
@@ -715,8 +717,10 @@ export interface EditorState {
   /** Toggles `flipX` (`axis:'x'`) or `flipY` (`axis:'y'`) on every `decor` object in `ids`, one
    *  undoable command; node/portal ids skipped. */
   flipObjects(ids: string[], axis: 'x' | 'y'): void;
-  /** Adds `delta` to `depth` on every `decor` object in `ids` (bring-forward = +1, send-back = -1),
-   *  one undoable command; node/portal ids skipped (they don't stack via `depth`). */
+  /** Adds `delta` to `depth` on every `decor` object in `ids` (bring-forward = +1, send-back = -1);
+   *  adds `delta` to `depthBias` (treated as `0` when absent) on every `node` object in `ids` (plan
+   *  029's y-sort nudge). One undoable command covering the mixed selection; `portal` ids are
+   *  silently skipped (no depth/depthBias concept). */
   bumpDepth(ids: string[], delta: number): void;
 }
 
@@ -2910,6 +2914,9 @@ export const useEditorStore = create<EditorState>()(
       // an unrotated node round-trips byte-identical, matching how `skin`/placement omit their defaults.
       const norm: Partial<NodeObject> = { ...patch };
       if ('rotation' in norm && !norm.rotation) norm.rotation = undefined;
+      // depthBias mirrors rotation's omit-when-zero (plan 029) so an Inspector edit back to 0 clears
+      // the key, matching `bumpDepth`'s normalisation.
+      if ('depthBias' in norm && !norm.depthBias) norm.depthBias = undefined;
       const candidate: NodeObject = { ...obj, ...norm };
       if (!footprintIsValid(map, candidate)) return false;
       // Snapshot exactly the keys being patched (mirrors `updateDecor`) so undo restores rotation/skin
@@ -3012,17 +3019,35 @@ export const useEditorStore = create<EditorState>()(
       if (!map) return;
       const ops: Array<{ do: () => void; undo: () => void }> = [];
       for (const obj of map.objects) {
-        if (!ids.includes(obj.id) || obj.kind !== 'decor') continue;
-        const prevDepth = obj.depth;
-        const nextDepth = obj.depth + delta;
-        ops.push({
-          do: () => {
-            obj.depth = nextDepth;
-          },
-          undo: () => {
-            obj.depth = prevDepth;
-          },
-        });
+        if (!ids.includes(obj.id)) continue;
+        if (obj.kind === 'decor') {
+          const prevDepth = obj.depth;
+          const nextDepth = obj.depth + delta;
+          ops.push({
+            do: () => {
+              obj.depth = nextDepth;
+            },
+            undo: () => {
+              obj.depth = prevDepth;
+            },
+          });
+        } else if (obj.kind === 'node') {
+          // depthBias is optional-omitted-when-zero (plan 029), matching how updateNode normalises
+          // rotation: a bump that lands back on 0 clears the key so an unbiased node round-trips
+          // byte-identical.
+          const prevBias = obj.depthBias;
+          const nextBias = (obj.depthBias ?? 0) + delta;
+          const nextVal = nextBias === 0 ? undefined : nextBias;
+          ops.push({
+            do: () => {
+              obj.depthBias = nextVal;
+            },
+            undo: () => {
+              obj.depthBias = prevBias;
+            },
+          });
+        }
+        // portal ids fall through untouched (no depth/depthBias concept).
       }
       if (ops.length === 0) return;
       get().applyCommand(batchCommand(ops));

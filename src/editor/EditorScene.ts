@@ -5,6 +5,7 @@ import {
   cellIndex,
   getCell,
   isInside,
+  rowDepthOffset,
   parseMap,
   type DecorAnim,
   type MapFile,
@@ -746,7 +747,7 @@ export class EditorScene extends Phaser.Scene {
     img.setScale(skin.scale ?? def.scale);
     img.setOrigin(skin.originX ?? def.originX, skin.originY ?? def.originY);
     img.setAngle(obj.rotation ?? 0); // stored in degrees (see mapFormat NodeObject); absent ⇒ upright
-    img.setDepth(DEPTH_OBJECTS);
+    img.setDepth(DEPTH_OBJECTS + rowDepthOffset(obj.row, obj.depthBias ?? 0));
     this.objectSprites.push(img);
     return img;
   }

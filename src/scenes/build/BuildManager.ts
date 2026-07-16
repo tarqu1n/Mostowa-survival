@@ -5,6 +5,7 @@ import { reachableAdjacent, type Cell, type Dims } from '../../systems/pathfind'
 import { ACTIVE_TILESET, resolveTile } from '../../data/tileset';
 import { BUILDABLES } from '../../data/buildables';
 import { isInBase, baseZoneFromSpawn, type Rect } from '../../systems/base';
+import { rowDepthOffset } from '../../systems/mapFormat';
 import type { BuildSite } from '../../entities/types';
 import type { CharacterSprite } from '../../entities/Character';
 import type { GameScene } from '../GameScene';
@@ -218,7 +219,9 @@ export class BuildManager {
         COLORS.blueprint,
         0.35,
       )
-      .setDepth(1);
+      // Base-row y-sort (plan 029/5b): the blueprint is a placed world object, so a foreground tree
+      // occludes it correctly. Placement visibility is the ghost cursor's job, not this rect's.
+      .setDepth(1 + rowDepthOffset(row));
     const site: BuildSite = {
       id: `site-${this.nextSiteId++}`,
       buildableId,
@@ -269,7 +272,8 @@ export class BuildManager {
       const tile = resolveTile(ACTIVE_TILESET.tiles.wall);
       site.visual = this.scene.add
         .image(site.rect.x, site.rect.y, tile.key, tile.frame)
-        .setDepth(1);
+        // Base-row y-sort (plan 029/5b): the finished wall sorts by its row against trees/other walls.
+        .setDepth(1 + rowDepthOffset(site.row));
     }
 
     this.deps.repath();

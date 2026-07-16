@@ -106,7 +106,13 @@ export class TaskGlowRenderer {
       2,
       16,
     );
-    const glow = bakeGlowTexture(this.scene, tree.sprite.texture.key, COLORS.queued, radius);
+    const glow = bakeGlowTexture(
+      this.scene,
+      tree.sprite.texture.key,
+      COLORS.queued,
+      radius,
+      tree.sprite.frame,
+    );
     // Align the padded halo canvas onto the tree: its content sits `pad` texels in from every edge,
     // so the tree's display origin shifts by `pad` and the scale matches.
     const img = this.scene.add
@@ -116,7 +122,8 @@ export class TaskGlowRenderer {
         tree.sprite.displayOriginY + glow.pad,
       )
       .setScale(tree.sprite.scaleX, tree.sprite.scaleY)
-      .setDepth(tree.sprite.depth - 0.5); // between the ground (0) and the tree (1)
+      .setDepth(tree.sprite.depth - 0.5); // 0.5 below its own node — relative, so it tracks the node's
+    // base-row y-sort depth (~0.5 + row fraction) and always sits just under that node.
     this.glowSprites.set(tree.id, img);
     if (pulse) {
       img.setAlpha(0.65);
@@ -135,10 +142,10 @@ export class TaskGlowRenderer {
    * Outline a queued-for-refuel campfire: a yellow stroked rect hugging the fire sprite's actual
    * rendered bounds (+ a small pad), so it tracks the fuel-scaled flame instead of dwarfing it — a
    * fixed 2-tile column looked huge around the small flame. Deliberately a stroked rect, NOT a baked
-   * silhouette halo like {@link addTreeGlow}: bakeGlowTexture reads the sprite's *source image* (the
-   * full 4-frame sheet — a wide smear) and the fire animates + scales by fuel, sync problems a static
-   * tree halo never has. Matches the queued-*site* stroke; pushed into `queueMarkers` so {@link reset}
-   * tears it down.
+   * silhouette halo like {@link addTreeGlow}: the fire *animates* (its frame changes each tick) and
+   * *scales by fuel*, so a single-frame baked halo would freeze on one flame shape and drift out of
+   * sync — problems a static tree silhouette never has. Matches the queued-*site* stroke; pushed into
+   * `queueMarkers` so {@link reset} tears it down.
    */
   outlineCampfire(c: CampfireUnit): void {
     // Hug the union of the two layers' world AABBs (ember base + fuel-scaled flame) + a small pad, so

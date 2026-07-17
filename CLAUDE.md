@@ -38,6 +38,8 @@ Data-driven content · pure systems · decoupled scenes:
   (canonical palette as `@theme` tokens in `editor.css`); excluded from the prod build — the game
   page never loads Tailwind. Compact/touch shell below a breakpoint (`hooks/useIsCompact.ts`) swaps
   panels for drawers and adds a per-tool `ContextBar.tsx` mirroring keyboard actions on-screen.
+  Hosted always-on on the home server **guppi** for phone authoring — how Claude gets a shell there
+  and works on the live build: [docs/MOBILE-EDITOR-ACCESS.md](docs/MOBILE-EDITOR-ACCESS.md).
 - **`tests/`** — three-tier harness (unit / scenario / boot canary).
 
 Patterns each seam follows: [docs/CONVENTIONS.md](docs/CONVENTIONS.md).

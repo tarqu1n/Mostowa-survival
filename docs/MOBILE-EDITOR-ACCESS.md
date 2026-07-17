@@ -45,6 +45,71 @@ serialized so bursts never race git. Knobs: `EDITOR_AUTOCOMMIT_PUSH=0` (commit l
 So each Save lands on `master` on GitHub within a second or two — the host can be rebuilt without
 losing more than the edit in flight.
 
+## Claude getting a shell on guppi + working on the build there
+
+When Matt asks a Claude Code cloud session to *"get on guppi and work on the editor"*, this is the
+path that **works today** (verified 2026-07-17). It does **not** need Tailscale SSH enabled on guppi —
+guppi's sshd accepts **password** auth for the `guppi` user, and the session already has the password.
+
+**What the session has out of the box**
+
+- `GUPPI_USERNAME` / `GUPPI_PASSWORD` env vars. Note the SSH **login user is `guppi`**, not the value
+  of `GUPPI_USERNAME` (that's `matt`, the account/sudo name — `matt` has no SSH login).
+- Nothing else: the cloud sandbox has **no `ssh`, no `tailscale`, no TUN device**, and reaches guppi
+  only via the Tailnet. Matt pastes a **fresh ephemeral Tailscale auth key** each session (keys are
+  short-lived/single-use — ask for a new one, don't reuse).
+
+**The recipe**
+
+```bash
+# 1. tooling (root sandbox; nothing preinstalled)
+apt-get update -qq && apt-get install -y -qq openssh-client sshpass
+curl -fsSL https://tailscale.com/install.sh | sh
+
+# 2. join the Tailnet — no /dev/net/tun in the sandbox, so userspace-networking + a SOCKS5 proxy
+nohup tailscaled --tun=userspace-networking --socks5-server=localhost:1055 \
+  --state=/var/lib/tailscale/tailscaled.state --statedir=/var/lib/tailscale/ >/tmp/tailscaled.log 2>&1 &
+sleep 3
+tailscale up --authkey="<ephemeral key Matt pastes>" --hostname=claude-sandbox --accept-routes
+tailscale status        # guppi-eq = 100.105.155.16 (MagicDNS guppi-eq.tailfba8be.ts.net)
+
+# 3. SSH in *through the SOCKS proxy* (login user 'guppi', password from the env)
+export SSHPASS="$GUPPI_PASSWORD"
+gssh() { sshpass -e ssh -o StrictHostKeyChecking=accept-new \
+  -o PreferredAuthentications=password -o PubkeyAuthentication=no \
+  -o "ProxyCommand=nc -X 5 -x localhost:1055 %h %p" guppi@100.105.155.16 "$@"; }
+gssh 'whoami; docker ps --filter name=mostowo-editor'
+```
+
+Why it works from a locked cloud container: the Tailnet range `100.64.0.0/10` bypasses the sandbox's
+outbound agent-proxy, and `tailscaled` honours `$HTTPS_PROXY` for its own control-plane + DERP
+traffic. Quote the `ProxyCommand` as **one** `-o` argument or the shell splits it and SSH fails.
+Join as **ephemeral** so the node self-removes when the container is reclaimed — nothing to clean up.
+
+To fetch the HTTPS serve URL itself (e.g. to confirm the editor loads), let the proxy resolve the
+MagicDNS name so SNI/cert match — the Tailscale cert validates, no `-k`:
+
+```bash
+curl -sS --socks5-hostname localhost:1055 https://guppi-eq.tailfba8be.ts.net:8444/editor.html
+```
+
+**Working on the build directly on guppi (the point of doing this)**
+
+guppi's editor clone **is** the running dev server, so editing it there is the deploy — no rsync, no
+rebuild, Vite HMR reflects the change live. The clone is at `/home/guppi/mostowo-editor/repo` on the
+host = **`/app` inside container `mostowo-editor`**, checked out on **`master`** with `EDITOR_AUTOCOMMIT=1`.
+Run git *inside the container* — it has the deploy key + `GIT_SSH_COMMAND` + the right uid wired:
+
+```bash
+# make your code edits in the clone (via docker exec, or on the host under repo/), then:
+gssh 'docker exec mostowo-editor sh -lc "cd /app && git add -A && \
+  git commit -m \"feat(editor): …\" && git pull --rebase --autostash origin master && git push"'
+```
+
+That commit lands on `master` on GitHub **and** is already live in the editor Matt has open. Same
+one-file-from-two-places rule as everywhere else in this doc: don't hand-edit a map JSON here while
+also painting it in the editor UI.
+
 ## Claude Code from a phone + git conflicts
 
 You'll sometimes want a **Claude Code chat on the phone** to change game code, or to fix a git mess.
@@ -80,23 +145,10 @@ No guppi access needed.
 ### Fixing the stuck editor commit on guppi (the `⚠ DIVERGED` case)
 
 This is the one that needs a shell **on guppi**, because the unpushed autosave commit only exists
-there. To reach guppi from a phone Claude container you need it **on the Tailnet** (see the
-[cloud-container Tailnet steps](#fallback-host-the-editor-in-a-cloud-container) — same `tailscale up`
-flow) **and** able to SSH in. guppi's sshd is key-only and the container has no key, so use
-**Tailscale SSH**:
-
-```bash
-# from the phone container, once it's on the Tailnet:
-tailscale ssh guppi@guppi-eq.tailfba8be.ts.net   # 'tailscale ssh' works even in userspace-net mode
-```
-
-> **One-time prerequisite (your call — it's a security tradeoff).** Tailscale SSH is **not** enabled
-> on guppi yet. Enabling it lets Tailnet peers your ACL allows shell into guppi (which runs
-> Vaultwarden, HA, …) with **no key** — convenient, but broad. If you want it, keep it least-privilege:
-> enable on guppi with `sudo tailscale up --ssh`, and in the Tailnet **ACL** grant SSH to guppi only
-> from **your own user** (not a wide tag), then join the phone container with a **short-lived
-> ephemeral** auth key and remove the node when done. If you'd rather not open guppi to containers at
-> all, do this reconcile from a device that already has guppi SSH (your Mac) when you're next on it.
+there. Get that shell with the [connection recipe above](#claude-getting-a-shell-on-guppi--working-on-the-build-there)
+— join the Tailnet with an ephemeral key, then password-SSH as `guppi` through the SOCKS proxy. (No
+Tailscale SSH needed — that used to be the assumed path here but guppi's sshd takes the `guppi`
+password directly, which the cloud session already has in `$GUPPI_PASSWORD`.)
 
 Once you have a shell on guppi, run git **inside the container** (it already has the deploy key +
 `GIT_SSH_COMMAND` wired, and the right uid):

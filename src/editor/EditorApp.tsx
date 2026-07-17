@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useDefaultLayout } from 'react-resizable-panels';
+import { LibraryBig, SlidersHorizontal } from 'lucide-react';
+import { toast } from 'sonner';
 import { TILE_SIZE } from '../config';
 import { cn } from './lib/utils';
 import { useIsCompact } from './hooks/useIsCompact';
 import { useEditorStore } from './store/editorStore';
+import { loadCatalog } from './catalogSource';
+import { loadTerrainCatalog } from './terrainCatalogSource';
+import { loadNodeDefs } from './nodeDefsSource';
 import { Toolbar } from './Toolbar';
 import { ContextBar } from './ContextBar';
 import { PhaserViewport } from './PhaserViewport';
@@ -19,6 +24,7 @@ import { PortalDialog } from './PortalDialog';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from './ui/resizable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Sheet, SheetContent, SheetTitle } from './ui/sheet';
+import { PanelBarButton } from './ui/PanelBarButton';
 import { Toaster } from './ui/sonner';
 import { TooltipProvider } from './ui/tooltip';
 
@@ -252,6 +258,25 @@ export function EditorApp() {
     if (activeTabId.startsWith('object:')) setLibraryOpen(false);
   }, [activeTabId]);
 
+  // Load the asset catalog + terrain/node defs on editor BOOT, not lazily when the Library first opens
+  // (plan 021 / plan 030): every surface that renders sprites — the Node Types tab's skin thumbnails,
+  // the Inspector's node preview, object-editor tabs — reads the catalog from the store, so it must be
+  // resident from the start. Previously this lived in `LibraryPanel`'s mount effect, so on the compact
+  // shell (where the Library is an on-demand drawer) those sprites showed "missing" until you opened it.
+  useEffect(() => {
+    loadCatalog().catch((e: unknown) => {
+      toast.error(`Asset catalog failed to load: ${(e as Error).message}`, { duration: 6000 });
+    });
+    // Terrain defs + node defs load independently — a failure is logged, not fatal (the store keeps its
+    // bundled seed), mirroring the original per-loader handling.
+    loadTerrainCatalog().catch((e: unknown) => {
+      console.warn('[editor] terrain catalog failed to load:', (e as Error).message);
+    });
+    loadNodeDefs().catch((e: unknown) => {
+      console.warn('[editor] node defs failed to load:', (e as Error).message);
+    });
+  }, []);
+
   // react-resizable-panels v4 persistence: restores the Library/centre split on load and saves it
   // after each drag (localStorage). Replaces the old hand-rolled pixel-width + localStorage logic.
   const layout = useDefaultLayout({ id: 'mostowo-editor-layout', storage: localStorage });
@@ -383,9 +408,10 @@ export function EditorApp() {
         <div className="flex min-h-0 flex-1">
           {isCompact ? (
             // ── Compact shell (plan 027 Step 8): full-bleed CenterPane with Library / Inspector as
-            //    slide-in Sheet drawers reached by persistent edge handles. Sheets are modal (Radix
-            //    default) so a tap on the scrim closes them and can't paint through to the Phaser
-            //    canvas beneath. A per-tool ContextBar (Step 9) sits along the bottom edge for thumb
+            //    slide-in Sheet drawers opened from the ContextBar's far-left/right buttons. Sheets are
+            //    modal (Radix default) so they can't paint through to the Phaser canvas beneath; each
+            //    carries its own bottom bar repeating that button as a CLOSE toggle in the same spot the
+            //    drawer covers. A per-tool ContextBar (Step 9) sits along the bottom edge for thumb
             //    reach, giving touch users an on-screen equivalent of every keyboard action. ──
             <div className="flex min-h-0 w-full flex-1 flex-col">
               <div className="relative min-h-0 w-full flex-1">
@@ -404,6 +430,18 @@ export function EditorApp() {
                     <div className="min-h-0 flex-1 overflow-auto p-3">
                       <LibraryPanel onPick={() => setLibraryOpen(false)} />
                     </div>
+                    {/* The Library button persists at the same bottom-left spot while open, now a CLOSE
+                        toggle — tapping where you opened it dismisses the drawer (mirrors the ContextBar
+                        button beneath, which the drawer covers). */}
+                    <div className="flex flex-none items-center border-t border-surface px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
+                      <PanelBarButton
+                        side="left"
+                        icon={<LibraryBig />}
+                        label="Library"
+                        active
+                        onClick={() => setLibraryOpen(false)}
+                      />
+                    </div>
                   </SheetContent>
                 </Sheet>
 
@@ -417,6 +455,16 @@ export function EditorApp() {
                       <SheetTitle className="text-sm">Inspector</SheetTitle>
                     </div>
                     <InspectorTabs className="flex-1" />
+                    {/* Inspector button persists bottom-right as a CLOSE toggle while open (see Library). */}
+                    <div className="flex flex-none items-center border-t border-surface px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
+                      <PanelBarButton
+                        side="right"
+                        icon={<SlidersHorizontal />}
+                        label="Inspector"
+                        active
+                        onClick={() => setInspectorOpen(false)}
+                      />
+                    </div>
                   </SheetContent>
                 </Sheet>
               </div>

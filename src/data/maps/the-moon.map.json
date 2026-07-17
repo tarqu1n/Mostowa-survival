@@ -2583,6 +2583,19 @@
       "row": 147,
       "skin": "default",
       "rotation": 326.3866414888742
+    },
+    {
+      "id": "decor_0025",
+      "kind": "decor",
+      "asset": "craftpix-nature/Bushes/Fern1_3.png",
+      "x": 1752,
+      "y": 2376,
+      "scaleX": 1,
+      "scaleY": 1,
+      "rotation": -90,
+      "flipX": false,
+      "flipY": false,
+      "depth": 0
     }
   ]
 }

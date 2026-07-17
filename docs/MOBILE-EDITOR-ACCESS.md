@@ -55,9 +55,12 @@ guppi's sshd accepts **password** auth for the `guppi` user, and the session alr
 
 - `GUPPI_USERNAME` / `GUPPI_PASSWORD` env vars. Note the SSH **login user is `guppi`**, not the value
   of `GUPPI_USERNAME` (that's `matt`, the account/sudo name — `matt` has no SSH login).
+- `TAILSCALE_KEY` env var — a **reusable** Tailscale auth key (added to the environment 2026-07-17),
+  so you **no longer ask Matt to paste one**; just use `$TAILSCALE_KEY`. Caveat: env-var changes only
+  reach **newly-started** sessions — a chat already running when the var was added won't see it (check
+  with `[ -n "$TAILSCALE_KEY" ]`), in which case fall back to asking for a one-off key for that chat.
 - Nothing else: the cloud sandbox has **no `ssh`, no `tailscale`, no TUN device**, and reaches guppi
-  only via the Tailnet. Matt pastes a **fresh ephemeral Tailscale auth key** each session (keys are
-  short-lived/single-use — ask for a new one, don't reuse).
+  only via the Tailnet.
 
 **The recipe**
 
@@ -70,7 +73,7 @@ curl -fsSL https://tailscale.com/install.sh | sh
 nohup tailscaled --tun=userspace-networking --socks5-server=localhost:1055 \
   --state=/var/lib/tailscale/tailscaled.state --statedir=/var/lib/tailscale/ >/tmp/tailscaled.log 2>&1 &
 sleep 3
-tailscale up --authkey="<ephemeral key Matt pastes>" --hostname=claude-sandbox --accept-routes
+tailscale up --authkey="$TAILSCALE_KEY" --hostname=claude-sandbox --accept-routes
 tailscale status        # guppi-eq = 100.105.155.16 (MagicDNS guppi-eq.tailfba8be.ts.net)
 
 # 3. SSH in *through the SOCKS proxy* (login user 'guppi', password from the env)
@@ -84,7 +87,9 @@ gssh 'whoami; docker ps --filter name=mostowo-editor'
 Why it works from a locked cloud container: the Tailnet range `100.64.0.0/10` bypasses the sandbox's
 outbound agent-proxy, and `tailscaled` honours `$HTTPS_PROXY` for its own control-plane + DERP
 traffic. Quote the `ProxyCommand` as **one** `-o` argument or the shell splits it and SSH fails.
-Join as **ephemeral** so the node self-removes when the container is reclaimed — nothing to clean up.
+The node registers as `claude-sandbox`; if the reusable key isn't also *ephemeral*, dead
+`claude-sandbox` nodes accumulate across sessions in the [admin console](https://login.tailscale.com/admin/machines)
+— prune them there, or make the key ephemeral so they self-remove when the container is reclaimed.
 
 To fetch the HTTPS serve URL itself (e.g. to confirm the editor loads), let the proxy resolve the
 MagicDNS name so SNI/cert match — the Tailscale cert validates, no `-k`:

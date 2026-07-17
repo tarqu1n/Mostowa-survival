@@ -1,6 +1,6 @@
 # Editor Library: role-based placement filtering
 
-> Status: planned — run /execute-plan to begin.
+> Status: in review
 
 ## Summary
 
@@ -62,7 +62,12 @@ second must rebase its generator edits on the first and re-run `npm run assets:c
 
 ## Steps
 
-- [ ] **Step 1: Add `role` to the catalog schema + generator** `[delegate sonnet]`
+- [x] **Step 1: Add `role` to the catalog schema + generator** `[delegate sonnet]`
+  - Outcome: `role: CatalogAssetRole` (`'tile'|'object'|'actor'`, `mixed` dropped per critique #1) added to
+    `src/editor/catalog.ts`; `scripts/asset-catalog.mjs` parses `rules.actor` + `overrides.role` with precedence
+    `overrides.role › rules.actor › type-default`; regenerated `public/assets/asset-catalog.json` (all 1603 assets
+    gained `role`, byte-identical on re-run, all type-derived defaults since no pack declares `rules.actor` yet);
+    doc note in `docs/assets-catalog.md`; three test fixtures updated for the now-required field. typecheck/test/lint green.
   - `src/editor/catalog.ts`: add `export type CatalogAssetRole = 'tile' | 'object' | 'actor' | 'mixed'`
     and a required `role: CatalogAssetRole` field on `CatalogAsset`.
   - `scripts/asset-catalog.mjs`: parse `rules.actor` and `rules.mixed` glob lists exactly like the
@@ -82,7 +87,12 @@ second must rebase its generator edits on the first and re-run `npm run assets:c
     valid `role`; with no `rules.actor` defined yet, roles are exactly the type-derived defaults;
     `npm run typecheck` passes.
 
-- [ ] **Step 2: Tag the actor packs/folders in `pack.json`** `[delegate sonnet]` (parallel: A)
+- [x] **Step 2: Tag the actor packs/folders in `pack.json`** `[delegate sonnet]` (parallel: A)
+  - Outcome: added `rules.actor` to 5 packs — `craftpix-creatures`/`bat-fur`/`small-bat` (`**/*.png`),
+    `craftpix-dungeon` (`**/Characters/**`), `zelda-like` (`Entities/Characters/**`, `Entities/Npcs/**`).
+    Regenerated catalog: role counts object 1565→1137, +428 actor (272 creatures, 15+15 bats, 124 dungeon
+    Characters, 2 zelda Characters/Npcs); props (`DungeonProps`/`Traps` 95, zelda `Environment/Props` 1) stayed
+    `object`. Byte-identical on re-run; catalog test 7/7. No source files touched (write-disjoint from Step 3).
   - Add `rules.actor` to the actor packs' `public/assets/tilesets/<pack>/pack.json`:
     `craftpix-creatures` → `["**/*.png"]`; `bat-fur` → `["**/*.png"]`; `small-bat` → `["**/*.png"]`;
     `craftpix-dungeon` → `["**/Characters/**"]`; `zelda-like` →
@@ -96,7 +106,15 @@ second must rebase its generator edits on the first and re-run `npm run assets:c
   - Done when: catalog shows the creature/bat packs as `role:'actor'` and the dungeon/zelda `Characters`/`Npcs`
     folders as `actor`, while genuine props (e.g. `DungeonProps`, `Traps`) remain `object`.
 
-- [ ] **Step 3: Library filter toggles + tool sync** `[delegate sonnet]` (parallel: A)
+- [x] **Step 3: Library filter toggles + tool sync** `[delegate sonnet]` (parallel: A)
+  - Outcome: `editorStore.ts` — `libraryRoleFilter` (default `'tile'`) + `libraryRoleFilterOverridden` state,
+    `setLibraryRoleFilter` action, `TOOL_LIBRARY_FILTER` map (brush/rect/fill/eraser/terrain→tile, place→object,
+    all others keep current); `setActiveTool` auto-syncs unless overridden, resets override each switch; `actor`
+    never auto-selected. `LibraryPanel.tsx` — `[Tiles][Objects][Actors]` chips; `categoriesByPack`/`visibleAssets`
+    (search + category paths), Recent & Favourites all role-filtered; empty categories/packs hidden; Nodes gated to
+    object, Terrains to tile; actor-click guard early-returns in `armObject`/`armRegion`/`armAnim` so actors can't be
+    armed for placement (comment explains why); already-armed asset survives filter change. New test suite (8 tests).
+    typecheck clean, lint 0 errors, 715 tests pass.
   - `src/editor/store/editorStore.ts`: add library-role-filter state (active filter: `tile` | `object`
     | `actor`) + a manual-override flag + actions. Wire tool changes to auto-set the filter
     (brush/rect/fill/eraser → `tile`; place → `object`) unless the user manually overrode since the
@@ -116,7 +134,13 @@ second must rebase its generator edits on the first and re-run `npm run assets:c
   - Done when: switching brush↔place changes which assets the Library shows; actors are hidden by
     default; toggling a chip overrides until the next tool switch; `mixed` assets show under both.
 
-- [ ] **Step 4: Verify + document** `[inline]`
+- [x] **Step 4: Verify + document** `[inline]`
+  - Outcome: `npm run build` (tsc + vite) green; `npm run lint` 0 errors (90 pre-existing `tests/e2e` warnings).
+    Headless Playwright drive of the editor confirmed all behaviours against real catalog data: default filter =
+    Tiles (actors hidden); Tiles shows only tiles (actor query 0, tile 15, object 0), Objects only objects
+    (actor 0, object 16, tile 0), Actors only actors (actor 15, tile 0, object 0); zero console errors. (The
+    `mixed`-under-both check was dropped with the `mixed` role.) Docs: role-filter note added to `docs/EDITOR.md`
+    - one-line entry in `docs/STATUS.md`; `role` schema already documented in `docs/assets-catalog.md` (Step 1).
   - `npm run build` (typecheck + build) and `npm run lint` green. Drive the editor (`npm run editor`):
     confirm tiling shows only tiles, placing shows only objects, creatures are hidden until Actors is
     toggled on, and a `mixed`-tagged asset shows under both.

@@ -87,7 +87,7 @@ import {
   type LibraryBrowseState,
   type RecentEntry,
 } from '../libraryViewStore';
-import type { AssetCatalog } from '../catalog';
+import type { AssetCatalog, CatalogAssetRole } from '../catalog';
 import type { TerrainCatalog, TerrainDef } from '../terrainCatalog';
 import { parseAssetId } from '../textureLoading';
 import {
@@ -132,6 +132,28 @@ export type EditorTool =
    *  the matching paint tool). The touch-reachable equivalent of the Alt-click modifier that the
    *  tile-paint tools expose — see `EditorScene.sampleUnderPointer`. */
   | 'eyedropper';
+
+/** Values `libraryRoleFilter` can take (plan 032 step 3) — the same three-member union as
+ *  `CatalogAssetRole`, but named separately since it's a VIEW concept (which role the Library's
+ *  browse surface currently shows) rather than an asset's own classification. No `'mixed'`/`'all'`
+ *  sentinel — the filter is always exactly one of the three roles. */
+export type LibraryRoleFilter = CatalogAssetRole;
+
+/** Tool → auto-synced `libraryRoleFilter` (plan 032 step 3, critique #3's settled mapping), applied by
+ *  `setActiveTool` unless the user manually overrode the filter since the last tool switch (see
+ *  `libraryRoleFilterOverridden`). Every tool NOT listed here (`pan`, `select`, `collision`, `zone`,
+ *  `shape`, `portal`, `eyedropper`) keeps whatever filter was already active — it neither forces nor
+ *  blocks a filter, it's just not one of the tools this plan wires up. `'actor'` never appears as a
+ *  value here: actors are only ever shown via a manual chip click (`setLibraryRoleFilter`), never by
+ *  switching tools. */
+const TOOL_LIBRARY_FILTER: Partial<Record<EditorTool, LibraryRoleFilter>> = {
+  brush: 'tile',
+  rect: 'tile',
+  fill: 'tile',
+  eraser: 'tile',
+  terrain: 'tile',
+  place: 'object',
+};
 
 /** Which gesture the `collision`/`zone`/`shape`/`terrain` tools paint with (plan 014 step 8, extended
  *  step 10) — mirrors the brush/rect/fill distinction that tile painting expresses as separate
@@ -268,6 +290,17 @@ export interface EditorState {
   activeTerrainId: string | null;
   activeLayerId: string | null;
   activeTool: EditorTool;
+  /** Which `CatalogAssetRole` the Library panel's browse surface currently shows (plan 032 step 3) —
+   *  filters `visibleAssets`/`categoriesByPack` (and the Recent/Favourites surfaces) uniformly, so an
+   *  `'actor'` asset is invisible everywhere in the browse tree unless this is `'actor'`. Auto-synced
+   *  by `setActiveTool` per `TOOL_LIBRARY_FILTER` UNLESS `libraryRoleFilterOverridden` is set; a manual
+   *  chip click (`setLibraryRoleFilter`) always wins over the auto-sync until the next tool switch.
+   *  Defaults to `'tile'` — actors are hidden by default and never auto-selected by any tool. */
+  libraryRoleFilter: LibraryRoleFilter;
+  /** True once the user has manually picked a Library filter chip since the last tool switch — makes
+   *  the very next `setActiveTool` call skip its `TOOL_LIBRARY_FILTER` auto-sync (once), then that same
+   *  switch resets this back to `false` so auto-sync resumes for whatever tool comes after. */
+  libraryRoleFilterOverridden: boolean;
   brushAsset: string | null;
   /** Pending clockwise rotation (deg) applied to the tileset piece painted by the `brush` tool. A
    *  rotated tile becomes a distinct palette entry (see `findOrAppendPaletteIndex`). STICKY across
@@ -390,7 +423,13 @@ export interface EditorState {
    *  activates its left neighbour (the tab that sat at the closed index − 1), falling back to `'map'`. */
   closeTab(id: string): void;
   setActiveLayer(layerId: string): void;
+  /** Switches the active tool AND auto-syncs `libraryRoleFilter` per `TOOL_LIBRARY_FILTER` (skipped if
+   *  `libraryRoleFilterOverridden`); always resets `libraryRoleFilterOverridden` to `false` afterward,
+   *  win or lose, so the override is a one-tool-switch grace period, not a permanent pin. */
   setActiveTool(tool: EditorTool): void;
+  /** Manually sets the Library role filter (a chip click) and flags the override so the very next
+   *  `setActiveTool` call leaves it alone — see `libraryRoleFilterOverridden`'s doc. */
+  setLibraryRoleFilter(filter: LibraryRoleFilter): void;
   setBrushAsset(asset: string | null): void;
   /** Set the pending brush rotation directly (one of 0/90/180/270). */
   setBrushRotation(deg: 0 | 90 | 180 | 270): void;
@@ -1200,6 +1239,8 @@ export const useEditorStore = create<EditorState>()(
     activeTerrainId: null,
     activeLayerId: null,
     activeTool: 'pan',
+    libraryRoleFilter: 'tile',
+    libraryRoleFilterOverridden: false,
     brushAsset: null,
     brushRotation: 0,
     armedObjectAsset: null,
@@ -1336,7 +1377,15 @@ export const useEditorStore = create<EditorState>()(
         return { tabs, activeTabId };
       }),
     setActiveLayer: (layerId) => set({ activeLayerId: layerId }),
-    setActiveTool: (activeTool) => set({ activeTool }),
+    setActiveTool: (activeTool) =>
+      set((s): Partial<EditorState> => {
+        const mapped = TOOL_LIBRARY_FILTER[activeTool];
+        const libraryRoleFilter =
+          !s.libraryRoleFilterOverridden && mapped ? mapped : s.libraryRoleFilter;
+        return { activeTool, libraryRoleFilter, libraryRoleFilterOverridden: false };
+      }),
+    setLibraryRoleFilter: (filter) =>
+      set({ libraryRoleFilter: filter, libraryRoleFilterOverridden: true }),
     // `brushRotation` is deliberately NOT reset here — it's sticky across arming a new asset.
     setBrushAsset: (brushAsset) => set({ brushAsset }),
     setBrushRotation: (brushRotation) => set({ brushRotation }),

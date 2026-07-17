@@ -12,6 +12,9 @@
     ],
     "selfMade": [
       "_derived/**"
+    ],
+    "actor": [
+      "**/*.png"
     ]
   },
   "overrides": {},

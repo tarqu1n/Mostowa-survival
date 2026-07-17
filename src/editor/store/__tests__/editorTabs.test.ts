@@ -22,6 +22,7 @@ function catalogWith(...ids: string[]): AssetCatalog {
     id,
     pack: 'test-pack',
     type: 'object',
+    role: 'object',
     source: { kind: 'image', path: id },
     w: 16,
     h: 16,

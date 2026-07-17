@@ -20,6 +20,7 @@ function asset(over: Partial<CatalogAsset> = {}): CatalogAsset {
     id: 'pack/Furniture/furnace.png',
     pack: 'pack',
     type: 'object',
+    role: 'object',
     source: { kind: 'image', path: 'Furniture/furnace.png' },
     w: 64,
     h: 64,

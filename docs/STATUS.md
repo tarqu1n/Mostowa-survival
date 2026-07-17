@@ -199,6 +199,12 @@ and **long-press to favourite** (tap = pick; `src/editor/hooks/useLongPress.ts`)
 tap-thief heart on touch. **Node Types tab** — restacked to a full-width **collapsible list-on-top**
 with a **collapsible Skins** section (thumbnail summary bar), on desktop + compact.
 
+**Library role filter (plan 032):** every catalog asset carries a semantic `role` (`tile`/`object`/`actor`,
+orthogonal to the structural `type`; tagged via `rules.actor` globs in `pack.json`). The Library's
+`[Tiles] [Objects] [Actors]` chips filter the whole browse surface by role and **auto-sync to the active
+tool**; **actors are hidden by default** (and can't be armed for placement), keeping creature/NPC sprites
+out of the object palette until a dedicated actor editor exists.
+
 ## Runtime map loader (plan 018)
 
 The game **boots straight into one authored map** (`START_MAP_ID`, currently `test`) — no procedural

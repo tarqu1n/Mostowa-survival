@@ -21,6 +21,18 @@ Deterministic (packs/assets/tags all sorted, no timestamp) — re-running with n
 a byte-identical file. Never hand-edit the catalog; re-run the script after adding/removing pack
 files or editing a `pack.json`.
 
+Every asset also carries a **`role`** (`'tile' | 'object' | 'actor'`, `CatalogAssetRole` in
+`src/editor/catalog.ts`) — orthogonal to `type` above: `type` stays the rendering/mechanics
+classification, `role` governs Library **palette visibility** only (not to be confused with the
+per-region `role` under "Atlas sprite regions" below, a different field on a different scope).
+`role` defaults from `type` (`tile → 'tile'`, `strip`/`object → 'object'`) and is emitted on every
+asset. A pack tags character/creature sheets with a `rules.actor` glob list (sibling to
+`rules.tile`/`rules.strip`); `overrides[relPath].role` is the per-path escape hatch. Precedence:
+`overrides.role` > `rules.actor` > the type-derived default. **A pack that ships actor sheets and
+omits `rules.actor` gets no warning** — those sheets silently default to `role:'object'` and
+re-leak into the object-placement palette, so add `rules.actor` as a standard step whenever
+ingesting a new pack with characters/creatures.
+
 `public/assets/tilesets/mostowo-custom/` is the home for self-made art — same `pack.json` shape,
 `licence: "original"`. First resident: `Environment/Tilesets/water_diagonal.png`, a synthesised 45°
 water/grass coast tileset (12 frames) — the pack ships no clean diagonal, so it's generated from the

@@ -11,6 +11,9 @@
       "**/Characters/**",
       "**/Fx/**",
       "**/*-Sheet.png"
+    ],
+    "actor": [
+      "**/Characters/**"
     ]
   },
   "overrides": {

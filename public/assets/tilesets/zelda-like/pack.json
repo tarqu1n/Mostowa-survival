@@ -9,7 +9,11 @@
     "tile": [
       "Environment/Tilesets/**"
     ],
-    "strip": []
+    "strip": [],
+    "actor": [
+      "Entities/Characters/**",
+      "Entities/Npcs/**"
+    ]
   },
   "overrides": {},
   "exclude": []

@@ -8,6 +8,7 @@ function asset(over: Partial<CatalogAsset> = {}): CatalogAsset {
     id: 'pack/Environment/Props/Static/Farm.png',
     pack: 'pack',
     type: 'object',
+    role: 'object',
     source: { kind: 'image', path: 'Environment/Props/Static/Farm.png' },
     w: 400,
     h: 400,

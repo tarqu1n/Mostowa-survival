@@ -20,6 +20,16 @@ export interface CatalogPack {
  *  label-only rename at the display layer). */
 export type CatalogAssetType = 'tile' | 'strip' | 'object';
 
+/** What an asset IS for palette-visibility purposes (plan 032 step 1) — orthogonal to
+ *  `CatalogAssetType` above: `type` stays the rendering/mechanics classification (sheet vs strip vs
+ *  standalone image), `role` governs whether the Library palette should offer it for tile/object
+ *  placement at all versus treating it as a character/creature asset. Distinct from, and NOT to be
+ *  confused with, `CatalogRegion.role` below (a different field, a different value set, scoped to
+ *  one detected sprite within an atlas rather than the whole asset). Emitted on EVERY asset (a
+ *  computed default when no pack rule/override says otherwise) so consumers never branch on
+ *  absence. Default from `type`: `tile -> 'tile'`, `strip`/`object -> 'object'`. */
+export type CatalogAssetRole = 'tile' | 'object' | 'actor';
+
 /** One detected sprite bounding box within an `object` atlas's sheet (plan 014 step 7a). `key` is
  *  rect-derived (`"${x}_${y}_${w}_${h}"`, see `scripts/pixel-crawler/gen_regions.py`), stable across
  *  regens unless the sprite actually moves/resizes. Prefer `regionKey()` below for a list/React key:
@@ -52,6 +62,9 @@ export interface CatalogAsset {
   id: string;
   pack: string;
   type: CatalogAssetType;
+  /** Palette-visibility classification (plan 032 step 1) — see `CatalogAssetRole` above. Always
+   *  present; a plain type-derived default when no `rules.actor`/`overrides[relPath].role` applies. */
+  role: CatalogAssetRole;
   source: TileSource;
   /** Sheet/image pixel size. */
   w: number;

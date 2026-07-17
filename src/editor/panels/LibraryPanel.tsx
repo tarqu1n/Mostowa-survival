@@ -24,6 +24,7 @@ import {
   useEditorStore,
   DECOR_ANIM_DEFAULT_FPS,
   type ArmedObjectAsset,
+  type LibraryRoleFilter,
 } from '../store/editorStore';
 import { recentIdentity, type LibraryBrowseState, type RecentEntry } from '../libraryViewStore';
 import { Button } from '../ui/button';
@@ -112,6 +113,17 @@ const ATLAS_PREVIEW_MAX_PX = 240;
  *  sheet the authored prop regions carry `role:'object'` explicitly; on a plain `object` atlas the
  *  older regions have no `role` and still qualify here. */
 const isObjectRegion = (r: CatalogRegion): boolean => r.role === undefined || r.role === 'object';
+
+/** True when `assetId` names a catalog asset with `role:'actor'` (plan 032 step 3, critique #5) — used
+ *  to guard the decor-arm paths below (`armObject`/`armRegion`/`armAnim`) so clicking an actor asset
+ *  can never stage it for `place`: there's no actor editor yet, and actors must not become
+ *  placeable-as-decor via the ordinary Library pick flow. The card may still render/select normally;
+ *  only the arm call itself is suppressed. `catalog` is `null` before the mount fetch lands, in which
+ *  case nothing can be armed from the Library yet anyway, so this conservatively reads as "not actor"
+ *  rather than blocking every click. */
+function isActorAsset(catalog: AssetCatalog | null, assetId: string): boolean {
+  return catalog?.assets.find((a) => a.id === assetId)?.role === 'actor';
+}
 
 /* Shared utility strings for the repeated Library shapes (plan 020 Step 4). Extracting them keeps the
  * per-item JSX terse and gives every card/label/swatch one definition to change. */
@@ -304,6 +316,32 @@ function resolveRecentSwatch(
   }
 }
 
+/** Effective `LibraryRoleFilter` a Recent entry counts as, for filtering the strip by the SAME role
+ *  filter as the rest of the browse surface (plan 032 step 3, critique #2 — Recent must not bypass the
+ *  filter). `tile`/`decor` entries resolve their real catalog asset's `role`; `node`/`terrain` entries
+ *  aren't raw catalog assets, so they're pinned to the role their pseudo-category is gated under
+ *  (mirrors `showingNodes`/`showingTerrains` below: nodes ⇒ `'object'`, terrains ⇒ `'tile'`). `null`
+ *  when a `tile`/`decor` entry's asset can't be resolved (stale id after a pack regen) — filtered out
+ *  either way, matching `resolveRecentSwatch`'s own can't-resolve handling. */
+function recentEntryRole(entry: RecentEntry, catalog: AssetCatalog): LibraryRoleFilter | null {
+  switch (entry.kind) {
+    case 'tile': {
+      try {
+        const { pack, path } = parseAssetId(entry.assetId);
+        return catalog.assets.find((a) => a.id === `${pack}/${path}`)?.role ?? null;
+      } catch {
+        return null;
+      }
+    }
+    case 'decor':
+      return catalog.assets.find((a) => a.id === entry.assetId)?.role ?? null;
+    case 'node':
+      return 'object';
+    case 'terrain':
+      return 'tile';
+  }
+}
+
 /** Renders a resolved `RecentSwatch` as a sized pixel-art `<span>` (plan 030 step 4) — no label, no
  *  heart, no button (callers wrap it). `crop`/`contain`/`color` fill a `sizePx` square; `region` scales
  *  its sub-rect to fit within `sizePx` (so a non-square region keeps its aspect, ≤ the box). */
@@ -439,6 +477,39 @@ function RecentStrip({
   );
 }
 
+/** `[Tiles] [Objects] [Actors]` role-filter chips (plan 032 step 3) — near the top of the panel, above
+ *  the Recent strip/search, since the filter governs BOTH of those plus the category tree below. A
+ *  click sets `libraryRoleFilter` manually, which also flags the override so the very next tool switch
+ *  leaves the pick alone (see `setLibraryRoleFilter`'s doc) — toggling a chip sticks until then. */
+const LIBRARY_ROLE_FILTER_OPTIONS: { role: LibraryRoleFilter; label: string }[] = [
+  { role: 'tile', label: 'Tiles' },
+  { role: 'object', label: 'Objects' },
+  { role: 'actor', label: 'Actors' },
+];
+
+function LibraryRoleFilterChips({ active }: { active: LibraryRoleFilter }) {
+  const isCompact = useIsCompact();
+  return (
+    <div className="mb-2.5 flex gap-1.5">
+      {LIBRARY_ROLE_FILTER_OPTIONS.map(({ role, label }) => (
+        <button
+          key={role}
+          type="button"
+          className={cn(
+            'flex-1 rounded-md border border-transparent bg-inset px-2 py-1 text-[0.75rem] text-fg-muted hover:bg-surface',
+            active === role && 'border-gold-light bg-surface text-fg-bright',
+            isCompact && 'min-h-11 py-2 text-[0.85rem]',
+          )}
+          aria-pressed={active === role}
+          onClick={() => useEditorStore.getState().setLibraryRoleFilter(role)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function LibraryPanel({ onPick }: { onPick?: () => void } = {}) {
   const isCompact = useIsCompact();
   // The catalog lives in the store (plan 017 step 3): the object-editor tab's Apply refetches it via
@@ -468,6 +539,7 @@ export function LibraryPanel({ onPick }: { onPick?: () => void } = {}) {
   const terrainCatalog = useEditorStore((s) => s.terrainCatalog);
   const activeTerrainId = useEditorStore((s) => s.activeTerrainId);
   const libraryRecents = useEditorStore((s) => s.libraryRecents);
+  const libraryRoleFilter = useEditorStore((s) => s.libraryRoleFilter);
   // Re-render triggers only — see module doc. The actual map/favourites are read fresh below.
   useEditorStore((s) => s.docRevision);
   useEditorStore((s) => s.mapEpoch);
@@ -484,23 +556,56 @@ export function LibraryPanel({ onPick }: { onPick?: () => void } = {}) {
       : (map.meta.favourites ?? [])
     : [];
   const favouriteSet = useMemo(() => new Set(favourites), [favourites]);
+  // Favourites, filtered to the active role (plan 032 step 3, critique #2 — Favourites must not
+  // bypass the filter like every other browse surface). A favourite id may carry `#frame`
+  // (`parseAssetId` strips it back to the base catalog id before the role lookup); unresolvable ids
+  // (pack removed/regenerated) are dropped here too — `FavouriteItem` renders a "missing" placeholder
+  // for those, but only when they're actually in view under the current filter.
+  const filteredFavourites = useMemo(() => {
+    if (!catalog) return [];
+    return favourites.filter((favId) => {
+      try {
+        const { pack, path } = parseAssetId(favId);
+        return catalog.assets.find((a) => a.id === `${pack}/${path}`)?.role === libraryRoleFilter;
+      } catch {
+        return false;
+      }
+    });
+  }, [catalog, favourites, libraryRoleFilter]);
+  // Recent picks, filtered to the active role (critique #2) — same treatment as Favourites.
+  const filteredLibraryRecents = useMemo(() => {
+    if (!catalog) return [];
+    return libraryRecents.filter((entry) => recentEntryRole(entry, catalog) === libraryRoleFilter);
+  }, [catalog, libraryRecents, libraryRoleFilter]);
 
   const categoriesByPack = useMemo(() => {
     const out = new Map<string, string[]>();
     if (!catalog) return out;
     const seen = new Map<string, Set<string>>();
     for (const asset of catalog.assets) {
+      // Role-filtered (plan 032 step 3, critique #2): a category with assets only outside the active
+      // filter never makes it into `seen`, so it's simply absent from the tree — no empty header.
+      if (asset.role !== libraryRoleFilter) continue;
       if (!seen.has(asset.pack)) seen.set(asset.pack, new Set());
       seen.get(asset.pack)?.add(asset.category);
     }
     for (const [pack, cats] of seen) out.set(pack, [...cats].sort());
     return out;
-  }, [catalog]);
+  }, [catalog, libraryRoleFilter]);
 
   const searchLower = search.trim().toLowerCase();
   const showingFavourites = searchLower.length === 0 && selectedCategory === FAVOURITES;
-  const showingNodes = searchLower.length === 0 && selectedCategory === NODES_CATEGORY;
-  const showingTerrains = searchLower.length === 0 && selectedCategory === TERRAINS_CATEGORY;
+  // Nodes/Terrains pseudo-categories are pinned to one role each (mirrors `recentEntryRole`'s same
+  // pinning) — they only ever show under their matching filter, exactly like a real pack category
+  // whose assets are all the "wrong" role is hidden under the other filter.
+  const showingNodes =
+    searchLower.length === 0 &&
+    selectedCategory === NODES_CATEGORY &&
+    libraryRoleFilter === 'object';
+  const showingTerrains =
+    searchLower.length === 0 &&
+    selectedCategory === TERRAINS_CATEGORY &&
+    libraryRoleFilter === 'tile';
   const showingCategory =
     searchLower.length === 0 &&
     selectedCategory !== null &&
@@ -515,18 +620,23 @@ export function LibraryPanel({ onPick }: { onPick?: () => void } = {}) {
   const visibleAssets: CatalogAsset[] = useMemo(() => {
     if (!catalog) return [];
     if (searchLower.length > 0) {
+      // Role-filtered (critique #2): search must not bypass the filter either.
       return catalog.assets.filter(
         (a) =>
-          a.id.toLowerCase().includes(searchLower) || a.tags.some((t) => t.includes(searchLower)),
+          a.role === libraryRoleFilter &&
+          (a.id.toLowerCase().includes(searchLower) || a.tags.some((t) => t.includes(searchLower))),
       );
     }
     if (showingCategory && selectedPack) {
       return catalog.assets.filter(
-        (a) => a.pack === selectedPack && a.category === selectedCategory,
+        (a) =>
+          a.role === libraryRoleFilter &&
+          a.pack === selectedPack &&
+          a.category === selectedCategory,
       );
     }
     return [];
-  }, [catalog, searchLower, showingCategory, selectedPack, selectedCategory]);
+  }, [catalog, searchLower, showingCategory, selectedPack, selectedCategory, libraryRoleFilter]);
 
   // Each pick handler, after its existing store call, records the pick as a "Recent" (plan 030) and
   // fires `onPick` — the compact drawer passes `onPick` to auto-close so painting can start
@@ -542,6 +652,9 @@ export function LibraryPanel({ onPick }: { onPick?: () => void } = {}) {
     onPick?.();
   }
   function armObject(assetId: string): void {
+    // Actor assets have no placement/editor path yet (plan 032 step 3, critique #5) — guard the arm
+    // path so a click on one is a no-op rather than staging it for the `place` tool.
+    if (isActorAsset(catalog, assetId)) return;
     const s = useEditorStore.getState();
     s.setArmedObjectAsset({ assetId });
     s.setActiveTool('place'); // mirrors pickTile switching to Brush — arming always arms a TOOL too
@@ -550,6 +663,8 @@ export function LibraryPanel({ onPick }: { onPick?: () => void } = {}) {
   }
   /** Arms a specific atlas-sheet crop (`AtlasSheetPicker`'s hotspot click). */
   function armRegion(assetId: string, region: DecorRegion): void {
+    // See armObject's actor guard comment — same reasoning applies to a region crop of an actor sheet.
+    if (isActorAsset(catalog, assetId)) return;
     const s = useEditorStore.getState();
     s.setArmedObjectAsset({ assetId, region });
     s.setActiveTool('place');
@@ -559,6 +674,8 @@ export function LibraryPanel({ onPick }: { onPick?: () => void } = {}) {
   /** Arms an animated strip (`AnimatedStripPicker`'s click) — `fps` is stamped at placement time
    *  (`DECOR_ANIM_DEFAULT_FPS`), never carried here (critique #6: no per-instance editable fps). */
   function armAnim(assetId: string, anim: Omit<DecorAnim, 'fps'>): void {
+    // See armObject's actor guard comment — an animated actor strip must not become placeable decor.
+    if (isActorAsset(catalog, assetId)) return;
     const s = useEditorStore.getState();
     s.setArmedObjectAsset({ assetId, anim });
     s.setActiveTool('place');
@@ -597,13 +714,17 @@ export function LibraryPanel({ onPick }: { onPick?: () => void } = {}) {
     // single TooltipProvider mounted at the EditorApp root (plan 020 Step 5).
     <>
       <h2 className="mb-2 text-[0.85rem] uppercase tracking-[0.04em] text-fg-dim">Library</h2>
+      {/* Role-filter chips (plan 032 step 3) — above the Recent strip/search since the active filter
+          governs both of those plus the category tree below. */}
+      <LibraryRoleFilterChips active={libraryRoleFilter} />
       {/* Recent strip (plan 030 step 4) — top-of-panel MRU of everything pickable, on desktop and
           compact. Re-arming goes through the same pick handlers as the main list, so a click also
           moves the entry to front (`pushLibraryRecent`) and auto-closes the compact drawer (`onPick`).
-          Needs the resolved catalog to draw swatches; hidden entirely when there are no recents. */}
-      {catalog && libraryRecents.length > 0 && (
+          Needs the resolved catalog to draw swatches; hidden entirely when there are no recents (or
+          none survive the active role filter — plan 032 step 3, critique #2). */}
+      {catalog && filteredLibraryRecents.length > 0 && (
         <RecentStrip
-          recents={libraryRecents}
+          recents={filteredLibraryRecents}
           catalog={catalog}
           nodeDefsParsed={nodeDefsParsed}
           terrainCatalog={terrainCatalog}
@@ -653,68 +774,82 @@ export function LibraryPanel({ onPick }: { onPick?: () => void } = {}) {
                 !isCompact && 'max-h-[40vh]',
               )}
             >
-              <TreeItem
-                active={selectedCategory === FAVOURITES}
-                onClick={() =>
-                  patchLibraryBrowse({ selectedPack: null, selectedCategory: FAVOURITES })
-                }
-              >
-                ♥ Favourites ({favourites.length})
-              </TreeItem>
-              <TreeItem
-                active={selectedCategory === NODES_CATEGORY}
-                onClick={() =>
-                  patchLibraryBrowse({ selectedPack: null, selectedCategory: NODES_CATEGORY })
-                }
-              >
-                🌲 Nodes
-              </TreeItem>
-              <TreeItem
-                active={selectedCategory === TERRAINS_CATEGORY}
-                onClick={() =>
-                  patchLibraryBrowse({ selectedPack: null, selectedCategory: TERRAINS_CATEGORY })
-                }
-              >
-                🟩 Terrains
-              </TreeItem>
-              {catalog.packs.map((pack) => {
-                const expanded = expandedPackSet.has(pack.id);
-                const categories = categoriesByPack.get(pack.id) ?? [];
-                return (
-                  <div key={pack.id} className="mb-1">
-                    <button
-                      type="button"
-                      className={cn(
-                        'mt-1.5 mb-0.5 flex w-full items-center gap-1 text-[0.7rem] uppercase tracking-[0.03em] text-border-muted hover:text-fg-dim',
-                        isCompact && 'min-h-11 py-2 text-[0.78rem]',
-                      )}
-                      aria-expanded={expanded}
-                      onClick={() => togglePack(pack.id)}
-                    >
-                      <span className="flex-none text-[0.65rem]">{expanded ? '▾' : '▸'}</span>
-                      <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left">
-                        {pack.name}
-                      </span>
-                      <span className="flex-none tabular-nums">{categories.length}</span>
-                    </button>
-                    {expanded &&
-                      categories.map((category) => (
-                        <TreeItem
-                          key={category}
-                          active={selectedPack === pack.id && selectedCategory === category}
-                          onClick={() =>
-                            patchLibraryBrowse({
-                              selectedPack: pack.id,
-                              selectedCategory: category,
-                            })
-                          }
-                        >
-                          {category}
-                        </TreeItem>
-                      ))}
-                  </div>
-                );
-              })}
+              {/* Hidden when nothing survives the active role filter — mirrors how an empty pack
+                  category is hidden below (plan 032 step 3, critique #2). */}
+              {filteredFavourites.length > 0 && (
+                <TreeItem
+                  active={selectedCategory === FAVOURITES}
+                  onClick={() =>
+                    patchLibraryBrowse({ selectedPack: null, selectedCategory: FAVOURITES })
+                  }
+                >
+                  ♥ Favourites ({filteredFavourites.length})
+                </TreeItem>
+              )}
+              {/* Nodes is pinned to the Objects filter (resource nodes are placeable props, not
+                  actors) — only shown under it, like `showingNodes` gates the results below. */}
+              {libraryRoleFilter === 'object' && (
+                <TreeItem
+                  active={selectedCategory === NODES_CATEGORY}
+                  onClick={() =>
+                    patchLibraryBrowse({ selectedPack: null, selectedCategory: NODES_CATEGORY })
+                  }
+                >
+                  🌲 Nodes
+                </TreeItem>
+              )}
+              {/* Terrains is pinned to the Tiles filter — only shown under it, like `showingTerrains`
+                  gates the results below. */}
+              {libraryRoleFilter === 'tile' && (
+                <TreeItem
+                  active={selectedCategory === TERRAINS_CATEGORY}
+                  onClick={() =>
+                    patchLibraryBrowse({ selectedPack: null, selectedCategory: TERRAINS_CATEGORY })
+                  }
+                >
+                  🟩 Terrains
+                </TreeItem>
+              )}
+              {catalog.packs
+                .filter((pack) => (categoriesByPack.get(pack.id)?.length ?? 0) > 0)
+                .map((pack) => {
+                  const expanded = expandedPackSet.has(pack.id);
+                  const categories = categoriesByPack.get(pack.id) ?? [];
+                  return (
+                    <div key={pack.id} className="mb-1">
+                      <button
+                        type="button"
+                        className={cn(
+                          'mt-1.5 mb-0.5 flex w-full items-center gap-1 text-[0.7rem] uppercase tracking-[0.03em] text-border-muted hover:text-fg-dim',
+                          isCompact && 'min-h-11 py-2 text-[0.78rem]',
+                        )}
+                        aria-expanded={expanded}
+                        onClick={() => togglePack(pack.id)}
+                      >
+                        <span className="flex-none text-[0.65rem]">{expanded ? '▾' : '▸'}</span>
+                        <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left">
+                          {pack.name}
+                        </span>
+                        <span className="flex-none tabular-nums">{categories.length}</span>
+                      </button>
+                      {expanded &&
+                        categories.map((category) => (
+                          <TreeItem
+                            key={category}
+                            active={selectedPack === pack.id && selectedCategory === category}
+                            onClick={() =>
+                              patchLibraryBrowse({
+                                selectedPack: pack.id,
+                                selectedCategory: category,
+                              })
+                            }
+                          >
+                            {category}
+                          </TreeItem>
+                        ))}
+                    </div>
+                  );
+                })}
             </nav>
           )}
 
@@ -735,12 +870,12 @@ export function LibraryPanel({ onPick }: { onPick?: () => void } = {}) {
             )}
 
             {showingFavourites &&
-              (favourites.length === 0 ? (
+              (filteredFavourites.length === 0 ? (
                 <p className="text-[0.9rem] text-muted-2">
                   No favourites yet — click a ♡ to add one.
                 </p>
               ) : (
-                favourites.map((favId) => (
+                filteredFavourites.map((favId) => (
                   <FavouriteItem
                     key={favId}
                     catalog={catalog}

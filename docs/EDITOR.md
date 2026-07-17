@@ -20,6 +20,16 @@ Three panes: **Library** (left — asset catalog, search, favourites, Nodes, Ter
 object-editor tabs), **Inspector / Layers / Zones** (right). Toolbar on top: New/Open/Save/**Edit**,
 undo/redo, tool strip, overlay toggles.
 
+**Library role filter (plan 032):** `[Tiles] [Objects] [Actors]` chips at the top of the Library show
+only assets of the matching semantic `role` (from the catalog — see [assets-catalog.md](assets-catalog.md)).
+The filter **auto-syncs to the active tool** — brush/rect/fill/eraser/terrain → Tiles, place → Objects;
+other tools keep the current filter — but a chip click overrides that until the next tool switch. It
+governs the whole browse surface (search, Recent, Favourites, category tree, plus the Nodes pseudo-
+category under Objects and Terrains under Tiles); empty packs/categories are hidden. **Actors are hidden
+by default** and never auto-selected: creature/NPC sprites (packs tagged `rules.actor` in `pack.json`)
+stay out of the placement palette, and clicking one can't arm it for placement (there's no actor editor
+yet).
+
 ## Tools & shortcuts
 
 Tools: pan, brush, eraser, fill, rect, eyedropper ("Pick"), select, place, portal, collision, zone, shape, terrain.

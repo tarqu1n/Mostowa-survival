@@ -10,12 +10,22 @@
  *
  * `pack.json` shape:
  *   { id, name, author, sourceUrl, licence, tileSize,
- *     rules: { tile: string[], strip: string[], selfMade: string[] },   // glob patterns, see `globToRegExp`
- *     overrides: { [relativePath]: Partial<Asset> & { type?, rows?, cols?, omit? } }, // exact-path
+ *     rules: { tile: string[], strip: string[], selfMade: string[], actor: string[] },  // glob
+ *                                                                       // patterns, see `globToRegExp`;
+ *                                                                       // `actor` (plan 032 step 1) tags
+ *                                                                       // character/creature assets for
+ *                                                                       // `role` — sibling to `tile`/
+ *                                                                       // `strip`, does not affect `type`
+ *     overrides: { [relativePath]: Partial<Asset> & { type?, role?, rows?, cols?, omit? } }, // exact-path
  *                                                                       // escape hatch — `type` forces
  *                                                                       // classification (consulted
  *                                                                       // BEFORE the type branches
  *                                                                       // below, plan 014 step 7c);
+ *                                                                       // `role` (plan 032 step 1)
+ *                                                                       // forces palette-visibility
+ *                                                                       // classification, highest
+ *                                                                       // precedence over `rules.actor`
+ *                                                                       // and the type-derived default;
  *                                                                       // for a strip, `cols` (plan
  *                                                                       // 018 step 6.1) switches to
  *                                                                       // GEOMETRY mode — cols x rows
@@ -27,13 +37,16 @@
  *                                                                       // back to LEGACY mode, where
  *                                                                       // `rows` (default 1) turns a
  *                                                                       // strip's `frames` into a grid.
- *                                                                       // `type`/`rows`/`cols` are
- *                                                                       // consumed here, never written
- *                                                                       // to the emitted asset; `omit`
- *                                                                       // IS written (sanitised, only
- *                                                                       // when non-empty) — everything
- *                                                                       // else in the override applies
- *                                                                       // verbatim
+ *                                                                       // `type`/`role`/`rows`/`cols`
+ *                                                                       // are consumed here, never
+ *                                                                       // written to the emitted asset
+ *                                                                       // verbatim (`role` IS emitted,
+ *                                                                       // but as the already-resolved
+ *                                                                       // value, not the raw patch);
+ *                                                                       // `omit` IS written (sanitised,
+ *                                                                       // only when non-empty) —
+ *                                                                       // everything else in the
+ *                                                                       // override applies verbatim
  *     exclude: string[],                                                // glob patterns, dropped entirely
  *     regionParams: { [relativePath]: Partial<DetectionParams> },       // consumed by gen_regions.py, not here
  *     regions: { [relativePath]: Array<{x,y,w,h}> } }                   // consumed by gen_regions.py, not here
@@ -247,10 +260,20 @@ function buildAsset(pack, relPath, warnings) {
   // #4 — the two classifiers must never silently drift).
   const type = override?.type ?? ruleType;
 
+  // Role (plan 032 step 1): orthogonal to `type` — governs palette visibility (tile/object/actor),
+  // never rendering/mechanics. Default is derived from the already-resolved `type` (`tile` ->
+  // `'tile'`, `strip`/`object` -> `'object'`), overridable pack-wide via a `rules.actor` glob match
+  // (mirrors `rules.tile`/`rules.strip`), itself overridable per-path via `overrides[relPath].role`
+  // — precedence: `override.role` > `rules.actor` > type-derived default.
+  const defaultRole = type === 'tile' ? 'tile' : 'object';
+  const roleFromRules = matchesAny(pack.rules.actor ?? [], relPath) ? 'actor' : defaultRole;
+  const role = override?.role ?? roleFromRules;
+
   let asset = {
     id: `${pack.id}/${relPath}`,
     pack: pack.id,
     type,
+    role,
     source:
       type === 'tile'
         ? { kind: 'sheetFrame', sheet: relPath, frame: 0 }
@@ -292,14 +315,16 @@ function buildAsset(pack, relPath, warnings) {
   }
 
   if (override) {
-    // `type`/`rows`/`cols` are classification directives consumed above, not literal `CatalogAsset`
-    // fields — merging them in verbatim would leak an undocumented key into the committed catalog
-    // (and a redundant-but-harmless `type`, already resolved above). `omit` is likewise consumed
+    // `type`/`role`/`rows`/`cols` are classification directives consumed above, not literal
+    // `CatalogAsset` fields to merge verbatim — `type` and `role` are already resolved onto `asset`
+    // above (merging the raw override.role in here too would be redundant-but-harmless, same as
+    // `type`, but stripping it keeps this list a single source of truth). `omit` is likewise consumed
     // above (into `stripFrameDims`'s *sanitised* output, already set on `asset` when non-empty) —
-    // the raw unsanitised patch value must never overwrite that. Strip all four before the generic
+    // the raw unsanitised patch value must never overwrite that. Strip all five before the generic
     // merge; everything else in the override (e.g. `frames`) still applies normally.
     const patch = { ...override };
     delete patch.type;
+    delete patch.role;
     delete patch.rows;
     delete patch.cols;
     delete patch.omit;
@@ -443,6 +468,8 @@ function assertValidCatalog(catalog) {
     if (!packIds.has(a.pack)) throw new Error(`asset ${a.id} references unknown pack ${a.pack}`);
     if (!['tile', 'strip', 'object'].includes(a.type))
       throw new Error(`asset ${a.id} bad type ${a.type}`);
+    if (!['tile', 'object', 'actor'].includes(a.role))
+      throw new Error(`asset ${a.id} bad role ${a.role}`);
     if (typeof a.w !== 'number' || typeof a.h !== 'number')
       throw new Error(`asset ${a.id} missing w/h`);
     if (!Array.isArray(a.tags)) throw new Error(`asset ${a.id} tags must be an array`);

@@ -9,6 +9,9 @@
     "tile": [],
     "strip": [
       "**/*.png"
+    ],
+    "actor": [
+      "**/*.png"
     ]
   },
   "overrides": {},

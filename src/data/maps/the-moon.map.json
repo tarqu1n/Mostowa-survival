@@ -2502,6 +2502,19 @@
       "flipX": false,
       "flipY": false,
       "depth": 0
+    },
+    {
+      "id": "decor_0023",
+      "kind": "decor",
+      "asset": "fantasy-tileset/Props/Plant_2.png",
+      "x": 1777.0153422910096,
+      "y": 2480.5626913586284,
+      "scaleX": 1,
+      "scaleY": 1,
+      "rotation": 0,
+      "flipX": false,
+      "flipY": false,
+      "depth": -1
     }
   ]
 }

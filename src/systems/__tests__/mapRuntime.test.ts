@@ -9,17 +9,19 @@ describe('mapRuntime', () => {
   });
 
   it('builds a WORLD_INDEX from the eager manifest (no map files loaded)', () => {
-    // the-moon is placed at {78,230}; tile (0,0) sits outside its footprint, so it resolves to no map.
+    // Nothing is placed in world.json/manifest.json, so no tile resolves to a map.
     expect(WORLD_INDEX.mapAt(0, 0)).toBeNull();
   });
 
-  it("originOf('the-moon') returns its world.json placement", () => {
-    // Derive the expectation from the placement rather than hard-coding coordinates: the-moon is
-    // authored/repositioned from the World view, and a hard-coded origin would re-break this test —
-    // and with it the Pages deploy gate — every time the map is nudged.
-    const placement = WORLD.placements.find((p) => p.mapId === 'the-moon');
-    expect(placement).toBeDefined();
-    expect(originOf('the-moon')).toEqual(placement?.origin);
+  it("originOf('the-moon') is {col:0,row:0} — the start map must sit at the world origin", () => {
+    // INVARIANT, not just a value check. GameScene.buildWorld spawns the player at SPAWN_TILE and
+    // sizes the pathfinder grid (gridDims) assuming the start map is at origin {0,0}; nodes are also
+    // placed at raw local tiles. Placing the-moon anywhere else in the World view shifts the world
+    // but NOT the nodes/pathfinder bounds, so trees render off-screen and every path fails (the
+    // player spawns outside gridDims). Keep the-moon UNPLACED: if this goes red, a placement snuck
+    // into world.json and would ship a broken game — fix the data, don't relax the test.
+    expect(WORLD.placements.some((p) => p.mapId === 'the-moon')).toBe(false);
+    expect(originOf('the-moon')).toEqual({ col: 0, row: 0 });
   });
 
   it('originOf returns {col:0,row:0} for an unknown map id too', () => {

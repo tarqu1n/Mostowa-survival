@@ -1,14 +1,6 @@
 {
   "schemaVersion": 1,
-  "placements": [
-    {
-      "mapId": "the-moon",
-      "origin": {
-        "col": 78,
-        "row": 230
-      }
-    }
-  ],
+  "placements": [],
   "maps": [
     {
       "id": "the-moon",

@@ -87,9 +87,8 @@ gssh 'whoami; docker ps --filter name=mostowo-editor'
 Why it works from a locked cloud container: the Tailnet range `100.64.0.0/10` bypasses the sandbox's
 outbound agent-proxy, and `tailscaled` honours `$HTTPS_PROXY` for its own control-plane + DERP
 traffic. Quote the `ProxyCommand` as **one** `-o` argument or the shell splits it and SSH fails.
-The node registers as `claude-sandbox`; if the reusable key isn't also *ephemeral*, dead
-`claude-sandbox` nodes accumulate across sessions in the [admin console](https://login.tailscale.com/admin/machines)
-— prune them there, or make the key ephemeral so they self-remove when the container is reclaimed.
+The node registers as `claude-sandbox`; the key is **reusable + ephemeral**, so the node self-removes
+once the container goes offline — nothing to prune in the [admin console](https://login.tailscale.com/admin/machines).
 
 To fetch the HTTPS serve URL itself (e.g. to confirm the editor loads), let the proxy resolve the
 MagicDNS name so SNI/cert match — the Tailscale cert validates, no `-k`:

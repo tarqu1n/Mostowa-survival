@@ -6,7 +6,7 @@ import {
   CHOP_TREMBLE_PX,
   CHOP_TREMBLE_DEG,
   TREE_FELL_MS,
-  TREE_FELL_ARC_DEG,
+  TREE_FELL_REST_DEG,
   TREE_FELL_FADE_MS,
   ROCK_CRUMBLE_MS,
   BUSH_RUSTLE_MS,
@@ -233,15 +233,22 @@ export class NodeFxManager {
       );
     } else {
       // Tree topple ('chop'/undefined): rotate about the base-anchored origin (the trunk hinges at its
-      // foot) FROM its rest angle through the fell arc, with a strong ease-in so it tips slowly then
-      // whips down like a pendulum falling from balance (Quart, not Quad — the old mild ease read as
-      // near-linear). Lean sign never collapses to 0 — a worker directly above/below still gets a real
-      // topple, not a rotation-less fade (Finding 2).
-      const sign = Math.sign(facing.dCol) || Math.sign(facing.dRow) || 1;
+      // foot) FROM its placement rotation down to the horizontal rest angle (±TREE_FELL_REST_DEG),
+      // taking the SHORTEST path — a tree already leaning +30° falls the short way to +90-ish, it does
+      // not add a fixed arc on top of the lean and overshoot past horizontal. The fell direction is set
+      // by the existing lean (sign of baseAngle); an upright tree has no lean, so the chopper's side
+      // decides (never 0 — a worker directly above/below still gets a real topple, not a rotation-less
+      // fade, Finding 2). Strong ease-in so it tips slowly then whips down like a pendulum falling from
+      // balance (Quart, not Quad — the old mild ease read as near-linear).
+      const chopperSign = Math.sign(facing.dCol) || Math.sign(facing.dRow) || 1;
+      // Normalise to (-180, 180] first — the clone's start angle is setAngle-normalised, and the raw
+      // placement rotation can be e.g. 350° (a slight left lean); its sign then picks the fell side.
+      const lean = Phaser.Math.Angle.WrapDegrees(baseAngle);
+      const fellSign = Math.sign(lean) || chopperSign;
       entry.tweens.push(
         this.scene.tweens.add({
           targets: sprite,
-          angle: baseAngle + sign * TREE_FELL_ARC_DEG,
+          angle: fellSign * TREE_FELL_REST_DEG,
           duration: TREE_FELL_MS,
           ease: 'Quart.easeIn',
         }),

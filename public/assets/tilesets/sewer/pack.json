@@ -15,6 +15,9 @@
     "strip": [
       "**/*-Sheet.png"
     ],
+    "actor": [
+      "Enemy/**"
+    ],
     "selfMade": [
       "_derived/**"
     ]

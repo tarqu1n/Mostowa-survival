@@ -752,7 +752,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Archer/Death-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Archer/Death-Sheet.png"
@@ -777,7 +777,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Archer/Hit-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Archer/Hit-Sheet.png"
@@ -802,7 +802,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Archer/Idle-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Archer/Idle-Sheet.png"
@@ -827,7 +827,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Archer/Run-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Archer/Run-Sheet.png"
@@ -852,7 +852,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Knight/Death-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Knight/Death-Sheet.png"
@@ -877,7 +877,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Knight/Hit-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Knight/Hit-Sheet.png"
@@ -902,7 +902,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Knight/Idle-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Knight/Idle-Sheet.png"
@@ -927,7 +927,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Knight/Run-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Knight/Run-Sheet.png"
@@ -952,7 +952,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Priest/Death-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Priest/Death-Sheet.png"
@@ -977,7 +977,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Priest/Hit-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Priest/Hit-Sheet.png"
@@ -1002,7 +1002,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Priest/Idle-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Priest/Idle-Sheet.png"
@@ -1027,7 +1027,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Priest/Run-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Priest/Run-Sheet.png"
@@ -1052,7 +1052,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Soldier/Death-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Soldier/Death-Sheet.png"
@@ -1077,7 +1077,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Soldier/Hit-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Soldier/Hit-Sheet.png"
@@ -1102,7 +1102,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Soldier/Idle-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Soldier/Idle-Sheet.png"
@@ -1127,7 +1127,7 @@
       "id": "castle-environment/Enemies/Royal Crew/Soldier/Run-Sheet.png",
       "pack": "castle-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Royal Crew/Soldier/Run-Sheet.png"
@@ -1671,7 +1671,7 @@
       "id": "cave/Enemies/Heavy Fungus/Death-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Heavy Fungus/Death-Sheet.png"
@@ -1695,7 +1695,7 @@
       "id": "cave/Enemies/Heavy Fungus/Hit-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Heavy Fungus/Hit-Sheet.png"
@@ -1719,7 +1719,7 @@
       "id": "cave/Enemies/Heavy Fungus/Idle-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Heavy Fungus/Idle-Sheet.png"
@@ -1743,7 +1743,7 @@
       "id": "cave/Enemies/Heavy Fungus/Run-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Heavy Fungus/Run-Sheet.png"
@@ -1767,7 +1767,7 @@
       "id": "cave/Enemies/Immature Fungus/Death-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Immature Fungus/Death-Sheet.png"
@@ -1791,7 +1791,7 @@
       "id": "cave/Enemies/Immature Fungus/Hit-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Immature Fungus/Hit-Sheet.png"
@@ -1815,7 +1815,7 @@
       "id": "cave/Enemies/Immature Fungus/Idle-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Immature Fungus/Idle-Sheet.png"
@@ -1839,7 +1839,7 @@
       "id": "cave/Enemies/Immature Fungus/Run-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Immature Fungus/Run-Sheet.png"
@@ -1863,7 +1863,7 @@
       "id": "cave/Enemies/Long Fungus/Death-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Long Fungus/Death-Sheet.png"
@@ -1887,7 +1887,7 @@
       "id": "cave/Enemies/Long Fungus/Hit-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Long Fungus/Hit-Sheet.png"
@@ -1911,7 +1911,7 @@
       "id": "cave/Enemies/Long Fungus/Idle-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Long Fungus/Idle-Sheet.png"
@@ -1935,7 +1935,7 @@
       "id": "cave/Enemies/Long Fungus/Run-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Long Fungus/Run-Sheet.png"
@@ -1959,7 +1959,7 @@
       "id": "cave/Enemies/Old Fungus/Death-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Old Fungus/Death-Sheet.png"
@@ -1983,7 +1983,7 @@
       "id": "cave/Enemies/Old Fungus/Hit-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Old Fungus/Hit-Sheet.png"
@@ -2007,7 +2007,7 @@
       "id": "cave/Enemies/Old Fungus/Idle-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Old Fungus/Idle-Sheet.png"
@@ -2031,7 +2031,7 @@
       "id": "cave/Enemies/Old Fungus/Run-Sheet.png",
       "pack": "cave",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Old Fungus/Run-Sheet.png"
@@ -39199,7 +39199,7 @@
       "id": "desert/Enemy/Mummy - Base/Death/Death-Sheet.png",
       "pack": "desert",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Mummy - Base/Death/Death-Sheet.png"
@@ -39223,7 +39223,7 @@
       "id": "desert/Enemy/Mummy - Base/Idle/Idle-Sheet.png",
       "pack": "desert",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Mummy - Base/Idle/Idle-Sheet.png"
@@ -39247,7 +39247,7 @@
       "id": "desert/Enemy/Mummy - Base/Run/Run-Sheet.png",
       "pack": "desert",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Mummy - Base/Run/Run-Sheet.png"
@@ -39271,7 +39271,7 @@
       "id": "desert/Enemy/Mummy - Mage/Death/Death-Sheet.png",
       "pack": "desert",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Mummy - Mage/Death/Death-Sheet.png"
@@ -39295,7 +39295,7 @@
       "id": "desert/Enemy/Mummy - Mage/Idle/Idle-Sheet.png",
       "pack": "desert",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Mummy - Mage/Idle/Idle-Sheet.png"
@@ -39319,7 +39319,7 @@
       "id": "desert/Enemy/Mummy - Mage/Run/Run-Sheet.png",
       "pack": "desert",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Mummy - Mage/Run/Run-Sheet.png"
@@ -39343,7 +39343,7 @@
       "id": "desert/Enemy/Mummy - Rogue/Death/Death-Sheet.png",
       "pack": "desert",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Mummy - Rogue/Death/Death-Sheet.png"
@@ -39367,7 +39367,7 @@
       "id": "desert/Enemy/Mummy - Rogue/Idle/Idle-Sheet.png",
       "pack": "desert",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Mummy - Rogue/Idle/Idle-Sheet.png"
@@ -39391,7 +39391,7 @@
       "id": "desert/Enemy/Mummy - Rogue/Run/Run-Sheet.png",
       "pack": "desert",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Mummy - Rogue/Run/Run-Sheet.png"
@@ -39415,7 +39415,7 @@
       "id": "desert/Enemy/Mummy - Warrior/Death/Death-Sheet.png",
       "pack": "desert",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Mummy - Warrior/Death/Death-Sheet.png"
@@ -39439,7 +39439,7 @@
       "id": "desert/Enemy/Mummy - Warrior/Idle/Idle-Sheet.png",
       "pack": "desert",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Mummy - Warrior/Idle/Idle-Sheet.png"
@@ -39463,7 +39463,7 @@
       "id": "desert/Enemy/Mummy - Warrior/Run/Run-Sheet.png",
       "pack": "desert",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Mummy - Warrior/Run/Run-Sheet.png"
@@ -41295,7 +41295,7 @@
       "id": "fairy-forest/Enemies/Elf - Base/Death/Death-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Base/Death/Death-Sheet.png"
@@ -41319,7 +41319,7 @@
       "id": "fairy-forest/Enemies/Elf - Base/Hit/Hit-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Base/Hit/Hit-Sheet.png"
@@ -41343,7 +41343,7 @@
       "id": "fairy-forest/Enemies/Elf - Base/Idle/Idle-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Base/Idle/Idle-Sheet.png"
@@ -41367,7 +41367,7 @@
       "id": "fairy-forest/Enemies/Elf - Base/Run/Run-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Base/Run/Run-Sheet.png"
@@ -41391,7 +41391,7 @@
       "id": "fairy-forest/Enemies/Elf - Druid/Death/Death-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Druid/Death/Death-Sheet.png"
@@ -41415,7 +41415,7 @@
       "id": "fairy-forest/Enemies/Elf - Druid/Hit/Hit-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Druid/Hit/Hit-Sheet.png"
@@ -41439,7 +41439,7 @@
       "id": "fairy-forest/Enemies/Elf - Druid/Idle/Idle-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Druid/Idle/Idle-Sheet.png"
@@ -41463,7 +41463,7 @@
       "id": "fairy-forest/Enemies/Elf - Druid/Run/Run-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Druid/Run/Run-Sheet.png"
@@ -41487,7 +41487,7 @@
       "id": "fairy-forest/Enemies/Elf - Hunter/Death/Death-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Hunter/Death/Death-Sheet.png"
@@ -41511,7 +41511,7 @@
       "id": "fairy-forest/Enemies/Elf - Hunter/Hit/Hit-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Hunter/Hit/Hit-Sheet.png"
@@ -41535,7 +41535,7 @@
       "id": "fairy-forest/Enemies/Elf - Hunter/Idle/Idle-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Hunter/Idle/Idle-Sheet.png"
@@ -41559,7 +41559,7 @@
       "id": "fairy-forest/Enemies/Elf - Hunter/Run/Run-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Hunter/Run/Run-Sheet.png"
@@ -41583,7 +41583,7 @@
       "id": "fairy-forest/Enemies/Elf - Ranger/Death/Death-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Ranger/Death/Death-Sheet.png"
@@ -41607,7 +41607,7 @@
       "id": "fairy-forest/Enemies/Elf - Ranger/Hit/Hit-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Ranger/Hit/Hit-Sheet.png"
@@ -41631,7 +41631,7 @@
       "id": "fairy-forest/Enemies/Elf - Ranger/Idle/Idle-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Ranger/Idle/Idle-Sheet.png"
@@ -41655,7 +41655,7 @@
       "id": "fairy-forest/Enemies/Elf - Ranger/Run/Run-Sheet.png",
       "pack": "fairy-forest",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Elf - Ranger/Run/Run-Sheet.png"
@@ -41980,7 +41980,7 @@
       "id": "fantasy-tileset/Characters/Character_Idle_down.png",
       "pack": "fantasy-tileset",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Characters/Character_Idle_down.png"
@@ -42003,7 +42003,7 @@
       "id": "fantasy-tileset/Characters/Character_Idle_left.png",
       "pack": "fantasy-tileset",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Characters/Character_Idle_left.png"
@@ -42026,7 +42026,7 @@
       "id": "fantasy-tileset/Characters/Character_Idle_right.png",
       "pack": "fantasy-tileset",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Characters/Character_Idle_right.png"
@@ -42049,7 +42049,7 @@
       "id": "fantasy-tileset/Characters/Character_Idle_up.png",
       "pack": "fantasy-tileset",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Characters/Character_Idle_up.png"
@@ -42072,7 +42072,7 @@
       "id": "fantasy-tileset/Characters/Character_Slash_down.png",
       "pack": "fantasy-tileset",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Characters/Character_Slash_down.png"
@@ -42095,7 +42095,7 @@
       "id": "fantasy-tileset/Characters/Character_Slash_left.png",
       "pack": "fantasy-tileset",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Characters/Character_Slash_left.png"
@@ -42118,7 +42118,7 @@
       "id": "fantasy-tileset/Characters/Character_Slash_right.png",
       "pack": "fantasy-tileset",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Characters/Character_Slash_right.png"
@@ -42141,7 +42141,7 @@
       "id": "fantasy-tileset/Characters/Character_Slash_up.png",
       "pack": "fantasy-tileset",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Characters/Character_Slash_up.png"
@@ -42164,7 +42164,7 @@
       "id": "fantasy-tileset/Characters/Character_Walk_down.png",
       "pack": "fantasy-tileset",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Characters/Character_Walk_down.png"
@@ -42187,7 +42187,7 @@
       "id": "fantasy-tileset/Characters/Character_Walk_left.png",
       "pack": "fantasy-tileset",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Characters/Character_Walk_left.png"
@@ -42210,7 +42210,7 @@
       "id": "fantasy-tileset/Characters/Character_Walk_right.png",
       "pack": "fantasy-tileset",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Characters/Character_Walk_right.png"
@@ -42233,7 +42233,7 @@
       "id": "fantasy-tileset/Characters/Character_Walk_up.png",
       "pack": "fantasy-tileset",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Characters/Character_Walk_up.png"
@@ -43125,7 +43125,7 @@
       "id": "forge/Enemy/Stone - Base/Death/Death-Sheet.png",
       "pack": "forge",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Stone - Base/Death/Death-Sheet.png"
@@ -43149,7 +43149,7 @@
       "id": "forge/Enemy/Stone - Base/Idle/Idle-Sheet.png",
       "pack": "forge",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Stone - Base/Idle/Idle-Sheet.png"
@@ -43173,7 +43173,7 @@
       "id": "forge/Enemy/Stone - Base/Run/Run-Sheet.png",
       "pack": "forge",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Stone - Base/Run/Run-Sheet.png"
@@ -43197,7 +43197,7 @@
       "id": "forge/Enemy/Stone - Broken/Death/Death-Sheet.png",
       "pack": "forge",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Stone - Broken/Death/Death-Sheet.png"
@@ -43221,7 +43221,7 @@
       "id": "forge/Enemy/Stone - Broken/Idle/Idle-Sheet.png",
       "pack": "forge",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Stone - Broken/Idle/Idle-Sheet.png"
@@ -43245,7 +43245,7 @@
       "id": "forge/Enemy/Stone - Broken/Run/Run-Sheet.png",
       "pack": "forge",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Stone - Broken/Run/Run-Sheet.png"
@@ -43269,7 +43269,7 @@
       "id": "forge/Enemy/Stone - Golem/Death/Death-Sheet.png",
       "pack": "forge",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Stone - Golem/Death/Death-Sheet.png"
@@ -43293,7 +43293,7 @@
       "id": "forge/Enemy/Stone - Golem/Idle/Idle-Sheet.png",
       "pack": "forge",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Stone - Golem/Idle/Idle-Sheet.png"
@@ -43317,7 +43317,7 @@
       "id": "forge/Enemy/Stone - Golem/Run/Run-Sheet.png",
       "pack": "forge",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Stone - Golem/Run/Run-Sheet.png"
@@ -43341,7 +43341,7 @@
       "id": "forge/Enemy/Stone - Lava/Death/Death-Sheet.png",
       "pack": "forge",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Stone - Lava/Death/Death-Sheet.png"
@@ -43365,7 +43365,7 @@
       "id": "forge/Enemy/Stone - Lava/Idle/Idle-Sheet.png",
       "pack": "forge",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Stone - Lava/Idle/Idle-Sheet.png"
@@ -43389,7 +43389,7 @@
       "id": "forge/Enemy/Stone - Lava/Run/Run-Sheet.png",
       "pack": "forge",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Stone - Lava/Run/Run-Sheet.png"
@@ -43658,7 +43658,7 @@
       "id": "garden-environment/Enemies/Feminine/Death-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Feminine/Death-Sheet.png"
@@ -43681,7 +43681,7 @@
       "id": "garden-environment/Enemies/Feminine/Hit-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Feminine/Hit-Sheet.png"
@@ -43704,7 +43704,7 @@
       "id": "garden-environment/Enemies/Feminine/Idle-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Feminine/Idle-Sheet.png"
@@ -43727,7 +43727,7 @@
       "id": "garden-environment/Enemies/Feminine/Run-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Feminine/Run-Sheet.png"
@@ -43750,7 +43750,7 @@
       "id": "garden-environment/Enemies/Masculine/Death-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Masculine/Death-Sheet.png"
@@ -43773,7 +43773,7 @@
       "id": "garden-environment/Enemies/Masculine/Hit-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Masculine/Hit-Sheet.png"
@@ -43796,7 +43796,7 @@
       "id": "garden-environment/Enemies/Masculine/Idle-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Masculine/Idle-Sheet.png"
@@ -43819,7 +43819,7 @@
       "id": "garden-environment/Enemies/Masculine/Run-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Masculine/Run-Sheet.png"
@@ -43842,7 +43842,7 @@
       "id": "garden-environment/Enemies/Medusa/Death-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Medusa/Death-Sheet.png"
@@ -43865,7 +43865,7 @@
       "id": "garden-environment/Enemies/Medusa/Hit-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Medusa/Hit-Sheet.png"
@@ -43888,7 +43888,7 @@
       "id": "garden-environment/Enemies/Medusa/Idle-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Medusa/Idle-Sheet.png"
@@ -43911,7 +43911,7 @@
       "id": "garden-environment/Enemies/Medusa/Run-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Medusa/Run-Sheet.png"
@@ -43934,7 +43934,7 @@
       "id": "garden-environment/Enemies/Old/Death-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Old/Death-Sheet.png"
@@ -43957,7 +43957,7 @@
       "id": "garden-environment/Enemies/Old/Hit-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Old/Hit-Sheet.png"
@@ -43980,7 +43980,7 @@
       "id": "garden-environment/Enemies/Old/Idle-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Old/Idle-Sheet.png"
@@ -44003,7 +44003,7 @@
       "id": "garden-environment/Enemies/Old/Run-Sheet.png",
       "pack": "garden-environment",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Old/Run-Sheet.png"
@@ -44604,7 +44604,7 @@
       "id": "hideout/Enemies/Baldits/Fighter/Death/Death-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Fighter/Death/Death-Sheet.png"
@@ -44628,7 +44628,7 @@
       "id": "hideout/Enemies/Baldits/Fighter/Hit/Hit-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Fighter/Hit/Hit-Sheet.png"
@@ -44652,7 +44652,7 @@
       "id": "hideout/Enemies/Baldits/Fighter/Idle/Idle-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Fighter/Idle/Idle-Sheet.png"
@@ -44676,7 +44676,7 @@
       "id": "hideout/Enemies/Baldits/Fighter/Run/Run-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Fighter/Run/Run-Sheet.png"
@@ -44700,7 +44700,7 @@
       "id": "hideout/Enemies/Baldits/Scout/Death/Death-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Scout/Death/Death-Sheet.png"
@@ -44724,7 +44724,7 @@
       "id": "hideout/Enemies/Baldits/Scout/Hit/Hit-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Scout/Hit/Hit-Sheet.png"
@@ -44748,7 +44748,7 @@
       "id": "hideout/Enemies/Baldits/Scout/Idle/Idle-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Scout/Idle/Idle-Sheet.png"
@@ -44772,7 +44772,7 @@
       "id": "hideout/Enemies/Baldits/Scout/Run/Run-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Scout/Run/Run-Sheet.png"
@@ -44796,7 +44796,7 @@
       "id": "hideout/Enemies/Baldits/Sorcerer/Death/Death-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Sorcerer/Death/Death-Sheet.png"
@@ -44820,7 +44820,7 @@
       "id": "hideout/Enemies/Baldits/Sorcerer/Hit/Hit-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Sorcerer/Hit/Hit-Sheet.png"
@@ -44844,7 +44844,7 @@
       "id": "hideout/Enemies/Baldits/Sorcerer/Idle/Idle-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Sorcerer/Idle/Idle-Sheet.png"
@@ -44868,7 +44868,7 @@
       "id": "hideout/Enemies/Baldits/Sorcerer/Run/Run-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Sorcerer/Run/Run-Sheet.png"
@@ -44892,7 +44892,7 @@
       "id": "hideout/Enemies/Baldits/Tracker/Death/Death-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Tracker/Death/Death-Sheet.png"
@@ -44916,7 +44916,7 @@
       "id": "hideout/Enemies/Baldits/Tracker/hIT/Hit-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Tracker/hIT/Hit-Sheet.png"
@@ -44940,7 +44940,7 @@
       "id": "hideout/Enemies/Baldits/Tracker/Idle/Idle-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Tracker/Idle/Idle-Sheet.png"
@@ -44964,7 +44964,7 @@
       "id": "hideout/Enemies/Baldits/Tracker/Run/Run-Sheet.png",
       "pack": "hideout",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Baldits/Tracker/Run/Run-Sheet.png"
@@ -45439,7 +45439,7 @@
       "id": "library/Enemies/Scholars/Cataloguer/Death-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Cataloguer/Death-Sheet.png"
@@ -45463,7 +45463,7 @@
       "id": "library/Enemies/Scholars/Cataloguer/Hit-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Cataloguer/Hit-Sheet.png"
@@ -45487,7 +45487,7 @@
       "id": "library/Enemies/Scholars/Cataloguer/Idle-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Cataloguer/Idle-Sheet.png"
@@ -45511,7 +45511,7 @@
       "id": "library/Enemies/Scholars/Cataloguer/Run-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Cataloguer/Run-Sheet.png"
@@ -45535,7 +45535,7 @@
       "id": "library/Enemies/Scholars/Censor/Death-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Censor/Death-Sheet.png"
@@ -45559,7 +45559,7 @@
       "id": "library/Enemies/Scholars/Censor/Hit-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Censor/Hit-Sheet.png"
@@ -45583,7 +45583,7 @@
       "id": "library/Enemies/Scholars/Censor/Idle-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Censor/Idle-Sheet.png"
@@ -45607,7 +45607,7 @@
       "id": "library/Enemies/Scholars/Censor/Run-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Censor/Run-Sheet.png"
@@ -45631,7 +45631,7 @@
       "id": "library/Enemies/Scholars/Director/Death-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Director/Death-Sheet.png"
@@ -45655,7 +45655,7 @@
       "id": "library/Enemies/Scholars/Director/Hit-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Director/Hit-Sheet.png"
@@ -45679,7 +45679,7 @@
       "id": "library/Enemies/Scholars/Director/Idle-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Director/Idle-Sheet.png"
@@ -45703,7 +45703,7 @@
       "id": "library/Enemies/Scholars/Director/Run-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Director/Run-Sheet.png"
@@ -45727,7 +45727,7 @@
       "id": "library/Enemies/Scholars/Researcher/Death-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Researcher/Death-Sheet.png"
@@ -45751,7 +45751,7 @@
       "id": "library/Enemies/Scholars/Researcher/Hit-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Researcher/Hit-Sheet.png"
@@ -45775,7 +45775,7 @@
       "id": "library/Enemies/Scholars/Researcher/Idle-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Researcher/Idle-Sheet.png"
@@ -45799,7 +45799,7 @@
       "id": "library/Enemies/Scholars/Researcher/Run-Sheet.png",
       "pack": "library",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemies/Scholars/Researcher/Run-Sheet.png"
@@ -46248,7 +46248,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Idle/Carry_Idle_Down-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Carry_Idle/Carry_Idle_Down-Sheet.png"
@@ -46276,7 +46276,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Idle/Carry_Idle_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Carry_Idle/Carry_Idle_Side-Sheet.png"
@@ -46304,7 +46304,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Idle/Carry_Idle_Up-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Carry_Idle/Carry_Idle_Up-Sheet.png"
@@ -46332,7 +46332,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Run/Carry_Run_Down-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Carry_Run/Carry_Run_Down-Sheet.png"
@@ -46360,7 +46360,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Run/Carry_Run_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Carry_Run/Carry_Run_Side-Sheet.png"
@@ -46388,7 +46388,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Run/Carry_Run_Up-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Carry_Run/Carry_Run_Up-Sheet.png"
@@ -46416,7 +46416,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Walk/Carry_Walk_Down-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Carry_Walk/Carry_Walk_Down-Sheet.png"
@@ -46444,7 +46444,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Walk/Carry_Walk_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Carry_Walk/Carry_Walk_Side-Sheet.png"
@@ -46472,7 +46472,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Carry_Walk/Carry_Walk_Up-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Carry_Walk/Carry_Walk_Up-Sheet.png"
@@ -46500,7 +46500,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Collect_Base/Collect_Down-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Collect_Base/Collect_Down-Sheet.png"
@@ -46528,7 +46528,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Collect_Base/Collect_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Collect_Base/Collect_Side-Sheet.png"
@@ -46556,7 +46556,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Collect_Base/Collect_Up-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Collect_Base/Collect_Up-Sheet.png"
@@ -46584,7 +46584,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Crush_Base/Crush_Down-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Crush_Base/Crush_Down-Sheet.png"
@@ -46612,7 +46612,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Crush_Base/Crush_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Crush_Base/Crush_Side-Sheet.png"
@@ -46640,7 +46640,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Crush_Base/Crush_Up-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Crush_Base/Crush_Up-Sheet.png"
@@ -46668,7 +46668,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Death_Base/Death_Down-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Death_Base/Death_Down-Sheet.png"
@@ -46696,7 +46696,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Death_Base/Death_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Death_Base/Death_Side-Sheet.png"
@@ -46724,7 +46724,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Death_Base/Death_Up-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Death_Base/Death_Up-Sheet.png"
@@ -46752,7 +46752,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Fishing_Base/Fishing_Down-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Fishing_Base/Fishing_Down-Sheet.png"
@@ -46780,7 +46780,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Fishing_Base/Fishing_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Fishing_Base/Fishing_Side-Sheet.png"
@@ -46808,7 +46808,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Fishing_Base/Fishing_Up-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Fishing_Base/Fishing_Up-Sheet.png"
@@ -46836,7 +46836,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Hit_Base/Hit_Down-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Hit_Base/Hit_Down-Sheet.png"
@@ -46864,7 +46864,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Hit_Base/Hit_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Hit_Base/Hit_Side-Sheet.png"
@@ -46892,7 +46892,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Hit_Base/Hit_Up-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Hit_Base/Hit_Up-Sheet.png"
@@ -46920,7 +46920,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Idle_Base/Idle_Down-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Idle_Base/Idle_Down-Sheet.png"
@@ -46948,7 +46948,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Idle_Base/Idle_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Idle_Base/Idle_Side-Sheet.png"
@@ -46976,7 +46976,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Idle_Base/Idle_Up-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Idle_Base/Idle_Up-Sheet.png"
@@ -47004,7 +47004,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Pierce_Base/Pierce_Down-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Pierce_Base/Pierce_Down-Sheet.png"
@@ -47032,7 +47032,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Pierce_Base/Pierce_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Pierce_Base/Pierce_Side-Sheet.png"
@@ -47060,7 +47060,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Pierce_Base/Pierce_Top-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Pierce_Base/Pierce_Top-Sheet.png"
@@ -47088,7 +47088,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Run_Base/Run_Down-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Run_Base/Run_Down-Sheet.png"
@@ -47116,7 +47116,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Run_Base/Run_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Run_Base/Run_Side-Sheet.png"
@@ -47144,7 +47144,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Run_Base/Run_Up-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Run_Base/Run_Up-Sheet.png"
@@ -47172,7 +47172,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Slice_Base/Slice_Down-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Slice_Base/Slice_Down-Sheet.png"
@@ -47200,7 +47200,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Slice_Base/Slice_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Slice_Base/Slice_Side-Sheet.png"
@@ -47228,7 +47228,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Slice_Base/Slice_Up-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Slice_Base/Slice_Up-Sheet.png"
@@ -47256,7 +47256,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Walk_Base/Walk_Down-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Walk_Base/Walk_Down-Sheet.png"
@@ -47284,7 +47284,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Walk_Base/Walk_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Walk_Base/Walk_Side-Sheet.png"
@@ -47312,7 +47312,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Walk_Base/Walk_Up-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Walk_Base/Walk_Up-Sheet.png"
@@ -47340,7 +47340,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Watering_Base/Watering_Down-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Watering_Base/Watering_Down-Sheet.png"
@@ -47368,7 +47368,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Watering_Base/Watering_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Watering_Base/Watering_Side-Sheet.png"
@@ -47396,7 +47396,7 @@
       "id": "pixel-crawler/Entities/Characters/Body_A/Animations/Watering_Base/Watering_Up-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Characters/Body_A/Animations/Watering_Base/Watering_Up-Sheet.png"
@@ -47424,7 +47424,7 @@
       "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Rogue/Death/Death-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Orc Crew/Orc - Rogue/Death/Death-Sheet.png"
@@ -47450,7 +47450,7 @@
       "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Rogue/Idle/Idle-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Orc Crew/Orc - Rogue/Idle/Idle-Sheet.png"
@@ -47476,7 +47476,7 @@
       "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Rogue/Run/Run-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Orc Crew/Orc - Rogue/Run/Run-Sheet.png"
@@ -47502,7 +47502,7 @@
       "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Shaman/Death/Death-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Orc Crew/Orc - Shaman/Death/Death-Sheet.png"
@@ -47528,7 +47528,7 @@
       "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Shaman/Idle/Idle-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Orc Crew/Orc - Shaman/Idle/Idle-Sheet.png"
@@ -47554,7 +47554,7 @@
       "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Shaman/Run/Run-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Orc Crew/Orc - Shaman/Run/Run-Sheet.png"
@@ -47580,7 +47580,7 @@
       "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Warrior/Death/Death-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Orc Crew/Orc - Warrior/Death/Death-Sheet.png"
@@ -47606,7 +47606,7 @@
       "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Warrior/Idle/Idle-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Orc Crew/Orc - Warrior/Idle/Idle-Sheet.png"
@@ -47632,7 +47632,7 @@
       "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc - Warrior/Run/Run-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Orc Crew/Orc - Warrior/Run/Run-Sheet.png"
@@ -47658,7 +47658,7 @@
       "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc/Death/Death-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Orc Crew/Orc/Death/Death-Sheet.png"
@@ -47683,7 +47683,7 @@
       "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc/Idle/Idle-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Orc Crew/Orc/Idle/Idle-Sheet.png"
@@ -47708,7 +47708,7 @@
       "id": "pixel-crawler/Entities/Mobs/Orc Crew/Orc/Run/Run-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Orc Crew/Orc/Run/Run-Sheet.png"
@@ -47733,7 +47733,7 @@
       "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Base/Death/Death-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Skeleton Crew/Skeleton - Base/Death/Death-Sheet.png"
@@ -47759,7 +47759,7 @@
       "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Base/Idle/Idle-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Skeleton Crew/Skeleton - Base/Idle/Idle-Sheet.png"
@@ -47785,7 +47785,7 @@
       "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Base/Run/Run-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Skeleton Crew/Skeleton - Base/Run/Run-Sheet.png"
@@ -47811,7 +47811,7 @@
       "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Mage/Death/Death-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Skeleton Crew/Skeleton - Mage/Death/Death-Sheet.png"
@@ -47837,7 +47837,7 @@
       "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Mage/Idle/Idle-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Skeleton Crew/Skeleton - Mage/Idle/Idle-Sheet.png"
@@ -47863,7 +47863,7 @@
       "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Mage/Run/Run-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Skeleton Crew/Skeleton - Mage/Run/Run-Sheet.png"
@@ -47889,7 +47889,7 @@
       "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Rogue/Death/Death-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Skeleton Crew/Skeleton - Rogue/Death/Death-Sheet.png"
@@ -47915,7 +47915,7 @@
       "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Rogue/Idle/Idle-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Skeleton Crew/Skeleton - Rogue/Idle/Idle-Sheet.png"
@@ -47941,7 +47941,7 @@
       "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Rogue/Run/Run-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Skeleton Crew/Skeleton - Rogue/Run/Run-Sheet.png"
@@ -47967,7 +47967,7 @@
       "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Warrior/Death/Death-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Skeleton Crew/Skeleton - Warrior/Death/Death-Sheet.png"
@@ -47993,7 +47993,7 @@
       "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Warrior/Idle/Idle-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Skeleton Crew/Skeleton - Warrior/Idle/Idle-Sheet.png"
@@ -48019,7 +48019,7 @@
       "id": "pixel-crawler/Entities/Mobs/Skeleton Crew/Skeleton - Warrior/Run/Run-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Mobs/Skeleton Crew/Skeleton - Warrior/Run/Run-Sheet.png"
@@ -48045,7 +48045,7 @@
       "id": "pixel-crawler/Entities/Npc's/Citizen_F/Peasant_A/Idle/Idle-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Citizen_F/Peasant_A/Idle/Idle-Sheet.png"
@@ -48073,7 +48073,7 @@
       "id": "pixel-crawler/Entities/Npc's/Citizen_F/Peasant_A/Walk/Walk-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Citizen_F/Peasant_A/Walk/Walk-Sheet.png"
@@ -48101,7 +48101,7 @@
       "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_A/Idle_Hold/Idle_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Citizen_F/Tavern_A/Idle_Hold/Idle_Side-Sheet.png"
@@ -48131,7 +48131,7 @@
       "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_A/Idle/Idle_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Citizen_F/Tavern_A/Idle/Idle_Side-Sheet.png"
@@ -48160,7 +48160,7 @@
       "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_A/Walk_Hold/Walk_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Citizen_F/Tavern_A/Walk_Hold/Walk_Side-Sheet.png"
@@ -48190,7 +48190,7 @@
       "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_A/Walk/Walk_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Citizen_F/Tavern_A/Walk/Walk_Side-Sheet.png"
@@ -48219,7 +48219,7 @@
       "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_B/Idle_Hold/Idle_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Citizen_F/Tavern_B/Idle_Hold/Idle_Side-Sheet.png"
@@ -48249,7 +48249,7 @@
       "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_B/Idle/Idle_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Citizen_F/Tavern_B/Idle/Idle_Side-Sheet.png"
@@ -48278,7 +48278,7 @@
       "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_B/Walk_Hold/Walk_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Citizen_F/Tavern_B/Walk_Hold/Walk_Side-Sheet.png"
@@ -48308,7 +48308,7 @@
       "id": "pixel-crawler/Entities/Npc's/Citizen_F/Tavern_B/Walk/Walk_Side-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Citizen_F/Tavern_B/Walk/Walk_Side-Sheet.png"
@@ -48337,7 +48337,7 @@
       "id": "pixel-crawler/Entities/Npc's/Knight/Death/Death-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Knight/Death/Death-Sheet.png"
@@ -48362,7 +48362,7 @@
       "id": "pixel-crawler/Entities/Npc's/Knight/Idle/Idle-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Knight/Idle/Idle-Sheet.png"
@@ -48387,7 +48387,7 @@
       "id": "pixel-crawler/Entities/Npc's/Knight/Run/Run-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Knight/Run/Run-Sheet.png"
@@ -48412,7 +48412,7 @@
       "id": "pixel-crawler/Entities/Npc's/Rogue/Death/Death-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Rogue/Death/Death-Sheet.png"
@@ -48437,7 +48437,7 @@
       "id": "pixel-crawler/Entities/Npc's/Rogue/Idle/Idle-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Rogue/Idle/Idle-Sheet.png"
@@ -48462,7 +48462,7 @@
       "id": "pixel-crawler/Entities/Npc's/Rogue/Run/Run-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Rogue/Run/Run-Sheet.png"
@@ -48487,7 +48487,7 @@
       "id": "pixel-crawler/Entities/Npc's/Wizzard/Death/Death-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Wizzard/Death/Death-Sheet.png"
@@ -48512,7 +48512,7 @@
       "id": "pixel-crawler/Entities/Npc's/Wizzard/Idle/Idle-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Wizzard/Idle/Idle-Sheet.png"
@@ -48537,7 +48537,7 @@
       "id": "pixel-crawler/Entities/Npc's/Wizzard/Run/Run-Sheet.png",
       "pack": "pixel-crawler",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Entities/Npc's/Wizzard/Run/Run-Sheet.png"
@@ -57130,7 +57130,7 @@
       "id": "sewer/Enemy/Rat - Base/Death/Death-Sheet.png",
       "pack": "sewer",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Rat - Base/Death/Death-Sheet.png"
@@ -57154,7 +57154,7 @@
       "id": "sewer/Enemy/Rat - Base/Idle/Idle-Sheet.png",
       "pack": "sewer",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Rat - Base/Idle/Idle-Sheet.png"
@@ -57178,7 +57178,7 @@
       "id": "sewer/Enemy/Rat - Base/Run/Run-Sheet.png",
       "pack": "sewer",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Rat - Base/Run/Run-Sheet.png"
@@ -57202,7 +57202,7 @@
       "id": "sewer/Enemy/Rat - Mage/Death/Death-Sheet.png",
       "pack": "sewer",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Rat - Mage/Death/Death-Sheet.png"
@@ -57226,7 +57226,7 @@
       "id": "sewer/Enemy/Rat - Mage/Idle/Idle-Sheet.png",
       "pack": "sewer",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Rat - Mage/Idle/Idle-Sheet.png"
@@ -57250,7 +57250,7 @@
       "id": "sewer/Enemy/Rat - Mage/Run/Run-Sheet.png",
       "pack": "sewer",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Rat - Mage/Run/Run-Sheet.png"
@@ -57274,7 +57274,7 @@
       "id": "sewer/Enemy/Rat - Rogue/Death/Death-Sheet.png",
       "pack": "sewer",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Rat - Rogue/Death/Death-Sheet.png"
@@ -57298,7 +57298,7 @@
       "id": "sewer/Enemy/Rat - Rogue/Idle/Idle-Sheet.png",
       "pack": "sewer",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Rat - Rogue/Idle/Idle-Sheet.png"
@@ -57322,7 +57322,7 @@
       "id": "sewer/Enemy/Rat - Rogue/Run/Run-Sheet.png",
       "pack": "sewer",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Rat - Rogue/Run/Run-Sheet.png"
@@ -57346,7 +57346,7 @@
       "id": "sewer/Enemy/Rat - Warrior/Death/Death-Sheet.png",
       "pack": "sewer",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Rat - Warrior/Death/Death-Sheet.png"
@@ -57370,7 +57370,7 @@
       "id": "sewer/Enemy/Rat - Warrior/Idle/Idle-Sheet.png",
       "pack": "sewer",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Rat - Warrior/Idle/Idle-Sheet.png"
@@ -57394,7 +57394,7 @@
       "id": "sewer/Enemy/Rat - Warrior/Run/Run-Sheet.png",
       "pack": "sewer",
       "type": "strip",
-      "role": "object",
+      "role": "actor",
       "source": {
         "kind": "image",
         "path": "Enemy/Rat - Warrior/Run/Run-Sheet.png"

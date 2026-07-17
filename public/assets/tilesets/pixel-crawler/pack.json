@@ -12,6 +12,9 @@
     "strip": [
       "**/*-Sheet.png"
     ],
+    "actor": [
+      "Entities/**"
+    ],
     "selfMade": [
       "_derived/**"
     ]

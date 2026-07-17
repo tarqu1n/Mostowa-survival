@@ -2515,6 +2515,13 @@
       "flipX": false,
       "flipY": false,
       "depth": -1
+    },
+    {
+      "id": "node_0005",
+      "kind": "node",
+      "ref": "rock",
+      "col": 112,
+      "row": 157
     }
   ]
 }

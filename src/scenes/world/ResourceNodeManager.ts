@@ -9,6 +9,7 @@ import { parseAssetId } from '../../render/assetPaths';
 import { resolveDecorDraw } from '../../render/decorSprites';
 import type { TreeNode } from '../../entities/types';
 import { rowDepthOffset, type NodeObject } from '../../systems/mapFormat';
+import type { ChopFxInput, FellFxInput } from '../fx/NodeFxManager';
 import type { GameScene } from '../GameScene';
 
 /**
@@ -25,6 +26,12 @@ export interface ResourceNodeManagerDeps {
   /** Credit the shared inventory with one harvest hit's yield (chop's `this.inv.add(itemId, n)`) —
    *  narrowed to just that one call shape rather than handing over the whole Inventory. */
   addYield(itemId: string, n: number): void;
+  /** Play the per-hit chop feedback (directional recoil + escalating tremble) on the node sprite —
+   *  the scene routes this to NodeFxManager.playChop (fx lives in scenes/fx, not this state manager). */
+  playChopFx(input: ChopFxInput): void;
+  /** Play the per-kind depletion payoff (tree topple / rock crumble / bush rustle) on a transient
+   *  clone — the scene routes this to NodeFxManager.playFell. */
+  playFellFx(input: FellFxInput): void;
 }
 
 /**
@@ -234,16 +241,25 @@ export class ResourceNodeManager {
     });
   }
 
-  chop(tree: TreeNode): void {
+  chop(tree: TreeNode, facing?: { dCol: number; dRow: number }): void {
     breadcrumb('node', `chop ${tree.def.id} ${tree.id}`, { hp: tree.hp - 1, alive: tree.alive });
     tree.hp -= 1;
     this.deps.addYield(tree.def.yieldItemId, tree.def.yieldPerHit);
-    // Bump relative to the node's fitted base scale (not an absolute 1 — the pine is scaled down).
-    // Animate only the node — its queued glow halo mirrors this (and any future sway/fall) each frame
-    // via syncGlowTransforms(), so animations never have to drive the glow themselves.
+    // Per-hit chop feedback — routed to NodeFxManager (fx lives in scenes/fx, this stays a state
+    // manager). It animates only the node sprite; the queued glow halo mirrors that motion each frame
+    // via syncGlowTransforms(), so the outline follows for free. We pass plain data (skin resolution
+    // is this manager's job): the sprite, its TRUE resting transform (tile-centre + fitted base scale)
+    // so a re-chop mid-jitter snaps back to rest, and the depletion fraction driving the tremble.
     const skin = this.resolveSkin(tree.def, tree.skin);
     const base = this.nodeScale(tree.def, skin);
-    this.scene.tweens.add({ targets: tree.sprite, scale: base * 1.18, duration: 80, yoyo: true });
+    this.deps.playChopFx({
+      sprite: tree.sprite,
+      restX: tileToWorldCenter(tree.col),
+      restY: tileToWorldCenter(tree.row),
+      baseScale: base,
+      depletion: (tree.def.maxHp - Math.max(0, tree.hp)) / tree.def.maxHp,
+      facing: facing ?? { dCol: 0, dRow: 0 },
+    });
     if (tree.hp <= 0) {
       tree.alive = false;
       breadcrumb('node', `deplete ${tree.def.id} ${tree.id}`, { regrowMs: tree.def.regrowMs });
@@ -254,6 +270,28 @@ export class ResourceNodeManager {
         // No depleted sprite for this skin — tint the felled node to its stumpColor as a stand-in
         // "stump"/rubble state rather than a mismatched placeholder (today's fallback, preserved).
         tree.sprite.setScale(base).setTint(tree.def.stumpColor);
+      }
+      // Depletion payoff — a transient toppling/crumbling/rustling clone of the LIVE visual, felling
+      // away from the chopper while the persistent sprite (just swapped above) becomes the stump
+      // underneath. Skip when there's no chopper facing (defensive: runHarvest always yields one when
+      // adjacent) — a zero-delta lean would read as a rotation-less fade, not a fell.
+      if (facing && (facing.dCol !== 0 || facing.dRow !== 0)) {
+        const live = this.resolveSkinTexture(skin.asset, skin.region);
+        if (live) {
+          this.deps.playFellFx({
+            kind: tree.def.harvestAnim ?? 'chop',
+            texKey: live.key,
+            texFrame: live.frame,
+            x: tree.sprite.x,
+            y: tree.sprite.y,
+            scale: base,
+            originX: skin.originX ?? tree.def.originX,
+            originY: skin.originY ?? tree.def.originY,
+            depth: tree.sprite.depth,
+            facing,
+            nodeSprite: tree.sprite,
+          });
+        }
       }
       this.scene.time.delayedCall(tree.def.regrowMs, () => {
         // A delayedCall scheduled here survives clearAll() (which destroys sprites but leaves the

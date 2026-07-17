@@ -80,4 +80,13 @@ _To be firmed up as we go. Starting position:_
   stays the composition root and keeps the task-execution loop. One-shot setup that isn't stateful
   (no deps object, no teardown) stays a plain free function instead — e.g. `world/actorAnims.ts`'s
   `registerActorAnims` and `world/groundRenderer.ts`'s `drawGround`.
+- **Fx-teardown pattern** (`CombatFxManager`, `NodeFxManager` — the two exemplars). Tweens live in a
+  `Map` keyed per sprite; restarting one `.stop()`s (never `.remove()`s) the prior tween before
+  starting fresh, and every `onUpdate`/`onComplete` is `.active`-guarded. A scene-alive
+  `reset()`/`clearAll()` **stops tweens and destroys** the transient sprites; the SHUTDOWN `destroy()`
+  only stops tweens and **drops refs** (Phaser already tore the GameObjects down — never `.destroy()`
+  there). Stop-before-clear ordering matters. Extraction trigger: when a spell/weapon/on-trigger fx
+  feature arrives (the 3rd client), promote `NodeFxManager`'s transient-sprite machinery to a shared
+  surface and consider a named-effect registry keyed from `src/data/` — decide against two real
+  clients, not speculatively.
 - Keep functions small; name for the domain (resource, node, recipe, stockpile), not the framework.

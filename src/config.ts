@@ -70,6 +70,34 @@ export const CHOP_INTERVAL_MS = 400;
  */
 export const ACTION_ANIM_FRAMERATE = 20;
 
+/**
+ * Harvest node felling sequence (see NodeFxManager). A resource node sells getting chopped down in
+ * three layers, each keyed off the node's remaining HP:
+ *
+ * 1. Per-hit recoil — a quick directional kickback away from the swing, sold with a squash pop.
+ *    `CHOP_RECOIL_PX` is the kickback distance (world px), `CHOP_RECOIL_MS` its out-and-back
+ *    duration, `CHOP_RECOIL_SQUASH` the squash fraction of scale at peak.
+ * 2. Escalating tremble — a small shake that grows as HP drops toward 0, foreshadowing the fell.
+ *    `CHOP_TREMBLE_PX`/`CHOP_TREMBLE_DEG` are the max shake amplitude (position/rotation) at ~0 HP;
+ *    amplitude scales down toward 0 at full HP.
+ * 3. Per-kind depletion payoff, once HP hits 0: a tree topples (`TREE_FELL_MS` to rotate through
+ *    `TREE_FELL_ARC_DEG`, then fades out over `TREE_FELL_FADE_MS`), a rock crumbles
+ *    (`ROCK_CRUMBLE_MS`), a bush rustles and vanishes (`BUSH_RUSTLE_MS`).
+ *
+ * Every per-hit duration above is kept under `CHOP_INTERVAL_MS` (400ms) so consecutive hits can't
+ * overlap their own recoil/tremble tween.
+ */
+export const CHOP_RECOIL_PX = 3;
+export const CHOP_RECOIL_MS = 120;
+export const CHOP_RECOIL_SQUASH = 0.06;
+export const CHOP_TREMBLE_PX = 1.5;
+export const CHOP_TREMBLE_DEG = 2;
+export const TREE_FELL_MS = 600;
+export const TREE_FELL_ARC_DEG = 82;
+export const TREE_FELL_FADE_MS = 200;
+export const ROCK_CRUMBLE_MS = 320;
+export const BUSH_RUSTLE_MS = 220;
+
 /** Hold time (ms) that turns a tap into a queued order rather than an act-now order. */
 export const LONGPRESS_MS = 350;
 

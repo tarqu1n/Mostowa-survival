@@ -108,6 +108,22 @@ it one wood at a time, self-terminating when topped up or out of wood. A tap on 
 resolves to `refuel` (column-hit-tested over its whole tile stack). Tuned numbers:
 [GAME-MECHANICS.md](GAME-MECHANICS.md).
 
+## Node harvest feel (plan 031)
+
+- **Per-hit recoil:** each chop/mine hit nudges the node sprite directionally away from the actor
+  with a squash pop, plus an **escalating tremble** that grows as HP→0 — both via a new
+  `src/scenes/fx/NodeFxManager.ts` (mirrors `CombatFxManager`; see [CONVENTIONS.md](CONVENTIONS.md)
+  "fx-teardown pattern").
+- **Per-kind fell:** depletion plays a per-species payoff — tree **topples** (rotates about its
+  base-anchored origin through `TREE_FELL_ARC_DEG` then fades), rock **crumbles** (shudder →
+  shrink+fade), bush **rustles** (squash+fade). The selection glow halo tracks node motion for free
+  (`TaskGlowRenderer.syncGlowTransforms` mirrors the sprite transform each frame, so transform-based
+  motion animates the outline with no extra code).
+- Camera-shake-on-fell is deferred (not built).
+
+Tuning: `CHOP_RECOIL_PX`/`CHOP_RECOIL_MS`/`CHOP_RECOIL_SQUASH`/`CHOP_TREMBLE_PX`/`CHOP_TREMBLE_DEG`/
+`TREE_FELL_MS`/`TREE_FELL_ARC_DEG`/`TREE_FELL_FADE_MS`/`ROCK_CRUMBLE_MS`/`BUSH_RUSTLE_MS` in `config.ts`.
+
 ## Rendering (art, glow, crisp actors)
 
 - **Active art is Pixel Crawler** (plan 005): `ACTIVE_TILESET` in `src/data/tileset.ts`; the Zombie

@@ -35,6 +35,7 @@ import type { GameTestApi } from '../entities/testTypes';
 import type { CharacterSprite } from '../entities/Character';
 import { PlayerCharacter } from '../entities/PlayerCharacter';
 import { CombatFxManager } from './fx/CombatFxManager';
+import { NodeFxManager } from './fx/NodeFxManager';
 import { PointerInputController } from './input/PointerInputController';
 import { ScenePicker } from './input/ScenePicker';
 import { BuildManager } from './build/BuildManager';
@@ -105,6 +106,12 @@ export class GameScene extends Phaser.Scene {
       this.playerChar.attackLockUntil = t;
     },
   });
+
+  // Harvest-node FX (per-hit recoil + escalating tremble, per-kind fell payoff) — see
+  // src/scenes/fx/NodeFxManager.ts (plan 031). Same field-initializer + armShutdown/reset lifecycle as
+  // `fx` above (create() arms + resets it each (re)start); ResourceNodeManager reaches it only via the
+  // playChopFx/playFellFx dep closures wired in buildWorld() (scene mediates — no manager↔manager edge).
+  private readonly nodeFx = new NodeFxManager(this);
 
   // Day/night clock + hunger/starvation (plan 015 Step 3) — see src/scenes/world/SurvivalClock.ts.
   // Owns clockMs/dayPhase/dayCount/hunger/starveElapsed + the nightOverlay rect (sole alpha-writer).
@@ -231,6 +238,10 @@ export class GameScene extends Phaser.Scene {
     // dying) needs no reset here — a fresh PlayerCharacter is constructed below each (re)start.
     this.fx.armShutdown();
     this.fx.resetCombatFx();
+    // Node FX — same (re-)arm + clear discipline (see NodeFxManager): the previous run's tweens were
+    // torn down on SHUTDOWN (refs dropped), so reset() runs on an empty collection here and re-arms.
+    this.nodeFx.armShutdown();
+    this.nodeFx.reset();
     this.mode = 'command';
   }
 
@@ -273,6 +284,8 @@ export class GameScene extends Phaser.Scene {
     this.resourceNodeManager = new ResourceNodeManager(this, {
       repath: () => this.repath(),
       addYield: (itemId, n) => this.inv.add(itemId, n),
+      playChopFx: (input) => this.nodeFx.playChop(input),
+      playFellFx: (input) => this.nodeFx.playFell(input),
     });
     // Hydrate resource nodes from authored `node` objects (plan 018 A6). test.map.json carries none
     // yet (see the Phase-A content ship gate) — hunger stays non-lethal via HUNGER_LETHAL until
@@ -856,7 +869,9 @@ export class GameScene extends Phaser.Scene {
       this.chopElapsed += delta;
       if (this.chopElapsed >= CHOP_INTERVAL_MS) {
         this.chopElapsed = 0;
-        this.resourceNodeManager.chop(tree);
+        // faceTile above set lastFacing to point FROM the player TO the node, so the fx recoil/topple
+        // lean away-from-chopper == +lastFacing (see NodeFxManager).
+        this.resourceNodeManager.chop(tree, this.playerChar.lastFacing);
       }
     }
   }
@@ -1033,6 +1048,7 @@ export class GameScene extends Phaser.Scene {
    *  TestApiDeps.resetTreesAndEnemies; mirrors randomiseWorld's own calls below, which pass
    *  `resetIds: false` since a dev-menu scatter has no need for ids restarting at 0). */
   private resetTreesAndEnemies(): void {
+    this.nodeFx.reset(); // stop node-fx tweens + destroy fell clones BEFORE their node sprites are freed
     this.resourceNodeManager.clearAll({ resetIds: true });
     this.enemyManager.clearAll({ resetIds: true });
   }
@@ -1046,6 +1062,7 @@ export class GameScene extends Phaser.Scene {
    */
   private randomiseWorld(): void {
     this.cancelAll(); // drop harvest orders that reference the nodes we're about to destroy
+    this.nodeFx.reset(); // stop node-fx tweens + destroy fell clones BEFORE their node sprites are freed
     this.resourceNodeManager.clearAll({ resetIds: false }); // keeps its id counter running (pre-existing)
     this.enemyManager.clearAll({ resetIds: false }); // same — id counter keeps running (pre-existing)
 

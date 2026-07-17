@@ -23,6 +23,7 @@ import { TILE_SIZE } from '../config';
 import { cn } from './lib/utils';
 import { useEditorStore, type EditorTool, type PaintMode } from './store/editorStore';
 import { Button } from './ui/button';
+import { PanelBarButton } from './ui/PanelBarButton';
 import { RotationWheel } from './ui/RotationWheel';
 
 /**
@@ -113,39 +114,6 @@ function nudge(dx: number, dy: number): void {
   });
 }
 
-/** Large, labelled panel toggle for the far edges of the bar — the phone-thumb entry point to the
- *  Library (far left) and Inspector (far right) drawers. Bigger than the tool buttons and always
- *  present, so the panels are reachable on every tab, not just Map. */
-function PanelButton({
-  side,
-  icon,
-  label,
-  onClick,
-}: {
-  side: 'left' | 'right';
-  icon: ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <Button
-      variant="secondary"
-      size="lg"
-      aria-label={`Open ${label}`}
-      title={`Open ${label}`}
-      onClick={onClick}
-      className={cn(
-        'h-12 shrink-0 flex-col gap-0.5 px-3 text-[0.7rem] font-normal',
-        side === 'left' ? 'mr-auto' : 'ml-auto',
-        "[&_svg:not([class*='size-'])]:size-6",
-      )}
-    >
-      {icon}
-      {label}
-    </Button>
-  );
-}
-
 export function ContextBar({
   onOpenLibrary,
   onOpenInspector,
@@ -190,7 +158,7 @@ export function ContextBar({
       className="flex items-center gap-2 border-t border-surface bg-raised/95 px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] backdrop-blur"
     >
       {/* Library — far left, the phone entry point to the asset drawer (was a floating edge handle). */}
-      <PanelButton side="left" icon={<LibraryBig />} label="Library" onClick={onOpenLibrary} />
+      <PanelBarButton side="left" icon={<LibraryBig />} label="Library" onClick={onOpenLibrary} />
 
       {showTools && (
         <>
@@ -405,7 +373,7 @@ export function ContextBar({
       )}
 
       {/* Inspector — far right, the phone entry point to the properties/layers drawer. */}
-      <PanelButton
+      <PanelBarButton
         side="right"
         icon={<SlidersHorizontal />}
         label="Inspector"

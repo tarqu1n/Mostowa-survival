@@ -11,9 +11,6 @@ import { TILE_SIZE } from '../../config';
 import type { ParsedNodeDef } from '../../systems/nodeDefs';
 import type { DecorAnim, DecorRegion } from '../../systems/mapFormat';
 import { parseAssetId, tilesetAssetUrl } from '../textureLoading';
-import { loadCatalog } from '../catalogSource';
-import { loadTerrainCatalog } from '../terrainCatalogSource';
-import { loadNodeDefs } from '../nodeDefsSource';
 import { colorToHex, resolveSkinPreviewUrl } from '../nodeTypesUi';
 import type { TerrainCatalog, TerrainDef } from '../terrainCatalog';
 import {
@@ -448,7 +445,6 @@ export function LibraryPanel({ onPick }: { onPick?: () => void } = {}) {
   // the shared `loadCatalog` → `setCatalog`, so reading it here (rather than a local copy) is what
   // makes a reclassify show up in the Library live. `null` until the mount fetch below lands.
   const catalog = useEditorStore((s) => s.catalog);
-  const [error, setError] = useState<string | null>(null);
   // Browse state (search / selected pack+category / expanded packs) lives in the editor store now
   // (plan 030) instead of local `useState`, so it survives the compact drawer unmounting on close
   // (the Radix `Sheet` destroys `LibraryPanel`) and — for the persisted subset — a reload. `search`
@@ -476,28 +472,10 @@ export function LibraryPanel({ onPick }: { onPick?: () => void } = {}) {
   useEditorStore((s) => s.docRevision);
   useEditorStore((s) => s.mapEpoch);
 
-  // Load the catalog into the store on mount (shared `loadCatalog`, cache-busted). The object-editor
-  // tab reuses the same loader after an Apply, so a reclassify refreshes both surfaces off one fetch.
-  useEffect(() => {
-    let cancelled = false;
-    loadCatalog().catch((e: unknown) => {
-      if (!cancelled) setError((e as Error).message);
-    });
-    // Terrain defs (plan 014 step 10) load independently — a failure here surfaces as an empty
-    // Terrains category (logged), not a Library-wide error, since it's a much smaller/newer surface.
-    loadTerrainCatalog().catch((e: unknown) => {
-      console.warn('[editor] terrain catalog failed to load:', (e as Error).message);
-    });
-    // Node defs (plan 021 step 7) load independently too — the store is already seeded from the
-    // bundled `nodes.json` (see editorStore's `nodeDefs` doc), so a failure here just means the
-    // palette keeps showing that build-time seed rather than whatever's newer on disk.
-    loadNodeDefs().catch((e: unknown) => {
-      console.warn('[editor] node defs failed to load:', (e as Error).message);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // The catalog + terrain/node defs now load once on editor BOOT (see `EditorApp`'s mount effect), not
+  // here — so every sprite surface (Node Types thumbnails, Inspector node preview, object tabs) is
+  // populated even before the Library drawer is first opened on the compact shell. This panel just
+  // reads the resident catalog from the store; a load failure surfaces as an editor-wide toast.
 
   const map = useEditorStore.getState().map;
   const favourites: string[] = map
@@ -659,10 +637,7 @@ export function LibraryPanel({ onPick }: { onPick?: () => void } = {}) {
         value={search}
         onChange={(e) => patchLibraryBrowse({ search: e.target.value })}
       />
-      {error && (
-        <p className="mb-2 -mt-1 text-[0.8rem] text-danger">Catalog failed to load: {error}</p>
-      )}
-      {!catalog && !error && <p className="text-[0.9rem] text-muted-2">Loading catalog…</p>}
+      {!catalog && <p className="text-[0.9rem] text-muted-2">Loading catalog…</p>}
       {catalog && (
         <>
           {searchLower.length === 0 && !drilledIn && (

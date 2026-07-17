@@ -242,24 +242,23 @@ function ObjectEditorForm({ asset }: { asset: CatalogAsset }) {
         </div>
       </div>
 
-      <div className="mt-4 flex flex-col gap-4">
+      <div className="mt-3 flex flex-col gap-3">
         {hasControlsRow && (
           <div className="flex flex-wrap items-end gap-3">
             {/* plan 028: a mixed `tile` sheet can author `object`-role prop regions without becoming an
                 object. Toggling this swaps the frame-grid preview for the Regions editor while the type
-                stays `tile` (Save writes object-role regions, no demotion). */}
+                stays `tile` (Save writes object-role regions, no demotion). Inline button (no caption
+                row) so region editing keeps as much vertical budget as possible for the canvas. */}
             {isTile && (
-              <ObjField label="Object regions">
-                <Button
-                  type="button"
-                  variant={regionMode ? 'default' : 'outline'}
-                  size="sm"
-                  aria-pressed={regionMode}
-                  onClick={() => setRegionMode((v) => !v)}
-                >
-                  {regionMode ? 'Editing regions' : 'Edit regions'}
-                </Button>
-              </ObjField>
+              <Button
+                type="button"
+                variant={regionMode ? 'default' : 'outline'}
+                size="sm"
+                aria-pressed={regionMode}
+                onClick={() => setRegionMode((v) => !v)}
+              >
+                {regionMode ? '✏ Editing regions' : 'Edit regions'}
+              </Button>
             )}
 
             {isStrip && (
@@ -891,8 +890,11 @@ function RegionsEditor({
   const selectedBox = selected !== null ? boxes[selected] : null;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5">
+    <div className="flex flex-col gap-2">
+      {/* One compact toolbar carries everything — count · zoom · pan on the left, the primary actions
+          (Save / Clear) pinned right. No helper text, no separate bottom button row: the canvas is the
+          primary function, so it gets the vertical budget. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span className="text-[0.78rem] text-fg-dim">
           {boxes.length} region{boxes.length === 1 ? '' : 's'}
         </span>
@@ -943,31 +945,50 @@ function RegionsEditor({
         <Button
           type="button"
           variant={panMode ? 'default' : 'outline'}
-          size={isCompact ? 'default' : 'sm'}
+          size="sm"
           aria-pressed={panMode}
           className="shrink-0"
           onClick={() => setPanMode((v) => !v)}
         >
           {panMode ? '✋ Panning' : '✋ Pan'}
         </Button>
-        {!selectedBox && (
-          <p className="grow shrink basis-[260px] text-right text-[0.78rem] leading-[1.4] text-muted-2">
-            Double-click a sprite to auto-detect a box around it. Drag on the sheet to draw one by
-            hand. Click a box to select it (then move, resize its handles, grid-slice, or Delete).
-            Toggle <span className="text-fg-dim">✋ Pan</span> (or middle-mouse-drag / hold Space)
-            and drag to pan when zoomed in.
-          </p>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          <Button type="button" size="sm" disabled={busy} onClick={() => void save()}>
+            {busy ? 'Saving…' : 'Save regions'}
+          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => void autoDetect()}
+              >
+                {objectRoleRegions ? 'Clear all' : 'Auto-detect'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Double-click a sprite to auto-box it · drag to draw · click a box to select (move,
+              resize, slice, Delete) · ✋ Pan / middle-drag / Space to pan
+            </TooltipContent>
+          </Tooltip>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-start gap-4">
         <div
           className={cn(
             'min-w-[280px] grow shrink basis-[420px] overflow-auto rounded-[3px] bg-inset',
-            // On compact the selected-box controls wrap BELOW this pane; a 74vh canvas pushed them a
-            // full screen off the bottom (plan 031). A shorter canvas keeps x/y/w/h + Delete + slice
-            // reachable with a short scroll while still leaving room to pan/zoom the sheet.
-            isCompact ? 'h-[44vh] max-h-[44vh]' : 'h-[74vh] max-h-[74vh]',
+            // The canvas is the primary function, so it takes the tab's vertical budget. On desktop the
+            // box fields sit in a side column, so the canvas can stay tall unconditionally. On compact
+            // they wrap BELOW the canvas, so shrink it only WHEN a box is selected — keeps x/y/w/h +
+            // Delete + slice reachable with a short scroll — and keep it near-full-height otherwise.
+            isCompact
+              ? selectedBox
+                ? 'h-[48vh] max-h-[48vh]'
+                : 'h-[68vh] max-h-[68vh]'
+              : 'h-[80vh] max-h-[80vh]',
           )}
           ref={viewportRef}
           onPointerEnter={() => {
@@ -1108,15 +1129,6 @@ function RegionsEditor({
 
       {err && <FormError message={err} />}
       <FormWarnings warnings={warnings} />
-
-      <div className={objActionsClass}>
-        <Button type="button" disabled={busy} onClick={() => void save()}>
-          {busy ? 'Saving…' : 'Save regions'}
-        </Button>
-        <Button type="button" variant="outline" disabled={busy} onClick={() => void autoDetect()}>
-          {objectRoleRegions ? 'Clear all regions' : 'Auto-detect objects'}
-        </Button>
-      </div>
     </div>
   );
 }

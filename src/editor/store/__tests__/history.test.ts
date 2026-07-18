@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { HistoryStack, type Command } from '../history';
+import { HistoryStack, DEFAULT_MAX_HISTORY_DEPTH, type Command } from '../history';
 
 /** A command that adds `delta` to a shared counter — the simplest patch pair to assert do/undo on. */
 function counterCmd(state: { value: number }, delta: number, strokeId?: string): Command {
@@ -166,6 +166,44 @@ describe('HistoryStack deep sequences', () => {
     for (let i = 0; i < 25; i++) expect(h.redo()).toBe(true);
     expect(state.value).toBe(total);
     expect(h.canRedo()).toBe(false);
+  });
+});
+
+describe('HistoryStack bounded depth', () => {
+  it('caps the undo stack at maxDepth, dropping the oldest entries', () => {
+    const state = { value: 0 };
+    const h = new HistoryStack(3);
+    for (let i = 1; i <= 6; i++) h.apply(counterCmd(state, i)); // 1+2+3+4+5+6 = 21
+    expect(state.value).toBe(21);
+    // Only the 3 newest entries (+4,+5,+6) are retained; the older three were dropped.
+    expect(h.depth).toEqual({ undo: 3, redo: 0 });
+
+    expect(h.undo()).toBe(true); // revert +6
+    expect(h.undo()).toBe(true); // revert +5
+    expect(h.undo()).toBe(true); // revert +4
+    expect(state.value).toBe(6); // 21 - 6 - 5 - 4 — the dropped +1/+2/+3 are unreachable
+    expect(h.canUndo()).toBe(false);
+  });
+
+  it('trimming the oldest never disturbs stroke coalescing into the top entry', () => {
+    const state = { value: 0 };
+    const h = new HistoryStack(2);
+    h.apply(counterCmd(state, 1)); // entry A
+    h.apply(counterCmd(state, 1)); // entry B
+    h.apply(counterCmd(state, 1, 'live')); // entry C (drops A; stack = [B, C])
+    h.apply(counterCmd(state, 1, 'live')); // coalesces INTO C, no new entry
+    expect(state.value).toBe(4);
+    expect(h.depth).toEqual({ undo: 2, redo: 0 });
+
+    expect(h.undo()).toBe(true); // whole 'live' stroke (both ops) reverts together
+    expect(state.value).toBe(2);
+  });
+
+  it('defaults to DEFAULT_MAX_HISTORY_DEPTH and treats a non-positive cap as the default', () => {
+    const state = { value: 0 };
+    const h = new HistoryStack(0); // 0 → default, not "unbounded"
+    for (let i = 0; i < DEFAULT_MAX_HISTORY_DEPTH + 50; i++) h.apply(counterCmd(state, 1));
+    expect(h.depth).toEqual({ undo: DEFAULT_MAX_HISTORY_DEPTH, redo: 0 });
   });
 });
 

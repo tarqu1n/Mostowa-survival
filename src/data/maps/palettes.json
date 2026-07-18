@@ -3,7 +3,56 @@
     {
       "id": "palette_0001",
       "name": "Palette 1",
-      "slots": []
+      "slots": [
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#54"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#2"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#50"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#102"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#79"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#29"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#3"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#1"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#25"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#75"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#101"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#103"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#76"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#26"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#28"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#78"
+        }
+      ]
     }
   ]
 }

@@ -24,7 +24,20 @@
  * map edit → bump map `dirty`/`docRevision`), `'world'` (a placement edit → bump `worldDirty`/
  * `worldRevision`), and `'map+world'` (a resize that also compensates a placed map's origin, plan 024 →
  * bump BOTH sets).
+ *
+ * Bounded depth: every entry pins its `do`/`undo` closures — and whatever document data those closures
+ * capture (sparse cell changes, or a whole layer's `cells` array for a resize) — for as long as it sits
+ * on the stack, which is only ever emptied on New/Open. An uncapped stack therefore grows monotonically
+ * with edit count, and a long editing session steadily inflates the heap until the tab turns sluggish
+ * and eventually crashes (worst on memory-constrained mobile — the editor is authored from a phone).
+ * `maxDepth` caps the retained undo entries; `apply` drops the oldest once the cap is exceeded, trading
+ * unreachably-deep history for bounded memory. Redo is bounded implicitly: you can only redo what you
+ * undid, so the redo stack never exceeds the undo stack's depth.
  */
+
+/** Default cap on retained undo entries — deep enough that no one reaches the far end in practice,
+ *  shallow enough to keep the retained closures (and captured map data) bounded. See module doc. */
+export const DEFAULT_MAX_HISTORY_DEPTH = 200;
 
 export interface Command {
   /** Optional label (debugging / future UI). */
@@ -53,6 +66,13 @@ export class HistoryStack {
   private undoStack: Entry[] = [];
   private redoStack: Entry[] = [];
   private lastDomain: string | undefined;
+  private readonly maxDepth: number;
+
+  /** `maxDepth` caps retained undo entries (see module doc); defaults to `DEFAULT_MAX_HISTORY_DEPTH`.
+   *  A value ≤ 0 is treated as the default (never unbounded — that's the leak this cap exists to fix). */
+  constructor(maxDepth: number = DEFAULT_MAX_HISTORY_DEPTH) {
+    this.maxDepth = maxDepth > 0 ? maxDepth : DEFAULT_MAX_HISTORY_DEPTH;
+  }
 
   /** Run `cmd.do()`, record it, and clear the redo history. Coalesces into the top entry when
    *  stroke ids match (see module doc). */
@@ -73,6 +93,12 @@ export class HistoryStack {
       dos: [cmd.do],
       undos: [cmd.undo],
     });
+    // Drop the oldest entries once past the cap so retained closures (and the map data they capture)
+    // stay bounded across a long session. Trimming the FRONT never disturbs the top entry that stroke
+    // coalescing targets. Only the fresh-entry path can grow the stack — coalescing returns above.
+    if (this.undoStack.length > this.maxDepth) {
+      this.undoStack.splice(0, this.undoStack.length - this.maxDepth);
+    }
   }
 
   /** Revert the most recent entry (all coalesced ops, in reverse). Returns false if the undo stack

@@ -45,6 +45,30 @@ serialized so bursts never race git. Knobs: `EDITOR_AUTOCOMMIT_PUSH=0` (commit l
 So each Save lands on `master` on GitHub within a second or two — the host can be rebuilt without
 losing more than the edit in flight.
 
+### Gotcha: object/region saves need Python + Pillow on the host
+
+Saving **object regions** ("Save regions" / "Auto-detect" in the object editor) is NOT a pure JSON
+write: the `/__editor/asset-regions` middleware writes `pack.json` and then reruns
+`gen_regions.py` + `npm run assets:catalog` before it returns 2xx. `gen_regions.py` imports
+`compose.py` (Pillow) and `objects.py` (Pillow + numpy) — see
+[`scripts/pixel-crawler/requirements.txt`](../scripts/pixel-crawler/requirements.txt). If those
+aren't installed on the host, that regen exits non-zero and the endpoint returns **502**, which
+looks like *"saving regions doesn't work"*: the `pack.json` write actually succeeded, but because
+the response wasn't 2xx the **autocommit never fires**, so the edit is stuck uncommitted in the
+container's working tree and never reaches the catalog or `master`.
+
+The stock `node:22-bookworm` image the guppi compose uses ships **no** Pillow/numpy, so the editor
+container must install them itself. Baked-in is best (a real fix survives a container recreate); a
+live `docker exec -u 0 mostowo-editor apt-get install -y python3-pil python3-numpy` unblocks a
+running container but is lost on recreate. Recover any already-stuck save by finishing the regen by
+hand, then committing the editor-output paths:
+
+```bash
+docker exec mostowo-editor sh -c 'cd /app && python3 scripts/pixel-crawler/gen_regions.py && \
+  node scripts/asset-catalog.mjs && git add public/assets/tilesets public/assets/asset-catalog.json && \
+  git commit -m "assets(editor): recover stuck region save" && git push origin master'
+```
+
 ## Claude getting a shell on guppi + working on the build there
 
 When Matt asks a Claude Code cloud session to *"get on guppi and work on the editor"*, this is the

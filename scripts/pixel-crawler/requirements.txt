@@ -1,0 +1,11 @@
+# Python deps for the pixel-crawler tooling (dev-only — never part of the game build).
+#
+# These are REQUIRED by the in-editor asset pipeline, not just the offline helpers: the editor's
+# "Save regions" / "Auto-detect" flow shells out to `gen_regions.py`, which imports `compose.py`
+# (Pillow) and `objects.py` (Pillow + numpy). A host missing these makes every region save 502 —
+# the pack.json write succeeds but the regen fails, so the catalog never updates and (under
+# EDITOR_AUTOCOMMIT) the save never commits. See docs/MOBILE-EDITOR-ACCESS.md.
+#
+# Install: python3 -m pip install -r requirements.txt   (or the distro packages python3-pil / python3-numpy)
+pillow
+numpy

@@ -276,7 +276,8 @@ Research verified against the codebase (paths absolute under `/home/user/mostowo
     end-to-end without opening the Inspector, and changing the layer via the quick selector paints
     onto the chosen layer; typecheck + lint clean; boot canary passes.
 
-- [ ] **Step 7: Docs + shortcuts + status** `[delegate]`
+- [x] **Step 7: Docs + shortcuts + status** `[delegate]`
+  - Outcome: Extended `docs/EDITOR.md` (the canonical Map Builder UX doc, already linked from `docs/README.md`) with a terse "Tiling palette & quick layer selector (plan 033)" subsection (workflow + key facts: named/per-map/persisted-in-`MapMeta.tilePalettes`; fill via Library "Select for palette" → "Add to palette"; one-tap to arm; undoable structure edits vs view-state active pointer; rename/delete-by-file; quick layer selector cycles/jumps; click-only). Added a plan-033 line to `docs/STATUS.md`'s Map Builder editor section. `MOBILE-EDITOR-ACCESS.md` left alone (it's about running the editor on a phone, not UI surfaces). `src/editor/shortcuts.ts` confirmed untouched by plan 033 (click-only feature). Verified: markdownlint 0 errors; EDITOR.md discoverable from README. No `CLAUDE.md` edit.
   - Update `docs/` for the editor's tiling workflow. Add a short subsection (terse, high-signal)
     describing the tiling palette (named, per-map, persisted in the map file; fill via Library
     "select for palette" → Add; one-tap switch) and the quick layer selector. Put it wherever the

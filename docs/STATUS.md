@@ -215,6 +215,13 @@ orthogonal to the structural `type`; tagged via `rules.actor` globs in `pack.jso
 tool**; **actors are hidden by default** (and can't be armed for placement), keeping creature/NPC sprites
 out of the object palette until a dedicated actor editor exists.
 
+**Tiling palette + quick layer selector (plan 033):** two always-visible, click-only surfaces that cut the
+Library↔Inspector round-trips while laying out tiles. **Tiling palette** — named, per-map palettes persisted
+in the map file (`MapMeta.tilePalettes`, syncing across devices like favourites); fill via the Library's
+"Select for palette" → "Add to palette", one-tap a slot to arm the brush; structure edits are undoable,
+the active-palette pointer is view-state. **Quick layer selector** — a compact control bound to the active
+tile layer (tap-cycles, chevron dropdown jumps), in the desktop under-viewport bar + the compact ContextBar.
+
 ## Runtime map loader (plan 018)
 
 The game **boots straight into one authored map** (`START_MAP_ID`, currently `test`) — no procedural

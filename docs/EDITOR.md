@@ -43,6 +43,13 @@ bindings here).
 
 **Place tool — free rotation** — a rotation **wheel** (drag the dial, or type into its centre input; hold Shift while dragging to snap to 15°) sets an arbitrary angle stamped onto the next decor/node placed. The angle is sticky (`store.placeRotation`) so a whole row goes down at one angle. Decor and nodes both carry a `rotation` field (degrees, matching Phaser's clockwise `setAngle`); portals have none. The same wheel appears in the **Inspector** for a single selected decor/node — an Inspector wheel drag is one undoable command (commit-on-release, like the numeric fields), while the placement wheel is view-state (no history). Node rotation renders in the live game too (`ResourceNodeManager`), not just the editor.
 
+## Tiling palette & quick layer selector (plan 033)
+
+Two always-visible surfaces that kill the open-Library → paint → open-Inspector/Layers → reopen-Library loop when laying out tiles. **Click/tap only — no new keyboard shortcuts.** Desktop: a slim bar under the Map-tab viewport. Compact/touch: a palette strip above the `ContextBar` + the layer selector inside the ContextBar's brush cluster.
+
+- **Tiling palette** — named, per-map palettes **persisted in the map file** (`MapMeta.tilePalettes`, so they sync across devices via editor autocommit, exactly like `favourites`). **Fill** a palette in the Library: toggle **"Select for palette"**, multi-tap tiles, then **"Add to palette (N)"**. **One-tap a slot** to arm that tile on the brush. Switch palettes via the dropdown; **"＋"** creates a new one; per-slot **✕** removes. Single tile per slot (no NxM stamps). Palette *structure* edits (add/remove/create) route through the command stack, so they're **undoable**; the active-palette pointer is editor view-state (not persisted — switching palettes doesn't dirty the map). **Rename / delete a palette by editing the map file** — not in the UI yet.
+- **Quick layer selector** — compact control bound to the active tile layer: shows the current layer name, **tap cycles** top-first with wrap, the **chevron dropdown jumps** to any layer directly. Replaces the Inspector → Layers round-trip for switching the paint layer.
+
 ## Touch / mobile (plan 027)
 
 > **Actually running it on a phone?** See [MOBILE-EDITOR-ACCESS.md](MOBILE-EDITOR-ACCESS.md) —

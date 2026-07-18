@@ -371,34 +371,44 @@ function NodeFields({ obj }: { obj: NodeObject }) {
       </div>
       {/* Skin override — placement rolls a weighted-random skin (plan 021 step 9); this picker (and the
           'S' cycle shortcut) let you override it. Only shown when the def has a real choice (≥2 skins);
-          a single-skin def has nothing to pick. Value falls back to skins[0] when unset (the omitted
-          `skin` = the def's default). */}
+          a single-skin def has nothing to pick. The selection falls back to skins[0] when unset (the
+          omitted `skin` = the def's default). Rendered as a grid of pixel-crisp skin images (not a
+          name dropdown) so you pick the tree you can see — the selected swatch is ringed in gold. */}
       {skins.length >= 2 && (
         <div className={fieldClass}>
-          <Label htmlFor={skinId} className={fieldLabelClass}>
+          <span id={skinId} className={fieldLabelClass}>
             Skin
-          </Label>
-          <Select value={obj.skin ?? skins[0].id} onValueChange={(v) => update({ skin: v })}>
-            <SelectTrigger
-              id={skinId}
-              size="sm"
-              className={cn(
-                fieldInputClass,
-                'w-full justify-between font-normal',
-                isCompact && 'h-11 px-2 text-[0.95rem]',
-              )}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {skins.map((s, i) => (
-                <SelectItem key={s.id} value={s.id} className={cn(isCompact && 'py-2.5 text-base')}>
-                  {s.name || s.id}
-                  {i === 0 ? ' (default)' : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          </span>
+          <div role="radiogroup" aria-labelledby={skinId} className="flex flex-wrap gap-1.5">
+            {skins.map((s, i) => {
+              const isSelected = s.id === (obj.skin ?? skins[0].id);
+              const label = `${s.name || s.id}${i === 0 ? ' (default)' : ''}`;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
+                  aria-label={label}
+                  title={label}
+                  onClick={() => update({ skin: s.id })}
+                  className={cn(
+                    'rounded-[3px] border-2 p-0.5 transition-colors',
+                    isSelected
+                      ? 'border-gold-light bg-surface'
+                      : 'border-transparent hover:border-border',
+                  )}
+                >
+                  <SkinThumb
+                    assetId={s.asset}
+                    region={s.region}
+                    catalog={catalog}
+                    size={isCompact ? 56 : 44}
+                  />
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

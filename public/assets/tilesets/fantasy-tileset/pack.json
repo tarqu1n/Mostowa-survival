@@ -56,7 +56,7 @@
       "frames": 4
     },
     "Props/Fx/Flowers_Red.png": {
-      "type": "tile"
+      "type": "object"
     },
     "Props/Fx/Flowers_White.png": {
       "type": "object"

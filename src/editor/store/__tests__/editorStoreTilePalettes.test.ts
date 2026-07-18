@@ -134,6 +134,36 @@ describe('editorStore tile palettes (plan 033 step 9 — global slice)', () => {
     expect(useEditorStore.getState().tilePalettes).toBe(snapshot); // no-op didn't replace the array
   });
 
+  it('renameTilePalette renames a palette immutably; a blank/whitespace name is ignored', () => {
+    useEditorStore.getState().addTilePalette(); // "Palette 1"
+    const id = useEditorStore.getState().tilePalettes[0].id;
+
+    useEditorStore.getState().renameTilePalette(id, '  Water edges  ');
+    expect(useEditorStore.getState().tilePalettes[0].name).toBe('Water edges'); // trimmed
+
+    const snapshot = useEditorStore.getState().tilePalettes;
+    useEditorStore.getState().renameTilePalette(id, '   ');
+    expect(useEditorStore.getState().tilePalettes[0].name).toBe('Water edges'); // unchanged
+    expect(useEditorStore.getState().tilePalettes).toBe(snapshot); // no-op didn't replace the array
+  });
+
+  it('deleteTilePalette removes a palette and reconciles the active pointer', () => {
+    useEditorStore.getState().addTilePalette(); // palette_0001
+    useEditorStore.getState().addTilePalette(); // palette_0002 (now active)
+    const [first, second] = useEditorStore.getState().tilePalettes;
+    expect(useEditorStore.getState().activeTilePaletteId).toBe(second.id);
+
+    // Deleting the ACTIVE palette repoints to the first remaining.
+    useEditorStore.getState().deleteTilePalette(second.id);
+    expect(useEditorStore.getState().tilePalettes.map((p) => p.id)).toEqual([first.id]);
+    expect(useEditorStore.getState().activeTilePaletteId).toBe(first.id);
+
+    // Deleting the last palette nulls the pointer.
+    useEditorStore.getState().deleteTilePalette(first.id);
+    expect(useEditorStore.getState().tilePalettes).toEqual([]);
+    expect(useEditorStore.getState().activeTilePaletteId).toBeNull();
+  });
+
   it('setTilePalettes installs a loaded set and reconciles the pointer to the first palette', () => {
     const loaded: NamedTilePalette[] = [
       { id: 'palette_0001', name: 'A', slots: [{ assetId: ASSET_A }] },

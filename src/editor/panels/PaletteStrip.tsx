@@ -1,6 +1,9 @@
+import { useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import type { TilePaletteSlot } from '../../systems/mapFormat';
 import { useEditorStore } from '../store/editorStore';
 import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { cn } from '../lib/utils';
 import { useIsCompact } from '../hooks/useIsCompact';
@@ -16,8 +19,9 @@ import {
 /**
  * Tile-palette strip (plan 033) — a quick-access tray of curated tiles, mirroring `RecentStrip` (same
  * `assetSwatch` renderer, same swatch conventions) so palette and Library swatches can never drift.
- * Renders a palette switcher (a content-width `Select` over the GLOBAL named palettes + a "＋" that
- * appends a new one), then the active palette's slots as one-tap swatches that arm the brush via
+ * Renders a palette switcher (a content-width `Select` over the GLOBAL named palettes + a "＋" add, a
+ * ✎ inline-rename, and a 🗑 delete-with-confirm for the active palette), then its slots as one-tap
+ * swatches that arm the brush via
  * `selectPaletteSlot`. Slots are removed by LONG-PRESS (mirrors the Library's long-press favourite);
  * there is no per-slot ✕ affordance any more (phone feedback — it wasted a whole row per tile).
  *
@@ -36,6 +40,10 @@ const slotKey = (slot: TilePaletteSlot): string => `${slot.assetId}#${slot.rotat
 
 export function PaletteStrip() {
   const isCompact = useIsCompact();
+  // Inline-rename state: while `renaming`, the switcher is swapped for a text input seeded with the
+  // active palette's name (Enter/blur commits, Escape cancels). Local, non-persisted UI state.
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState('');
   const catalog = useEditorStore((s) => s.catalog);
   const terrainCatalog = useEditorStore((s) => s.terrainCatalog);
   // Global palette slice — an immutable array replaced on every mutation, so a plain selector suffices.
@@ -53,6 +61,22 @@ export function PaletteStrip() {
   const activePalette = palettes.find((p) => p.id === activeTilePaletteId) ?? palettes[0] ?? null;
 
   const addTilePalette = (): void => useEditorStore.getState().addTilePalette();
+
+  const startRename = (): void => {
+    if (!activePalette) return;
+    setDraft(activePalette.name);
+    setRenaming(true);
+  };
+  const commitRename = (): void => {
+    if (activePalette) useEditorStore.getState().renameTilePalette(activePalette.id, draft);
+    setRenaming(false);
+  };
+  const deleteActive = (): void => {
+    if (!activePalette) return;
+    // Destructive + not undoable → confirm (mirrors ReferencePanel's window.confirm pattern).
+    if (!window.confirm(`Delete palette "${activePalette.name}"? This can't be undone.`)) return;
+    useEditorStore.getState().deleteTilePalette(activePalette.id);
+  };
 
   // No palettes yet: a single "New palette" affordance.
   if (palettes.length === 0) {
@@ -80,35 +104,77 @@ export function PaletteStrip() {
       {/* No heading of its own — the switcher below already names the active palette (with the
           Select's built-in down-arrow), so a "PALETTE" title would just be redundant height. */}
       <div className="flex items-center gap-1.5">
-        <Select
-          value={activePalette?.id ?? undefined}
-          onValueChange={(id) => useEditorStore.getState().setActiveTilePalette(id)}
-        >
-          {/* Sized to CONTENT (not full width) — the name + chevron just fit; capped so a long name
-              can't crowd out the ＋ button. */}
-          <SelectTrigger
-            size="sm"
-            className={cn('w-auto max-w-[70%]', isCompact && 'h-11 text-[0.95rem]')}
-          >
-            <SelectValue placeholder="Palette" />
-          </SelectTrigger>
-          <SelectContent>
-            {palettes.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          size={isCompact ? 'icon-lg' : 'icon-sm'}
-          variant="outline"
-          className="flex-none"
-          title="Add palette"
-          onClick={addTilePalette}
-        >
-          ＋
-        </Button>
+        {renaming ? (
+          // Inline rename: Enter/blur commits, Escape cancels. Autofocused so the keyboard opens on
+          // touch immediately.
+          <Input
+            autoFocus
+            value={draft}
+            aria-label="Palette name"
+            className={cn('min-w-0 flex-1', isCompact && 'h-11 text-[0.95rem]')}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitRename();
+              else if (e.key === 'Escape') setRenaming(false);
+            }}
+          />
+        ) : (
+          <>
+            <Select
+              value={activePalette?.id ?? undefined}
+              onValueChange={(id) => useEditorStore.getState().setActiveTilePalette(id)}
+            >
+              {/* Sized to CONTENT (not full width) — the name + chevron just fit; capped so a long name
+                  can't crowd out the action buttons. */}
+              <SelectTrigger
+                size="sm"
+                className={cn('w-auto max-w-[55%]', isCompact && 'h-11 text-[0.95rem]')}
+              >
+                <SelectValue placeholder="Palette" />
+              </SelectTrigger>
+              <SelectContent>
+                {palettes.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size={isCompact ? 'icon-lg' : 'icon-sm'}
+              variant="ghost"
+              className="flex-none"
+              title="Rename palette"
+              aria-label="Rename palette"
+              disabled={!activePalette}
+              onClick={startRename}
+            >
+              <Pencil />
+            </Button>
+            <Button
+              size={isCompact ? 'icon-lg' : 'icon-sm'}
+              variant="ghost"
+              className="flex-none text-fg-muted hover:text-danger"
+              title="Delete palette"
+              aria-label="Delete palette"
+              disabled={!activePalette}
+              onClick={deleteActive}
+            >
+              <Trash2 />
+            </Button>
+            <Button
+              size={isCompact ? 'icon-lg' : 'icon-sm'}
+              variant="outline"
+              className="ml-auto flex-none"
+              title="Add palette"
+              aria-label="Add palette"
+              onClick={addTilePalette}
+            >
+              ＋
+            </Button>
+          </>
+        )}
       </div>
 
       {activePalette && activePalette.slots.length === 0 && (

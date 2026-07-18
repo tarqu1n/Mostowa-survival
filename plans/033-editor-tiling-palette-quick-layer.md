@@ -340,6 +340,13 @@ Research verified against the codebase (paths absolute under `/home/user/mostowo
     reload → palette still present**; long-press removed a slot (2→1, persisted); map file stays clean
     (no `tilePalettes`); 14-slot seed wraps to multiple rows with no gap on the phone viewport; zero
     console errors.
+  - Follow-up (rename + delete in the UI): added `renameTilePalette(id, name)` (blank ignored) and
+    `deleteTilePalette(id)` (reconciles the active pointer) store actions — plain immutable sets,
+    autosaved, not undoable. `PaletteStrip` switcher row now has a **✎ inline-rename** (pencil → text
+    input seeded with the name, Enter/blur commits, Escape cancels) and a **🗑 delete** (with
+    `window.confirm`, mirroring ReferencePanel). 2 new store tests (18 total). Verified live on desktop
+    and phone: create → rename to "Water edges" (auto-saved) → delete (auto-saved back to empty);
+    ≥44px targets on compact; zero console errors. Updated `docs/EDITOR.md`.
   - Added during review from phone feedback: the user wants palettes to (a) **persist without the
     manual Save button** and (b) be **cross-map (global)**, not tied to the open map. This **reverses**
     decision #2 / the "per-map, in `MapMeta.tilePalettes`" model. No map on disk has `tilePalettes`

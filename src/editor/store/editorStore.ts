@@ -738,6 +738,12 @@ export interface EditorState {
   addTilesToActivePalette(entries: TilePaletteSlot[]): void;
   /** Removes the slot at `index` from palette `paletteId` via a plain immutable `set` (NOT undoable). */
   removeTilePaletteSlot(paletteId: string, index: number): void;
+  /** Renames palette `id` (plain immutable `set`, NOT undoable, autosaved). A blank/whitespace-only
+   *  name is ignored (keeps the previous name). */
+  renameTilePalette(id: string, name: string): void;
+  /** Deletes palette `id` entirely (plain immutable `set`, NOT undoable, autosaved), then reconciles the
+   *  active-palette pointer (if the deleted one was active, it repoints to the first remaining, or null). */
+  deleteTilePalette(id: string): void;
   /** Arms the brush from a palette slot — sets `brushAsset`/`brushRotation` and switches to the brush
    *  tool (mirrors `pickTile`). A brush-arm, NOT a palette mutation: no command, no dirty. */
   selectPaletteSlot(slot: TilePaletteSlot): void;
@@ -3008,6 +3014,20 @@ export const useEditorStore = create<EditorState>()(
         slots: palette.slots.filter((_, i) => i !== index),
       };
       set({ tilePalettes: palettes.map((p) => (p.id === paletteId ? updated : p)) });
+    },
+
+    renameTilePalette: (id, name) => {
+      const trimmed = name.trim();
+      if (!trimmed) return; // ignore an empty rename — keep the previous name
+      set((s) => ({
+        tilePalettes: s.tilePalettes.map((p) => (p.id === id ? { ...p, name: trimmed } : p)),
+      }));
+    },
+
+    deleteTilePalette: (id) => {
+      set((s) => ({ tilePalettes: s.tilePalettes.filter((p) => p.id !== id) }));
+      // Repoint the active pointer if we just removed the active palette (→ first remaining, or null).
+      get().reconcileActiveTilePalette();
     },
 
     selectPaletteSlot: (slot) => {

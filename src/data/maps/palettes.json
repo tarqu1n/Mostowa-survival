@@ -2,7 +2,7 @@
   "palettes": [
     {
       "id": "palette_0001",
-      "name": "Palette 1",
+      "name": "Grass",
       "slots": [
         {
           "assetId": "pixel-crawler/Environment/Tilesets/Floors_Tiles.png#54"

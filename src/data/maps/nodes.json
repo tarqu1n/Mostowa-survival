@@ -125,6 +125,37 @@
               "h": 9
             }
           }
+        },
+        {
+          "id": "skin_6",
+          "asset": "pixel-crawler/Environment/Props/Static/Trees/Model_03/Size_03-export.png",
+          "weight": 1,
+          "region": {
+            "x": 0,
+            "y": 1,
+            "w": 64,
+            "h": 144
+          }
+        },
+        {
+          "id": "skin_7",
+          "asset": "pixel-crawler/Environment/Props/Static/Trees/Model_02/Size_02.png",
+          "weight": 1,
+          "region": {
+            "x": 67,
+            "y": 49,
+            "w": 29,
+            "h": 47
+          },
+          "depleted": {
+            "asset": "pixel-crawler/Environment/Props/Static/Trees/Model_02/Size_02.png",
+            "region": {
+              "x": 116,
+              "y": 70,
+              "w": 9,
+              "h": 10
+            }
+          }
         }
       ]
     },

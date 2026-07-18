@@ -180,7 +180,8 @@ Research verified against the codebase (paths absolute under `/home/user/mostowo
     palette does **not** mark the map dirty; opening a legacy map (no `tilePalettes`) leaves it clean
     (not dirtied/migrated); adding a tile then serialise→parse preserves it; typecheck + lint clean.
 
-- [ ] **Step 3: Palette strip component** `[inline]`
+- [x] **Step 3: Palette strip component** `[inline]`
+  - Outcome: Extracted the swatch renderer out of `LibraryPanel.tsx` into new shared `src/editor/panels/assetSwatch.tsx` (exports `RecentSwatch` type, `AssetSwatch`, `resolveRecentSwatch`, `nodePreviewUrl`, `EMPTY_NODE_DEFS`, `TERRAIN_SHEET_COLS_FALLBACK`) — LibraryPanel imports them back, behaviour identical (RecentStrip/Favourites unchanged). New `src/editor/panels/PaletteStrip.tsx`: shadcn `Select` switcher bound to `activeTilePaletteId`→`setActiveTilePalette` + "＋" (`addTilePalette`); slots rendered via shared `AssetSwatch`/`resolveRecentSwatch({kind:'tile',assetId})`, tap→`selectPaletteSlot`; active slot ringed when `brushAsset`+`brushRotation` match (`rotation ?? 0`); per-slot remove ✕ (hover on desktop, stacked `min-h-11` ≥44px button on compact via `useIsCompact()`); empty states for no-palettes ("＋ New palette", respects lazy creation) and empty-palette ("Add tiles from the Library"). Subscribes to `docRevision`/`mapEpoch`, reads `map.meta.tilePalettes` fresh from `getState()`. Not yet mounted (Step 6). Verified: typecheck clean; 377 editor tests pass (no regression from extraction); eslint clean. No component render-test harness in repo, so no unit test (per fallback).
   - New file `src/editor/panels/PaletteStrip.tsx` (mirror `RecentStrip` shape and `libSwatchClass`/
     `libLabelClass`/`headingClass` conventions). Renders:
     - A **palette switcher** — a compact `select.tsx` (or `dropdown-menu.tsx`) listing named
@@ -228,7 +229,8 @@ Research verified against the codebase (paths absolute under `/home/user/mostowo
     palette" fills the active palette (verified in the Step 3 strip), selection survives a compact
     drawer close/reopen; normal picking still works when the toggle is off; typecheck + lint clean.
 
-- [ ] **Step 5: Quick layer selector control** `[inline]`
+- [x] **Step 5: Quick layer selector control** `[inline]`
+  - Outcome: New `src/editor/ui/QuickLayerSelect.tsx` (chose `ui/` — small composed controls like `RotationWheel`/`SkinThumb` live there). Primary button (secondary variant) shows the active layer name (fallback "No layer"), tap cycles `(i+1) % length` over `[...map.layers].reverse()` (top-first like LayersPanel) with wrap; disabled when `<2` layers; null/stale active selects `presented[0]`. Secondary chevron `DropdownMenu` of `DropdownMenuCheckboxItem`s (top-first, `checked` on active) → `setActiveLayer`. Subscribes to `activeLayerId`+`docRevision`/`mapEpoch`, reads `getState().map` fresh; no reconciliation duplicated. Compact: `h-11`/`size-11`/`min-h-11` (≥44px) via `useIsCompact()`. No keyboard bindings. Not yet mounted (Step 6). Verified: typecheck clean; eslint clean. No render-test harness in repo → no unit test (per fallback). Ran concurrently with Step 3 (write-disjoint, single new file, no shared-file edits).
   - New file `src/editor/ui/QuickLayerSelect.tsx` (or `panels/QuickLayerSelect.tsx` to match where
     small controls live). A compact control bound to `activeLayerId` / `setActiveLayer`:
     - Primary affordance: a button showing the **current layer name** (fall back to "No layer" when

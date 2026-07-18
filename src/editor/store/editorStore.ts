@@ -41,6 +41,7 @@ import {
   type DecorRegion,
   type MapFile,
   type MapObject,
+  type NamedTilePalette,
   type NodeObject,
   type PortalFacing,
   type PortalObject,
@@ -48,6 +49,7 @@ import {
   type ResizeEdges,
   type TerrainSection,
   type TileLayer,
+  type TilePaletteSlot,
   type ZoneDef,
 } from '../../systems/mapFormat';
 import type { TileSource } from '../../data/tileset';
@@ -297,6 +299,17 @@ export interface EditorState {
    *  `zone` tool. `null` ⇒ the terrain tool is disarmed (painting/erasing both no-op with a warning). */
   activeTerrainId: string | null;
   activeLayerId: string | null;
+  /** Active tile-palette pointer (plan 033) — editor VIEW state, NOT persisted to the map file (the
+   *  palette STRUCTURE lives in `map.meta.tilePalettes`; this pointer is store-only, reconciled like
+   *  `activeLayerId`). `null` when the open map has no palettes. Switching it is a plain `set` — never
+   *  a command, never dirties the map. */
+  activeTilePaletteId: string | null;
+  /** Library multi-select "add to palette" mode (plan 033, Step 4) — transient store view-state (never
+   *  persisted, never a command/dirty). Kept in the store, not component state, so it survives the
+   *  compact `<Sheet>` unmount. */
+  palettePickMode: boolean;
+  /** The asset ids (`assetId` or `assetId#frame`) currently ticked in Library pick mode. */
+  palettePickSelection: string[];
   activeTool: EditorTool;
   /** Which `CatalogAssetRole` the Library panel's browse surface currently shows (plan 032 step 3) —
    *  filters `visibleAssets`/`categoriesByPack` (and the Recent/Favourites surfaces) uniformly, so an
@@ -698,6 +711,29 @@ export interface EditorState {
    *  zone is active, else in the map-level `meta.favourites` (created lazily on first use). */
   toggleFavourite(assetId: string): void;
 
+  // ---- tile palettes (plan 033) ----
+  /** Sets the active-palette pointer directly (a plain `set`, like `setActiveLayer`) — no command, no
+   *  dirty, no counter bump. */
+  setActiveTilePalette(id: string): void;
+  /** Appends a new empty named palette (`"Palette N"` default) via `applyCommand` (undoable, dirties
+   *  the map), then makes it active as a separate direct `set`. */
+  addTilePalette(name?: string): void;
+  /** Bulk-appends slots to the active palette via `applyCommand`, deduping exact `assetId`+`rotation`
+   *  duplicates. Lazily creates `"Palette 1"` (and makes it active) if the map has no palettes yet, so
+   *  a legacy map is only ever migrated the moment the user actually adds tiles — never on open. */
+  addTilesToActivePalette(entries: TilePaletteSlot[]): void;
+  /** Removes the slot at `index` from palette `paletteId` via `applyCommand` (undoable). */
+  removeTilePaletteSlot(paletteId: string, index: number): void;
+  /** Arms the brush from a palette slot — sets `brushAsset`/`brushRotation` and switches to the brush
+   *  tool (mirrors `pickTile`). A brush-arm, NOT a palette mutation: no command, no dirty. */
+  selectPaletteSlot(slot: TilePaletteSlot): void;
+  /** Toggles Library pick mode (transient view-state); leaving pick mode clears the selection. */
+  togglePalettePickMode(): void;
+  /** Adds/removes an asset id in the Library pick selection (transient view-state). */
+  togglePalettePickTile(assetId: string): void;
+  /** Clears the Library pick selection (transient view-state). */
+  clearPalettePick(): void;
+
   // ---- collision / walkability (step 8) ----
   /** Paints `walkability.cells` along a line segment (brush stroke, `strokeId`-coalesced), skipping
    *  void cells like every other paint tool. `blocked` sets `1` (blocked) or `0` (walkable). */
@@ -1071,6 +1107,34 @@ function nextLayerId(map: MapFile): string {
   return `layer_${String(max + 1).padStart(4, '0')}`;
 }
 
+/** Next auto `palette_NNNN` id (plan 033) — scans existing palette ids so re-adding after a delete/undo
+ *  never collides. Mirrors `nextLayerId`'s scan-for-max `<prefix>_NNNN` scheme used across the format. */
+function nextTilePaletteId(palettes: readonly NamedTilePalette[]): string {
+  let max = 0;
+  for (const p of palettes) {
+    const m = /^palette_(\d+)$/.exec(p.id);
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return `palette_${String(max + 1).padStart(4, '0')}`;
+}
+
+/** If `activeTilePaletteId` no longer names a palette in `map` (deleted, or an undo removed it), fall
+ *  back to the first palette, or `null` for an empty/absent palette set (plan 033). Called on map load
+ *  and after every history-stack move so the active-palette pointer never dangles — mirrors
+ *  `reconcileActiveLayer`. Read-only: it NEVER materialises `meta.tilePalettes` on a map that lacks it,
+ *  so opening a legacy map stays clean. */
+function reconcileActiveTilePalette(
+  map: MapFile | null,
+  activeTilePaletteId: string | null,
+): string | null {
+  if (!map) return null;
+  const palettes = map.meta.tilePalettes ?? [];
+  if (activeTilePaletteId && palettes.some((p) => p.id === activeTilePaletteId)) {
+    return activeTilePaletteId;
+  }
+  return palettes[0]?.id ?? null;
+}
+
 /** Filters `ids` down to ones that still name an object in `map` — called after every history-stack
  *  move (mirrors `reconcileActiveLayer`) so `selectedObjectIds` never dangles on a deleted/undone
  *  object. Deliberately only DROPS stale ids; it never re-adds one (e.g. undoing a delete restores
@@ -1271,6 +1335,9 @@ export const useEditorStore = create<EditorState>()(
     nodeDefsRevision: 0,
     activeTerrainId: null,
     activeLayerId: null,
+    activeTilePaletteId: null,
+    palettePickMode: false,
+    palettePickSelection: [],
     activeTool: 'pan',
     libraryRoleFilter: 'tile',
     libraryRoleFilterOverridden: false,
@@ -1313,6 +1380,10 @@ export const useEditorStore = create<EditorState>()(
         map,
         mapId: id,
         activeLayerId: map.layers[0]?.id ?? null,
+        // Plan 033: point at the first existing palette (or null) — never CREATE one on new/load.
+        activeTilePaletteId: reconcileActiveTilePalette(map, null),
+        palettePickMode: false,
+        palettePickSelection: [],
         selectedObjectIds: [],
         regionSelection: null,
         activeZoneId: null,
@@ -1342,6 +1413,10 @@ export const useEditorStore = create<EditorState>()(
         map,
         mapId: id,
         activeLayerId: map.layers[0]?.id ?? null,
+        // Plan 033: point at the first existing palette (or null); loading never migrates a legacy map.
+        activeTilePaletteId: reconcileActiveTilePalette(map, null),
+        palettePickMode: false,
+        palettePickSelection: [],
         selectedObjectIds: [],
         regionSelection: null,
         activeZoneId: null,
@@ -1370,6 +1445,9 @@ export const useEditorStore = create<EditorState>()(
         map: null,
         mapId: null,
         activeLayerId: null,
+        activeTilePaletteId: null,
+        palettePickMode: false,
+        palettePickSelection: [],
         selectedObjectIds: [],
         regionSelection: null,
         activeZoneId: null,
@@ -1690,6 +1768,7 @@ export const useEditorStore = create<EditorState>()(
         dirty: true,
         docRevision: s.docRevision + 1,
         activeLayerId: reconcileActiveLayer(s.map, s.activeLayerId),
+        activeTilePaletteId: reconcileActiveTilePalette(s.map, s.activeTilePaletteId),
         selectedObjectIds: reconcileSelection(s.map, s.selectedObjectIds),
         activeZoneId: reconcileActiveZone(s.map, s.activeZoneId),
         canUndo: history.canUndo(),
@@ -1724,6 +1803,7 @@ export const useEditorStore = create<EditorState>()(
           pendingDirty: null,
           regionSelection: null, // region select isn't history-tracked — drop the box so it can't drift from the reverted content
           activeLayerId: reconcileActiveLayer(s.map, s.activeLayerId),
+          activeTilePaletteId: reconcileActiveTilePalette(s.map, s.activeTilePaletteId),
           selectedObjectIds: reconcileSelection(s.map, s.selectedObjectIds),
           activeZoneId: reconcileActiveZone(s.map, s.activeZoneId),
           worldDirty: true,
@@ -1748,6 +1828,7 @@ export const useEditorStore = create<EditorState>()(
         pendingDirty: null, // a whole coalesced stroke reverted at once — fall back to a full rebake
         regionSelection: null, // region select isn't history-tracked — drop the box so it can't drift from the reverted content
         activeLayerId: reconcileActiveLayer(s.map, s.activeLayerId),
+        activeTilePaletteId: reconcileActiveTilePalette(s.map, s.activeTilePaletteId),
         selectedObjectIds: reconcileSelection(s.map, s.selectedObjectIds),
         activeZoneId: reconcileActiveZone(s.map, s.activeZoneId),
         canUndo: history.canUndo(),
@@ -1766,6 +1847,7 @@ export const useEditorStore = create<EditorState>()(
           pendingDirty: null,
           regionSelection: null, // region select isn't history-tracked — drop the box so it can't drift from the reverted content
           activeLayerId: reconcileActiveLayer(s.map, s.activeLayerId),
+          activeTilePaletteId: reconcileActiveTilePalette(s.map, s.activeTilePaletteId),
           selectedObjectIds: reconcileSelection(s.map, s.selectedObjectIds),
           activeZoneId: reconcileActiveZone(s.map, s.activeZoneId),
           worldDirty: true,
@@ -1789,6 +1871,7 @@ export const useEditorStore = create<EditorState>()(
         docRevision: s.docRevision + 1,
         pendingDirty: null,
         activeLayerId: reconcileActiveLayer(s.map, s.activeLayerId),
+        activeTilePaletteId: reconcileActiveTilePalette(s.map, s.activeTilePaletteId),
         selectedObjectIds: reconcileSelection(s.map, s.selectedObjectIds),
         activeZoneId: reconcileActiveZone(s.map, s.activeZoneId),
         canUndo: history.canUndo(),
@@ -2191,6 +2274,7 @@ export const useEditorStore = create<EditorState>()(
         docRevision: s.docRevision + 1,
         regionSelection: null, // a crop/grow can leave the box off the new bounds — drop it
         activeLayerId: reconcileActiveLayer(s.map, s.activeLayerId),
+        activeTilePaletteId: reconcileActiveTilePalette(s.map, s.activeTilePaletteId),
         selectedObjectIds: reconcileSelection(s.map, s.selectedObjectIds),
         activeZoneId: reconcileActiveZone(s.map, s.activeZoneId),
         canUndo: history.canUndo(),
@@ -2840,6 +2924,139 @@ export const useEditorStore = create<EditorState>()(
       };
       get().applyCommand(cmd);
     },
+
+    // ---- tile palettes (plan 033) ----
+
+    setActiveTilePalette: (id) => set({ activeTilePaletteId: id }),
+
+    addTilePalette: (name) => {
+      const map = get().map;
+      if (!map) return;
+      const palettes = map.meta.tilePalettes ?? [];
+      const id = nextTilePaletteId(palettes);
+      const created: NamedTilePalette = {
+        id,
+        name: name?.trim() || `Palette ${palettes.length + 1}`,
+        slots: [],
+      };
+      const cmd: Command = {
+        do: () => {
+          if (!map.meta.tilePalettes) map.meta.tilePalettes = [];
+          map.meta.tilePalettes.push(created);
+        },
+        undo: () => {
+          const arr = map.meta.tilePalettes;
+          if (!arr) return;
+          const i = arr.indexOf(created);
+          if (i >= 0) arr.splice(i, 1);
+        },
+      };
+      get().applyCommand(cmd);
+      // Making it active is view-state, NOT part of the undoable structural edit (mirrors `addLayer`).
+      set({ activeTilePaletteId: id });
+    },
+
+    addTilesToActivePalette: (entries) => {
+      const map = get().map;
+      if (!map || entries.length === 0) return;
+      const palettes = map.meta.tilePalettes ?? [];
+      // Lazy first-palette creation: a legacy map is only ever written the moment the user actually
+      // adds tiles — never migrated on open. If palettes already exist, target the active one (falling
+      // back to the first if the pointer is null/dangling).
+      const lazyCreate = palettes.length === 0;
+      const created: NamedTilePalette | null = lazyCreate
+        ? { id: nextTilePaletteId(palettes), name: 'Palette 1', slots: [] }
+        : null;
+      const active = get().activeTilePaletteId;
+      const targetId = created
+        ? created.id
+        : (palettes.find((p) => p.id === active) ?? palettes[0]).id;
+      // Dedupe exact `assetId`+`rotation` duplicates — against the target's existing slots AND within
+      // this batch. Slot key normalises a missing rotation to 0.
+      const slotKey = (s: TilePaletteSlot): string => `${s.assetId}#${s.rotation ?? 0}`;
+      const existingTarget = created ?? palettes.find((p) => p.id === targetId);
+      const seen = new Set((existingTarget?.slots ?? []).map(slotKey));
+      const toAppend: TilePaletteSlot[] = [];
+      for (const e of entries) {
+        const key = slotKey(e);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        // Normalise rotation omit-when-absent so slots round-trip byte-identical (Step 1 contract).
+        toAppend.push(
+          e.rotation ? { assetId: e.assetId, rotation: e.rotation } : { assetId: e.assetId },
+        );
+      }
+      if (toAppend.length === 0 && !created) return; // nothing new and no structural change to make
+      const cmd: Command = {
+        do: () => {
+          if (!map.meta.tilePalettes) map.meta.tilePalettes = [];
+          if (created) map.meta.tilePalettes.push(created);
+          const target = map.meta.tilePalettes.find((p) => p.id === targetId);
+          if (target) target.slots.push(...toAppend);
+        },
+        undo: () => {
+          const arr = map.meta.tilePalettes;
+          if (!arr) return;
+          const target = arr.find((p) => p.id === targetId);
+          if (target && toAppend.length > 0) {
+            target.slots.splice(target.slots.length - toAppend.length, toAppend.length);
+          }
+          if (created) {
+            const i = arr.indexOf(created);
+            if (i >= 0) arr.splice(i, 1);
+          }
+        },
+      };
+      get().applyCommand(cmd);
+      // A lazily-created palette becomes active as view-state, outside the command (like `addTilePalette`).
+      if (created) set({ activeTilePaletteId: created.id });
+    },
+
+    removeTilePaletteSlot: (paletteId, index) => {
+      const map = get().map;
+      if (!map) return;
+      const palette = (map.meta.tilePalettes ?? []).find((p) => p.id === paletteId);
+      if (!palette || index < 0 || index >= palette.slots.length) return;
+      const [removed] = palette.slots.slice(index, index + 1);
+      const cmd: Command = {
+        do: () => {
+          palette.slots.splice(index, 1);
+        },
+        undo: () => {
+          palette.slots.splice(index, 0, removed);
+        },
+      };
+      get().applyCommand(cmd);
+    },
+
+    selectPaletteSlot: (slot) => {
+      // Brush-arm, NOT a palette mutation — replicates `pickTile`'s store-level arm sequence
+      // (LibraryPanel.tsx `pickTile`; that copy also does component-only recents/onPick side effects,
+      // so this can't call it directly). Adds a `brushRotation` set for the slot's rotation.
+      const s = get();
+      s.setBrushAsset(slot.assetId);
+      s.setBrushRotation((slot.rotation ?? 0) as 0 | 90 | 180 | 270);
+      if (s.activeTool !== 'brush' && s.activeTool !== 'rect') s.setActiveTool('brush');
+    },
+
+    togglePalettePickMode: () =>
+      set((s): Partial<EditorState> => {
+        const palettePickMode = !s.palettePickMode;
+        // Leaving pick mode clears the selection so a stale set never lingers into the next session.
+        return {
+          palettePickMode,
+          palettePickSelection: palettePickMode ? s.palettePickSelection : [],
+        };
+      }),
+
+    togglePalettePickTile: (assetId) =>
+      set((s): Partial<EditorState> => ({
+        palettePickSelection: s.palettePickSelection.includes(assetId)
+          ? s.palettePickSelection.filter((a) => a !== assetId)
+          : [...s.palettePickSelection, assetId],
+      })),
+
+    clearPalettePick: () => set({ palettePickSelection: [] }),
 
     // ---- objects: place, transform, stack, portals (step 7) ----
 

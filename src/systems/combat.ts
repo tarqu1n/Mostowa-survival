@@ -9,7 +9,8 @@ export function meleeDamage(attacker: CombatantStats, weaponBaseDamage: number):
   return weaponBaseDamage + attacker.strength;
 }
 
-/** Defined for schema completeness — nothing calls this yet, no ranged weapon exists. */
+/** Ranged damage: weapon base + the attacker's dexterity (the ranged analogue of `meleeDamage`'s
+ *  strength bonus). Feeds {@link resolveRangedAttack} — the bow's damage path (plan 035a Step 5). */
 export function rangedDamage(attacker: CombatantStats, weaponBaseDamage: number): number {
   return weaponBaseDamage + attacker.dex;
 }
@@ -32,4 +33,17 @@ export function resolveMeleeAttack(
 ): number {
   if (rng() * 100 >= hitChance(defender)) return 0;
   return damageTaken(meleeDamage(attacker, weaponBaseDamage), defender);
+}
+
+/** Rolls hit chance, then resolves RANGED damage — the bow's resolve, mirroring
+ *  {@link resolveMeleeAttack} but through {@link rangedDamage} (dex, not strength). Returns the HP to
+ *  subtract, or 0 on a miss (plan 035a Step 5). */
+export function resolveRangedAttack(
+  attacker: CombatantStats,
+  defender: CombatantStats,
+  weaponBaseDamage: number,
+  rng: () => number = Math.random,
+): number {
+  if (rng() * 100 >= hitChance(defender)) return 0;
+  return damageTaken(rangedDamage(attacker, weaponBaseDamage), defender);
 }

@@ -184,6 +184,57 @@ test('firing the bow slows the player only lightly — kite-able, unlike melee (
   expect(bowDist).toBeGreaterThan(fullDist * 0.55); // but far lighter than melee's ~0.2 — still kiting
 });
 
+test('the bow auto-targets the nearest enemy in the facing direction (plan 035a)', async ({
+  page,
+}) => {
+  await startGame(page);
+  // Player faces right. One enemy east (in the facing hemisphere), one south (off-facing) — both well
+  // within bow range (BOW_RANGE_TILES 6). Facing-bias must lock the eastward one, not the southward.
+  const { enemyIds } = await applyScenario(page, {
+    player: [10, 10],
+    facing: 'right',
+    mode: 'combat',
+    enemies: [
+      [13, 10],
+      [10, 13],
+    ],
+  });
+
+  await emit(page, 'combat:bow');
+  await step(page, 50); // resolve the shot + one frame of syncBowTarget
+  const s = await state(page);
+  expect(s.bowTargetId).toBe(enemyIds[0]); // the eastward enemy (spec order), not the southward one
+  expect(s.enemyHitFlashes).toBeGreaterThan(0); // the target took a ranged hit (kidZombie hp3, bow 2 → survived)
+});
+
+test('the bow kills an enemy from range while the player stays put, then clears its target (plan 035a)', async ({
+  page,
+}) => {
+  await startGame(page);
+  // Enemy 5 tiles north — inside bow range (6), never adjacent. Player faces up, no movepad drive, so
+  // the player never closes the gap: the whole kill lands at range.
+  await applyScenario(page, {
+    player: [10, 10],
+    facing: 'up',
+    mode: 'combat',
+    enemies: [[10, 5]],
+  });
+  expect((await state(page)).enemies).toBe(1);
+
+  // kidZombie maxHp 3, bow BOW_BASE_DAMAGE 2 (player dex 0), dodge 0 → two arrows kill it.
+  await emit(page, 'combat:bow');
+  await step(page, 100);
+  expect((await state(page)).enemies).toBe(1); // first shot: 3 → 1, still alive
+
+  await emit(page, 'combat:bow');
+  await step(page, 100);
+  const s = await state(page);
+  expect(s.enemies).toBe(0); // second shot killed it from range
+  expect(s.pcol).toBe(10); // player never moved to melee — the fight was purely ranged
+  expect(s.prow).toBe(10);
+  expect(s.bowTargetId).toBeNull(); // the auto-target cleared when it died (highlight hides with it)
+});
+
 test('an enemy near surfaces combat controls, and the movepad drives while a queued order survives (plan 035a)', async ({
   page,
 }) => {

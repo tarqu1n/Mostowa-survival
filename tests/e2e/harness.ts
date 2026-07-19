@@ -41,6 +41,7 @@ export interface DebugState {
   campfires: Array<{ col: number; row: number; fuel: number; lit: boolean }>;
   enemyWindups: number;
   combatActive: boolean;
+  bowTargetId: string | null;
 }
 
 /**

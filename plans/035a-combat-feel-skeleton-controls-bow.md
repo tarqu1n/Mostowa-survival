@@ -192,7 +192,37 @@ night; **no dodge** (kiting is survivability), leave a Spell slot in the cluster
   - Done when: in `pnpm dev`, DEV menu → SPAWN ENEMY drops a skeleton next to the player to fight; no console
     errors.
 
-- [ ] **Step 5: The bow — auto-target, coded anim, highlight, ranged damage** `[inline]`
+- [x] **Step 5: The bow — auto-target, coded anim, highlight, ranged damage** `[inline]`
+  - Outcome: `combat:bow` (`GameScene.bow`) now, on top of the Step-2 lock: picks a target via new
+    `pickBowTarget()` — **facing-biased nearest** (live enemies within new `BOW_RANGE_TILES` (6,
+    Euclidean); if any lie in the `lastFacing` hemisphere (positive dot) the nearest of those wins,
+    else nearest in range) — faces it, flies a coded arrow tracer, and applies **ranged** damage via
+    new `resolveRangedAttack` (`combat.ts`, base + `dex`; new `BOW_BASE_DAMAGE`=2, player dex 0 → 2/
+    shot, kills a kidZombie in 2). **Hitscan** — the arrow is pure FX (`CombatFxManager.fireArrow`: a
+    thin `BOW_ARROW_LEN_PX` dash tweened player→target over `BOW_ARROW_MS`, self-destroying), the
+    chosen "light projectile". **Target highlight:** `CombatFxManager.syncBowTargetHighlight` — a
+    single stroked rect (`COLORS.bowTarget`) re-hugging the target's bounds every frame (driven from
+    `GameScene.syncBowTarget` in `update()`, above the movement early-return so it tracks while
+    kiting); mirrors `outlineCampfire`, NOT a baked halo. New `bowTargetId` scene field, reconciled
+    each frame (cleared on the target dying or leaving range), surfaced in `DebugState` (at END) +
+    tripwire + harness mirror + reset in scenario `resetWorld` (new `clearBowTarget`/`getBowTargetId`
+    test-API deps). `BOW_MOVE_SLOW` kite already lands via Step 2's `bowLockUntil`.
+    **DEVIATION (flagged):** the "held bow sprite pinned via attachment.ts" body pose was NOT built —
+    the player rig carries no per-frame hand anchors and the pack ships no bow art, so the *release
+    body pose* reuses the existing Pierce (`attack`) strip as a coded stand-in during the draw window
+    (new `bowLockUntil` branch in `PlayerCharacter.updateAnim`); the arrow tracer + highlight carry
+    the ranged read. A real bow rig/art + arrow-nock anchors is a later polish pass (noted for Step 7 /
+    playtest). New consts `BOW_RANGE_TILES`/`BOW_BASE_DAMAGE`/`BOW_ARROW_MS`/`BOW_ARROW_LEN_PX` +
+    `COLORS.bowTarget`/`COLORS.arrow` (config.ts). Files: `config.ts`, `systems/combat.ts`,
+    `entities/PlayerCharacter.ts`, `scenes/fx/CombatFxManager.ts`, `scenes/GameScene.ts`,
+    `scenes/testApi.ts`, `systems/__tests__/combat.test.ts` (rangedDamage + resolveRangedAttack
+    Tier-1), `tests/e2e/harness.ts`, `tests/e2e/refactor-tripwire.spec.ts`, `tests/e2e/combat.spec.ts`
+    (2 new specs: facing-biased target selection; kill-from-range + target-clears-on-death). Verified:
+    typecheck clean, lint 0 errors (96 pre-existing `any` warnings in test files only), unit 793✓
+    (was 788 + 5 new combat), e2e combat.spec (14) + refactor-tripwire green (15/15), prettier clean
+    on all touched files, `pnpm build` succeeds, boot canary passes with zero console/page errors (the
+    click-to-start single-click flake is pre-existing + intermittent, unrelated). Bow range/damage/
+    arrow feel proposed — playtest-tune.
   - Implement `combat:bow`: **facing-biased auto-target-nearest** (nearest live enemy in bow range, biased to
     `lastFacing`); fire applies `rangedDamage` (`combat.ts:13`) via a resolve mirroring `resolveMeleeAttack`.
     **Unlimited ammo.** Visual: a lightweight arrow projectile player→target (or hitscan + tracer if simpler)

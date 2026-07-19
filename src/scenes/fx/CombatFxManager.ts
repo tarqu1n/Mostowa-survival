@@ -10,6 +10,9 @@ import {
   WEAPON_SWING_MS,
   WEAPON_SWING_SCALE_POP,
   ENEMY_WINDUP_TINT,
+  BOW_ARROW_MS,
+  BOW_ARROW_LEN_PX,
+  COLORS,
 } from '../../config';
 import { HIT_FLASH_KEY, type HitFlashPipeline } from '../../render/hitFlashPipeline';
 import { playerAnimKey, type Facing } from '../../data/tileset';
@@ -55,6 +58,14 @@ export class CombatFxManager {
   // (plan 035a Step 1). Tracked so a strike/escape/teardown can stop it and clear the tint.
   private readonly windUpTweens = new Map<Phaser.GameObjects.Sprite, Phaser.Tweens.Tween>();
   private readonly hitFlashOn = new Set<Phaser.GameObjects.Sprite>();
+  // Bow FX (plan 035a Step 5). `arrows` are the in-flight coded arrow tracers (a thin dash tweened
+  // player→target, self-destroying on arrival) — tracked so a scenario reset / SHUTDOWN can kill any
+  // still mid-flight before their target sprite is freed. `bowTargetBox` is the ONE persistent stroked
+  // highlight round the bow's current auto-target, re-synced each frame to hug the target's bounds
+  // (mirrors TaskGlowRenderer.outlineCampfire + syncGlowTransforms — NOT a baked halo, which would
+  // freeze on one frame of a moving/animating enemy); hidden when there's no target.
+  private readonly arrows = new Set<Phaser.GameObjects.Rectangle>();
+  private bowTargetBox?: Phaser.GameObjects.Rectangle;
   // Enemy sprites out of the AI set but lingering to play their one-shot death collapse before the
   // corpse is removed. Tracked so debugState can report them (proves removal waits for the animation).
   private readonly corpses = new Set<Phaser.GameObjects.Sprite>();
@@ -291,6 +302,59 @@ export class CombatFxManager {
     );
   }
 
+  /**
+   * Loose a coded arrow tracer (plan 035a Step 5): a thin dash that flies from `(fromX,fromY)` to
+   * `(toX,toY)` over {@link BOW_ARROW_MS}, then self-destroys. Purely visual — the actual ranged
+   * damage resolves instantly in GameScene.bow (hitscan); this only *sells* the shot, the same way
+   * {@link lungeAt} sells an enemy bite with no real projectile. Tracked in `arrows` so a mid-flight
+   * dash is torn down cleanly on a scenario reset / SHUTDOWN.
+   */
+  fireArrow(fromX: number, fromY: number, toX: number, toY: number): void {
+    const angle = Math.atan2(toY - fromY, toX - fromX);
+    const arrow = this.scene.add
+      .rectangle(fromX, fromY, BOW_ARROW_LEN_PX, 2, COLORS.arrow, 1)
+      .setDepth(11) // above enemies (9) + their weapons (~10–11); under the bow-target box (12)
+      .setRotation(angle);
+    this.arrows.add(arrow);
+    this.scene.tweens.add({
+      targets: arrow,
+      x: toX,
+      y: toY,
+      duration: BOW_ARROW_MS,
+      ease: 'Linear',
+      onComplete: () => {
+        this.arrows.delete(arrow);
+        arrow.destroy();
+      },
+    });
+  }
+
+  /**
+   * Keep the bow's current-target highlight — a stroked rect hugging `sprite`'s rendered bounds —
+   * locked onto the target, or hide it when `sprite` is null (no target / target gone). Called every
+   * frame by GameScene.update with the live target sprite: re-hugging the bounds tracks a moving,
+   * animating, or flinching enemy (a baked halo would freeze on one frame). The box is created lazily
+   * and reused; `setSize` reflows the stroke each frame.
+   */
+  syncBowTargetHighlight(sprite: Phaser.GameObjects.Sprite | null): void {
+    if (!sprite || !sprite.active) {
+      this.bowTargetBox?.setVisible(false);
+      return;
+    }
+    const b = sprite.getBounds();
+    const pad = 3;
+    if (!this.bowTargetBox) {
+      this.bowTargetBox = this.scene.add
+        .rectangle(0, 0, 1, 1, COLORS.bowTarget, 0) // no fill — outline only
+        .setStrokeStyle(1.5, COLORS.bowTarget, 1)
+        .setDepth(12);
+    }
+    this.bowTargetBox
+      .setVisible(true)
+      .setPosition((b.left + b.right) / 2, (b.top + b.bottom) / 2)
+      .setSize(b.width + pad, b.height + pad);
+  }
+
   /** Stop and forget any in-flight hit-flash/lunge tweens for a sprite about to be destroyed — those
    * tweens target plain objects but poke the sprite (scale / body.reset), so they'd throw once it's
    * gone. Called before a killed enemy's sprite is destroyed. */
@@ -335,6 +399,16 @@ export class CombatFxManager {
     this.weaponSwingTweens.clear();
     this.windUpTweens.clear();
     this.hitFlashOn.clear();
+    // Bow FX: kill any in-flight arrow tracer + destroy its dash, then drop the persistent target box
+    // (a fresh create()/scenario rebuilds it lazily on the next shot). Same "stop then destroy" as
+    // above so no orphaned tween pokes a freed dash next frame.
+    for (const a of this.arrows) {
+      this.scene.tweens.killTweensOf(a);
+      a.destroy();
+    }
+    this.arrows.clear();
+    this.bowTargetBox?.destroy();
+    this.bowTargetBox = undefined;
     this.corpses.clear(); // scene teardown destroys the sprites; drop stale references
     this.playerFlash = 0;
     this.playerHitFlashes = 0;

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { meleeDamage, hitChance, damageTaken, resolveMeleeAttack } from '../combat';
+import {
+  meleeDamage,
+  rangedDamage,
+  hitChance,
+  damageTaken,
+  resolveMeleeAttack,
+  resolveRangedAttack,
+} from '../combat';
 import type { CombatantStats } from '../../data/types';
 
 function makeStats(overrides: Partial<CombatantStats> = {}): CombatantStats {
@@ -23,6 +30,18 @@ describe('meleeDamage', () => {
   it('handles zero strength', () => {
     const attacker = makeStats({ strength: 0 });
     expect(meleeDamage(attacker, 1)).toBe(1);
+  });
+});
+
+describe('rangedDamage', () => {
+  it('equals weaponBase + dex (the ranged analogue of strength)', () => {
+    const attacker = makeStats({ dex: 3 });
+    expect(rangedDamage(attacker, 2)).toBe(5);
+  });
+
+  it('handles zero dex (the player today)', () => {
+    const attacker = makeStats({ dex: 0 });
+    expect(rangedDamage(attacker, 2)).toBe(2);
   });
 });
 
@@ -81,5 +100,29 @@ describe('resolveMeleeAttack', () => {
     }
 
     expect(hp).toBe(0);
+  });
+});
+
+describe('resolveRangedAttack', () => {
+  it('returns 0 on a miss', () => {
+    const attacker = makeStats({ dex: 5 });
+    const defender = makeStats({ dodge: 50, armour: 0 });
+    // hitChance(defender) = 50; rng() * 100 = 60 >= 50 -> miss.
+    expect(resolveRangedAttack(attacker, defender, 2, () => 0.6)).toBe(0);
+  });
+
+  it('resolves ranged damage through dex (not strength) on a hit', () => {
+    const attacker = makeStats({ strength: 9, dex: 3 }); // strength must be ignored by the ranged path
+    const defender = makeStats({ dodge: 0, armour: 1 });
+    // rangedDamage = 2 (weapon base) + 3 (dex) = 5; damageTaken = 5 - 1 = 4.
+    expect(resolveRangedAttack(attacker, defender, 2, () => 0)).toBe(4);
+  });
+
+  it('kills a maxHp-3 enemy in 2 bow hits (base 2, dex 0)', () => {
+    const attacker = makeStats({ dex: 0 });
+    const enemy = makeStats({ maxHp: 3, dodge: 0, armour: 0 });
+    let hp = enemy.maxHp;
+    for (let i = 0; i < 2; i++) hp -= resolveRangedAttack(attacker, enemy, 2, () => 0);
+    expect(hp).toBeLessThanOrEqual(0); // 3 - 2 - 2 = -1
   });
 });

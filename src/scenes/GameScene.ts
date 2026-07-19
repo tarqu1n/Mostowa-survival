@@ -16,6 +16,8 @@ import {
   ENEMY_HIT_SHAKE_INTENSITY,
   DEATH_HOLD_MS,
   BOW_DRAW_MS,
+  BOW_RANGE_TILES,
+  BOW_BASE_DAMAGE,
   COMBAT_ACTIVE_RADIUS_TILES,
   INVENTORY_SLOTS,
   DEFAULT_MAX_STACK,
@@ -31,11 +33,12 @@ import { zoneAt } from '../systems/mapZones';
 import type { MapFile, DecorObject, NodeObject, PortalObject } from '../systems/mapFormat';
 import { breadcrumb, setCrashContext } from '../debug/crashReporter';
 import { TaskQueue, type Action } from '../systems/tasks';
-import { resolveMeleeAttack } from '../systems/combat';
+import { resolveMeleeAttack, resolveRangedAttack } from '../systems/combat';
 import type { UIScene } from './UIScene';
 import type { GameTestApi } from '../entities/testTypes';
 import type { CharacterSprite } from '../entities/Character';
 import { PlayerCharacter } from '../entities/PlayerCharacter';
+import type { MonsterCharacter } from '../entities/MonsterCharacter';
 import { CombatFxManager } from './fx/CombatFxManager';
 import { NodeFxManager } from './fx/NodeFxManager';
 import { PointerInputController } from './input/PointerInputController';
@@ -87,6 +90,13 @@ export class GameScene extends Phaser.Scene {
   // (emitted as `combat:activeChanged`). Independent of `mode`: it never flips `mode` to 'combat'
   // (that cancelAll()s the task queue), so command-mode taps keep queuing orders while it's true.
   private combatActive = false;
+
+  // The enemy the bow currently has locked as its auto-target (plan 035a Step 5), by MonsterCharacter
+  // id — or null when no target. Set on a bow fire (pickBowTarget), reconciled every frame
+  // (syncBowTarget: cleared when the target dies or leaves BOW_RANGE_TILES) and surfaced in debugState
+  // (`bowTargetId`). Drives the persistent target highlight (CombatFxManager.syncBowTargetHighlight)
+  // and, later, the persistent HP bar (Step 6).
+  private bowTargetId: string | null = null;
 
   private inv!: Inventory;
 
@@ -243,6 +253,7 @@ export class GameScene extends Phaser.Scene {
     this.harvestSwing = null;
     this.combatMoveVec = { dx: 0, dy: 0 };
     this.combatActive = false; // recomputed on the first update() tick; UIScene resynced in buildWorld
+    this.bowTargetId = null; // no bow target across a death-restart (FX highlight cleared via fx.resetCombatFx below)
     // Combat-FX state — (re-)arm the SHUTDOWN flush (see CombatFxManager.armShutdown) then clear so a
     // death-restart starts clean: the maps/set held tweens+sprites from the dead run (Phaser destroyed
     // them on teardown, so drop the stale references). Player-side state (hp/facing/path/attack-lock/
@@ -568,6 +579,10 @@ export class GameScene extends Phaser.Scene {
       },
       getMode: () => this.mode,
       getCombatActive: () => this.combatActive,
+      getBowTargetId: () => this.bowTargetId,
+      clearBowTarget: () => {
+        this.bowTargetId = null;
+      },
       setModeAndEmit: (m) => {
         this.mode = m;
         this.game.events.emit('mode:changed', this.mode);
@@ -641,6 +656,11 @@ export class GameScene extends Phaser.Scene {
     // Recompute the auto-surface predicate (enemy-near / night) before any movement gating below —
     // it decides whether the movepad is authoritative this frame (see movepadDrives).
     this.updateCombatActive();
+
+    // Reconcile the bow's auto-target + keep its highlight glued to the target (plan 035a Step 5).
+    // Above the movement early-return below so the highlight tracks even on the idle/movepad-drive
+    // path (a kiting player shooting while backing away).
+    this.syncBowTarget();
 
     const action = this.queue.current;
     // Movepad precedence (plan 035a Step 3): while combat controls are surfaced (manual Combat mode OR
@@ -1000,11 +1020,70 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Loose an arrow (plan 035a). STUB for Step 2: commit the player to a brief bow-fire lock so the
-   *  light `BOW_MOVE_SLOW` kicks in (kite-able, unlike the melee root) and the Bow button feels heard.
-   *  Step 5 adds the auto-target, ranged damage, projectile + coded draw/release anim on top of this. */
+  /**
+   * Loose an arrow (plan 035a Step 5). Commit to the brief bow-fire lock (light `BOW_MOVE_SLOW` — you
+   * can keep kiting, unlike the melee root), then auto-target the nearest live enemy in bow range
+   * biased to the current facing ({@link pickBowTarget}). With a target: turn to face it, fly a coded
+   * arrow tracer at it, and resolve ranged damage (hitscan — the tracer is pure FX) via the shared
+   * {@link resolveRangedAttack}. Unlimited ammo. Firing with nothing in range still spends the lock +
+   * plays the draw pose (the Bow button always feels heard) and just clears the target.
+   */
   private bow(): void {
     this.playerChar.bowLockUntil = this.time.now + BOW_DRAW_MS;
+    const target = this.pickBowTarget();
+    if (!target) {
+      this.bowTargetId = null;
+      return;
+    }
+    this.bowTargetId = target.id;
+    this.playerChar.faceTile(target.col, target.row); // release pose + tracer point at the target
+    this.fx.fireArrow(this.player.x, this.player.y, target.sprite.x, target.sprite.y);
+    const dmg = resolveRangedAttack(this.playerChar.stats, target.def, BOW_BASE_DAMAGE, this.rng);
+    target.takeDamage(dmg);
+    if (target.hp <= 0) {
+      this.enemyManager.killEnemy(target); // death collapse + corpse linger, same as a melee kill
+      this.bowTargetId = null;
+    } else if (dmg > 0) {
+      this.fx.flashHit(target.sprite); // red flash + flinch on a hit it survived (mirrors attack())
+      this.cameras.main.shake(ENEMY_HIT_SHAKE_MS, ENEMY_HIT_SHAKE_INTENSITY);
+    }
+  }
+
+  /**
+   * Pick the bow's auto-target: the nearest live enemy within {@link BOW_RANGE_TILES} (Euclidean
+   * tiles) of the player, **biased to the current facing** — if any in-range enemy lies in the facing
+   * hemisphere (the dot of its offset with `lastFacing` is positive), the nearest of THOSE wins;
+   * otherwise the nearest in range regardless of side. So facing a direction preferentially shoots
+   * what you're looking at, but you still hit something creeping up behind if it's all that's near.
+   */
+  private pickBowTarget(): MonsterCharacter | undefined {
+    const pt = this.playerChar.tile();
+    const f = this.playerChar.lastFacing;
+    const dist = (z: MonsterCharacter): number => Math.hypot(z.col - pt.col, z.row - pt.row);
+    const inRange = this.enemyManager.all().filter((z) => z.alive && dist(z) <= BOW_RANGE_TILES);
+    if (inRange.length === 0) return undefined;
+    const inFacing = inRange.filter(
+      (z) => (z.col - pt.col) * f.dCol + (z.row - pt.row) * f.dRow > 0,
+    );
+    const pool = inFacing.length ? inFacing : inRange;
+    return pool.reduce((best, z) => (dist(z) < dist(best) ? z : best));
+  }
+
+  /** Reconcile the bow's current target each frame + keep its highlight glued to it (plan 035a Step
+   *  5). Drops the target when it's gone (killed/removed) or has walked out of {@link BOW_RANGE_TILES}
+   *  — "clears when the target dies/leaves range" — then hands the live target sprite (or null) to the
+   *  FX highlight, which re-hugs its bounds. */
+  private syncBowTarget(): void {
+    let target = this.bowTargetId
+      ? this.enemyManager.all().find((z) => z.id === this.bowTargetId && z.alive)
+      : undefined;
+    if (target) {
+      const pt = this.playerChar.tile();
+      if (Math.hypot(target.col - pt.col, target.row - pt.row) > BOW_RANGE_TILES)
+        target = undefined;
+    }
+    this.bowTargetId = target?.id ?? null;
+    this.fx.syncBowTargetHighlight(target?.sprite ?? null);
   }
 
   /** Player took a landed hit: the shared "you're hurt" feedback — the red flash + squash on the

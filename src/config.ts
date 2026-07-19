@@ -161,6 +161,25 @@ export const ATTACK_MOVE_SLOW = 0.2;
 export const BOW_MOVE_SLOW = 0.75;
 export const BOW_DRAW_MS = 450;
 
+/**
+ * The bow itself (plan 035a Step 5). Loosing an arrow auto-targets the nearest live enemy within
+ * `BOW_RANGE_TILES` (Euclidean tiles), biased toward the player's current facing, and deals
+ * `BOW_BASE_DAMAGE` through the shared ranged formula (base + the attacker's `dex`; the player's dex
+ * is 0 today). Range/damage are the ranged↔melee trade: the bow reaches farther and lets you kite
+ * (light `BOW_MOVE_SLOW`), so it hits a touch harder per shot than an unarmed melee (1) to reward the
+ * commitment. Unlimited ammo for now. Starting values — playtest-tune.
+ *
+ * The shot is sold with a coded arrow tracer: a thin `BOW_ARROW_LEN_PX`-long dash that flies
+ * player→target over `BOW_ARROW_MS` (no projectile physics — a pure visual, like the enemy lunge/
+ * weapon-swing are coded FX). The pack ships no bow spritesheet, so the release *body* pose reuses the
+ * existing Pierce (attack) strip as a coded stand-in during the draw window (see
+ * PlayerCharacter.updateAnim) — a dedicated bow rig/art is a later polish pass.
+ */
+export const BOW_RANGE_TILES = 6;
+export const BOW_BASE_DAMAGE = 2;
+export const BOW_ARROW_MS = 140;
+export const BOW_ARROW_LEN_PX = 10;
+
 /** Minimum time (ms) between an enemy's contact-damage attempts on the player. */
 export const CONTACT_DAMAGE_COOLDOWN_MS = 1000;
 
@@ -360,4 +379,6 @@ export const COLORS = {
   queued: 0xffd500, // outline / marker for targets currently in the worker's task queue
   night: 0x0a1020, // full-screen overlay tint during the day/night cycle's dark hours
   fireLight: 0xffb066, // warm campfire glow tint (later step: light/reveal radius rendering)
+  bowTarget: 0xff5a4d, // stroked highlight round the bow's current auto-target (plan 035a Step 5)
+  arrow: 0xf4e2b8, // coded arrow-tracer dash colour (plan 035a Step 5)
 } as const;

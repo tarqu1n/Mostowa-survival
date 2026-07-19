@@ -72,6 +72,9 @@ export interface DebugState {
   // Appended (plan 035a Step 3) — the auto-surface predicate (enemy-near OR night). Lets a Tier-2 spec
   // assert both triggers surface the fighting controls without a manual Combat-mode switch.
   combatActive: boolean;
+  // Appended (plan 035a Step 5) — the bow's current auto-target enemy id (null = none). Lets a Tier-2
+  // spec assert facing-biased target selection + that the target clears when it dies/leaves range.
+  bowTargetId: string | null;
 }
 
 /**
@@ -124,6 +127,10 @@ export interface TestApiDeps {
   getMode(): 'command' | 'combat' | 'inspect';
   /** The auto-surface predicate (plan 035a Step 3) — enemy-near OR night; surfaced in debugState. */
   getCombatActive(): boolean;
+  /** The bow's current auto-target enemy id, or null (plan 035a Step 5) — surfaced in debugState. */
+  getBowTargetId(): string | null;
+  /** Clear the bow's auto-target — called by resetWorld so a scenario never inherits a prior target. */
+  clearBowTarget(): void;
   /** Set mode + emit `mode:changed` — the exact testApplyScenario form (a direct field write, NOT
    *  `setMode`'s guarded toggle: a scenario reset already cleared the queue, so `setMode`'s
    *  combat-entry `cancelAll` would be redundant, and its "same mode" early-return would wrongly
@@ -194,6 +201,7 @@ export class TestApi {
     this.deps.setHarvestSwing(null);
     pc.attackLockUntil = 0;
     this.deps.setCombatMoveVec({ dx: 0, dy: 0 });
+    this.deps.clearBowTarget(); // no bow target carried into a fresh scenario (highlight cleared below)
     this.deps.fx.resetCombatFx(); // start each scenario with clean FX counters/flags (see create())
     pc.dying = false;
     this.deps.pointerInput.clearPaintedTiles();
@@ -411,6 +419,7 @@ export class TestApi {
         .map((c) => ({ col: c.col, row: c.row, fuel: c.fuel, lit: c.lit })),
       enemyWindups: aliveEnemies.filter((z) => z.windupUntil > 0).length,
       combatActive: this.deps.getCombatActive(),
+      bowTargetId: this.deps.getBowTargetId(),
     };
   }
 }

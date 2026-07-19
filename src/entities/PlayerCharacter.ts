@@ -92,6 +92,18 @@ export class PlayerCharacter extends Character {
   updateAnim(harvestSwing: 'chop' | 'mine' | 'gather' | null): void {
     if (this.dying) return; // death collapse owns the sprite until the restart
     if (this.scene.time.now < this.attackLockUntil) return; // attack swing in progress — don't stomp it
+    if (this.scene.time.now < this.bowLockUntil) {
+      // Bow draw/release: the pack ships no bow rig, so the release body pose reuses the Pierce
+      // (attack) strip as a coded stand-in for the draw window — a committed forward motion that
+      // reads as loosing a shot. The arrow tracer + target highlight (CombatFxManager) carry the
+      // actual "ranged" read; the light BOW_MOVE_SLOW still lets you kite. A dedicated bow anim/art
+      // is a later polish pass. Held (looped) for the window so update()'s per-frame call can't stomp
+      // it back to idle/walk — same "one state owns the sprite" discipline as the attack-lock above.
+      const facing = this.facingDir();
+      this.sprite.setFlipX(facing === 'side' && this.lastFacing.dCol < 0);
+      this.sprite.anims.play(playerAnimKey('attack', facing), true);
+      return;
+    }
     const facing = this.facingDir();
     const state: PlayerState =
       harvestSwing ?? (this.sprite.body.velocity.lengthSq() > 1 ? 'walk' : 'idle');

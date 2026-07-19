@@ -158,6 +158,32 @@ test('attacking slows the player — a mid-swing movepad drive covers far less g
   expect(slowDist).toBeLessThan(fullDist * 0.35); // ~20% of normal (slack for the attack-lock edge)
 });
 
+test('firing the bow slows the player only lightly — kite-able, unlike melee (plan 035a)', async ({
+  page,
+}) => {
+  await startGame(page);
+
+  // Baseline: drive east for 300ms at full speed.
+  await applyScenario(page, { player: [10, 10], mode: 'combat' });
+  const startFull = (await state(page)).px;
+  await emit(page, 'combat:move', { dx: 1, dy: 0 });
+  await step(page, 300);
+  const fullDist = (await state(page)).px - startFull;
+
+  // Same drive after firing the bow: the bow-fire lock slows movement only to BOW_MOVE_SLOW (0.75) —
+  // you keep kiting. Contrast the melee test above (~0.2, near-rooted).
+  await applyScenario(page, { player: [10, 10], mode: 'combat' });
+  const startBow = (await state(page)).px;
+  await emit(page, 'combat:bow'); // BOW_DRAW_MS lock (~450ms) covers the whole 300ms drive
+  await emit(page, 'combat:move', { dx: 1, dy: 0 });
+  await step(page, 300);
+  const bowDist = (await state(page)).px - startBow;
+
+  expect(fullDist).toBeGreaterThan(20); // sanity: full speed really moved
+  expect(bowDist).toBeLessThan(fullDist * 0.95); // it IS slowed while shooting
+  expect(bowDist).toBeGreaterThan(fullDist * 0.55); // but far lighter than melee's ~0.2 — still kiting
+});
+
 test('the movepad drives the player directly, bypassing the pathfinder', async ({ page }) => {
   await startGame(page);
   await applyScenario(page, { player: [10, 10], mode: 'combat' });

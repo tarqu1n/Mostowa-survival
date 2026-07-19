@@ -149,6 +149,18 @@ export const UNARMED_BASE_DAMAGE = 1;
  */
 export const ATTACK_MOVE_SLOW = 0.2;
 
+/**
+ * Bow-fire commitment (plan 035a Steps 2/5). Loosing an arrow locks the player into a brief
+ * draw/release for `BOW_DRAW_MS`, during which move speed drops only to `BOW_MOVE_SLOW` of normal —
+ * far lighter than the melee `ATTACK_MOVE_SLOW`, so you can keep kiting while you shoot. The
+ * melee-vs-bow move-slow gap is where "ranged is safer" lives (melee roots you; the bow lets you
+ * back-pedal). The arrow/auto-target/anim land in Step 5; Step 2 wires the lock + move-slow so the
+ * Bow button already has weight via `PlayerCharacter.effectiveMoveSpeed`/`bowLockUntil`. Starting
+ * values — playtest-tune.
+ */
+export const BOW_MOVE_SLOW = 0.75;
+export const BOW_DRAW_MS = 450;
+
 /** Minimum time (ms) between an enemy's contact-damage attempts on the player. */
 export const CONTACT_DAMAGE_COOLDOWN_MS = 1000;
 

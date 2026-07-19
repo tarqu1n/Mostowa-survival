@@ -118,17 +118,23 @@ export class UIScene extends Phaser.Scene {
   // below the damage vignette so a hit still flashes red over it. Also non-interactive.
   private hungerVignette!: Phaser.GameObjects.Image;
 
-  // Combat mode: virtual movepad (bottom-right) + Attack button (bottom-left). The movepad is a
-  // bespoke joystick (drag tracking below), not a kit widget; the Attack button is a kit Button.
-  // Drag is tracked here (not GameScene) via a scene-level pointermove/up, gated by which pointer id
-  // pressed the base — keeps the input arithmetic out of GameScene, which only needs the resulting
-  // normalized {dx, dy}.
+  // Combat mode (plan 035a Step 2): a left-thumb virtual movepad + a right-thumb action cluster
+  // (Melee + Bow, with a reserved-but-disabled Spell slot — the cluster is designed to grow). The
+  // movepad is a bespoke joystick (drag tracking below), not a kit widget; the cluster buttons are
+  // kit Buttons. Drag is tracked here (not GameScene) via a scene-level pointermove/up, gated by which
+  // pointer id pressed the base — keeps the input arithmetic out of GameScene, which only needs the
+  // resulting normalized {dx, dy}. (Movepad was bottom-right pre-035a; it moved left to clear the
+  // right-thumb cluster.)
   private movepadBase!: Phaser.GameObjects.Arc;
   private movepadKnob!: Phaser.GameObjects.Arc;
-  private readonly movepadCenter = { x: 300, y: 540 };
+  private readonly movepadCenter = { x: 60, y: 540 };
   private readonly movepadRadius = 40;
   private movepadPointerId: number | null = null;
-  private combatAttackButton!: Button;
+  // Right-thumb action cluster: Melee (combat:attack), Bow (combat:bow), and a reserved Spell slot
+  // (disabled/dimmed — a visible placeholder for the post-MVP spell, per the combat-controls decision).
+  private combatMeleeButton!: Button;
+  private combatBowButton!: Button;
+  private combatSpellButton!: Button;
 
   // Inspect mode: a simple stats panel, centered, shown on 'inspect:show' / hidden on
   // 'inspect:hide' or leaving Inspect mode. `inspectPanelBg` is the Panel container itself, so its
@@ -365,16 +371,41 @@ export class UIScene extends Phaser.Scene {
     });
     this.hudElements.push(this.movepadBase);
 
-    const pbw = 70;
-    const pbh = 40;
-    this.combatAttackButton = new Button(this, 8 + pbw / 2, BASE_HEIGHT - 8 - pbh / 2, {
-      width: pbw,
-      height: pbh,
-      label: 'ATTACK',
+    // Right-thumb action cluster, stacked bottom-right: Melee (primary, bottom) → Bow → Spell
+    // (reserved, dimmed + no handler). Hidden until Combat mode (onModeChanged toggles all three).
+    const clw = 70;
+    const clh = 38;
+    const clGap = 6;
+    const clx = BASE_WIDTH - 8 - clw / 2;
+    // Stack up from just above the bottom-right DEV button (dbh 24 + 8 margin) so MELEE never sits
+    // under it — the cluster keeps the right-thumb corner without the dev toggle stealing its taps.
+    const meleeY = BASE_HEIGHT - 8 - 24 - 6 - clh / 2;
+    const bowY = meleeY - clh - clGap;
+    const spellY = bowY - clh - clGap;
+    this.combatMeleeButton = new Button(this, clx, meleeY, {
+      width: clw,
+      height: clh,
+      label: 'MELEE',
       variant: 'danger',
       onDown: () => this.game.events.emit('combat:attack'),
     }).setVisible(false);
-    this.hudElements.push(this.combatAttackButton);
+    this.combatBowButton = new Button(this, clx, bowY, {
+      width: clw,
+      height: clh,
+      label: 'BOW',
+      onDown: () => this.game.events.emit('combat:bow'),
+    }).setVisible(false);
+    // Reserved Spell slot — present so the cluster visibly has room to grow, but disabled this MVP:
+    // dimmed and wired to no handler (a tap is a no-op). Filled in post-MVP.
+    this.combatSpellButton = new Button(this, clx, spellY, {
+      width: clw,
+      height: clh,
+      label: 'SPELL',
+      fontSize: 9,
+    })
+      .setDimmed(true)
+      .setVisible(false);
+    this.hudElements.push(this.combatMeleeButton, this.combatBowButton, this.combatSpellButton);
 
     // Inspect-mode stats panel — centered, clear of the always-on HUD zones. Hidden until
     // 'inspect:show'; tapping the panel itself dismisses it (dismissible Panel → 'inspect:hide').
@@ -947,8 +978,10 @@ export class UIScene extends Phaser.Scene {
     const inCombat = mode === 'combat';
     this.movepadBase.setVisible(inCombat);
     this.movepadKnob.setVisible(inCombat);
-    this.combatAttackButton.setVisible(inCombat);
-    // Hide the hotbar in combat so it doesn't clash with the movepad/Attack controls; and drop the
+    this.combatMeleeButton.setVisible(inCombat);
+    this.combatBowButton.setVisible(inCombat);
+    this.combatSpellButton.setVisible(inCombat);
+    // Hide the hotbar in combat so it doesn't clash with the movepad/action cluster; and drop the
     // full inventory panel open across a mode switch.
     this.hotbar.setVisible(!inCombat);
     if (inCombat) this.setInventoryOpen(false);

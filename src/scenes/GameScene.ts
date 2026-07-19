@@ -15,6 +15,7 @@ import {
   ENEMY_HIT_SHAKE_MS,
   ENEMY_HIT_SHAKE_INTENSITY,
   DEATH_HOLD_MS,
+  BOW_DRAW_MS,
   INVENTORY_SLOTS,
   DEFAULT_MAX_STACK,
 } from '../config';
@@ -478,6 +479,7 @@ export class GameScene extends Phaser.Scene {
     this.game.events.on('zoom:delta', this.pointerInput.adjustZoom, this.pointerInput);
     this.game.events.on('camera:center', this.pointerInput.centerOnPlayer, this.pointerInput);
     this.game.events.on('combat:attack', this.attack, this);
+    this.game.events.on('combat:bow', this.bow, this);
     this.game.events.on('mode:combatToggle', this.onCombatToggle, this);
     this.game.events.on('mode:inspectToggle', this.onInspectToggle, this);
     this.game.events.on('needs:eat', this.survivalClock.onNeedsEat, this.survivalClock);
@@ -497,6 +499,7 @@ export class GameScene extends Phaser.Scene {
       this.game.events.off('zoom:delta', this.pointerInput.adjustZoom, this.pointerInput);
       this.game.events.off('camera:center', this.pointerInput.centerOnPlayer, this.pointerInput);
       this.game.events.off('combat:attack', this.attack, this);
+      this.game.events.off('combat:bow', this.bow, this);
       this.game.events.off('mode:combatToggle', this.onCombatToggle, this);
       this.game.events.off('mode:inspectToggle', this.onInspectToggle, this);
       this.game.events.off('needs:eat', this.survivalClock.onNeedsEat, this.survivalClock);
@@ -967,6 +970,13 @@ export class GameScene extends Phaser.Scene {
       this.fx.flashHit(enemy.sprite); // red flash + flinch on a hit it survived
       this.cameras.main.shake(ENEMY_HIT_SHAKE_MS, ENEMY_HIT_SHAKE_INTENSITY); // light kick so a connect has impact
     }
+  }
+
+  /** Loose an arrow (plan 035a). STUB for Step 2: commit the player to a brief bow-fire lock so the
+   *  light `BOW_MOVE_SLOW` kicks in (kite-able, unlike the melee root) and the Bow button feels heard.
+   *  Step 5 adds the auto-target, ranged damage, projectile + coded draw/release anim on top of this. */
+  private bow(): void {
+    this.playerChar.bowLockUntil = this.time.now + BOW_DRAW_MS;
   }
 
   /** Player took a landed hit: the shared "you're hurt" feedback — the red flash + squash on the

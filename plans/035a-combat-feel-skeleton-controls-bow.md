@@ -95,7 +95,21 @@ night; **no dodge** (kiting is survivability), leave a Spell slot in the cluster
     escape) and damage landing on the strike; a Tier-2 spec asserts the wind-up delay + the hit (mirror
     `combat.spec.ts:56`).
 
-- [ ] **Step 2: Mobile control cluster + movement-slow** `[inline]`
+- [x] **Step 2: Mobile control cluster + movement-slow** `[inline]`
+  - Outcome: movepad moved to the **left thumb** (`movepadCenter` {300,540}→{60,540}); the old bottom-left
+    `combatAttackButton` became a **right-thumb action cluster** — `combatMeleeButton` (MELEE, danger,
+    `combat:attack`) / `combatBowButton` (BOW, `combat:bow`) / `combatSpellButton` (SPELL, reserved:
+    `setDimmed(true)`, no handler), stacked bottom-right, all three toggled in `onModeChanged`. Cluster
+    raised to clear the always-present bottom-right DEV button (its taps were being stolen). Move-slow:
+    new `BOW_MOVE_SLOW=0.75`/`BOW_DRAW_MS=450` (config.ts) + `bowLockUntil` on PlayerCharacter;
+    `effectiveMoveSpeed()` now picks melee-slow (root) → bow-slow (kite) → full. `combat:bow` is a
+    Step-2 stub (`GameScene.bow` just sets `bowLockUntil`; real target/arrow/anim in Step 5). Files:
+    `config.ts`, `entities/PlayerCharacter.ts`, `scenes/GameScene.ts`, `scenes/UIScene.ts`,
+    `tests/e2e/combat.spec.ts` (new bow move-slow spec). Verified: typecheck clean, combat+follow e2e
+    all green (12/12), **HUD layout confirmed by screenshot** (movepad left, MELEE/BOW/SPELL-dimmed
+    cluster right, clear of DEV). NOTE: 4 pre-existing e2e failures (campfire tryPlace, death,
+    menu-start, survival-hunger) + pre-existing markdownlint errors in the sibling `035` plan reproduce
+    on clean master — unrelated to this work; flagged for Step 7.
   - Rework the combat HUD (`UIScene`): move the **movepad to the left** thumb; add a **right-thumb action
     cluster** via `arrangeColumn/Row` — a **Melee** button (rewire `combatAttackButton`→`combat:attack`,
     relabel MELEE) and a **Bow** button (`combat:bow`), with a reserved, disabled/hidden **third Spell slot**.

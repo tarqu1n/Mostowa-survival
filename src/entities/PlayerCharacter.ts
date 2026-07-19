@@ -5,6 +5,7 @@ import {
   PLAYER_START_VISION,
   PLAYER_HURTBOX,
   ATTACK_MOVE_SLOW,
+  BOW_MOVE_SLOW,
 } from '../config';
 import { ACTIVE_TILESET, playerAnimKey, type PlayerState } from '../data/tileset';
 import { worldToTile } from '../systems/grid';
@@ -27,6 +28,10 @@ export class PlayerCharacter extends Character {
    *  yields to it, and effectiveMoveSpeed cuts movement while it runs. Written by the FX manager
    *  via the scene's `setAttackLockUntil` dep (see GameScene's `fx` field). */
   attackLockUntil = 0;
+  /** Scene-clock time until which a bow fire owns the player (plan 035a). Mirrors `attackLockUntil`
+   *  but with a far lighter move-slow (`BOW_MOVE_SLOW` vs `ATTACK_MOVE_SLOW`), so shooting lets you
+   *  keep kiting where melee roots you. Written by the scene's bow handler (`GameScene.bow`). */
+  bowLockUntil = 0;
 
   constructor(scene: Phaser.Scene, spawn: { x: number; y: number }) {
     // Player: 3-way directional idle + walk (down/side/up). Each strip is its own texture (key ==
@@ -55,12 +60,15 @@ export class PlayerCharacter extends Character {
     this.fitBody(playerActor.render);
   }
 
-  /** The player's current move speed, cut to {@link ATTACK_MOVE_SLOW} of `stats.speed` while a swing
-   * is in progress (the attack-lock window) so attacking commits you in place. Drives both the
-   * pathfinder ({@link advancePath}) and the Combat-mode movepad (GameScene.update). */
+  /** The player's current move speed, cut while an action commits you in place: hard to
+   * {@link ATTACK_MOVE_SLOW} during a melee swing (roots you), gently to {@link BOW_MOVE_SLOW} during
+   * a bow fire (kite-able). Melee wins if both windows somehow overlap (the heavier slow). Drives both
+   * the pathfinder ({@link advancePath}) and the Combat-mode movepad (GameScene.update). */
   effectiveMoveSpeed(): number {
-    const attacking = this.scene.time.now < this.attackLockUntil;
-    return this.stats.speed * (attacking ? ATTACK_MOVE_SLOW : 1);
+    const now = this.scene.time.now;
+    const mult =
+      now < this.attackLockUntil ? ATTACK_MOVE_SLOW : now < this.bowLockUntil ? BOW_MOVE_SLOW : 1;
+    return this.stats.speed * mult;
   }
 
   protected override moveSpeed(): number {

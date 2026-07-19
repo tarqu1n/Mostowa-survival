@@ -24,7 +24,16 @@
         {
           "id": "default",
           "asset": "pixel-crawler/_derived/tree_pine.png",
-          "weight": 3
+          "weight": 3,
+          "depleted": {
+            "asset": "pixel-crawler/Environment/Props/Static/Trees/Model_02/Size_03.png",
+            "region": {
+              "x": 117,
+              "y": 151,
+              "w": 6,
+              "h": 9
+            }
+          }
         },
         {
           "id": "skin",
@@ -138,7 +147,16 @@
             "w": 64,
             "h": 144
           },
-          "maxHp": 5
+          "maxHp": 5,
+          "depleted": {
+            "asset": "pixel-crawler/Environment/Props/Static/Trees/Model_02/Size_04.png",
+            "region": {
+              "x": 153,
+              "y": 210,
+              "w": 15,
+              "h": 14
+            }
+          }
         },
         {
           "id": "skin_7",

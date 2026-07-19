@@ -155,6 +155,43 @@ woodland beasts — grotty but funny.
 > pathfind-based chase), not the roaming/attacking model above — noise-based aggro, deaggro,
 > pack-pulling, and additional enemy types are still to design.
 
+## Player combat — the danger verb
+
+**Player combat is the *fallback/danger* verb, not the main verb.** The intended play is to *avoid*
+fighting in person — it's dangerous — and let **traps and NPCs** do the work. So "good combat feel"
+here means **tense, exposed, and a relief to escape**, NOT a power fantasy — a scramble you barely
+survive, not a brawl you dominate. (This reframes the combat rework — [ROADMAP.md](ROADMAP.md) step 1.)
+
+**Risk gradient (safest → most dangerous for the *player*)** — the whole combat economy is pushing
+danger away from your own body:
+
+- **Traps** — you weren't even there. Safest, and silent (no noise-aggro).
+- **NPCs** — someone else bled; risky for them (permadeath), safe for you.
+- **Ranged / spells** — you fought from arm's length; the skill is *keeping* the distance.
+- **Melee** — you're in the kill zone. Last resort / panic button.
+
+**Melee is deliberately dangerous** so avoidance is a real pressure, not just advice: the player is
+**fragile** (a few hits kills), **being surrounded is death**, enemy attacks are **telegraphed**
+(read-and-react — the current skeleton has *no* attack, just contact damage, which is the core clunk to
+fix), and **fighting is loud** (every swing risks pulling more roamers — traps being silent are doubly better).
+
+**Melee still earns its place:** it's **free** (no ammo/mana), it's the **emergency** button when
+something reaches the fire, and it's **all you have early** — you start melee-only and fragile, so the
+first **ranged weapon or spell is the first real relief/power step** (and the escalation stays honest:
+early nights force risky melee, so you race to get out of the kill zone).
+
+**Ranged & spells (the "good" answers, post-MVP):**
+
+- **Ranged** — **ammo as a scavenged/crafted resource** (can't spam; running dry drops you back to
+  dangerous melee). Mobile aiming leans on **auto-target-nearest**; the skill is positioning, not aim.
+- **Spells** — higher ceiling: AoE (built for waves), utility (slow/fear/light), gated by mana + rarity.
+  Naturally **Litrandil's** domain (a reason the drunk wizard is worth the vodka). Player-casts vs
+  wizard-NPC-only is open.
+
+**[OPEN]** MVP combat scope: melee-only tuned-dangerous (lean) vs include one basic ranged weapon.
+**[OPEN]** Player survivability: a dodge/backstep (lean — melee as a fair reaction game) vs
+positioning+fragility only vs block/shield. **[OPEN]** Player-casts-spells vs wizard-NPC-only.
+
 ## The night wave — shape, not just spawns
 
 The wave is the biggest missing organ (night is tint-only today). The mistake to avoid is "N enemies

@@ -16,6 +16,12 @@ Shards: [rendering](decisions/rendering.md) · [architecture](decisions/architec
 
 ---
 
+## 2026-07-19 — [DECIDED] Player combat is the "danger verb" — avoid it; push danger to traps/NPCs/ranged; melee most dangerous
+
+Personal combat is a fallback, not the main verb; risk gradient traps→NPCs→ranged/spells→melee; "good combat" = tense/exposed not power-fantasy; melee fragile+loud+telegraphed but free/emergency/early-only; ranged+spells post-MVP. Reframes ROADMAP step 1.
+
+→ [gameplay.md](decisions/gameplay.md#2026-07-19--decided-player-combat-is-the-danger-verb--avoid-it-push-danger-to-trapsnpcsranged-melee-most-dangerous)
+
 ## 2026-07-19 — [DECIDED] MVP scope + build order (see ROADMAP.md)
 
 First-playable = smallest complete day→night→defend loop; order = map → combat rework → night wave + fire-heart defense → trap → hunger → NPC; campfire-heart stage 1 IN (mobs knock the light out; fuel + hunger retunes in); recruit-quests/crafting/torches/multi-fire/events/multi-map out.

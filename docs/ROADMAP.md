@@ -50,10 +50,15 @@ food**), and a **treeline edge** to spawn the wave from. Built in the Map Builde
 ### 1. Combat feel rework
 
 Combat exists but is clunky. Rework **both sides**: player attack responsiveness/readability, and the
-**skeleton's behaviour + a real attack** (today it has no attack strip — only contact damage + a coded
-lunge). This is the verb repeated most, and the AI/feel the wave and NPC both reuse — so de-risk it first.
-*Done when:* fighting a single skeleton feels responsive and fair (clear tells, hit feedback, readable
-range, no mode-fighting). *Test:* scenario spawns one skeleton, fight it.
+**skeleton's behaviour + a real telegraphed attack** (today it has none — only contact damage + a coded
+lunge — which is the core clunk). The foundation the wave and NPC both reuse, so de-risk it first.
+**Tuned to the thesis** ([GAME-DESIGN.md](GAME-DESIGN.md) "Player combat — the danger verb"): personal
+combat is the *dangerous* verb — the player is fragile, melee is committal and something you're relieved
+to avoid, **not a power fantasy**. Traps + NPCs are the intended answer; you melee in emergencies.
+*Done when:* fighting a single skeleton is **tense, readable, and fair** (clear tells, hit feedback,
+readable range, no mode-fighting) — you feel *exposed*, not dominant. *Test:* scenario spawns one
+skeleton, fight it.
+*Open (see thesis):* melee-only vs +one ranged weapon in MVP; whether the player gets a dodge/block.
 
 ### 2. The night wave + loop-close (**first playable loop**)
 

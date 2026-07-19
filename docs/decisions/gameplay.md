@@ -6,6 +6,25 @@ Part of the [decision log index](../DECISIONS.md). Newest first.
 
 ---
 
+## 2026-07-19 — [DECIDED] Player combat is the "danger verb" — avoid it; push danger to traps/NPCs/ranged; melee most dangerous
+
+Design thesis steering the combat rework (ROADMAP step 1). Player combat is a **fallback, not the main
+verb** — you should want to avoid fighting in person.
+
+- **Risk gradient (safest → riskiest for the player):** traps → NPCs → ranged/spells → melee. The combat
+  economy is pushing danger off your own body.
+- **"Good combat feel" = tense / exposed / relieved-to-escape, NOT a power fantasy** — reframes step 1's
+  success criteria away from the satisfying-brawler default.
+- **Melee is deliberately dangerous:** player fragile (a few hits kill), being surrounded = death, enemy
+  attacks telegraphed (the skeleton's *missing* attack is the core clunk), and fighting is **loud**
+  (pulls roamers; traps are silent → doubly better).
+- **Melee keeps a niche:** free (no ammo/mana), the emergency button, and the only early option — so the
+  first ranged weapon/spell is the first real relief/power step, and early-night risk pushes you to get it.
+- **Ranged = ammo-gated (scavenge/craft), auto-target-nearest on mobile (skill = positioning); spells =
+  mana + rarity-gated AoE/utility, Litrandil's domain.** Both post-MVP.
+- **[OPEN]** MVP combat scope (melee-only-tuned-dangerous [lean] vs +one ranged weapon); player
+  survivability (dodge/backstep [lean] vs fragility-only vs block/shield); player-casts-spells vs wizard-only.
+
 ## 2026-07-19 — [DECIDED] MVP scope + build order (see ROADMAP.md)
 
 The first-playable target and the order to build it, captured in [ROADMAP.md](../ROADMAP.md). Key calls:

@@ -177,6 +177,15 @@ export const ENEMY_ATTACK_WINDUP_MS = 350;
 export const ENEMY_WINDUP_TINT = 0xffcc33;
 
 /**
+ * Auto-surfacing combat controls (plan 035a Step 3). The fighting HUD (left-thumb movepad + the
+ * right-thumb Melee/Bow cluster) reveals itself — and the movepad becomes authoritative — whenever
+ * combat is *active*: a live enemy within this Chebyshev tile radius of the player, OR the night
+ * phase. No manual Combat-mode toggle needed (though it stays as an override). Deliberately NOT tied
+ * to `setMode('combat')`, which would cancel the worker task queue. Starting radius — playtest-tune.
+ */
+export const COMBAT_ACTIVE_RADIUS_TILES = 7;
+
+/**
  * Hit feedback (see render/hitFlashPipeline.ts + GameScene.flashHit). When an actor takes damage it
  * flashes red and does a quick squash "flinch". `HIT_FLASH_MS` is how long the reaction lasts;
  * `HIT_FLASH_PEAK` is the max red mix (0..1) at impact — near 1 so the hit is unmistakable, a shade

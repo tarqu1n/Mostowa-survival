@@ -39,6 +39,8 @@ export interface DebugState {
   pulsingTreeId: string | null;
   queuedTreeIds: string[];
   campfires: Array<{ col: number; row: number; fuel: number; lit: boolean }>;
+  enemyWindups: number;
+  combatActive: boolean;
 }
 
 /**

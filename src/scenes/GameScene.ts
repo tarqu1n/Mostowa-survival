@@ -16,6 +16,7 @@ import {
   ENEMY_HIT_SHAKE_INTENSITY,
   DEATH_HOLD_MS,
   BOW_DRAW_MS,
+  COMBAT_ACTIVE_RADIUS_TILES,
   INVENTORY_SLOTS,
   DEFAULT_MAX_STACK,
 } from '../config';
@@ -79,6 +80,13 @@ export class GameScene extends Phaser.Scene {
   // directly, bypassing the pathfinder), Inspect (tap shows a stats panel — Step 7). Mutually
   // exclusive; UIScene mirrors this for HUD highlighting/visibility via 'mode:changed'.
   private mode: 'command' | 'combat' | 'inspect' = 'command';
+
+  // Auto-surface combat controls (plan 035a Step 3): recomputed every frame (updateCombatActive) —
+  // true while a live enemy is within COMBAT_ACTIVE_RADIUS_TILES of the player OR it's night. Drives
+  // whether the movepad is authoritative (movepadDrives) and whether UIScene reveals the fighting HUD
+  // (emitted as `combat:activeChanged`). Independent of `mode`: it never flips `mode` to 'combat'
+  // (that cancelAll()s the task queue), so command-mode taps keep queuing orders while it's true.
+  private combatActive = false;
 
   private inv!: Inventory;
 
@@ -198,6 +206,7 @@ export class GameScene extends Phaser.Scene {
       const a = this.queue.current;
       return {
         mode: this.mode,
+        combatActive: this.combatActive,
         action: a ? { kind: a.kind, target: this.describeActionTarget(a) } : null,
         harvestSwing: this.harvestSwing,
         playerTile: this.playerChar?.tile(),
@@ -233,6 +242,7 @@ export class GameScene extends Phaser.Scene {
     this.chopElapsed = 0;
     this.harvestSwing = null;
     this.combatMoveVec = { dx: 0, dy: 0 };
+    this.combatActive = false; // recomputed on the first update() tick; UIScene resynced in buildWorld
     // Combat-FX state — (re-)arm the SHUTDOWN flush (see CombatFxManager.armShutdown) then clear so a
     // death-restart starts clean: the maps/set held tweens+sprites from the dead run (Phaser destroyed
     // them on teardown, so drop the stale references). Player-side state (hp/facing/path/attack-lock/
@@ -465,6 +475,10 @@ export class GameScene extends Phaser.Scene {
     this.scene.launch('UI');
     this.ui = this.scene.get('UI') as UIScene;
     this.game.events.emit('mode:changed', this.mode);
+    // Resync UIScene's auto-surface visibility to this (re)start's reset value (false). UIScene
+    // survives a death-restart (only 'Game' restarts), so a stale `true` from the prior run would
+    // otherwise leave the fighting HUD showing; update() re-emits on the first frame if it flips true.
+    this.game.events.emit('combat:activeChanged', this.combatActive);
   }
 
   /** Wire every `game.events` scene↔UIScene listener + its matching SHUTDOWN teardown (the same 12
@@ -551,6 +565,7 @@ export class GameScene extends Phaser.Scene {
         this.combatMoveVec = v;
       },
       getMode: () => this.mode,
+      getCombatActive: () => this.combatActive,
       setModeAndEmit: (m) => {
         this.mode = m;
         this.game.events.emit('mode:changed', this.mode);
@@ -621,12 +636,23 @@ export class GameScene extends Phaser.Scene {
     // not a worker task is active — mirrors the survival tick. See src/scenes/world/CampfireManager.ts.
     this.campfireManager.tick(delta);
 
+    // Recompute the auto-surface predicate (enemy-near / night) before any movement gating below —
+    // it decides whether the movepad is authoritative this frame (see movepadDrives).
+    this.updateCombatActive();
+
     const action = this.queue.current;
-    if (!action) {
-      // Combat mode drives velocity from the held movepad vector every frame (the pad only emits on
-      // press/drag), scaled by effectiveMoveSpeed so an in-progress swing slows the player — that
-      // re-evaluation each frame is what lets the attack-slow engage/release without a fresh pad input.
-      if (this.mode === 'combat') {
+    // Movepad precedence (plan 035a Step 3): while combat controls are surfaced (manual Combat mode OR
+    // the combatActive auto-surface) AND the pad is actually held, the movepad drives velocity
+    // directly — overriding an in-progress task for this frame WITHOUT clearing the queue, so a pending
+    // order survives the reveal and resumes the moment the pad is released. With no active task the
+    // same drive runs (the idle case, unchanged). This is the chosen precedence: movepad drives; taps
+    // still queue orders (see PointerInputController, whose command-mode tap/pan path stays live).
+    const padHeld = this.combatMoveVec.dx !== 0 || this.combatMoveVec.dy !== 0;
+    if (!action || (this.movepadDrives() && padHeld)) {
+      // The pad only emits on press/drag, so re-apply velocity from the held vector every frame,
+      // scaled by effectiveMoveSpeed — that per-frame re-eval is what lets the attack/bow move-slow
+      // engage and release mid-hold without the player needing to nudge the pad again.
+      if (this.movepadDrives()) {
         const speed = this.playerChar.effectiveMoveSpeed();
         this.player.body.setVelocity(this.combatMoveVec.dx * speed, this.combatMoveVec.dy * speed);
       } else {
@@ -1028,10 +1054,40 @@ export class GameScene extends Phaser.Scene {
     this.buildManager.select(id);
   }
 
-  /** Combat-mode movepad drag: store the drive vector (applied each frame in update(), scaled by
-   * effectiveMoveSpeed) — this bypasses the pathfinder/task queue. */
+  /** True while the movepad is authoritative — manual Combat mode OR the combatActive auto-surface
+   *  (plan 035a Step 3). The movepad drive (update()) and onCombatMove gate rebase onto THIS rather
+   *  than raw `mode==='combat'`, which is what stops a "dead movepad" when controls auto-surface in
+   *  command mode (critique #2). Command-mode taps/pan/queue-paint stay live independently (see
+   *  PointerInputController) — the chosen precedence: movepad drives, taps still queue orders. */
+  private movepadDrives(): boolean {
+    return this.mode === 'combat' || this.combatActive;
+  }
+
+  /** Recompute {@link combatActive} and emit `combat:activeChanged` only when it flips (UIScene
+   *  shows/hides the fighting HUD on it). Active ⇒ a live enemy within COMBAT_ACTIVE_RADIUS_TILES
+   *  (Chebyshev) OR the night phase — the moments the fighting controls are wanted. Deliberately does
+   *  NOT call setMode('combat') (that cancelAll()s the task queue — critique #2). */
+  private updateCombatActive(): void {
+    const pt = this.playerChar.tile();
+    const enemyNear = this.enemyManager
+      .all()
+      .some(
+        (z) =>
+          z.alive &&
+          Math.max(Math.abs(z.col - pt.col), Math.abs(z.row - pt.row)) <=
+            COMBAT_ACTIVE_RADIUS_TILES,
+      );
+    const next = enemyNear || this.survivalClock.dayPhase === 'night';
+    if (next === this.combatActive) return;
+    this.combatActive = next;
+    this.game.events.emit('combat:activeChanged', next);
+  }
+
+  /** Combat movepad drag: store the drive vector (applied each frame in update(), scaled by
+   * effectiveMoveSpeed) — this bypasses the pathfinder/task queue. Accepted whenever the movepad is
+   * authoritative (movepadDrives): manual Combat mode or the combatActive auto-surface. */
   private onCombatMove(vec: { dx: number; dy: number }): void {
-    if (this.mode !== 'combat') return;
+    if (!this.movepadDrives()) return;
     this.combatMoveVec = { dx: vec.dx, dy: vec.dy };
     // Facing follows the movepad's dominant axis (cardinal, not diagonal): a near-axis-aligned
     // drag still has a tiny off-axis component, and Math.sign on that noise would otherwise flip
@@ -1047,7 +1103,7 @@ export class GameScene extends Phaser.Scene {
 
   private onCombatMoveEnd(): void {
     this.combatMoveVec = { dx: 0, dy: 0 };
-    if (this.mode === 'combat') this.player.body.setVelocity(0, 0);
+    if (this.movepadDrives()) this.player.body.setVelocity(0, 0);
   }
 
   // --- Resource nodes / harvesting -----------------------------------------

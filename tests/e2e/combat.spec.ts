@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { startGame, applyScenario, emit, step, state, captured } from './harness';
+import { startGame, applyScenario, emit, step, state, captured, order } from './harness';
 import { oneEnemy } from './scenarios';
 
 // Tier-2: the enemy AI + contact damage + Attack paths through the real scene. Damage/hit-chance math
@@ -182,6 +182,51 @@ test('firing the bow slows the player only lightly — kite-able, unlike melee (
   expect(fullDist).toBeGreaterThan(20); // sanity: full speed really moved
   expect(bowDist).toBeLessThan(fullDist * 0.95); // it IS slowed while shooting
   expect(bowDist).toBeGreaterThan(fullDist * 0.55); // but far lighter than melee's ~0.2 — still kiting
+});
+
+test('an enemy near surfaces combat controls, and the movepad drives while a queued order survives (plan 035a)', async ({
+  page,
+}) => {
+  await startGame(page);
+  // Command mode (default). Enemy 3 tiles east — inside COMBAT_ACTIVE_RADIUS_TILES (7).
+  await applyScenario(page, { player: [10, 10], enemies: [[13, 10]] });
+  await step(page, 50); // one frame so update() recomputes combatActive
+  let s = await state(page);
+  expect(s.combatActive).toBe(true); // enemy-near trigger surfaced the controls
+  expect(s.mode).toBe('command'); // NOT auto-switched to Combat mode (that would cancel the queue)
+
+  // Queue a move order far south; the auto-surface reveal must NOT cancel it.
+  await order(page, { kind: 'move', col: 10, row: 20 });
+  expect((await state(page)).currentKind).toBe('move');
+
+  // The movepad drives the player directly while auto-surfaced (command mode + combatActive) — proving
+  // there's no dead movepad (critique #2). It overrides the pathing order for the frames it's held,
+  // but the order still survives in the queue (chosen precedence: movepad drives, taps still queue).
+  const before = (await state(page)).px;
+  await emit(page, 'combat:move', { dx: 1, dy: 0 });
+  await step(page, 300);
+  s = await state(page);
+  expect(s.px).toBeGreaterThan(before); // moved east under movepad control
+  expect(s.currentKind).toBe('move'); // the pending move order survived the reveal + the pad drive
+});
+
+test('night surfaces combat controls at dusk and retracts at dawn when no enemy is near (plan 035a)', async ({
+  page,
+}) => {
+  await startGame(page);
+  // Night start, no enemies anywhere — the night trigger alone must surface the controls.
+  await applyScenario(page, { player: [10, 10], startPhase: 'night' });
+  await step(page, 50); // one frame so update() recomputes combatActive
+  let s = await state(page);
+  expect(s.dayPhase).toBe('night');
+  expect(s.combatActive).toBe(true); // night trigger
+
+  // Flip to day (dev toggle) with no enemy near → the predicate retracts.
+  await emit(page, 'debug:toggleTime'); // night -> day
+  await step(page, 50);
+  s = await state(page);
+  expect(s.dayPhase).toBe('day');
+  expect(s.combatActive).toBe(false); // retracted at dawn — no enemy near, daytime
 });
 
 test('the movepad drives the player directly, bypassing the pathfinder', async ({ page }) => {

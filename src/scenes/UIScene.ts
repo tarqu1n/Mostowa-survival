@@ -78,6 +78,11 @@ export class UIScene extends Phaser.Scene {
   // this scene just mirrors it for button highlighting + showing/hiding the Combat-mode controls.
   private modeCombatButton!: Button;
   private modeInspectButton!: Button;
+  // Latest mode + auto-surface state from GameScene (plan 035a Step 3). The fighting controls
+  // (movepad + action cluster) reveal when EITHER is combat-ish — see combatControlsShown /
+  // refreshCombatControls, driven by both `mode:changed` and `combat:activeChanged`.
+  private mode: 'command' | 'combat' | 'inspect' = 'command';
+  private combatActive = false;
 
   // Inventory (plan 008): an always-visible hotbar (first HOTBAR_SLOTS slots, hidden in combat) plus
   // a button-toggled full grid Panel of all INVENTORY_SLOTS. Both are SlotGrid views over the shared
@@ -546,6 +551,7 @@ export class UIScene extends Phaser.Scene {
     this.game.events.on('zoom:changed', this.onZoomChanged, this);
     this.game.events.on('camera:followChanged', this.onFollowChanged, this);
     this.game.events.on('mode:changed', this.onModeChanged, this);
+    this.game.events.on('combat:activeChanged', this.onCombatActiveChanged, this);
     this.game.events.on('inspect:show', this.showInspectPanel, this);
     this.game.events.on('inspect:hide', this.hideInspectPanel, this);
     this.game.events.on('time:changed', this.onTimeChanged, this);
@@ -561,6 +567,7 @@ export class UIScene extends Phaser.Scene {
       this.game.events.off('zoom:changed', this.onZoomChanged, this);
       this.game.events.off('camera:followChanged', this.onFollowChanged, this);
       this.game.events.off('mode:changed', this.onModeChanged, this);
+      this.game.events.off('combat:activeChanged', this.onCombatActiveChanged, this);
       this.game.events.off('inspect:show', this.showInspectPanel, this);
       this.game.events.off('inspect:hide', this.hideInspectPanel, this);
       this.game.events.off('time:changed', this.onTimeChanged, this);
@@ -973,23 +980,45 @@ export class UIScene extends Phaser.Scene {
 
   /** Reflects the authoritative mode from GameScene: button highlight + combat-controls visibility. */
   private onModeChanged(mode: 'command' | 'combat' | 'inspect'): void {
+    this.mode = mode;
     this.modeCombatButton.setToggled(mode === 'combat');
     this.modeInspectButton.setToggled(mode === 'inspect');
-    const inCombat = mode === 'combat';
-    this.movepadBase.setVisible(inCombat);
-    this.movepadKnob.setVisible(inCombat);
-    this.combatMeleeButton.setVisible(inCombat);
-    this.combatBowButton.setVisible(inCombat);
-    this.combatSpellButton.setVisible(inCombat);
-    // Hide the hotbar in combat so it doesn't clash with the movepad/action cluster; and drop the
-    // full inventory panel open across a mode switch.
-    this.hotbar.setVisible(!inCombat);
-    if (inCombat) this.setInventoryOpen(false);
-    if (!inCombat) {
+    this.refreshCombatControls();
+    if (mode !== 'inspect') this.hideInspectPanel();
+  }
+
+  /** GameScene's auto-surface predicate flipped (plan 035a Step 3) — re-evaluate whether the fighting
+   *  controls should show. Independent of `mode`, so an enemy wandering near (or dusk) reveals the
+   *  movepad + cluster while the player stays in command mode. */
+  private onCombatActiveChanged(active: boolean): void {
+    this.combatActive = active;
+    this.refreshCombatControls();
+  }
+
+  /** The fighting controls show when the movepad is authoritative — manual Combat mode OR the
+   *  combatActive auto-surface (mirrors GameScene.movepadDrives). */
+  private combatControlsShown(): boolean {
+    return this.mode === 'combat' || this.combatActive;
+  }
+
+  /** Show/hide the left-thumb movepad + right-thumb action cluster (and hide the clashing hotbar)
+   *  from the current mode + auto-surface state. Called by both `mode:changed` and
+   *  `combat:activeChanged`, so either trigger reveals or retracts the same control set. */
+  private refreshCombatControls(): void {
+    const show = this.combatControlsShown();
+    this.movepadBase.setVisible(show);
+    this.movepadKnob.setVisible(show);
+    this.combatMeleeButton.setVisible(show);
+    this.combatBowButton.setVisible(show);
+    this.combatSpellButton.setVisible(show);
+    // Hide the hotbar while the fighting controls are up so it doesn't clash with the movepad/cluster;
+    // and drop any open full-inventory panel as they surface.
+    this.hotbar.setVisible(!show);
+    if (show) this.setInventoryOpen(false);
+    else {
       this.movepadPointerId = null;
       this.movepadKnob.setPosition(this.movepadCenter.x, this.movepadCenter.y);
     }
-    if (mode !== 'inspect') this.hideInspectPanel();
   }
 
   private showInspectPanel(stats: InspectableStats): void {

@@ -146,6 +146,14 @@ export class PointerInputController {
     // must never fall through to the camera-pan below — steering the movepad drags the thumb off the
     // small pad, and without this gate that off-pad travel panned the world and broke the follow-lock,
     // yanking the camera around whenever the player changed direction.
+    //
+    // This (and the tap dispatch in onPointerUp) stays gated on raw `mode === 'combat'`, NOT the
+    // combatActive auto-surface (plan 035a Step 3, critique #2): the chosen precedence is "movepad
+    // drives, taps still queue orders", so command-mode pan/queue-paint/tap-to-move must stay live
+    // while controls auto-surface. The movepad itself is still safe there — a press ON the pad sets
+    // `downOnUI` (it's a hudElement), which the check just below swallows — so command-mode + auto-
+    // surface never yields a dead movepad NOR a hijacked camera. Only the drive + onCombatMove gate in
+    // GameScene rebase onto combatActive (see GameScene.movepadDrives).
     if (this.deps.getMode() === 'combat') return;
     if (!pointer.isDown || this.downOnUI || this.pointerOnHud(pointer)) return;
 

@@ -125,7 +125,31 @@ night; **no dodge** (kiting is survivability), leave a Spell slot in the cluster
   - Done when: in combat, movepad is left and a Melee+Bow cluster is bottom-right (Spell slot reserved);
     melee slows movement hard; movepad-bypass + attack specs still pass.
 
-- [ ] **Step 3: Auto-surface combat controls (combatActive predicate)** `[inline]` — resolves critique #2
+- [x] **Step 3: Auto-surface combat controls (combatActive predicate)** `[inline]` — resolves critique #2
+  - Outcome: `GameScene.combatActive` recomputed each frame (`updateCombatActive`, before movement
+    gating) — true when a live enemy is within new `COMBAT_ACTIVE_RADIUS_TILES` (7, Chebyshev) of the
+    player **OR** `survivalClock.dayPhase === 'night'`; emits `combat:activeChanged` only on a flip.
+    **Never calls `setMode('combat')`** (would `cancelAll()` the queue). New `movepadDrives()` predicate
+    (`mode==='combat' || combatActive`) is what the movepad drive rebases onto: the per-frame drive
+    (idle branch) + a new **Option-A override** (`!action || (movepadDrives() && padHeld)`) so a held
+    movepad drives the player even with an active task, WITHOUT clearing the queue (a pending order
+    survives + resumes on release), and `onCombatMove`/`onCombatMoveEnd` gates. **Precedence decided
+    (open question): movepad drives; taps still queue orders** — so the two PointerInputController sites
+    (drag-ownership `:149`, tap-dispatch `:212`) intentionally stay `mode==='combat'`-gated (command-mode
+    pan/queue-paint/tap-to-move stay live while surfaced; the movepad is already protected there by
+    `downOnUI`, so no dead movepad and no hijacked camera — documented at the site). UIScene mirrors
+    both `mode:changed` + `combat:activeChanged` via a shared `refreshCombatControls()`
+    (movepad+cluster+hotbar-hide). buildWorld re-emits `combat:activeChanged` (false) so the persistent
+    UIScene resyncs across a death-restart. Added `combatActive` to `DebugState` (at END) + tripwire
+    snapshot + harness mirror (also back-filled the lagging `enemyWindups` mirror). Files: `config.ts`,
+    `scenes/GameScene.ts`, `scenes/UIScene.ts`, `scenes/input/PointerInputController.ts` (comment only),
+    `scenes/testApi.ts`, `tests/e2e/harness.ts`, `tests/e2e/refactor-tripwire.spec.ts`,
+    `tests/e2e/combat.spec.ts` (2 new specs: enemy-near surfaces + movepad drives while a queued order
+    survives; night surfaces at dusk / retracts at dawn). Verified: typecheck clean, lint 0 errors,
+    unit 788✓, e2e combat.spec (13, incl. both new) + tripwire green, prettier clean. Full e2e sweep =
+    45 pass / 5 fail, but ALL 5 (campfire-feed, campfire tryPlace, death, menu-start, survival-hunger)
+    reproduce on clean master — pre-existing environmental flakiness in the real-RAF/timing/zone tests
+    (campfire-feed confirmed 4/5-fail on clean baseline under `--repeat-each`); unrelated to this work.
   - Introduce a **`combatActive`** predicate driven each frame in `GameScene.update`: any live enemy within a
     radius of the player (iterate `enemyManager.all()` filter `alive`, distance vs player) **OR** night
     phase (`survivalClock`). **Rebase the four mode-gated movement sites onto `combatActive`** so the movepad

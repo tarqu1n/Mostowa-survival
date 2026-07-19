@@ -69,6 +69,9 @@ export interface DebugState {
   // Appended (plan 035a Step 1) — count of live enemies currently in an attack wind-up (telegraphing a
   // strike). Lets a Tier-2 spec assert the wind-up pause fires before damage lands.
   enemyWindups: number;
+  // Appended (plan 035a Step 3) — the auto-surface predicate (enemy-near OR night). Lets a Tier-2 spec
+  // assert both triggers surface the fighting controls without a manual Combat-mode switch.
+  combatActive: boolean;
 }
 
 /**
@@ -119,6 +122,8 @@ export interface TestApiDeps {
   setCombatMoveVec(v: { dx: number; dy: number }): void;
 
   getMode(): 'command' | 'combat' | 'inspect';
+  /** The auto-surface predicate (plan 035a Step 3) — enemy-near OR night; surfaced in debugState. */
+  getCombatActive(): boolean;
   /** Set mode + emit `mode:changed` — the exact testApplyScenario form (a direct field write, NOT
    *  `setMode`'s guarded toggle: a scenario reset already cleared the queue, so `setMode`'s
    *  combat-entry `cancelAll` would be redundant, and its "same mode" early-return would wrongly
@@ -405,6 +410,7 @@ export class TestApi {
         .all()
         .map((c) => ({ col: c.col, row: c.row, fuel: c.fuel, lit: c.lit })),
       enemyWindups: aliveEnemies.filter((z) => z.windupUntil > 0).length,
+      combatActive: this.deps.getCombatActive(),
     };
   }
 }

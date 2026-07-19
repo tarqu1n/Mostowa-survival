@@ -1,6 +1,6 @@
 # Combat Feel Rework — Telegraphed Skeleton, Mobile Controls, Bow, HP Bars
 
-> Status: in review
+> Status: deployed
 > Split from plan 035 after critique (the roadmap-step-1 core; the boar + directional-actor pipeline is
 > the sibling plan 035b, which depends on this one).
 

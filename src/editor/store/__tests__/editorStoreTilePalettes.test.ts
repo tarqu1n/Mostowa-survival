@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useEditorStore } from '../editorStore';
+import { paletteSlotRotationKey, useEditorStore } from '../editorStore';
 import type { NamedTilePalette, TilePaletteSlot } from '../../../systems/mapFormat';
 
 const ASSET_A = 'pixel-crawler/Environment/Tilesets/Floors_Tiles.png#252';
@@ -19,6 +19,7 @@ function reset(width = 4, height = 4): void {
   useEditorStore.getState().newMap('scratch', 'Scratch', width, height);
   useEditorStore.getState().setBrushAsset(null);
   useEditorStore.getState().setBrushRotation(0);
+  useEditorStore.setState({ paletteSlotRotations: {} });
 }
 
 describe('editorStore tile palettes (plan 033 step 9 — global slice)', () => {
@@ -260,6 +261,40 @@ describe('editorStore tile palettes (plan 033 step 9 — global slice)', () => {
     expect(s.brushRotation).toBe(90); // the tile now paints rotated…
     expect(s.brushAsset).toBe(ASSET_A);
     expect(s.selectedPaletteSlot).toEqual(armed); // …but the slot it came from stays selected
+  });
+
+  it('remembers a slot working-rotation and restores it when the slot is re-selected', () => {
+    useEditorStore.getState().setTilePalettes([
+      {
+        id: 'palette_0001',
+        name: 'A',
+        slots: [{ assetId: ASSET_A }, { assetId: ASSET_B }],
+      },
+    ]);
+    // Arm A, rotate it to 180.
+    useEditorStore.getState().selectPaletteSlot({ assetId: ASSET_A });
+    useEditorStore.getState().rotateBrush(90);
+    useEditorStore.getState().rotateBrush(90);
+    expect(useEditorStore.getState().brushRotation).toBe(180);
+
+    // Switch to B — B has no memory, so it arms at its base rotation (0).
+    useEditorStore.getState().selectPaletteSlot({ assetId: ASSET_B });
+    expect(useEditorStore.getState().brushRotation).toBe(0);
+
+    // Switch back to A — its 180 comes back, no re-rotating needed.
+    useEditorStore.getState().selectPaletteSlot({ assetId: ASSET_A });
+    expect(useEditorStore.getState().brushRotation).toBe(180);
+  });
+
+  it('working-rotation memory is per-slot and per-palette (keyed via paletteSlotRotationKey)', () => {
+    useEditorStore
+      .getState()
+      .setTilePalettes([{ id: 'palette_0001', name: 'A', slots: [{ assetId: ASSET_A }] }]);
+    useEditorStore.getState().selectPaletteSlot({ assetId: ASSET_A });
+    useEditorStore.getState().rotateBrush(90);
+
+    const key = paletteSlotRotationKey('palette_0001', { assetId: ASSET_A });
+    expect(useEditorStore.getState().paletteSlotRotations[key]).toBe(90);
   });
 
   it('setBrushAsset (arming from elsewhere: Library/eyedropper) clears the sticky selection', () => {

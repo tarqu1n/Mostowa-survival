@@ -335,6 +335,14 @@ export interface EditorState {
    *  arming a new `brushAsset` (lay many rotated tiles without re-rotating). Brush-gesture only —
    *  `fill`/`rect` paint at angle 0 this plan. */
   brushRotation: 0 | 90 | 180 | 270;
+  /** The palette slot the user last tapped to arm the brush (`selectPaletteSlot`), tracked by identity so
+   *  the strip keeps THAT slot highlighted (and shows its live orientation on the swatch) even after
+   *  `rotateBrush` spins `brushRotation` away from the slot's own `rotation`. Without it, rotating an
+   *  armed tile would drop the highlight (no slot matches the new angle) and the user couldn't see which
+   *  tile — at what rotation — they're about to paint. Cleared whenever the brush is armed from anywhere
+   *  else (`setBrushAsset` nulls it) or nothing is armed; `paletteId` scopes the highlight to the palette
+   *  it was picked from. Transient view-state — not persisted. */
+  selectedPaletteSlot: { paletteId: string | null; assetId: string; rotation?: number } | null;
   /** A catalog asset (+ optional chosen `region`/`anim`) clicked in the Library, "arming" `decor`
    *  placement for the `place` tool. Mutually exclusive with `armedNodeRef` (arming one clears the
    *  other — only one thing is ever armed at a time). */
@@ -744,8 +752,10 @@ export interface EditorState {
   /** Deletes palette `id` entirely (plain immutable `set`, NOT undoable, autosaved), then reconciles the
    *  active-palette pointer (if the deleted one was active, it repoints to the first remaining, or null). */
   deleteTilePalette(id: string): void;
-  /** Arms the brush from a palette slot — sets `brushAsset`/`brushRotation` and switches to the brush
-   *  tool (mirrors `pickTile`). A brush-arm, NOT a palette mutation: no command, no dirty. */
+  /** Arms the brush from a palette slot — sets `brushAsset`/`brushRotation`, records the slot as the
+   *  sticky `selectedPaletteSlot` (so the strip highlight survives later `rotateBrush` calls), and
+   *  switches to the brush tool (mirrors `pickTile`). A brush-arm, NOT a palette mutation: no command,
+   *  no dirty. */
   selectPaletteSlot(slot: TilePaletteSlot): void;
   /** Toggles Library pick mode (transient view-state); leaving pick mode clears the selection. */
   togglePalettePickMode(): void;
@@ -1362,6 +1372,7 @@ export const useEditorStore = create<EditorState>()(
     libraryRoleFilterOverridden: false,
     brushAsset: null,
     brushRotation: 0,
+    selectedPaletteSlot: null,
     armedObjectAsset: null,
     armedNodeRef: null,
     snapToTileCenter: true,
@@ -1531,7 +1542,9 @@ export const useEditorStore = create<EditorState>()(
     setLibraryRoleFilter: (filter) =>
       set({ libraryRoleFilter: filter, libraryRoleFilterOverridden: true }),
     // `brushRotation` is deliberately NOT reset here — it's sticky across arming a new asset.
-    setBrushAsset: (brushAsset) => set({ brushAsset }),
+    // `selectedPaletteSlot` IS cleared: arming from anywhere other than `selectPaletteSlot` (Library
+    // pick, eyedropper) means the strip's sticky highlight no longer refers to what's armed.
+    setBrushAsset: (brushAsset) => set({ brushAsset, selectedPaletteSlot: null }),
     setBrushRotation: (brushRotation) => set({ brushRotation }),
     rotateBrush: (delta) =>
       set((s): Partial<EditorState> => ({
@@ -3035,9 +3048,18 @@ export const useEditorStore = create<EditorState>()(
       // (LibraryPanel.tsx `pickTile`; that copy also does component-only recents/onPick side effects,
       // so this can't call it directly). Adds a `brushRotation` set for the slot's rotation.
       const s = get();
-      s.setBrushAsset(slot.assetId);
+      s.setBrushAsset(slot.assetId); // NB: clears `selectedPaletteSlot` — we re-set it below
       s.setBrushRotation((slot.rotation ?? 0) as 0 | 90 | 180 | 270);
       if (s.activeTool !== 'brush' && s.activeTool !== 'rect') s.setActiveTool('brush');
+      // Remember which slot (in which palette) this armed, so the strip keeps it highlighted through
+      // later `rotateBrush` calls even once `brushRotation` no longer equals the slot's own rotation.
+      set({
+        selectedPaletteSlot: {
+          paletteId: get().activeTilePaletteId,
+          assetId: slot.assetId,
+          rotation: slot.rotation,
+        },
+      });
     },
 
     togglePalettePickMode: () =>

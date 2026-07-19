@@ -276,7 +276,56 @@
     {
       "id": "palette_0005",
       "name": "Paths",
-      "slots": []
+      "slots": [
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#0"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#6"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#12"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#19"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#20"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#21"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#18"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#27"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#26"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#33"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#32"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#39"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#38"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#44"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#45"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_Road.png#46"
+        }
+      ]
     }
   ]
 }

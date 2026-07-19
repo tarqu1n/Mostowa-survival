@@ -234,6 +234,41 @@ describe('editorStore tile palettes (plan 033 step 9 — global slice)', () => {
     expect(useEditorStore.getState().canUndo).toBe(false);
   });
 
+  it('selectPaletteSlot records the sticky selectedPaletteSlot (asset + rotation + active palette)', () => {
+    useEditorStore
+      .getState()
+      .setTilePalettes([
+        { id: 'palette_0001', name: 'A', slots: [{ assetId: ASSET_B, rotation: 90 }] },
+      ]);
+    useEditorStore.getState().selectPaletteSlot({ assetId: ASSET_B, rotation: 90 });
+    expect(useEditorStore.getState().selectedPaletteSlot).toEqual({
+      paletteId: 'palette_0001',
+      assetId: ASSET_B,
+      rotation: 90,
+    });
+  });
+
+  it('rotateBrush keeps the sticky selection (so the strip highlight survives a rotate)', () => {
+    useEditorStore
+      .getState()
+      .setTilePalettes([{ id: 'palette_0001', name: 'A', slots: [{ assetId: ASSET_A }] }]);
+    useEditorStore.getState().selectPaletteSlot({ assetId: ASSET_A });
+    const armed = useEditorStore.getState().selectedPaletteSlot;
+
+    useEditorStore.getState().rotateBrush(90);
+    const s = useEditorStore.getState();
+    expect(s.brushRotation).toBe(90); // the tile now paints rotated…
+    expect(s.brushAsset).toBe(ASSET_A);
+    expect(s.selectedPaletteSlot).toEqual(armed); // …but the slot it came from stays selected
+  });
+
+  it('setBrushAsset (arming from elsewhere: Library/eyedropper) clears the sticky selection', () => {
+    useEditorStore.getState().selectPaletteSlot({ assetId: ASSET_A });
+    expect(useEditorStore.getState().selectedPaletteSlot).not.toBeNull();
+    useEditorStore.getState().setBrushAsset(ASSET_B);
+    expect(useEditorStore.getState().selectedPaletteSlot).toBeNull();
+  });
+
   it('Library pick-mode state toggles and clears (transient, no command/dirty)', () => {
     expect(useEditorStore.getState().palettePickMode).toBe(false);
 

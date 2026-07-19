@@ -53,6 +53,10 @@ export function PaletteStrip() {
   // the currently-armed brush (mirrors how the Library/Recent strip rings the active pick).
   const brushAsset = useEditorStore((s) => s.brushAsset);
   const brushRotation = useEditorStore((s) => s.brushRotation);
+  // The slot last armed from this strip, kept sticky across `rotateBrush` (see the store field's doc).
+  // When set, it — not the raw brush-angle match — decides the highlight, so rotating the armed tile
+  // keeps THAT slot ringed and its swatch shows the live `brushRotation`.
+  const selectedPaletteSlot = useEditorStore((s) => s.selectedPaletteSlot);
 
   const sizePx = isCompact ? PALETTE_SWATCH_PX_COMPACT : PALETTE_SWATCH_PX;
 
@@ -186,27 +190,41 @@ export function PaletteStrip() {
       {activePalette && activePalette.slots.length > 0 && (
         // No gap between tiles; wrap into up to ~3 rows, scrolling past that.
         <div className="flex flex-wrap overflow-y-auto" style={{ maxHeight: maxSlotsHeight }}>
-          {activePalette.slots.map((slot, index) => (
-            <PaletteSlotSwatch
-              key={slotKey(slot)}
-              slot={slot}
-              index={index}
-              paletteId={activePalette.id}
-              sizePx={sizePx}
-              isCompact={isCompact}
-              isActive={brushAsset === slot.assetId && brushRotation === (slot.rotation ?? 0)}
-              swatch={
-                catalog
-                  ? resolveRecentSwatch(
-                      { kind: 'tile', assetId: slot.assetId },
-                      catalog,
-                      EMPTY_NODE_DEFS,
-                      terrainCatalog,
-                    )
-                  : null
-              }
-            />
-          ))}
+          {activePalette.slots.map((slot, index) => {
+            // Sticky selection wins when it points into this palette: highlight exactly the tapped slot
+            // (regardless of the current brush angle) and preview the live `brushRotation` on it. Falls
+            // back to the raw asset+angle match (eyedropper, Library pick) when nothing is sticky here.
+            const stickyKey =
+              selectedPaletteSlot && selectedPaletteSlot.paletteId === activePalette.id
+                ? slotKey(selectedPaletteSlot)
+                : null;
+            const isActive = stickyKey
+              ? slotKey(slot) === stickyKey
+              : brushAsset === slot.assetId && brushRotation === (slot.rotation ?? 0);
+            return (
+              <PaletteSlotSwatch
+                key={slotKey(slot)}
+                slot={slot}
+                index={index}
+                paletteId={activePalette.id}
+                sizePx={sizePx}
+                isCompact={isCompact}
+                isActive={isActive}
+                // The active slot shows the live armed angle; every other slot shows its own stored one.
+                displayRotation={isActive ? brushRotation : (slot.rotation ?? 0)}
+                swatch={
+                  catalog
+                    ? resolveRecentSwatch(
+                        { kind: 'tile', assetId: slot.assetId },
+                        catalog,
+                        EMPTY_NODE_DEFS,
+                        terrainCatalog,
+                      )
+                    : null
+                }
+              />
+            );
+          })}
         </div>
       )}
     </div>
@@ -225,6 +243,7 @@ function PaletteSlotSwatch({
   sizePx,
   isCompact,
   isActive,
+  displayRotation,
   swatch,
 }: {
   slot: TilePaletteSlot;
@@ -233,9 +252,12 @@ function PaletteSlotSwatch({
   sizePx: number;
   isCompact: boolean;
   isActive: boolean;
+  /** Clockwise degrees to spin the swatch preview by — the live brush angle on the active slot, the
+   *  slot's own stored rotation otherwise — so the tray shows the orientation each tile will paint at. */
+  displayRotation: number;
   swatch: RecentSwatch | null;
 }) {
-  const title = slot.rotation ? `${slot.assetId} (${slot.rotation}°)` : slot.assetId;
+  const title = displayRotation ? `${slot.assetId} (${displayRotation}°)` : slot.assetId;
   const arm = (): void => useEditorStore.getState().selectPaletteSlot(slot);
   const remove = (): void => {
     useEditorStore.getState().removeTilePaletteSlot(paletteId, index);
@@ -259,7 +281,16 @@ function PaletteSlotSwatch({
       title={`${title} — long-press to remove`}
       {...longPress}
     >
-      <span className="flex items-center justify-center" style={{ width: sizePx, height: sizePx }}>
+      <span
+        className="flex items-center justify-center"
+        style={{
+          width: sizePx,
+          height: sizePx,
+          // Spin the square swatch to preview the paint angle (CSS positive = clockwise, matching
+          // `brushRotation`'s clockwise convention). 0° is a no-op so unrotated tiles are untouched.
+          transform: displayRotation ? `rotate(${displayRotation}deg)` : undefined,
+        }}
+      >
         {swatch && <AssetSwatch swatch={swatch} sizePx={sizePx} />}
       </span>
     </button>

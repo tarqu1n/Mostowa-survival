@@ -66,7 +66,21 @@ night; **no dodge** (kiting is survivability), leave a Spell slot in the cluster
 
 ## Steps
 
-- [ ] **Step 1: Telegraphed skeleton attack** `[inline]` — resolves critique #1
+- [x] **Step 1: Telegraphed skeleton attack** `[inline]` — resolves critique #1
+  - Outcome: caller-side wind-up→strike in `MonsterCharacter.update` contact branch; new `windupUntil`
+    field + `beginWindUp`/`endWindUp` env callbacks (wired EnemyManager→GameScene→CombatFxManager).
+    Wind-up is **carved out of the tail of the existing cadence** (`cooldown - ENEMY_ATTACK_WINDUP_MS`
+    gate) so enemy DPS is unchanged — telegraph is a pure readability layer; leaving contact mid-wind-up
+    whiffs the strike. Tell = ramping warning tint (`ENEMY_WINDUP_TINT`, tint-only to avoid scale
+    conflict with the flinch-squash) + the enemy freezing; strike still fires the existing forward
+    lunge + weapon swing. New consts `ENEMY_ATTACK_WINDUP_MS=350`/`ENEMY_WINDUP_TINT` (config.ts).
+    Added `enemyWindups` to `DebugState` (at END) + tripwire snapshot. Files: `config.ts`,
+    `entities/MonsterCharacter.ts`, `scenes/fx/CombatFxManager.ts`, `scenes/world/EnemyManager.ts`,
+    `scenes/GameScene.ts`, `scenes/testApi.ts`, `tests/e2e/combat.spec.ts` (new telegraph spec — drives
+    slices finer than the wind-up so it's robust to the DEV clock's wall-clock-dependent origin),
+    `tests/e2e/refactor-tripwire.spec.ts`. Verified: unit 788✓, combat+tripwire+monster e2e all green
+    (incl. club/knife cadence unchanged), lint 0 errors, prettier clean. Telegraph tell (tint+freeze)
+    is MVP-minimal — a pose/rear-back could be added at playtest; wind-up ms proposed 350, tune live.
   - Give the skeleton a readable **wind-up → strike**, replacing/upgrading the instant contact-bite. Keep
     `monsterAI` movement-only; drive the attack caller-side in `MonsterCharacter` contact logic (`:198-217`):
     on entering melee contact, enter a wind-up for `ENEMY_ATTACK_WINDUP_MS` (new `config.ts` const, propose
@@ -130,11 +144,11 @@ night; **no dodge** (kiting is survivability), leave a Spell slot in the cluster
   - Implement `combat:bow`: **facing-biased auto-target-nearest** (nearest live enemy in bow range, biased to
     `lastFacing`); fire applies `rangedDamage` (`combat.ts:13`) via a resolve mirroring `resolveMeleeAttack`.
     **Unlimited ammo.** Visual: a lightweight arrow projectile player→target (or hitscan + tracer if simpler)
-    + a **coded draw/release** pose (held bow sprite pinned via `attachment.ts`, tween-animated — no new
+    - a **coded draw/release** pose (held bow sprite pinned via `attachment.ts`, tween-animated — no new
     spritesheet). **Target highlight:** stroked rect hugging the target's bounds, re-synced each frame
     (mirror `outlineCampfire`+`syncGlowTransforms`); clears when the target dies/leaves range. Apply
     `BOW_MOVE_SLOW` during the fire (kite-able). Expose the current target id in `DebugState` (append at END
-    + tripwire update).
+    - tripwire update).
   - Side effects: `combat.ts` (activate `rangedDamage`); `attachment.ts` (bow pin); a projectile/FX manager;
     `DebugState`/tripwire; depends on Step 2's Bow button + `bowLockUntil`.
   - Docs: none.

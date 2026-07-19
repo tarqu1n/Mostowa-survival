@@ -66,6 +66,9 @@ export interface DebugState {
   // Appended (plan 012) — the refactor-tripwire deep-equals DebugState, so new fields go at the END
   // and the tripwire snapshot is updated in the same step. One entry per live campfire.
   campfires: { col: number; row: number; fuel: number; lit: boolean }[];
+  // Appended (plan 035a Step 1) — count of live enemies currently in an attack wind-up (telegraphing a
+  // strike). Lets a Tier-2 spec assert the wind-up pause fires before damage lands.
+  enemyWindups: number;
 }
 
 /**
@@ -401,6 +404,7 @@ export class TestApi {
       campfires: this.deps.campfireManager
         .all()
         .map((c) => ({ col: c.col, row: c.row, fuel: c.fuel, lit: c.lit })),
+      enemyWindups: aliveEnemies.filter((z) => z.windupUntil > 0).length,
     };
   }
 }

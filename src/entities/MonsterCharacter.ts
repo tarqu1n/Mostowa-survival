@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import {
   UNARMED_BASE_DAMAGE,
   CONTACT_DAMAGE_COOLDOWN_MS,
+  ENEMY_ATTACK_WINDUP_MS,
   MONSTER_CHASE_DROP_RADIUS_PX,
   MONSTER_VEER_BAND_PX,
   MONSTER_VEER_MAX_TILES,
@@ -60,6 +61,10 @@ export interface MonsterTickEnv {
   rng: () => number;
   /** Visible attack tell + weapon swing (routes to CombatFxManager.lungeAt). */
   lungeAt: (monster: MonsterCharacter, targetX: number, targetY: number) => void;
+  /** Play the wind-up telegraph — a ramping warning tint over `durationMs` (CombatFxManager.beginWindUp). */
+  beginWindUp: (monster: MonsterCharacter, durationMs: number) => void;
+  /** Clear the wind-up telegraph — the strike is landing, or the player escaped (CombatFxManager.endWindUp). */
+  endWindUp: (monster: MonsterCharacter) => void;
   /** Landed-bite feedback — flash + camera kick + damage vignette (scene-owned bus emission). */
   onPlayerHurt: () => void;
   /** Apply bite damage to the player (scene-owned: emits hp events / triggers the death path). */
@@ -83,6 +88,10 @@ export class MonsterCharacter extends Character {
   /** Persisted AI state — read+returned by stepMonster each tick (repath timing lives inside it). */
   ai: MonsterState;
   lastContactAt = 0;
+  /** >0 while the enemy is in an attack wind-up (plan 035a Step 1): the timestamp its strike lands.
+   *  Set caller-side on entering the wind-up window in melee contact; cleared on the strike or on a
+   *  whiff (the player left contact during the wind-up). Surfaced via debugState (`enemyWindups`). */
+  windupUntil = 0;
   /** Which render footprint the sprite is currently showing (`walk` 64px vs the `idle` 32px bob) —
    *  so `updateAnim` only swaps scale/origin/body on an actual state change (see setFootprint). */
   private activeStrip: 'idle' | 'walk' = 'walk'; // the constructor sets up the 64px Walk footprint
@@ -194,7 +203,9 @@ export class MonsterCharacter extends Character {
     );
     this.ai = decision.state;
 
-    // Chase + in melee contact: stand and bite on the cadence (skip movement).
+    // Chase + in melee contact: stand and bite on the cadence — but TELEGRAPHED (plan 035a Step 1).
+    // Instead of an instant contact-bite, the enemy freezes in a readable wind-up first (the clunk
+    // fix), then strikes; leaving contact mid-wind-up cancels the strike.
     if (this.ai.mode === 'chase') {
       const inContact = env.playerBodyTiles.some(
         (t) => Math.max(Math.abs(t.col - this.col), Math.abs(t.row - this.row)) <= 1,
@@ -205,15 +216,30 @@ export class MonsterCharacter extends Character {
         // as a club); an unarmed monster falls back to the shared unarmed damage + contact cooldown.
         const baseDmg = this.weapon ? this.weapon.def.damage : UNARMED_BASE_DAMAGE;
         const cooldown = this.weapon ? this.weapon.def.attackMs : CONTACT_DAMAGE_COOLDOWN_MS;
-        if (env.nowMs - this.lastContactAt >= cooldown) {
-          this.lastContactAt = env.nowMs;
-          env.lungeAt(this, env.playerPos.x, env.playerPos.y); // visible attack tell + weapon swing
-          const dmg = resolveMeleeAttack(this.def, env.playerStats, baseDmg, env.rng);
-          if (dmg > 0) env.onPlayerHurt(); // flash + camera kick + damage vignette when the bite lands
-          env.damagePlayer(dmg);
+        if (this.windupUntil > 0) {
+          // Mid wind-up: hold the tell until it completes, then STRIKE. The wind-up is carved out of
+          // the tail of the cadence, so the strike still lands on schedule — just now with a warning.
+          if (env.nowMs >= this.windupUntil) {
+            this.windupUntil = 0;
+            this.lastContactAt = env.nowMs;
+            env.endWindUp(this); // drop the warning tint — the strike is landing
+            env.lungeAt(this, env.playerPos.x, env.playerPos.y); // the forward strike-lunge + weapon swing
+            const dmg = resolveMeleeAttack(this.def, env.playerStats, baseDmg, env.rng);
+            if (dmg > 0) env.onPlayerHurt(); // flash + camera kick + damage vignette when the bite lands
+            env.damagePlayer(dmg);
+          }
+        } else if (env.nowMs - this.lastContactAt >= cooldown - ENEMY_ATTACK_WINDUP_MS) {
+          // Cadence gate open → begin the wind-up telegraph (the player's cue to disengage).
+          this.windupUntil = env.nowMs + ENEMY_ATTACK_WINDUP_MS;
+          env.beginWindUp(this, ENEMY_ATTACK_WINDUP_MS);
         }
         this.updateAnim();
         return;
+      }
+      // Left contact while winding up → the player reacted to the tell: whiff (cancel, no strike).
+      if (this.windupUntil > 0) {
+        this.windupUntil = 0;
+        env.endWindUp(this);
       }
     }
 

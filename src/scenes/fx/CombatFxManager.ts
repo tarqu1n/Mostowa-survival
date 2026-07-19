@@ -9,6 +9,7 @@ import {
   WEAPON_SWING_ARC_DEG,
   WEAPON_SWING_MS,
   WEAPON_SWING_SCALE_POP,
+  ENEMY_WINDUP_TINT,
 } from '../../config';
 import { HIT_FLASH_KEY, type HitFlashPipeline } from '../../render/hitFlashPipeline';
 import { playerAnimKey, type Facing } from '../../data/tileset';
@@ -50,6 +51,9 @@ export class CombatFxManager {
   // Weapon-swing tweens keyed by the WIELDER sprite (so cleanupActorFx(enemySprite) can stop one
   // mid-swing before the weapon image is destroyed — the tween pokes the weapon each frame).
   private readonly weaponSwingTweens = new Map<Phaser.GameObjects.Sprite, Phaser.Tweens.Tween>();
+  // Wind-up tint tweens keyed by the enemy sprite — the telegraph that plays BEFORE the strike lunge
+  // (plan 035a Step 1). Tracked so a strike/escape/teardown can stop it and clear the tint.
+  private readonly windUpTweens = new Map<Phaser.GameObjects.Sprite, Phaser.Tweens.Tween>();
   private readonly hitFlashOn = new Set<Phaser.GameObjects.Sprite>();
   // Enemy sprites out of the AI set but lingering to play their one-shot death collapse before the
   // corpse is removed. Tracked so debugState can report them (proves removal waits for the animation).
@@ -169,6 +173,48 @@ export class CombatFxManager {
   }
 
   /**
+   * The enemy attack **wind-up** telegraph (plan 035a Step 1): while the enemy freezes in melee contact
+   * for the wind-up window (see MonsterCharacter.update), ramp a warning tint (white → ENEMY_WINDUP_TINT)
+   * over `durationMs` so the impending strike is readable — anticipation before the forward strike-lunge.
+   * Tint-only (never scale) so it can't fight the flinch-squash's live baseScale writes or the Arcade
+   * body. Cleared by {@link endWindUp} on the strike (or a whiff, if the player escapes contact).
+   */
+  beginWindUp(z: MonsterCharacter, durationMs: number): void {
+    const sprite = z.sprite;
+    if (this.windUpTweens.has(sprite)) return; // already telegraphing this cycle
+    const to = {
+      r: (ENEMY_WINDUP_TINT >> 16) & 0xff,
+      g: (ENEMY_WINDUP_TINT >> 8) & 0xff,
+      b: ENEMY_WINDUP_TINT & 0xff,
+    };
+    const tween = this.scene.tweens.add({
+      targets: { t: 0 },
+      t: 1,
+      duration: durationMs,
+      ease: 'Quad.easeIn', // loads up — most vivid in the instant before the strike
+      onUpdate: (_tw, tgt: { t: number }) => {
+        if (!sprite.active) return; // enemy destroyed mid-wind-up (death/teardown) — don't poke it
+        const t = tgt.t;
+        const r = Math.round(255 + (to.r - 255) * t);
+        const g = Math.round(255 + (to.g - 255) * t);
+        const b = Math.round(255 + (to.b - 255) * t);
+        sprite.setTint((r << 16) | (g << 8) | b);
+      },
+      onComplete: () => this.windUpTweens.delete(sprite), // tint held until endWindUp clears it
+    });
+    this.windUpTweens.set(sprite, tween);
+  }
+
+  /** Clear an enemy's wind-up telegraph — its strike is landing (or it whiffed on the player escaping).
+   *  Stops the ramp tween and drops the warning tint back to normal. */
+  endWindUp(z: MonsterCharacter): void {
+    const sprite = z.sprite;
+    this.windUpTweens.get(sprite)?.stop();
+    this.windUpTweens.delete(sprite);
+    if (sprite.active) sprite.clearTint();
+  }
+
+  /**
    * An enemy's attack "tell": a quick out-and-back lunge toward its target. The skeleton sheet ships
    * no attack strip, so without this a bite is invisible — the enemy just stands on the player. We
    * move the Arcade **body** (via `body.reset`), not the sprite transform: Arcade writes the body's
@@ -255,6 +301,9 @@ export class CombatFxManager {
     this.lungeTweens.delete(sprite);
     this.weaponSwingTweens.get(sprite)?.stop(); // the swing tween pokes the weapon image each frame
     this.weaponSwingTweens.delete(sprite);
+    this.windUpTweens.get(sprite)?.stop(); // clear any in-flight wind-up telegraph before the sprite goes
+    this.windUpTweens.delete(sprite);
+    if (sprite.active) sprite.clearTint(); // don't leave a corpse wearing the warning tint
     this.hitFlashOn.delete(sprite);
   }
 
@@ -280,9 +329,11 @@ export class CombatFxManager {
     for (const t of this.hitFlashTweens.values()) t.stop();
     for (const t of this.lungeTweens.values()) t.stop();
     for (const t of this.weaponSwingTweens.values()) t.stop();
+    for (const t of this.windUpTweens.values()) t.stop();
     this.hitFlashTweens.clear();
     this.lungeTweens.clear();
     this.weaponSwingTweens.clear();
+    this.windUpTweens.clear();
     this.hitFlashOn.clear();
     this.corpses.clear(); // scene teardown destroys the sprites; drop stale references
     this.playerFlash = 0;

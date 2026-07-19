@@ -67,6 +67,31 @@ test('a biting enemy plays an attack lunge and the player flashes on the hit', a
   expect(await captured(page, 'player:hit')).toBeTruthy();
 });
 
+test('a skeleton telegraphs a wind-up before its bite lands (plan 035a)', async ({ page }) => {
+  await startGame(page);
+  // Enemy already adjacent + chasing with a club (dodge 0 → the bite always connects).
+  await applyScenario(page, {
+    player: [10, 10],
+    enemies: [{ at: [11, 10], mode: 'chase', weaponId: 'club' }],
+  });
+  const before = (await state(page)).playerHp;
+
+  // The bite is now telegraphed: the enemy freezes in a wind-up (ENEMY_ATTACK_WINDUP_MS, 350) before
+  // the strike lands. Drive in slices finer than the wind-up and prove the ordering holds regardless
+  // of exactly when the cadence gate opens (the DEV clock's absolute origin is wall-clock-dependent):
+  // at some slice the enemy is mid-wind-up with the player still unhurt, and only later does HP drop.
+  let sawWindupBeforeDamage = false;
+  let damageLanded = false;
+  for (let i = 0; i < 40 && !damageLanded; i++) {
+    await step(page, 100);
+    const s = await state(page);
+    if (s.enemyWindups > 0 && s.playerHp === before) sawWindupBeforeDamage = true; // telegraphing, not yet bitten
+    if (s.playerHp < before) damageLanded = true;
+  }
+  expect(sawWindupBeforeDamage).toBe(true); // a readable wind-up ran with no damage yet — the window to disengage
+  expect(damageLanded).toBe(true); // the strike eventually landed the bite
+});
+
 test('attacking a surviving enemy triggers its hit flash', async ({ page }) => {
   await startGame(page);
   // Adjacent enemy the player faces, Combat mode so Attack is live. kidZombie maxHp 3, flat-1 damage →

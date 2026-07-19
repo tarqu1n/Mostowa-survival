@@ -323,6 +323,8 @@ export class GameScene extends Phaser.Scene {
       onPlayerHurt: () => this.onPlayerHurt(),
       damagePlayer: (amount) => this.damagePlayer(amount),
       lungeAt: (m, x, y) => this.fx.lungeAt(m, x, y),
+      beginWindUp: (m, ms) => this.fx.beginWindUp(m, ms),
+      endWindUp: (m) => this.fx.endWindUp(m),
       cleanupActorFx: (sprite) => this.fx.cleanupActorFx(sprite),
       addCorpse: (sprite) => this.fx.addCorpse(sprite),
       removeCorpse: (sprite) => this.fx.removeCorpse(sprite),

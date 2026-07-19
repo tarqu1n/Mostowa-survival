@@ -153,6 +153,18 @@ export const ATTACK_MOVE_SLOW = 0.2;
 export const CONTACT_DAMAGE_COOLDOWN_MS = 1000;
 
 /**
+ * Telegraphed enemy attack (plan 035a Step 1). Before a bite lands, the enemy freezes in a readable
+ * **wind-up** for `ENEMY_ATTACK_WINDUP_MS`, tinting toward `ENEMY_WINDUP_TINT` as it "loads" — the
+ * player's cue to disengage. The wind-up is carved out of the *end* of the existing bite cadence
+ * (weapon `attackMs` / `CONTACT_DAMAGE_COOLDOWN_MS`), so it telegraphs the strike without changing an
+ * enemy's overall DPS: the strike still lands on the cadence, just now with a warning. Leaving contact
+ * during the wind-up cancels the strike (a whiff), so reacting to the tell actually saves you.
+ * Starting value ~350ms — playtest-tune.
+ */
+export const ENEMY_ATTACK_WINDUP_MS = 350;
+export const ENEMY_WINDUP_TINT = 0xffcc33;
+
+/**
  * Hit feedback (see render/hitFlashPipeline.ts + GameScene.flashHit). When an actor takes damage it
  * flashes red and does a quick squash "flinch". `HIT_FLASH_MS` is how long the reaction lasts;
  * `HIT_FLASH_PEAK` is the max red mix (0..1) at impact — near 1 so the hit is unmistakable, a shade

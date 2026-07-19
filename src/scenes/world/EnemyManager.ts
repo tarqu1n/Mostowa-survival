@@ -42,6 +42,10 @@ export interface EnemyManagerDeps {
   damagePlayer(amount: number): void;
   /** Visible attack tell + weapon swing (routes to CombatFxManager.lungeAt). */
   lungeAt(monster: MonsterCharacter, targetX: number, targetY: number): void;
+  /** Play the wind-up telegraph before a strike (routes to CombatFxManager.beginWindUp). */
+  beginWindUp(monster: MonsterCharacter, durationMs: number): void;
+  /** Clear the wind-up telegraph — strike landing or whiff (routes to CombatFxManager.endWindUp). */
+  endWindUp(monster: MonsterCharacter): void;
   /** Stop any in-flight hit-flash/lunge/weapon-swing tween before a sprite is destroyed. */
   cleanupActorFx(sprite: CharacterSprite): void;
   /** Track a corpse sprite lingering after death (see killEnemy's delayedCall). */
@@ -150,6 +154,8 @@ export class EnemyManager {
       isBlocked: (col, row) => this.deps.isBlocked(col, row),
       rng: () => this.deps.rng(),
       lungeAt: (m, x, y) => this.deps.lungeAt(m, x, y),
+      beginWindUp: (m, ms) => this.deps.beginWindUp(m, ms),
+      endWindUp: (m) => this.deps.endWindUp(m),
       onPlayerHurt: () => this.deps.onPlayerHurt(),
       damagePlayer: (amount) => this.deps.damagePlayer(amount),
     };

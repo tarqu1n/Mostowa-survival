@@ -123,5 +123,6 @@ test('golden debugState() snapshot survives a scripted world + combat sequence',
     pulsingTreeId: null,
     queuedTreeIds: [],
     campfires: [], // plan 012: appended to DebugState; this scenario places no campfires
+    enemyWindups: 0, // plan 035a: enemy dead by snapshot time — no wind-up in progress
   });
 });

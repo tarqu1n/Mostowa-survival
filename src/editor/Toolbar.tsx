@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
-import { serializeMap, parseMap, migrateMap } from '../systems/mapFormat';
-import { getMap, putMap, putThumb } from './api';
+import { serializeMap, parseMap } from '../systems/mapFormat';
+import { putMap, putThumb } from './api';
+import { openMapById } from './sessionSource';
 import {
   useEditorStore,
   type EditorOverlays,
@@ -324,15 +325,16 @@ export function Toolbar() {
   }
 
   async function handleOpen(id: string): Promise<void> {
-    try {
-      const raw = await getMap(id);
-      const loaded = migrateMap(raw);
-      useEditorStore.getState().loadMap(loaded, id);
-      setShowOpen(false);
-      toast.success(`Opened "${loaded.meta.name}".`);
-    } catch (e) {
-      toast.error(`Open failed: ${(e as Error).message}`, { duration: 5000 });
+    // Route through the shared open sequence (plan 034) so the manual dialog and boot restore migrate +
+    // load identically. On failure the specific error is logged by `openMapById`; toast a generic line.
+    const ok = await openMapById(id);
+    if (!ok) {
+      toast.error('Open failed.', { duration: 5000 });
+      return;
     }
+    const name = useEditorStore.getState().map?.meta.name ?? id;
+    setShowOpen(false);
+    toast.success(`Opened "${name}".`);
   }
 
   function handleCreate(fields: NewMapFields): void {

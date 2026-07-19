@@ -153,7 +153,8 @@ tooling, not game content — no conflict with the MVP roadmap.
     that scroll/zoom instead; panning / wheel-zoom / step-zoom / pinch-zoom each write the current camera
     to `camera:<id>` on release (verified by reading localStorage after the gesture).
 
-- [ ] **Step 3: `sessionSource.ts` — shared open, restore, autosave, flush** `[inline]`
+- [x] **Step 3: `sessionSource.ts` — shared open, restore, autosave, flush** `[inline]`
+  - Outcome: created `src/editor/sessionSource.ts` (mirrors `palettesSource.ts`). Exports `openMapById` (getMap→migrateMap→loadMap→bool; logs detail, caller toasts), `restoreSession` (reopens `last.mapId`, applies tool + no-op-safe tab + **layer validated against `map.layers`** per critique #3; stale pointer → `clearLast`), `installSessionAutosave` (subscribes a joined-string selector `mapId\u0000activeTool\u0000activeLayerId\u0000activeTabId` via `subscribeWithSelector`, 400ms module-scoped debounce → `writeNow`), `flushSession` (cancel timer + write now). Camera never touched here. Refactored `Toolbar.tsx` `handleOpen` to call `openMapById` (generic failure toast, reads `map.meta.name` for success); dropped now-unused `getMap`/`migrateMap` imports, added `openMapById`. Used the `\u0000` *escape* (not a raw NUL byte — that trips grep binary-detection) as the selector separator. Imports acyclic. Acceptance: `tsc` clean, eslint clean, 777/777 tests pass.
   - Create `src/editor/sessionSource.ts` (mirror `palettesSource.ts`). Imports: `useEditorStore`, `getMap`
     (`./api`), `migrateMap` (same source `Toolbar` uses), and `getLast`/`putLast`/`clearLast` from
     `./sessionStore`.

@@ -69,6 +69,7 @@ false`) to switch that off. Trade-off by design:
   bundle.)
 - **You choose when to see others' pushes** — a map/code change pushed elsewhere won't appear until
   you refresh. That's the point.
+- **Session restore (plan 034) pairs with this workflow** — a refreshed or discarded tab resumes where you left off: your tool, active layer, camera, and last-opened map reopen.
 
 Desktop dev leaves `EDITOR_NO_HMR` unset, keeping fast HMR for iterating on editor code.
 

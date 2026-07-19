@@ -215,13 +215,15 @@ Each authored file has its own bespoke dev-middleware handler in `scripts/vite-e
 migration — writes `<newId>.map.json` **first**, migrates in-memory + localStorage state, re-bakes
 the thumb under the new id, saves the world layout if the map is placed (rewriting that placement's
 `mapId`), then **DELETE**s `<oldId>.map.json` + its thumb **last** (write-new-before-delete-old, so a
-failure never orphans the live map). Also migrates the `mostowo-editor-underlay:settings:<id>` and the
-Library view-state keys (below) old→new.
+failure never orphans the live map). Also migrates the `mostowo-editor-underlay:settings:<id>`, the
+Library view-state keys (below), and the per-map `mostowo-editor-session:camera:<id>` key old→new.
 
 **Library view-state (plan 030):** the Recent strip and browse state persist **per-map to
 localStorage** (never in `.map.json`) under `mostowo-editor-library:recents:<mapId>` and
 `…:browse:<mapId>` (`src/editor/libraryViewStore.ts`). `browse` excludes `search` (transient,
 store-only — survives close/reopen, not a reload). Both keys migrate on rename and reset on map close.
+
+**Session restore (plan 034):** two keys persist editor state across any reload. `mostowo-editor-session:last` (`{mapId, activeTool?, activeLayerId?, activeTabId?}`, written by store autosave in `sessionSource.ts`) and `…:camera:<mapId>` (`CameraState = {scrollX, scrollY, zoom}`, written by `EditorScene` on gesture-settle, read in `buildScene`) track the boot-resume session and per-map camera respectively. On ANY reload the editor reopens `last.mapId` with its saved tool, active tab (dangling tabs fall back to the map's default), and saved active layer (only if it still exists in that map). Per-map camera restores on every open of that map, not just boot resume. A deliberate "Close map" clears the `last` pointer. `visibilitychange:hidden` and `pagehide` flush the `last` record before discard. The camera key migrates on rename (and self-heals on next boot if out-of-band deleted).
 
 ## Regions on tile assets (plan 028)
 

@@ -252,7 +252,8 @@ tooling, not game content — no conflict with the MVP roadmap.
   - Docs: none.
   - Done when: `npm test` passes the new suites with no flake.
 
-- [ ] **Step 7: docs** `[delegate haiku]`
+- [x] **Step 7: docs** `[delegate haiku]`
+  - Outcome: `docs/EDITOR.md` — added the `mostowo-editor-session:camera:<id>` key to the "Rename id-migration contract" list (:219), and a terse "Session restore (plan 034)" paragraph after the Library view-state section (:226) covering both keys, their single writers, restore-on-any-reload, per-map camera on every open, Close-map clears the pointer, and the `visibilitychange:hidden`/`pagehide` flush. `docs/MOBILE-EDITOR-ACCESS.md` — one bullet in the "No auto-refresh on guppi" section tying session-restore to the manual-refresh workflow. markdownlint: 0 errors on both.
   - `docs/EDITOR.md` "Persistence contract" (`:200-224`): add a terse "Session restore (plan 034)"
     paragraph — keys `mostowo-editor-session:last` (`{mapId, activeTool?, activeLayerId?, activeTabId?}`,
     written by the store autosave) and `…:camera:<mapId>` (`CameraState`, written by `EditorScene` on

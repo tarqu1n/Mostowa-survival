@@ -180,6 +180,27 @@ export const BOW_BASE_DAMAGE = 2;
 export const BOW_ARROW_MS = 140;
 export const BOW_ARROW_LEN_PX = 10;
 
+/**
+ * Monster HP bars (plan 035a Step 6) — a thin floating bar above an enemy's hurtbox, deliberately
+ * attention-scoped so a swarm doesn't drown the screen in bars:
+ *  - the **bow's current target** (Step 5) shows its bar **persistently** (you're aiming at it);
+ *  - any other enemy shows a **brief** bar for `HP_BAR_SHOW_MS` after it's hit, then it fades out;
+ *  - at most `HP_BAR_MAX_VISIBLE` bars render at once — the target first, then the nearest others.
+ * `HP_BAR_WIDTH_PX`/`HP_BAR_HEIGHT_PX` size it; `HP_BAR_GAP_PX` lifts it above the hurtbox top.
+ * Below `HP_BAR_NEAR_DEATH_FRAC` HP an enemy also gets a **sprite tell** — a slow alpha throb
+ * (`HP_BAR_NEAR_DEATH_ALPHA_MIN`..1 over `HP_BAR_NEAR_DEATH_PERIOD_MS`) — so "almost dead" reads even
+ * when it has no bar (alpha is free on enemies: VisionController hides only the player, and the flash/
+ * wind-up/flinch FX use pipeline/tint/scale, never alpha). Starting values — playtest-tune.
+ */
+export const HP_BAR_SHOW_MS = 2500;
+export const HP_BAR_MAX_VISIBLE = 5;
+export const HP_BAR_WIDTH_PX = 16;
+export const HP_BAR_HEIGHT_PX = 2;
+export const HP_BAR_GAP_PX = 3;
+export const HP_BAR_NEAR_DEATH_FRAC = 0.34;
+export const HP_BAR_NEAR_DEATH_ALPHA_MIN = 0.5;
+export const HP_BAR_NEAR_DEATH_PERIOD_MS = 480;
+
 /** Minimum time (ms) between an enemy's contact-damage attempts on the player. */
 export const CONTACT_DAMAGE_COOLDOWN_MS = 1000;
 
@@ -381,4 +402,7 @@ export const COLORS = {
   fireLight: 0xffb066, // warm campfire glow tint (later step: light/reveal radius rendering)
   bowTarget: 0xff5a4d, // stroked highlight round the bow's current auto-target (plan 035a Step 5)
   arrow: 0xf4e2b8, // coded arrow-tracer dash colour (plan 035a Step 5)
+  hpBarBg: 0x1c1410, // floating monster HP-bar backing (plan 035a Step 6)
+  hpBarHigh: 0x4caf50, // HP-bar fill when healthy (matches the player bar's green)
+  hpBarLow: 0xc0392b, // HP-bar fill when low (matches the player bar's red)
 } as const;

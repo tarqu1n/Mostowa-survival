@@ -42,6 +42,7 @@ export interface DebugState {
   enemyWindups: number;
   combatActive: boolean;
   bowTargetId: string | null;
+  enemyHpBarsVisible: number;
 }
 
 /**

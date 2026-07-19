@@ -235,6 +235,57 @@ test('the bow kills an enemy from range while the player stays put, then clears 
   expect(s.bowTargetId).toBeNull(); // the auto-target cleared when it died (highlight hides with it)
 });
 
+test('hitting an enemy reveals a brief HP bar that fades; no hit → no bar (plan 035a)', async ({
+  page,
+}) => {
+  await startGame(page);
+  await applyScenario(page, {
+    player: [10, 10],
+    enemies: [[11, 10]],
+    facing: 'right',
+    mode: 'combat',
+  });
+  await step(page, 50);
+  expect((await state(page)).enemyHpBarsVisible).toBe(0); // un-hit, not a bow target → no bar
+
+  await emit(page, 'combat:attack'); // one melee hit (kidZombie hp3 − 1 = 2, survives)
+  await step(page, 50);
+  expect((await state(page)).enemyHpBarsVisible).toBeGreaterThanOrEqual(1); // on-hit bar revealed
+
+  // Past HP_BAR_SHOW_MS (2500) with no further hits → the brief bar fades out (enemy still alive,
+  // not the bow target, HP 2/3 so not near-death — nothing keeps the bar up).
+  await step(page, 2800);
+  const s = await state(page);
+  expect(s.enemies).toBe(1); // still alive — the bar dropped on timeout, not on death
+  expect(s.enemyHpBarsVisible).toBe(0);
+});
+
+test('the bow target keeps its HP bar persistently, past the on-hit fade (plan 035a)', async ({
+  page,
+}) => {
+  await startGame(page);
+  // Enemy 5 tiles north, in bow range; player faces up. One bow shot (2 dmg) leaves it alive.
+  await applyScenario(page, {
+    player: [10, 10],
+    facing: 'up',
+    mode: 'combat',
+    enemies: [[10, 5]],
+  });
+
+  await emit(page, 'combat:bow');
+  await step(page, 50);
+  let s = await state(page);
+  expect(s.bowTargetId).not.toBeNull(); // locked as the bow target
+  expect(s.enemyHpBarsVisible).toBeGreaterThanOrEqual(1);
+
+  // Well past HP_BAR_SHOW_MS: an on-hit-only bar would have faded, but the bow TARGET keeps its bar.
+  await step(page, 2800);
+  s = await state(page);
+  expect(s.enemies).toBe(1); // survived the single shot
+  expect(s.bowTargetId).not.toBeNull(); // still the target (alive + in range)
+  expect(s.enemyHpBarsVisible).toBeGreaterThanOrEqual(1); // persistent target bar
+});
+
 test('an enemy near surfaces combat controls, and the movepad drives while a queued order survives (plan 035a)', async ({
   page,
 }) => {

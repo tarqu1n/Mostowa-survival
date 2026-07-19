@@ -237,7 +237,33 @@ night; **no dodge** (kiting is survivability), leave a Spell slot in the cluster
   - Done when: tapping Bow highlights + hits the nearest skeleton from range while you keep moving; melee
     still roots you; Tier-2 asserts auto-target selection + ranged damage + highlight tracking.
 
-- [ ] **Step 6: Minimal, attention-scoped monster HP bars** `[inline]`
+- [x] **Step 6: Minimal, attention-scoped monster HP bars** `[inline]`
+  - Outcome: net-new floating HP bars, owned by `CombatFxManager.syncEnemyHealthBars(enemies,
+    bowTargetId, playerTile)` (called each frame from `GameScene.update`, above the movement early-
+    return so bars track on the idle/movepad path too). A pooled `{bg,fg}` rect pair per enemy id
+    (mirrors the player's `updateHealthBar` — thin dark bg + green→red `fg`, `fg` left-anchored so
+    `scaleX` drains from the right), anchored above the hurtbox (`sprite.y −
+    hurtbox.height·TILE·scaleY − HP_BAR_GAP_PX`), depth 13/14. **Anti-clutter:** a bar shows for an
+    enemy that is the **bow target** (persistent) OR was hit within `HP_BAR_SHOW_MS` (2500, brief →
+    fades), capped to `HP_BAR_MAX_VISIBLE` (5) — target first, then nearest; bars for no-longer-shown
+    enemies (dead/timed-out/evicted) are destroyed each frame. **On-hit reveal** is driven off a new
+    `enemyHitAt` stamp written in the single `flashHit` choke point (both melee + bow route through
+    it). **Near-death tell:** any live enemy below `HP_BAR_NEAR_DEATH_FRAC` (0.34) HP gets a slow
+    **alpha throb** (`HP_BAR_NEAR_DEATH_ALPHA_MIN`..1 over `HP_BAR_NEAR_DEATH_PERIOD_MS`) — chosen
+    over tint/scale because alpha is free on enemies (VisionController hides only the player; the
+    flash/wind-up/flinch FX use pipeline/tint/scale, never alpha), so no FX conflict — readable even
+    for a capped-out enemy with no bar. `cleanupActorFx` resets alpha→1 + drops the hit stamp so a
+    killed enemy's corpse is solid + its bar clears; `resetCombatFx` destroys the pooled rects + clears
+    the stamp map (RUNTIME destroy; SHUTDOWN double-destroy is a guarded no-op — plain rects, no
+    physics body, so the Arcade-teardown-ordering caveat doesn't apply). Added `enemyHpBarsVisible` to
+    `DebugState` (at END, `= fx.getVisibleHpBarCount()`, no new test-API dep — `fx` was already in the
+    facade) + tripwire + harness mirror. New consts `HP_BAR_*` + `COLORS.hpBarBg/hpBarHigh/hpBarLow`
+    (config.ts). Files: `config.ts`, `scenes/fx/CombatFxManager.ts`, `scenes/GameScene.ts`,
+    `scenes/testApi.ts`, `tests/e2e/harness.ts`, `tests/e2e/refactor-tripwire.spec.ts`,
+    `tests/e2e/combat.spec.ts` (2 new specs: on-hit reveal-then-fade + no-hit-no-bar;
+    bow-target-persistent past the fade). Verified: typecheck clean, lint 0 errors, unit 793✓, e2e
+    combat.spec (16, incl. both new) + refactor-tripwire green (17/17), prettier clean, `pnpm build`
+    succeeds. HP_BAR_* sizes/timings/near-death frac proposed — playtest-tune.
   - Net-new floating HP bar above enemy hurtboxes (`sprite.y - hurtbox.height*TILE*scale`), thin/colour-only
     (mirror `updateHealthBar`'s green→red rect). Anti-clutter rules: the bow's **current target** (Step 5)
     shows its bar **persistently**; any enemy shows a **brief on-hit bar** fading after `HP_BAR_SHOW_MS`;

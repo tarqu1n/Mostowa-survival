@@ -126,5 +126,6 @@ test('golden debugState() snapshot survives a scripted world + combat sequence',
     enemyWindups: 0, // plan 035a: enemy dead by snapshot time — no wind-up in progress
     combatActive: false, // plan 035a Step 3: enemy dead + day-1 daytime → auto-surface predicate off
     bowTargetId: null, // plan 035a Step 5: this scenario never fires the bow → no target
+    enemyHpBarsVisible: 0, // plan 035a Step 6: enemy dead + long settle → its bar dropped, none left
   });
 });

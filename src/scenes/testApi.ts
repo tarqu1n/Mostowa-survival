@@ -75,6 +75,9 @@ export interface DebugState {
   // Appended (plan 035a Step 5) — the bow's current auto-target enemy id (null = none). Lets a Tier-2
   // spec assert facing-biased target selection + that the target clears when it dies/leaves range.
   bowTargetId: string | null;
+  // Appended (plan 035a Step 6) — count of monster HP bars currently rendered. Lets a Tier-2 spec
+  // assert the on-hit reveal fires + fades and the bow target keeps a persistent bar.
+  enemyHpBarsVisible: number;
 }
 
 /**
@@ -420,6 +423,7 @@ export class TestApi {
       enemyWindups: aliveEnemies.filter((z) => z.windupUntil > 0).length,
       combatActive: this.deps.getCombatActive(),
       bowTargetId: this.deps.getBowTargetId(),
+      enemyHpBarsVisible: this.deps.fx.getVisibleHpBarCount(),
     };
   }
 }

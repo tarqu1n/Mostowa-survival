@@ -662,6 +662,11 @@ export class GameScene extends Phaser.Scene {
     // path (a kiting player shooting while backing away).
     this.syncBowTarget();
 
+    // Draw the attention-scoped monster HP bars (plan 035a Step 6) — the bow target's bar persists,
+    // any recently-hit enemy flashes a brief one, capped + near-death sprite tell. Also above the
+    // early-return so bars track on the idle/movepad path.
+    this.fx.syncEnemyHealthBars(this.enemyManager.all(), this.bowTargetId, this.playerChar.tile());
+
     const action = this.queue.current;
     // Movepad precedence (plan 035a Step 3): while combat controls are surfaced (manual Combat mode OR
     // the combatActive auto-surface) AND the pad is actually held, the movepad drives velocity

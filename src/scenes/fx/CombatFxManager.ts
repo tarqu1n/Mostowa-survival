@@ -13,9 +13,20 @@ import {
   BOW_ARROW_MS,
   BOW_ARROW_LEN_PX,
   COLORS,
+  TILE_SIZE,
+  HP_BAR_SHOW_MS,
+  HP_BAR_MAX_VISIBLE,
+  HP_BAR_WIDTH_PX,
+  HP_BAR_HEIGHT_PX,
+  HP_BAR_GAP_PX,
+  HP_BAR_NEAR_DEATH_FRAC,
+  HP_BAR_NEAR_DEATH_ALPHA_MIN,
+  HP_BAR_NEAR_DEATH_PERIOD_MS,
 } from '../../config';
 import { HIT_FLASH_KEY, type HitFlashPipeline } from '../../render/hitFlashPipeline';
 import { playerAnimKey, type Facing } from '../../data/tileset';
+import { DEFAULT_HURTBOX } from '../../systems/hurtbox';
+import type { Cell } from '../../systems/pathfind';
 import type { MonsterCharacter } from '../../entities/MonsterCharacter';
 import type { GameScene } from '../GameScene';
 
@@ -66,6 +77,16 @@ export class CombatFxManager {
   // freeze on one frame of a moving/animating enemy); hidden when there's no target.
   private readonly arrows = new Set<Phaser.GameObjects.Rectangle>();
   private bowTargetBox?: Phaser.GameObjects.Rectangle;
+  // Monster HP bars (plan 035a Step 6). `hpBars` is the pool of floating bars in play, keyed by enemy
+  // id — one {bg, fg} pair, created lazily, positioned/sized each frame; a bar whose enemy is no
+  // longer "shown" (dead / bar timed out / evicted by the visible cap) is destroyed. `enemyHitAt`
+  // stamps the last time each enemy sprite took a hit (written in flashHit — the single choke point
+  // for "an enemy was hit"), so syncEnemyHealthBars can show a brief on-hit bar that fades.
+  private readonly hpBars = new Map<
+    string,
+    { bg: Phaser.GameObjects.Rectangle; fg: Phaser.GameObjects.Rectangle }
+  >();
+  private readonly enemyHitAt = new Map<Phaser.GameObjects.Sprite, number>();
   // Enemy sprites out of the AI set but lingering to play their one-shot death collapse before the
   // corpse is removed. Tracked so debugState can report them (proves removal waits for the animation).
   private readonly corpses = new Set<Phaser.GameObjects.Sprite>();
@@ -136,7 +157,10 @@ export class CombatFxManager {
   flashHit(sprite: Phaser.GameObjects.Sprite): void {
     const isPlayer = sprite === this.deps.getPlayerSprite();
     if (isPlayer) this.playerHitFlashes += 1;
-    else this.enemyHitFlashes += 1;
+    else {
+      this.enemyHitFlashes += 1;
+      this.enemyHitAt.set(sprite, this.scene.time.now); // drives the brief on-hit HP bar (Step 6)
+    }
 
     const webgl = this.scene.game.renderer.type === Phaser.WEBGL;
     if (webgl) {
@@ -355,6 +379,103 @@ export class CombatFxManager {
       .setSize(b.width + pad, b.height + pad);
   }
 
+  /**
+   * Draw the attention-scoped monster HP bars (plan 035a Step 6), called every frame by
+   * GameScene.update with the live enemy list, the bow's current target id, and the player tile.
+   * Anti-clutter rules (see config HP_BAR_*):
+   *  - a bar shows for an enemy that is the **bow target** (persistently) or was **hit** within
+   *    `HP_BAR_SHOW_MS` (brief, then fades out by dropping);
+   *  - at most `HP_BAR_MAX_VISIBLE` render — the target first, then the nearest others;
+   *  - every LIVE enemy below `HP_BAR_NEAR_DEATH_FRAC` HP also gets an alpha-throb sprite tell, so
+   *    "almost dead" reads even for an enemy with no bar (a capped-out one).
+   * A thin bg + green→red fg (mirrors the player's `updateHealthBar`), pooled per enemy id and
+   * anchored above the hurtbox (`sprite.y − hurtbox.height·TILE·scaleY`). Bars for enemies no longer
+   * shown (dead / timed-out / evicted) are destroyed here so nothing lingers.
+   */
+  syncEnemyHealthBars(
+    enemies: MonsterCharacter[],
+    bowTargetId: string | null,
+    playerTile: Cell,
+  ): void {
+    const now = this.scene.time.now;
+    const live = enemies.filter((z) => z.alive);
+
+    // Near-death sprite tell — an alpha throb on any live low-HP enemy (independent of its bar).
+    for (const z of live) {
+      const frac = z.def.maxHp > 0 ? z.hp / z.def.maxHp : 1;
+      if (frac > 0 && frac <= HP_BAR_NEAR_DEATH_FRAC) {
+        const phase = 0.5 + 0.5 * Math.sin((now / HP_BAR_NEAR_DEATH_PERIOD_MS) * Math.PI * 2);
+        z.sprite.setAlpha(HP_BAR_NEAR_DEATH_ALPHA_MIN + (1 - HP_BAR_NEAR_DEATH_ALPHA_MIN) * phase);
+      } else if (z.sprite.alpha !== 1) {
+        z.sprite.setAlpha(1); // recovered / above the threshold → back to solid
+      }
+    }
+
+    // Which enemies get a bar: the bow target (always) + any hit within HP_BAR_SHOW_MS; the target
+    // sorts first, the rest by nearness, then cap the count.
+    const dist = (z: MonsterCharacter): number =>
+      Math.hypot(z.col - playerTile.col, z.row - playerTile.row);
+    const candidates = live.filter(
+      (z) =>
+        z.id === bowTargetId ||
+        now - (this.enemyHitAt.get(z.sprite) ?? -Infinity) <= HP_BAR_SHOW_MS,
+    );
+    candidates.sort((a, b) => {
+      if (a.id === bowTargetId) return -1;
+      if (b.id === bowTargetId) return 1;
+      return dist(a) - dist(b);
+    });
+    const visible = candidates.slice(0, HP_BAR_MAX_VISIBLE);
+    const visibleIds = new Set(visible.map((z) => z.id));
+
+    // Drop bars whose enemy is no longer shown (dead / timed out / evicted by the cap).
+    for (const [id, bar] of this.hpBars) {
+      if (!visibleIds.has(id)) {
+        bar.bg.destroy();
+        bar.fg.destroy();
+        this.hpBars.delete(id);
+      }
+    }
+
+    // Position/size a bar for each visible enemy, above its hurtbox.
+    for (const z of visible) {
+      const box = z.def.hurtbox ?? DEFAULT_HURTBOX;
+      const x = z.sprite.x;
+      const y = z.sprite.y - box.height * TILE_SIZE * z.sprite.scaleY - HP_BAR_GAP_PX;
+      let bar = this.hpBars.get(z.id);
+      if (!bar) {
+        const bg = this.scene.add
+          .rectangle(x, y, HP_BAR_WIDTH_PX, HP_BAR_HEIGHT_PX, COLORS.hpBarBg, 0.85)
+          .setDepth(13);
+        // fg is left-anchored so scaleX shrinks it from the right, like a draining bar.
+        const fg = this.scene.add
+          .rectangle(
+            x - HP_BAR_WIDTH_PX / 2,
+            y,
+            HP_BAR_WIDTH_PX,
+            HP_BAR_HEIGHT_PX,
+            COLORS.hpBarHigh,
+            1,
+          )
+          .setOrigin(0, 0.5)
+          .setDepth(14);
+        bar = { bg, fg };
+        this.hpBars.set(z.id, bar);
+      }
+      const ratio = Phaser.Math.Clamp(z.def.maxHp > 0 ? z.hp / z.def.maxHp : 0, 0, 1);
+      bar.bg.setPosition(x, y);
+      bar.fg.setPosition(x - HP_BAR_WIDTH_PX / 2, y);
+      bar.fg.scaleX = ratio;
+      bar.fg.setFillStyle(ratio <= 0.3 ? COLORS.hpBarLow : COLORS.hpBarHigh);
+    }
+  }
+
+  /** Count of monster HP bars currently rendered (debugState `enemyHpBarsVisible`, plan 035a Step 6) —
+   *  bars for hidden enemies are destroyed each frame, so the pool size IS the visible count. */
+  getVisibleHpBarCount(): number {
+    return this.hpBars.size;
+  }
+
   /** Stop and forget any in-flight hit-flash/lunge tweens for a sprite about to be destroyed — those
    * tweens target plain objects but poke the sprite (scale / body.reset), so they'd throw once it's
    * gone. Called before a killed enemy's sprite is destroyed. */
@@ -367,7 +488,11 @@ export class CombatFxManager {
     this.weaponSwingTweens.delete(sprite);
     this.windUpTweens.get(sprite)?.stop(); // clear any in-flight wind-up telegraph before the sprite goes
     this.windUpTweens.delete(sprite);
-    if (sprite.active) sprite.clearTint(); // don't leave a corpse wearing the warning tint
+    if (sprite.active) {
+      sprite.clearTint(); // don't leave a corpse wearing the warning tint
+      sprite.setAlpha(1); // undo a near-death alpha throb so the corpse isn't left semi-transparent
+    }
+    this.enemyHitAt.delete(sprite); // drop the on-hit HP-bar stamp (its bar clears next sync)
     this.hitFlashOn.delete(sprite);
   }
 
@@ -409,6 +534,15 @@ export class CombatFxManager {
     this.arrows.clear();
     this.bowTargetBox?.destroy();
     this.bowTargetBox = undefined;
+    // Monster HP bars: destroy the pooled rects + drop the hit stamps. Plain GameObjects (no physics
+    // body), so destroy() is safe here at RUNTIME (death-restart / scenario reset); on the SHUTDOWN
+    // path Phaser has already destroyed them and a second destroy() is a guarded no-op.
+    for (const bar of this.hpBars.values()) {
+      bar.bg.destroy();
+      bar.fg.destroy();
+    }
+    this.hpBars.clear();
+    this.enemyHitAt.clear();
     this.corpses.clear(); // scene teardown destroys the sprites; drop stale references
     this.playerFlash = 0;
     this.playerHitFlashes = 0;

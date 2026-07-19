@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   ArrowDown,
   ArrowLeft,
@@ -106,17 +106,20 @@ function ToggleButton({
   );
 }
 
-/** Nudge the current selection by one whole tile (works for every object kind — decor via px, node/
- *  portal via tile steps), mirroring the Shift+arrow keyboard nudge. Sub-tile (1px) nudge stays a
- *  keyboard-only refinement — a phone thumb doesn't want pixel precision. */
-function nudge(dx: number, dy: number): void {
+/** Nudge the current selection one step in `(dx,dy)`, mirroring the keyboard arrow nudge. `fine` picks
+ *  the step the way Shift does on the keyboard: `false` = one whole tile (works for every object kind —
+ *  decor via px, node/portal via tile steps); `true` = 1px, a decor-only sub-tile refinement (nodes/
+ *  portals are tile-addressed, so a 1px delta leaves them put — same as plain-arrow on the keyboard).
+ *  Exposed on the touch SelectionBar via a step toggle so a phone gets both, not just whole tiles. */
+function nudge(dx: number, dy: number, fine: boolean): void {
   const ids = useEditorStore.getState().selectedObjectIds;
   if (ids.length === 0) return;
+  const step = fine ? 1 : TILE_SIZE;
   useEditorStore.getState().translateObjects(ids, {
-    dxPx: dx * TILE_SIZE,
-    dyPx: dy * TILE_SIZE,
-    dCol: dx,
-    dRow: dy,
+    dxPx: dx * step,
+    dyPx: dy * step,
+    dCol: fine ? 0 : dx,
+    dRow: fine ? 0 : dy,
   });
 }
 
@@ -366,6 +369,11 @@ export function SelectionBar() {
   // selection change.
   useEditorStore((s) => s.docRevision);
   useEditorStore((s) => s.mapEpoch);
+  // Sticky nudge step for the on-screen arrows: whole-tile by default, or 1px for fine positioning
+  // (the phone equivalent of plain-arrow vs Shift+arrow on the keyboard). Held here rather than in the
+  // store because it's a touch-bar-local preference; the bar stays mounted across selection changes
+  // (it returns null when nothing's selected), so the choice persists between selections.
+  const [fineNudge, setFineNudge] = useState(false);
 
   const st = useEditorStore.getState;
 
@@ -449,18 +457,42 @@ export function SelectionBar() {
   const hasDecor = selected.some((o) => o.kind === 'decor');
   const canRestack = selected.some((o) => o.kind === 'decor' || o.kind === 'node');
   const ids = selectedObjectIds;
+  // 1px is a decor-only refinement — nodes/portals are tile-addressed and can't sub-tile, so keep the
+  // step whole for a selection with no decor (the toggle disables itself in that case too).
+  const fine = fineNudge && hasDecor;
+  const stepWord = fine ? 'pixel' : 'tile';
 
   return (
     // Sits above the ContextBar (which owns the bottom safe-area inset), so no bottom inset padding here.
     <div className="flex items-center gap-1.5 overflow-x-auto border-t border-surface bg-raised/95 px-2 py-1.5 backdrop-blur">
-      {/* 4-way tile-step nudge (mirrors the Shift+arrow keyboard nudge). */}
+      {/* 4-way nudge (mirrors the arrow-key nudge) + a step toggle so touch gets BOTH the whole-tile
+          snap and 1px fine positioning (the phone stand-in for plain-arrow vs Shift+arrow). */}
       <div className={groupClass}>
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label={`Nudge step: 1 ${stepWord}`}
+          aria-pressed={fine}
+          title={
+            hasDecor
+              ? `Nudge step — tap to switch (now 1 ${stepWord})`
+              : 'Nudge step (nodes move a whole tile)'
+          }
+          disabled={!hasDecor}
+          className={cn(
+            'w-14 shrink-0 font-normal tabular-nums',
+            fine && 'bg-active text-fg-bright hover:bg-active',
+          )}
+          onClick={() => setFineNudge((v) => !v)}
+        >
+          {fine ? '1 px' : '1 tile'}
+        </Button>
         <Button
           variant="outline"
           size="icon-lg"
           aria-label="Nudge left"
-          title="Nudge one tile left (Shift+←)"
-          onClick={() => nudge(-1, 0)}
+          title={`Nudge one ${stepWord} left (←)`}
+          onClick={() => nudge(-1, 0, fine)}
         >
           <ArrowLeft />
         </Button>
@@ -468,8 +500,8 @@ export function SelectionBar() {
           variant="outline"
           size="icon-lg"
           aria-label="Nudge up"
-          title="Nudge one tile up (Shift+↑)"
-          onClick={() => nudge(0, -1)}
+          title={`Nudge one ${stepWord} up (↑)`}
+          onClick={() => nudge(0, -1, fine)}
         >
           <ArrowUp />
         </Button>
@@ -477,8 +509,8 @@ export function SelectionBar() {
           variant="outline"
           size="icon-lg"
           aria-label="Nudge down"
-          title="Nudge one tile down (Shift+↓)"
-          onClick={() => nudge(0, 1)}
+          title={`Nudge one ${stepWord} down (↓)`}
+          onClick={() => nudge(0, 1, fine)}
         >
           <ArrowDown />
         </Button>
@@ -486,8 +518,8 @@ export function SelectionBar() {
           variant="outline"
           size="icon-lg"
           aria-label="Nudge right"
-          title="Nudge one tile right (Shift+→)"
-          onClick={() => nudge(1, 0)}
+          title={`Nudge one ${stepWord} right (→)`}
+          onClick={() => nudge(1, 0, fine)}
         >
           <ArrowRight />
         </Button>

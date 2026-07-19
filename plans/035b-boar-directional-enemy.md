@@ -48,7 +48,16 @@ an actor discriminator on `EnemyDef` + an id-keyed directional-actor map — so 
 
 ## Steps
 
-- [ ] **Step 1: Directional-enemy actor type model** `[inline]` — resolves critique #4
+- [x] **Step 1: Directional-enemy actor type model** `[inline]` — resolves critique #4
+  - Outcome: `src/data/types.ts` — `EnemyDef.actorKind?: 'flip3' | 'dir4'` (absent ⇒ flip3, so `kidZombie`
+    untouched). `src/data/tileset.ts` — new `Facing4` (down/left/right/up), `DirectionalActorState`
+    (idle/walk/run/attack/hurt/death), `DirectionalActor` interface (render + per-state `Record<Facing4,
+    StripAnim>`), optional `actors.directional?: Record<string, DirectionalActor>` on `TilesetManifest`
+    (skeleton's `enemy` struct untouched), and `enemyDirAnimKey(id,state,facing)` helper. Doc: new
+    flip3-vs-dir4 bullet in `docs/CONVENTIONS.md`. Pure-additive/unused — no runtime path changed.
+    Verified: typecheck green, unit tiers (monster/combat/data) 56 passing, refactor-tripwire e2e green
+    (skeleton behaves identically), prettier/eslint/markdownlint clean. `boar` manifest entry is now
+    expressible (data lands in Step 2).
   - Define the type model before wiring any boar: add an **actor discriminator to `EnemyDef`** (e.g.
     `actorKind: 'flip3' | 'dir4'` or an `actor` ref) so a def selects its rendering path; add an **id-keyed
     directional-actor map** to `TilesetManifest.actors` (a `Record<Facing4, StripAnim>` per state:

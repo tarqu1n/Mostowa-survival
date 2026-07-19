@@ -127,9 +127,17 @@ export interface EnemyDef extends CombatantStats {
   name: string;
   color: number; // placeholder tint until the real sprite is wired (Step 2)
   /**
+   * Which rendering pipeline this enemy uses. `flip3` (the default when omitted) = the skeleton's
+   * single-strip actor (`ACTIVE_TILESET.actors.enemy`), facing faked left/right by `setFlipX`. `dir4`
+   * = a full 4-way directional actor with distinct down/left/right/up sheets per state, keyed by this
+   * def's `id` in `ACTIVE_TILESET.actors.directional` (see {@link DirectionalActor}). Consumers MUST
+   * treat an absent value as `flip3` so existing flip3 defs (e.g. the skeleton) are unaffected.
+   */
+  actorKind?: 'flip3' | 'dir4';
+  /**
    * Weapon ids this enemy may spawn holding — keys shared by data/weapons.ts (MONSTER_WEAPONS stats)
    * and the manifest weapons catalogue (art). One is rolled per spawn (Phase B); empty/undefined =
-   * unarmed (contact bite only, UNARMED_BASE_DAMAGE).
+   * unarmed (contact bite only, UNARMED_BASE_DAMAGE). `dir4` mobs bite bare-handed (no weapon rig).
    */
   weaponPool?: string[];
 }

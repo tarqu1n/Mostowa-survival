@@ -51,6 +51,14 @@ _To be firmed up as we go. Starting position:_
   display-list order (drawn later = on top) — so the sprite you see on top is the one you pick. Both
   `actionAt` (harvest vs move) and `inspectAt` route through it; combat (`zombieAt`) still keys off the
   hurtbox tiles, not the raycast.
+- **Enemy actor rendering is data-selected (`flip3` vs `dir4`).** An `EnemyDef` picks its rendering
+  pipeline via `actorKind` (absent ⇒ `flip3`): `flip3` is the skeleton's single-orientation strip with
+  left/right faked by `setFlipX` (the shared `ACTIVE_TILESET.actors.enemy` struct + global `enemy-*`
+  keys); `dir4` is a full 4-way creature (the boar) with distinct down/left/right/up sheets per state,
+  authored as a `DirectionalActor` keyed by enemy id under `actors.directional` and registered under
+  id-scoped anim keys (`enemyDirAnimKey(id,state,facing)`, e.g. `boar-walk-down`) so multiple
+  directional mobs never collide. Adding a directional mob = data (a def + a manifest entry + its static
+  strip load), not a new render branch per species.
 - **Pixel art:** integer scaling only, `pixelArt: true`, nearest-neighbour; design at a fixed low base
   resolution and scale up. Actors render at native `render.scale = 1` and camera zoom is integer-only
   (both required for crisp nearest-neighbour — see [RENDERING.md](RENDERING.md)); size the world/props to

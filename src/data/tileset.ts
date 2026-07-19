@@ -14,6 +14,18 @@
 
 export type Facing = 'down' | 'side' | 'up';
 /**
+ * Four-way facing for **directional** creatures (`dir4`) — distinct left & right sheets, no flipX. The
+ * boar and future CraftPix mobs ship separate down/left/right/up art, unlike the player/skeleton's
+ * 3-way {@link Facing} (one `side` strip mirrored). See {@link DirectionalActor}.
+ */
+export type Facing4 = 'down' | 'left' | 'right' | 'up';
+/**
+ * Animation states a `dir4` creature ships as its own per-facing sheet: `idle`/`walk`/`run` are
+ * looping locomotion (`run` a faster charge sheet), `attack`/`hurt`/`death` are one-shots. Mirrors the
+ * six CraftPix creature actions (minus the redundant duplicate) — see {@link DirectionalActor}.
+ */
+export type DirectionalActorState = 'idle' | 'walk' | 'run' | 'attack' | 'hurt' | 'death';
+/**
  * Player animation states: `idle`/`walk` are looping locomotion (velocity-driven); `chop`/`mine`/
  * `gather`/`attack` are in-place harvest/action states. `chop` (axe) loops while felling a tree;
  * `mine` (overhead pickaxe swing) loops while mining a rock; `gather` (Collect crouch-pick) loops
@@ -120,6 +132,24 @@ export interface HandArt {
   offZ: number;
 }
 
+/**
+ * A **4-way directional** enemy actor (e.g. the CraftPix boar): one render footprint plus, per state,
+ * a map of four distinct facing strips (down/left/right/up — real sheets, never flipped). This is the
+ * generalisation of the single-strip `actors.enemy` skeleton (which fakes facing with `setFlipX` — the
+ * `flip3` path). A def opts in via `EnemyDef.actorKind: 'dir4'` and is keyed by its `id` in
+ * `actors.directional`; anims register under id-scoped keys (see {@link enemyDirAnimKey}) so multiple
+ * directional mobs never collide, and strips load statically in PreloadScene like the skeleton's.
+ */
+export interface DirectionalActor {
+  render: ActorRender;
+  idle: Record<Facing4, StripAnim>;
+  walk: Record<Facing4, StripAnim>;
+  run: Record<Facing4, StripAnim>;
+  attack: Record<Facing4, StripAnim>;
+  hurt: Record<Facing4, StripAnim>;
+  death: Record<Facing4, StripAnim>;
+}
+
 export interface TilesetManifest {
   /** Pack id — must match its folder under public/assets/tilesets/<id>/. */
   id: string;
@@ -164,6 +194,13 @@ export interface TilesetManifest {
        *  {@link HandArt}. The skeleton always has both hands, armed or not. */
       hand: HandArt;
     };
+    /**
+     * Directional (`dir4`) enemy actors, keyed by enemy id (e.g. `boar`) — each a full 4-way creature
+     * with distinct per-facing sheets (see {@link DirectionalActor}), the generalisation of the
+     * single-strip `enemy` skeleton above. A def opts in via `EnemyDef.actorKind: 'dir4'`; omit the map
+     * (or a given id) for the flip3 skeleton path. Optional so a pack ships none.
+     */
+    directional?: Record<string, DirectionalActor>;
   };
   /**
    * Placeable-station animations, keyed by station role — separate from `actors` since these aren't
@@ -521,6 +558,16 @@ export const enemyIdleKey = 'enemy-idle';
 
 /** Texture/anim key for the enemy Death strip (one-shot collapse on kill). */
 export const enemyDeathKey = 'enemy-death';
+
+/**
+ * Texture/anim key for a `dir4` enemy's state+facing strip, e.g. `boar-walk-down`. Enemy-id-scoped so
+ * multiple directional mobs don't collide — contrast the skeleton's fixed global `enemy-*` keys above.
+ */
+export const enemyDirAnimKey = (
+  id: string,
+  state: DirectionalActorState,
+  facing: Facing4,
+): string => `${id}-${state}-${facing}`;
 
 /** Texture/anim key for the campfire's stone-ring ember base layer (see `stations.campfire.base`). */
 export const campfireBaseKey = (): string => 'campfire-base';

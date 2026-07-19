@@ -22,8 +22,11 @@ verb** — you should want to avoid fighting in person.
   first ranged weapon/spell is the first real relief/power step, and early-night risk pushes you to get it.
 - **Ranged = ammo-gated (scavenge/craft), auto-target-nearest on mobile (skill = positioning); spells =
   mana + rarity-gated AoE/utility, Litrandil's domain.** Both post-MVP.
-- **[OPEN]** MVP combat scope (melee-only-tuned-dangerous [lean] vs +one ranged weapon); player
-  survivability (dodge/backstep [lean] vs fragility-only vs block/shield); player-casts-spells vs wizard-only.
+- **MVP combat = melee + a basic bow** (decided 2026-07-19; the bow adds an arrows/ammo resource +
+  auto-target-nearest aiming, and can move-while-shooting where melee roots you). Fighting **controls**
+  (mobile) are the next thing to design; the player-survivability choice (dodge/backstep vs
+  positioning+fragility vs block) falls out of the control scheme, so it's deferred to that.
+  **[OPEN]** player-casts-spells vs wizard-NPC-only (post-MVP).
 
 ## 2026-07-19 — [DECIDED] MVP scope + build order (see ROADMAP.md)
 

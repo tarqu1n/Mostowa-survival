@@ -55,10 +55,12 @@ lunge — which is the core clunk). The foundation the wave and NPC both reuse, 
 **Tuned to the thesis** ([GAME-DESIGN.md](GAME-DESIGN.md) "Player combat — the danger verb"): personal
 combat is the *dangerous* verb — the player is fragile, melee is committal and something you're relieved
 to avoid, **not a power fantasy**. Traps + NPCs are the intended answer; you melee in emergencies.
-*Done when:* fighting a single skeleton is **tense, readable, and fair** (clear tells, hit feedback,
-readable range, no mode-fighting) — you feel *exposed*, not dominant. *Test:* scenario spawns one
-skeleton, fight it.
-*Open (see thesis):* melee-only vs +one ranged weapon in MVP; whether the player gets a dodge/block.
+*Done when:* fighting a single skeleton — with **melee and the bow** — is **tense, readable, and fair**
+(clear tells, hit feedback, readable range, no mode-fighting) — you feel *exposed*, not dominant.
+*Test:* scenario spawns one skeleton, fight it.
+*Scope:* MVP combat = **melee + a basic bow** (adds an arrows/ammo resource + auto-target-nearest aiming).
+*Open (design next):* the **fighting controls** (move / melee / bow / dodge?) — the dodge-vs-fragility
+question falls out of them.
 
 ### 2. The night wave + loop-close (**first playable loop**)
 

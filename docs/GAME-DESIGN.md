@@ -180,17 +180,20 @@ something reaches the fire, and it's **all you have early** — you start melee-
 first **ranged weapon or spell is the first real relief/power step** (and the escalation stays honest:
 early nights force risky melee, so you race to get out of the kill zone).
 
-**Ranged & spells (the "good" answers, post-MVP):**
+**Ranged — a basic bow (IN MVP).** Arrows are a **scavenged/crafted resource** — can't spam, and running
+dry drops you back to dangerous melee. Mobile aiming leans on **auto-target-nearest** (skill =
+positioning/kiting, not aim). Crucially the **bow lets you keep moving while shooting (kite); melee roots
+you** — that movement difference is where "ranged is safer" lives mechanically. (MVP ammo sourcing —
+scavenge loot and/or a station-less wood→arrows craft — to firm at plan time.)
 
-- **Ranged** — **ammo as a scavenged/crafted resource** (can't spam; running dry drops you back to
-  dangerous melee). Mobile aiming leans on **auto-target-nearest**; the skill is positioning, not aim.
-- **Spells** — higher ceiling: AoE (built for waves), utility (slow/fear/light), gated by mana + rarity.
-  Naturally **Litrandil's** domain (a reason the drunk wizard is worth the vodka). Player-casts vs
-  wizard-NPC-only is open.
+**Spells (post-MVP)** — higher ceiling: AoE (built for waves), utility (slow/fear/light), gated by mana +
+rarity. Naturally **Litrandil's** domain (a reason the drunk wizard is worth the vodka).
 
-**[OPEN]** MVP combat scope: melee-only tuned-dangerous (lean) vs include one basic ranged weapon.
-**[OPEN]** Player survivability: a dodge/backstep (lean — melee as a fair reaction game) vs
-positioning+fragility only vs block/shield. **[OPEN]** Player-casts-spells vs wizard-NPC-only.
+**[DECIDED 2026-07-19] MVP combat = melee + a basic bow.**
+**[OPEN — design next] Fighting controls** (mobile/touch): move, melee, bow, and whether there's a dodge.
+The survivability choice (dodge/backstep vs positioning+fragility vs block) **falls out of the control
+scheme**, so controls come first.
+**[OPEN]** Player-casts-spells vs wizard-NPC-only (post-MVP).
 
 ## The night wave — shape, not just spawns
 

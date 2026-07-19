@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
 import type { TilePaletteSlot } from '../../systems/mapFormat';
-import { useEditorStore } from '../store/editorStore';
+import { paletteSlotRotationKey, useEditorStore } from '../store/editorStore';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -57,6 +57,8 @@ export function PaletteStrip() {
   // When set, it — not the raw brush-angle match — decides the highlight, so rotating the armed tile
   // keeps THAT slot ringed and its swatch shows the live `brushRotation`.
   const selectedPaletteSlot = useEditorStore((s) => s.selectedPaletteSlot);
+  // Per-slot working-rotation memory: each swatch previews the angle it'll paint at when re-selected.
+  const paletteSlotRotations = useEditorStore((s) => s.paletteSlotRotations);
 
   const sizePx = isCompact ? PALETTE_SWATCH_PX_COMPACT : PALETTE_SWATCH_PX;
 
@@ -201,6 +203,12 @@ export function PaletteStrip() {
             const isActive = stickyKey
               ? slotKey(slot) === stickyKey
               : brushAsset === slot.assetId && brushRotation === (slot.rotation ?? 0);
+            // Inactive slots preview their remembered working rotation (falling back to the stored
+            // one); the active slot always shows the live `brushRotation` (kept in sync with memory).
+            const memoRotation =
+              paletteSlotRotations[paletteSlotRotationKey(activePalette.id, slot)] ??
+              slot.rotation ??
+              0;
             return (
               <PaletteSlotSwatch
                 key={slotKey(slot)}
@@ -210,8 +218,8 @@ export function PaletteStrip() {
                 sizePx={sizePx}
                 isCompact={isCompact}
                 isActive={isActive}
-                // The active slot shows the live armed angle; every other slot shows its own stored one.
-                displayRotation={isActive ? brushRotation : (slot.rotation ?? 0)}
+                // The active slot shows the live armed angle; every other slot shows its remembered one.
+                displayRotation={isActive ? brushRotation : memoRotation}
                 swatch={
                   catalog
                     ? resolveRecentSwatch(

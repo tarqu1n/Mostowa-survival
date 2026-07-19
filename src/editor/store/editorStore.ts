@@ -343,6 +343,11 @@ export interface EditorState {
    *  else (`setBrushAsset` nulls it) or nothing is armed; `paletteId` scopes the highlight to the palette
    *  it was picked from. Transient view-state — not persisted. */
   selectedPaletteSlot: { paletteId: string | null; assetId: string; rotation?: number } | null;
+  /** Per-slot working-rotation memory: the last `brushRotation` the user rotated each palette slot to,
+   *  keyed by `paletteSlotRotationKey`. Re-selecting a slot restores its remembered angle instead of
+   *  resetting to the slot's base rotation — so switching between tiles no longer forces re-rotating the
+   *  same one each time. Transient view-state (session-scoped), not persisted to `palettes.json`. */
+  paletteSlotRotations: Record<string, 0 | 90 | 180 | 270>;
   /** A catalog asset (+ optional chosen `region`/`anim`) clicked in the Library, "arming" `decor`
    *  placement for the `place` tool. Mutually exclusive with `armedNodeRef` (arming one clears the
    *  other — only one thing is ever armed at a time). */
@@ -955,6 +960,31 @@ function resolveBrushValue(
   }
 }
 
+/** Stable key for the per-slot working-rotation memory (`paletteSlotRotations`). Scoped by palette +
+ *  the slot's OWN identity (`assetId` + its stored/base rotation), so the same tile in two palettes
+ *  remembers its angle independently and the key never shifts as the working rotation changes. */
+export function paletteSlotRotationKey(
+  paletteId: string | null,
+  slot: { assetId: string; rotation?: number },
+): string {
+  return `${paletteId ?? ''} ${slot.assetId}#${slot.rotation ?? 0}`;
+}
+
+/** Shared body for `setBrushRotation`/`rotateBrush`: sets `brushRotation`, and — when a palette slot is
+ *  currently armed — records that angle as the slot's working rotation so re-selecting it restores it.
+ *  A no-op on the memory when nothing from the strip is armed (`selectedPaletteSlot` null). */
+function rememberSlotRotation(
+  s: EditorState,
+  brushRotation: 0 | 90 | 180 | 270,
+): Partial<EditorState> {
+  if (!s.selectedPaletteSlot) return { brushRotation };
+  const key = paletteSlotRotationKey(s.selectedPaletteSlot.paletteId, s.selectedPaletteSlot);
+  return {
+    brushRotation,
+    paletteSlotRotations: { ...s.paletteSlotRotations, [key]: brushRotation },
+  };
+}
+
 /** Builds a plain `{index}->value` undoable Command from a pre-computed `CellChange` list — shared by
  *  every target-grid paint action (tile layers, walkability, zones; step 8 generalises the step-6
  *  tile-paint pipeline over "which cells array" rather than duplicating this do/undo pair per
@@ -1373,6 +1403,7 @@ export const useEditorStore = create<EditorState>()(
     brushAsset: null,
     brushRotation: 0,
     selectedPaletteSlot: null,
+    paletteSlotRotations: {},
     armedObjectAsset: null,
     armedNodeRef: null,
     snapToTileCenter: true,
@@ -1545,11 +1576,14 @@ export const useEditorStore = create<EditorState>()(
     // `selectedPaletteSlot` IS cleared: arming from anywhere other than `selectPaletteSlot` (Library
     // pick, eyedropper) means the strip's sticky highlight no longer refers to what's armed.
     setBrushAsset: (brushAsset) => set({ brushAsset, selectedPaletteSlot: null }),
-    setBrushRotation: (brushRotation) => set({ brushRotation }),
+    setBrushRotation: (brushRotation) =>
+      set((s): Partial<EditorState> => rememberSlotRotation(s, brushRotation)),
     rotateBrush: (delta) =>
-      set((s): Partial<EditorState> => ({
-        brushRotation: ((((s.brushRotation + delta) % 360) + 360) % 360) as 0 | 90 | 180 | 270,
-      })),
+      set((s): Partial<EditorState> => {
+        const brushRotation = ((((s.brushRotation + delta) % 360) + 360) % 360) as
+          0 | 90 | 180 | 270;
+        return rememberSlotRotation(s, brushRotation);
+      }),
     // Arming one kind clears the other — only one thing is ever armed at a time (see module doc).
     setArmedObjectAsset: (armedObjectAsset) =>
       set((s): Partial<EditorState> => ({
@@ -3049,16 +3083,18 @@ export const useEditorStore = create<EditorState>()(
       // so this can't call it directly). Adds a `brushRotation` set for the slot's rotation.
       const s = get();
       s.setBrushAsset(slot.assetId); // NB: clears `selectedPaletteSlot` — we re-set it below
-      s.setBrushRotation((slot.rotation ?? 0) as 0 | 90 | 180 | 270);
+      const paletteId = get().activeTilePaletteId;
+      // Restore this slot's remembered working rotation (from an earlier rotate) if we have one, so
+      // switching away and back doesn't reset it — else fall back to the slot's own stored rotation.
+      const remembered = get().paletteSlotRotations[paletteSlotRotationKey(paletteId, slot)];
+      // `setBrushRotation` here is a no-op on the memory: `selectedPaletteSlot` is still null (cleared
+      // just above), so restoring the angle can't overwrite what it just read.
+      s.setBrushRotation(remembered ?? ((slot.rotation ?? 0) as 0 | 90 | 180 | 270));
       if (s.activeTool !== 'brush' && s.activeTool !== 'rect') s.setActiveTool('brush');
       // Remember which slot (in which palette) this armed, so the strip keeps it highlighted through
       // later `rotateBrush` calls even once `brushRotation` no longer equals the slot's own rotation.
       set({
-        selectedPaletteSlot: {
-          paletteId: get().activeTilePaletteId,
-          assetId: slot.assetId,
-          rotation: slot.rotation,
-        },
+        selectedPaletteSlot: { paletteId, assetId: slot.assetId, rotation: slot.rotation },
       });
     },
 

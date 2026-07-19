@@ -102,7 +102,74 @@
     {
       "id": "palette_0003",
       "name": "Water",
-      "slots": []
+      "slots": [
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#251"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#252"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#279"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#304"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#329"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#302"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#353"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#228"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#203"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#204"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#179"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#177"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#233"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#208"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#209"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#184"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#182"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#333"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#334"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#309"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#307"
+        },
+        {
+          "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#358"
+        }
+      ]
     }
   ]
 }

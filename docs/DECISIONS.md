@@ -16,6 +16,12 @@ Shards: [rendering](decisions/rendering.md) · [architecture](decisions/architec
 
 ---
 
+## 2026-07-19 — [DECIDED] Core-loop framing: three-horizon progression, hard-countdown-no-fallback dusk, progress-keyed escalation, pacing targets
+
+Nested progression (siege/growth/escape), no-fallback dusk + legibility/range costs, progress-keyed escalation, pacing targets; trap/wave/companion shapes captured as intent.
+
+→ [gameplay.md](decisions/gameplay.md#2026-07-19--decided-core-loop-framing-three-horizon-progression-hard-countdown-no-fallback-dusk-progress-keyed-escalation-pacing-targets)
+
 ## 2026-07-16 — [DECIDED] Node + buildable y-sort by base row via shared `rowDepthOffset`; optional `depthBias` for manual same-row node ordering (plan 029)
 
 Base-row y-sort for nodes/buildables via a shared `rowDepthOffset`; optional per-node `depthBias`.

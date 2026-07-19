@@ -6,6 +6,40 @@ Part of the [decision log index](../DECISIONS.md). Newest first.
 
 ---
 
+## 2026-07-19 — [DECIDED] Core-loop framing: three-horizon progression, hard-countdown-no-fallback dusk, progress-keyed escalation, pacing targets
+
+A brainstorm pass that pinned the connective tissue the design doc was missing (the *why do I play
+tomorrow?* layer). Framing calls decided; the detailed trap/wave/companion *shapes* are captured as
+design intent in [GAME-DESIGN.md](../GAME-DESIGN.md), to firm into systems at plan time.
+
+- **Progression is three nested time horizons that reinforce, not compete** (Matt chose all three):
+  **tonight** = escalating siege ("can I hold this wave?"); **this stretch of days** = settlement
+  growth ("is my camp outgrowing the nights?"); **the campaign** = map-unlock/escape ("can I get
+  out?"). Growth is driven by the siege; map-pushes are driven by growth; each new map is fresh
+  scavenging *and* raises the night ceiling. The escape story is the finish line the growth-sandbox
+  and pure-siege spines don't provide alone.
+- **Dusk is a hard countdown with NO fallback** (chosen over a rough-camp fallback or path-locking):
+  caught away from a defensible position at nightfall is a desperate scramble with a real chance of
+  death — the game's emotional spine. Accepted cost: this makes two things non-negotiable, or it reads
+  as unfair — (1) **the day must be legible** (always know daylight-left *and* can-I-get-home), and
+  (2) **range must scale both ways** (fast travel that takes you far must return you fast; car/boat are
+  the dusk lifeline, and a cut-off travel node is a "stranded at night" beat).
+- **The escalation curve keys off player progress (what's unlocked / how far pushed), not just the day
+  counter.** Forced by "no fallback": a purely time-based spike night + a far-scavenge run = an
+  unavoidable death (unfair). Progress-keyed escalation keeps difficulty something the player chose into.
+- **The base phase is NOT a separate timed phase** — fortify/craft shares the same daylight budget as
+  scavenging, so prep vs. explore is a live opportunity-cost decision (the day's core trade).
+- **Pacing targets (config-tunable, no new architecture over plan 004's clock):** day long & breathing
+  ~6–10 min, night short & dense ~3–5 min, full cycle ~10–15 min; **dawn** is the pause/save seam;
+  travel time is the pressure that makes fast travel's real job "buying daylight back."
+
+Design intent captured in GAME-DESIGN.md (not yet decided-in-detail): the **night wave** as a
+three-beat shape (pressure ramp → push, with fight-noise pulling roaming aggro → lull-is-a-trap) with
+composition (not just count) escalating from a treeline direction and a dawn "wave contract";
+**traps** as multipliers on walls (funnel-and-line a kill-channel), re-armed by a daily worker order,
+paid from scarce day inputs; **companions** as a labour/mouths/muscle triangle with night-defense
+postures, one trait axis to start, permadeath, and a weaken-before-death starvation warning.
+
 ## 2026-07-14 — [DECIDED] Campfire fixes (plan 016): refuel is a worker order, flame scales (not sheet-swaps), outline is a rect
 
 Post-playtest fixes to the plan-012 campfire. Four boundary calls (advisor-consulted before build):

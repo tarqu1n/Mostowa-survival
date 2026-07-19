@@ -58,18 +58,73 @@ Delivered as an intro sequence (text + simple stills) before the first day begin
 
 ## Core gameplay loop (day / night cycle)
 
-**Daytime — scavenge.** The player leaves base and moves through the camp, forest, and surrounding
-areas gathering resources (wood, stone, scrap, food, water, crafting components). Roaming threats
-exist even by day but can often be avoided.
+Runs on a **continuous real-time clock** (built, plan 004) through four beats. Crucially, **the base
+phase is not a separate timed phase** — fortifying/crafting shares the same daylight budget as
+scavenging, so every minute spent prepping is a minute not spent ranging out, and vice versa. That
+trade *is* the day's core decision. (Pacing targets for the clock: see "Pacing & the clock" below.)
 
-**Base phase — fortify & craft.** Return to your area of the camp to spend the day's haul:
-- **Build:** walls, gates, defensive structures.
-- **Traps:** placed defenses that damage/slow enemies at night.
-- **Craft:** tools, weapons, consumables.
-- **Crafting stations:** new stations unlock deeper crafting tiers (progression gate).
+**Dawn — the day's setup.** Opens with a narrative event (see "Daily narrative events"): flavour + a
+buff/debuff/risk, and ideally a **scouting report on tonight's threat** so the player can prep
+deliberately. Natural save/pause seam for a phone session.
 
-**Nighttime — defend.** **Skeletons, beasts, and other creatures** come out of the woods and through
-the map. The player is heavily incentivised to be back at base defending, not caught out in the open.
+**Day — scavenge & fortify (one budget).** Leave base and gather across camp/forest/surrounds (wood,
+stone, scrap, food, water, components); roaming threats exist but are dodgeable. Return to spend the
+haul — **build** walls/gates/defensive structures, place & **re-arm traps**, **craft** tools/weapons/
+consumables, unlock **crafting stations** (deeper tiers — a progression gate), assign companions. You
+budget daylight between exploring, prepping, and the trip home.
+
+**Dusk — the hard countdown.** A visible, unforgiving timer. **There is no fallback:** caught away
+from a defensible position at nightfall is *meant* to be a desperate scramble with a real chance of
+death — the emotional spine of greed (one more node) → panic (the light going) → the run home. For
+that to feel *fair* rather than cheap, two things are non-negotiable:
+- **The day must be legible** — always know how much daylight is left *and* whether you can still make
+  it home from where you stand (a "time-to-home vs. time-to-dusk" read). You should die because you
+  knew and pushed one node too far, never because the clock was ambiguous.
+- **Range must scale with capability both ways** — fast travel that takes you far has to bring you back
+  just as fast. The car/boat are your dusk **lifeline**, not just explore tools; a far map is only safe
+  to scavenge once you can exit it fast, and a cut-off fast-travel node (broken car, enemy-held boat
+  launch) becomes a genuine "stranded out here at night" horror beat.
+
+**Night — defend.** **Skeletons, beasts, and worse** come out of the treeline. Hold the fireline (see
+"The night wave — shape" below). The player is heavily incentivised to be home defending, not caught out.
+
+## Progression — three nested time horizons
+
+What you're playing *toward*, at three scales that **reinforce rather than compete**:
+
+|Horizon|Spine|The question|Failure|
+|---|---|---|---|
+|**Tonight** (moment-to-moment)|Escalating siege|"Can I hold *this* wave?"|Die at the fireline|
+|**This stretch of days** (session)|Settlement growth|"Is my camp outgrowing the nights?"|Stall — outscaled, ground down|
+|**The campaign** (meta)|Map unlock / escape|"Where is this going — can I get out?"|(win condition, not a fail)|
+
+They interlock: you **grow the settlement** because the siege escalates; you **push into new maps**
+because growth outstrips the home map; each new map is fresh scavenging **and** raises the ceiling on
+what the nights throw at you. Unlocking the car doesn't just open fast travel — it advances the
+escalation curve. So the escape arc and the siege arc are the same tension pulling opposite ways.
+
+**The escalation curve keys off what you've unlocked / how far you've pushed — not just the day
+counter.** This matters doubly under "no fallback": a purely time-based spike night + a far-scavenge
+run would be an unavoidable death (unfair); tying escalation to player progress keeps the difficulty
+something the player *chose into*. The escape story is the finish line the other two spines don't
+provide alone — a growth sandbox fizzles, a pure siege is just a high-score. Mostowo's premise hands
+us the arc: **understand what woke the woods, and get out — or put it back down.**
+
+## Pacing & the clock
+
+Slow enough for a real scavenge run, tight enough to stay tense, short enough for a phone session.
+
+- **Day is the long, breathing beat; night is shorter and denser** (Don't-Starve rhythm). Starting
+  targets to tune from: **day ~6–10 min, night ~3–5 min**, full cycle ~10–15 min. A day must
+  comfortably fit *leave → travel out → work a few nodes → travel home → prep*, or "no fallback" is unfair.
+- **These are `config.ts` knobs, tuned by playtest** — the clock is already continuous + real-time
+  (plan 004), so pacing is dawn/dusk-ramp + period tuning, not new architecture.
+- **Travel time is the pacing pressure on exploration** — farther maps eat more daylight, so fast
+  travel's real job is **buying daylight back** for actual scavenging on far maps (ties pacing to the meta spine).
+- **Session-friendly:** the whole cycle wants to be completable in a sitting; **dawn** is the clean
+  pause/save seam (localStorage MVP — save at dawn).
+- **Playtest tell:** if "one more node" is never tempting, the day has slack; if you never get to range
+  out before the light goes, it's too short.
 
 ## Enemy design — roaming vs attacking (the core tension)
 
@@ -88,6 +143,68 @@ woodland beasts — grotty but funny.
 > no deaggro. It's a proof of the combat/AI plumbing (stats schema, `resolveMeleeAttack`,
 > pathfind-based chase), not the roaming/attacking model above — noise-based aggro, deaggro,
 > pack-pulling, and additional enemy types are still to design.
+
+## The night wave — shape, not just spawns
+
+The wave is the biggest missing organ (night is tint-only today). The mistake to avoid is "N enemies
+spawn and beeline the player." The roaming/attacking distinction above should be the wave's *structure*:
+
+**A night comes in beats, not a blob:**
+
+1. **The pressure ramp (early night).** A trickle of **attackers** test the walls — few, slow,
+   readable. Traps do their quiet work; you learn where tonight's pressure is coming from. Almost
+   relaxing — deliberately, so the player exhales right before the push.
+2. **The push (mid night).** The main wave: attackers in enough number to *commit* to a wall gap,
+   plus **roaming** enemies drawn in by the *noise of the fight* — the aggro system means combat
+   itself escalates the wave (fighting is loud). This is the "hold the line" peak.
+3. **The lull / dawn creep.** Numbers thin, a straggler or two still roams. The danger: the player
+   relaxes, chases loot past the fireline, and gets caught by a leftover pack. **The lull is a trap.**
+
+Layered on top, keyed to the **escalation curve** (progress-based, not just day count):
+
+- **Composition escalates, not just count.** Early: skeletons. Later: beasts, cursed local characters,
+  a **named mini-boss** that a dawn narrative event foreshadowed. This is where dark-fantasy-comic
+  lives — a specific horrible thing, not +3 generic skeletons.
+- **Directionality.** The wave comes from the **treeline** (a map edge / the woods), so base
+  *orientation* matters — you fortify the wood-facing side heavier. Later maps may attack from two
+  edges, forcing you to split defense (or split companions).
+- **A visible "wave contract."** Because dusk is a hard countdown and death is final, the player needs
+  a **morning read on tonight** — the dawn narrative event can *be* the scouting report ("something big
+  moved in the north woods"). Fair max-tension means you die from a threat you *chose* to under-prepare
+  for, never a surprise.
+
+Technically friendly: the same FSM + spawn system, spawning attackers-from-treeline on a paced schedule
+tied to the night phase, with the existing radius aggro doing the roaming-pull for free.
+
+## Traps — the day's prep made physical
+
+Walls alone make night a stationary punch-fest. Traps turn "defend" from *reacting* into *having
+planned*. The design job: make trap placement a **spatial puzzle over your fireline**, not a resource dump.
+
+**Core idea: traps aren't standalone, they're multipliers on your walls.** Walls make enemies *path
+around* — so you already control where they walk. Traps punish the corridors your walls create. You're
+not scattering traps, you're **funnelling the wave through a kill-channel and lining it.**
+
+Starter palette (grotty-but-funny, reuses systems we have):
+
+- **Spike pit / caltrops** — cheap, damage-over-tile, the bread-and-butter. Degrade per night (re-arm cost).
+- **Snare / bear trap** — *stops* one enemy dead for a few seconds; a snared attacker is a sitting target
+  for you + companions. Single-use, dramatic.
+- **Bait / lure** — leans on the aggro system: drop something that *pulls roaming aggro* away from your
+  gap. Misdirection as defense (a haunch of dubious meat, a music box). Very Mostowo.
+- **Fire trap** — ties to the campfire/light theme; gathered oil ignites a tile-line. Big payoff, real
+  risk of catching your own wooden walls (a placement tension).
+
+Two rules I'd commit to:
+
+1. **Traps degrade / trigger-once and are re-armed by a queued worker order each morning** — reusing the
+   `refuel`-style order pattern. This is the important one: it makes traps *part of the daily loop*
+   (gather → craft → re-arm) instead of set-and-forget, keeping a real job in the day phase.
+2. **Traps are placed in the base phase and cost the day's scarce inputs** — every trap is "this, or
+   another wall segment, or a weapon." That scarcity *is* the fortify minigame.
+
+Mobile: traps + walls share the existing build palette; the cheap ones want a **directional/line paint**
+(drag a row of caltrops), not tile-by-tile taps.
 
 ## Maps & world structure
 
@@ -165,14 +282,36 @@ Ideas captured as they land; to be firmed into real systems later.
 > is built and driving the player unit. NPC companions become *additional units* over the same
 > machinery, not a new system.
 
-- **Recruitable NPC characters** the player can **send out to do tasks during the day** (e.g.
-  scavenging/gathering, and later other jobs) — extending what you can accomplish beyond the player alone.
-- **They must be fed** — companions consume food, tying directly into the **hunger/food economy**:
-  more helpers = more mouths, so there's a real trade-off between labour and food pressure.
-- **At night they fight alongside you defending the base** — bolstering base defense against the wave.
+**A companion is one resource seen three ways — and you can't optimise all three at once.** This is
+the triangle that makes them a *mechanic*, not just "more units":
+
+- **Day: labour.** Send them to gather/chop/build on the existing worker task queue (they're just more
+  units on it). More companions = more done per day = you can range further yourself.
+- **Always: a mouth.** Each eats from the hunger/food economy. More helpers = more food pressure = you
+  *must* range further. The self-tightening screw: the labour that lets you explore also forces you to.
+- **Night: muscle.** They fight at the fireline — where the food you spent pays back.
+
+These fight over the *same* companion's time and your *same* food stockpile. A big camp is a stronger
+night defense **and** a bigger daily food deficit — settlement-growth spine and survival pillar pulling
+against each other, exactly as wanted.
+
+Design calls to stake out:
+
+- **Companions need orders for the night defense — getting them right is a skill, not auto-fight.** A
+  simple posture: **hold this tile/segment** (defend a spot — pairs with your trap kill-channel) vs.
+  **follow me** (a mobile squad). Positioning them along the wall you funnelled is the payoff of the
+  whole prep phase. Can reuse the existing Command/Combat mode split.
+- **Start with one trait axis, not a matrix.** Each companion is *better at one thing* (a strong fighter
+  who's a mediocre gatherer vs. a forager who folds in a fight). That alone creates "who do I send out
+  vs. who holds the wall tonight." Themed as named Mostowo locals.
+- **Permadeath, and it should hurt.** Consistent with "no fallback": a companion who dies at the wall,
+  starves, or is caught out is *gone*. Makes sending them out a real gamble and recruitment beats matter;
+  feeds the grotty-but-funny tone (locals meeting absurd ends).
+- **Starvation gives a warning turn, not instant death.** They get **weak first** (worse at everything,
+  may refuse orders) — a moral/resource choice (feed them the last berries, or feed yourself) with a
+  window to act, which matters more under permadeath.
 - Themed as Mostowo people/survivors (see [LORE.md](LORE.md)); a natural home for named characters.
-- To design later: recruitment, individual needs/traits/skills, task assignment UI, morale/loyalty,
-  what happens if they starve, and how they behave in the night defense (positioning, orders).
+- Still to design: recruitment mechanics, task-assignment UI, morale/loyalty, deeper trait/skill systems.
 
 ## MVP vertical slice (first playable) — proposed
 

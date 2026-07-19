@@ -18,7 +18,7 @@ Shards: [rendering](decisions/rendering.md) · [architecture](decisions/architec
 
 ## 2026-07-19 — [DECIDED] MVP scope + build order (see ROADMAP.md)
 
-First-playable = smallest complete day→night→defend loop; order = map → combat rework → night wave + campfire defense → trap → hunger → NPC; defend the campfire AND player; hunger in, crafting/recruit-quests/claim/events/multi-map out.
+First-playable = smallest complete day→night→defend loop; order = map → combat rework → night wave + fire-heart defense → trap → hunger → NPC; campfire-heart stage 1 IN (mobs knock the light out; fuel + hunger retunes in); recruit-quests/crafting/torches/multi-fire/events/multi-map out.
 
 → [gameplay.md](decisions/gameplay.md#2026-07-19--decided-mvp-scope--build-order-see-roadmapmd)
 

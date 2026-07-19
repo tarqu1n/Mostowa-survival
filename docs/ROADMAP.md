@@ -11,15 +11,24 @@ Everything not on this path is deferred (see "Post-MVP" at the bottom); the full
 
 ## The MVP loop (what "done" plays like)
 
-By **day**, gather resources and keep hunger at bay; prep the base (walls + one trap). By **night**, a
-wave of skeletons comes out of the treeline and attacks — **defend the campfire (and yourself)** until
-dawn. Survive → the next night is harder. **Lose** if you die *or* the campfire is destroyed → restart.
+By **day**, gather resources and keep hunger at bay; prep the base (walls + one trap). Your **campfire
+is the heart** — its light *is* your base/claim. By **night**, a wave of skeletons comes out of the
+treeline and **targets the fire to knock the light out** (as well as coming for you) — keep it lit and
+stay alive until dawn. Survive → the next night is harder. **Lose** if you die *or* the fire is knocked
+out → restart.
 
 ## Scope decisions (locked 2026-07-19)
 
-- **Defend target:** the **campfire** *and* the player. Lose condition = player dies **or** campfire
-  destroyed. (Campfire gains HP + becomes an enemy target; we still keep the **fixed base rect** — the
-  campfire-heart *claim* mechanic is post-MVP, so no fuel retune is required here.)
+- **Campfire-heart is IN (stage 1).** The central fire's **lit radius is the base/claim** (replaces the
+  fixed base rect for the one starting fire). Its light is **sustained by fuel and reduced by mob
+  attacks** — mobs target the fire to **knock the light out**. *(Multiple hearths, walls extending the
+  claim, and torches stay post-MVP.)*
+- **Defend target = the fire's light *and* the player.** Lose = player dies **or** the fire is knocked
+  out (fully extinguished). *(Open detail: is "light out" an instant loss, or a dire dark-flooded-in
+  state you can claw back from by relighting? Lean instant-loss for MVP clarity.)*
+- **The campfire-fuel retune is now ON the MVP path** (reverses the earlier "no fuel retune" note): with
+  the fire load-bearing — light = claim, plus mob damage on top of fuel burn — the fuel numbers (sized
+  for the old ~3.5-min cycle) must be retuned for the 15-min cycle.
 - **Hunger is IN the loop.** It's built and only non-lethal because the start map has no food — so this
   is *author food on the MVP map + flip `HUNGER_LETHAL` + retune drain to the 15-min cycle*, not a new system.
 - **NPC recruitment is skipped for MVP** — spawn a companion directly; Litrandil's quest is post-MVP.
@@ -48,9 +57,11 @@ range, no mode-fighting). *Test:* scenario spawns one skeleton, fight it.
 
 ### 2. The night wave + loop-close (**first playable loop**)
 
-- Spawn skeletons from the treeline at night, path them toward the **campfire / player**, attack; wave
+- Spawn skeletons from the treeline at night, path them toward the **fire / player**, attack; wave
   ends at dawn. Drives off the existing day/night **phase state**.
-- **Campfire destructible** (HP) + enemies target it; **lose condition** = campfire destroyed or player dead.
+- **Fire-heart defense:** the campfire's **light = the base claim** (its lit radius). Mobs **target the
+  fire to knock the light out** — attacks reduce its light/integrity, fuel sustains it. **Lose** = fire
+  knocked out **or** player dead. **Retune campfire fuel for the 15-min cycle here** (now load-bearing).
 - **Loop-close:** night survived → dawn → **day N+1**, with a small **escalation bump** each night
   (more/tougher spawns). This is what makes it a *game*, not a sandbox.
 - **Debug trigger:** a "skip to night / force wave" dev hook for manual playtesting (the scenario API
@@ -95,7 +106,8 @@ Full designs in [GAME-DESIGN.md](GAME-DESIGN.md) / [DECISIONS.md](DECISIONS.md).
 
 - **Crafting stations** (hybrid-tier tech tree) + deeper item recipes.
 - **NPC recruitment quests** (Litrandil the drunk wizard) + traits, morale, permadeath nuance.
-- **Campfire-heart base claim** (lit-area = base) + **torches** + the fuel retune it makes load-bearing.
+- **Campfire-heart extensions:** multiple hearths + unioned claims, walls extending the claim, and
+  **torches** (MVP has only the single central hearth — stage 1; see step 2).
 - **Daily narrative events** + the structured **wave contract** (HUD card, invest-to-sharpen fidelity).
 - **Multi-map world** + car/boat fast travel; the escape-arc campaign spine; endgame challenges.
 - Richer enemy roster (beasts, cursed locals, named mini-bosses) beyond the skeleton.

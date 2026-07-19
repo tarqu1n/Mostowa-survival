@@ -17,14 +17,18 @@ The first-playable target and the order to build it, captured in [ROADMAP.md](..
   4 hunger live → 5 one NPC. Rationale: combat is the reused verb (de-risk first); the night wave is the
   riskiest missing piece and earliest loop-feel (promoted above "buildings"); the trap comes *after* the
   wave so it's tuned against real wave pathing; the NPC is most composite (reuses everything).
-- **Defend target = the campfire AND the player** (chosen over just-survive): campfire gains HP + becomes
-  an enemy target; lose = player dead OR campfire destroyed. Still keep the **fixed base rect** (the
-  campfire-heart claim is post-MVP), so **no fuel retune needed** for MVP.
+- **Campfire-heart is IN the MVP (stage 1):** the single central fire's **lit radius is the base/claim**
+  (replaces the fixed base rect). Mobs **target the fire to knock the light out** — attacks reduce its
+  light/integrity, fuel sustains it. **Defend target = the fire's light AND the player**; lose = fire
+  knocked out OR player dead. *(Open: instant-loss vs relight-to-recover — lean instant-loss for MVP.)*
+  **Consequence: the campfire-fuel retune is now ON the MVP path** (fire is load-bearing) — reverses an
+  earlier draft of this entry that kept the fixed rect + deferred the retune.
 - **Hunger is IN the MVP loop** (chosen over deferring): reuses the built needs/eat systems — author food
   on the map + flip `HUNGER_LETHAL` + retune drain to the 15-min cycle.
 - **NPC recruitment skipped for MVP** — spawn a companion directly; Litrandil's quest is post-MVP.
-- **Explicitly OUT of MVP:** crafting stations, recruit quests, campfire-heart claim + torches + fuel
-  retune, narrative events + structured wave contract, multi-map/fast-travel, richer enemy roster.
+- **Explicitly OUT of MVP:** crafting stations, recruit quests, campfire-heart *extensions* (multiple
+  hearths, walls extending the claim, torches — MVP has only the single central hearth), narrative events
+  + structured wave contract, multi-map/fast-travel, richer enemy roster.
 
 ## 2026-07-19 — [DECIDED] Daily narrative events + wave contract; time-driven escalation (progress = accelerant); endgame challenge valve
 

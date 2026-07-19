@@ -170,6 +170,11 @@
           "assetId": "pixel-crawler/Environment/Tilesets/Water_tiles.png#358"
         }
       ]
+    },
+    {
+      "id": "palette_0004",
+      "name": "Palette 4",
+      "slots": []
     }
   ]
 }

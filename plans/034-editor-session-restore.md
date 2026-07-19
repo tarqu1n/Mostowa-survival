@@ -101,7 +101,8 @@ tooling, not game content — no conflict with the MVP roadmap.
 
 ## Steps
 
-- [ ] **Step 1: `sessionStore.ts` pure storage module + unit test** `[delegate]`
+- [x] **Step 1: `sessionStore.ts` pure storage module + unit test** `[delegate]`
+  - Outcome: created `src/editor/sessionStore.ts` (6 fns: `getLast`/`putLast`/`clearLast`/`getCamera`/`putCamera`/`clearCamera`; 2 types: `CameraState`, `SessionLast`) + `src/editor/__tests__/sessionStore.test.ts` (16 tests). Mirrored `libraryViewStore.ts` posture exactly (`storage()` guard, `PREFIX='mostowo-editor-session:'`, `LAST_KEY`, `cameraKey`). Used type-only `import type { EditorTool } from './store/editorStore'` — no lint cycle, `string` fallback not needed. Acceptance: 16/16 tests pass, `tsc --noEmit` + eslint + prettier all clean. Nothing imports it yet.
   - Create `src/editor/sessionStore.ts`, structurally copying `src/editor/libraryViewStore.ts`'s posture
     (Phaser-free, `MapFile`-free): the `storage()` guard, `PREFIX = 'mostowo-editor-session:'`, key
     builders `LAST_KEY = \`${PREFIX}last\`` and `cameraKey = (mapId) => \`${PREFIX}camera:${mapId}\``.
@@ -116,7 +117,7 @@ tooling, not game content — no conflict with the MVP roadmap.
     `SessionLast` has a string `mapId` (else return null) and a parsed camera has three finite numbers
     (else return null).
   - Create `src/editor/__tests__/sessionStore.test.ts` mirroring `libraryViewStore.test.ts`: `FakeStorage`
-    + `vi.stubGlobal`; round-trip both records; malformed raw → null/default; storage-unavailable
+    - `vi.stubGlobal`; round-trip both records; malformed raw → null/default; storage-unavailable
     (`vi.stubGlobal('localStorage', undefined)`) → getters return null, setters don't throw; `clear*`
     removes the key.
   - Side effects: none — new files, nothing imports them yet.
@@ -282,13 +283,13 @@ correctness/scope gaps before execution — the plan is well-researched and its 
 sound, but the debounced store-tuple autosave races the async scene build in ways that can corrupt
 the very state it persists.
 
-| # | Finding | Lens | Severity | Resolution |
-| - | ------- | ---- | -------- | ---------- |
-| 1 | Debounced autosave reads live camera via a bridge during the async `buildScene` window → can persist a default camera over the good saved value; corruption only shows on the *next* reload | gaps/race | High | RESOLVED — camera is now scene-owned (read in `buildScene`, written on settle); no store autosave path touches camera, so the race can't occur |
-| 2 | On teardown `readCamera` is null → `{camera: readCamera?.()}` writes `camera: undefined`, wiping the save (possible on `pagehide`) | gaps | Medium | RESOLVED — no `readCamera` bridge; the scene writes real values synchronously on settle |
-| 3 | Plan claimed `setActiveLayer` reconciles a dangling id — it doesn't (bare `set`); stale layer applied unguarded | correctness | Medium | FIXED — `restoreSession` validates the saved layer id against `map.layers` before `setActiveLayer` |
-| 4 | Settle sites omitted pinch / two-finger gesture-end — the primary MOBILE zoom | gaps | Medium | FIXED — `persistCamera` also fires at the pinch gesture-end branch (~`EditorScene.ts:2103`) |
-| 5 | Session-scoped tool/tab stored in the per-map record → opening B writes A's tool into B's record | consistency | Medium | RESOLVED — tool/layer/tab live on the single global `last` record (overwritten wholesale per open); only camera is per-map |
-| 6 | Camera persistence could live entirely in `EditorScene`, dropping the bridge + nonce + the #1/#2 races | alternative | Medium | ADOPTED — see revision |
-| 7 | `restoreSession().finally(() => unsub = …)` can leak one autosave subscription under StrictMode first-cleanup | consistency | Low | ACCEPTED — dev-only + idempotent, mirrors the existing palettes pattern; noted in Step 4 |
-| 8 | `flushSession` can only clear the debounce timer if it's module-scoped; template keeps it in-closure | executability | Low | FIXED — Step 3 specifies a module-scoped timer |
+|#|Finding|Lens|Severity|Resolution|
+|-|-------|----|--------|----------|
+|1|Debounced autosave reads live camera via a bridge during the async `buildScene` window → can persist a default camera over the good saved value; corruption only shows on the *next* reload|gaps/race|High|RESOLVED — camera is now scene-owned (read in `buildScene`, written on settle); no store autosave path touches camera, so the race can't occur|
+|2|On teardown `readCamera` is null → `{camera: readCamera?.()}` writes `camera: undefined`, wiping the save (possible on `pagehide`)|gaps|Medium|RESOLVED — no `readCamera` bridge; the scene writes real values synchronously on settle|
+|3|Plan claimed `setActiveLayer` reconciles a dangling id — it doesn't (bare `set`); stale layer applied unguarded|correctness|Medium|FIXED — `restoreSession` validates the saved layer id against `map.layers` before `setActiveLayer`|
+|4|Settle sites omitted pinch / two-finger gesture-end — the primary MOBILE zoom|gaps|Medium|FIXED — `persistCamera` also fires at the pinch gesture-end branch (~`EditorScene.ts:2103`)|
+|5|Session-scoped tool/tab stored in the per-map record → opening B writes A's tool into B's record|consistency|Medium|RESOLVED — tool/layer/tab live on the single global `last` record (overwritten wholesale per open); only camera is per-map|
+|6|Camera persistence could live entirely in `EditorScene`, dropping the bridge + nonce + the #1/#2 races|alternative|Medium|ADOPTED — see revision|
+|7|`restoreSession().finally(() => unsub = …)` can leak one autosave subscription under StrictMode first-cleanup|consistency|Low|ACCEPTED — dev-only + idempotent, mirrors the existing palettes pattern; noted in Step 4|
+|8|`flushSession` can only clear the debounce timer if it's module-scoped; template keeps it in-closure|executability|Low|FIXED — Step 3 specifies a module-scoped timer|

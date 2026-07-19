@@ -114,9 +114,11 @@ us the arc: **understand what woke the woods, and get out — or put it back dow
 
 Slow enough for a real scavenge run, tight enough to stay tense, short enough for a phone session.
 
-- **Day is the long, breathing beat; night is shorter and denser** (Don't-Starve rhythm). Starting
-  targets to tune from: **day ~6–10 min, night ~3–5 min**, full cycle ~10–15 min. A day must
-  comfortably fit *leave → travel out → work a few nodes → travel home → prep*, or "no fallback" is unfair.
+- **Day is the long, breathing beat; night is shorter and denser** (Don't-Starve rhythm). **Current
+  starting values (2026-07-19): day 11 min, night 4 min** (`DAY_MS`/`NIGHT_MS` in `config.ts`), full
+  cycle 15 min — to tune by feel. A day must comfortably fit *leave → travel out → work a few nodes →
+  travel home → prep*, or "no fallback" is unfair. **Knock-on:** hunger drain and campfire fuel were
+  tuned against the old ~3.5-min cycle and now drain far faster *relative to a day* — retune alongside.
 - **These are `config.ts` knobs, tuned by playtest** — the clock is already continuous + real-time
   (plan 004), so pacing is dawn/dusk-ramp + period tuning, not new architecture.
 - **Travel time is the pacing pressure on exploration** — farther maps eat more daylight, so fast

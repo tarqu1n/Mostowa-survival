@@ -21,6 +21,12 @@ import { computeGhostStripCells, ghostBoundingBox, type GhostCell } from './worl
 import { queueDecorTexture, resolveDecorDraw } from '../render/decorSprites';
 import { objectFootprintCells } from './objectOps';
 import { normalizeRegion } from './regionOps';
+import {
+  mapContentBoundsPx,
+  boundsOverlap,
+  cameraViewportPx,
+  type PxBounds,
+} from './cameraFraming';
 
 /** Which target a `collision`/`zone`/`shape`/`terrain` tool gesture writes to (plan 014 step 8,
  *  extended step 10) — see `dispatchTargetPaint`. `terrain` writes an editor-only mask (rebaked into
@@ -1560,21 +1566,41 @@ export class EditorScene extends Phaser.Scene {
     this.cameras.main.setBounds(-margin, -margin, widthPx + margin * 2, heightPx + margin * 2);
   }
 
+  /** Fit-to-map. Frames the map's *authored content* (bounding box of painted tiles + objects) rather
+   *  than the geometric canvas rectangle — a map's grid can be far larger than the region actually
+   *  drawn (the moon map is 245×280 with all content in one ~78×67 blob), so centring on the canvas
+   *  centre at the clamped integer zoom can land the view on blank space and the map "appears empty".
+   *  Picks the largest integer zoom (MIN..MAX) whose viewport covers the content with a little margin,
+   *  and centres on the content. A content-free map falls back to framing the whole canvas. */
   private fitCamera(map: MapFile): void {
     const cam = this.cameras.main;
-    const widthPx = map.meta.width * TILE_SIZE;
-    const heightPx = map.meta.height * TILE_SIZE;
     this.setCameraBounds(map);
-    const fit = Math.min(this.scale.width / widthPx, this.scale.height / heightPx);
+    const bounds = mapContentBoundsPx(map, TILE_SIZE);
+    if (!bounds) {
+      const widthPx = map.meta.width * TILE_SIZE;
+      const heightPx = map.meta.height * TILE_SIZE;
+      const fit = Math.min(this.scale.width / widthPx, this.scale.height / heightPx);
+      cam.setZoom(Phaser.Math.Clamp(Math.floor(fit) || MIN_ZOOM, MIN_ZOOM, MAX_ZOOM));
+      cam.centerOn(widthPx / 2, heightPx / 2);
+      return;
+    }
+    // 10% breathing room so content isn't flush against the viewport edge.
+    const contentW = (bounds.maxX - bounds.minX) * 1.1;
+    const contentH = (bounds.maxY - bounds.minY) * 1.1;
+    const fit = Math.min(this.scale.width / contentW, this.scale.height / contentH);
     cam.setZoom(Phaser.Math.Clamp(Math.floor(fit) || MIN_ZOOM, MIN_ZOOM, MAX_ZOOM));
-    cam.centerOn(widthPx / 2, heightPx / 2);
+    cam.centerOn((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
   }
 
   /** Restore the open map's saved camera (plan 034) if one exists, else fit-to-map. The restore branch
    *  keeps the same bounds `fitCamera` sets (Phaser clamps the restored scroll to them) and only
    *  overrides zoom/scroll. This is the ONLY camera *read* site, and it must NOT persist — a
    *  programmatic camera set is not a user settle, so there is no feedback loop into `putCamera`. A map
-   *  with no saved camera (brand-new, or never panned) deterministically re-fits on every load. */
+   *  with no saved camera (brand-new, or never panned) deterministically re-fits on every load.
+   *
+   *  Stale-camera guard: if the map HAS content but the restored viewport shows none of it, the saved
+   *  camera is stranded over blank canvas (the reported "map loads empty" symptom on a large, sparsely
+   *  authored map) — treat it as unhelpful and re-fit to the content instead. */
   private restoreOrFitCamera(map: MapFile): void {
     const mapId = useEditorStore.getState().mapId;
     const saved = mapId ? getCamera(mapId) : null;
@@ -1586,6 +1612,18 @@ export class EditorScene extends Phaser.Scene {
     this.setCameraBounds(map);
     cam.setZoom(Phaser.Math.Clamp(saved.zoom, MIN_ZOOM, MAX_ZOOM));
     cam.setScroll(saved.scrollX, saved.scrollY);
+
+    const content = mapContentBoundsPx(map, TILE_SIZE);
+    if (content) {
+      const view: PxBounds = cameraViewportPx(
+        cam.scrollX,
+        cam.scrollY,
+        cam.zoom,
+        this.scale.width,
+        this.scale.height,
+      );
+      if (!boundsOverlap(view, content)) this.fitCamera(map);
+    }
   }
 
   /** Persist the open map's current camera (plan 034), keyed by map id. Called only at a USER

@@ -330,7 +330,26 @@
     {
       "id": "palette_0006",
       "name": "Cliff edge",
-      "slots": []
+      "slots": [
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_RockSlope.png#2115"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_RockSlope.png#2051"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_RockSlope.png#1987"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_RockSlope.png#1985"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_RockSlope.png#2049"
+        },
+        {
+          "assetId": "fantasy-tileset/Tiles/Tileset_RockSlope.png#2113"
+        }
+      ]
     }
   ]
 }

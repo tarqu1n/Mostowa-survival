@@ -39,7 +39,7 @@ The cast, as they land. Each notes who they are, how you meet/recruit them, and 
   - **Cigarettes** — crafted from **tobacco** (harvested from tobacco plants) + **paper** (scavenged/found).
   - **Vodka** — scavenged/found out in the world.
 - **As a companion:** assignable a day-role + a night-role like any other, hot-swappable (e.g. day: arm
-  traps / cook; night: feed the fires / hold a wall). As a *wizard*, the natural future operator for the
+  traps / cook; night: feed the fires / hold a wall). As a _wizard_, the natural future operator for the
   arcane/alchemy crafting station (interlock, not yet designed).
 - **[OPEN]** whether his vodka/cigs habit is a one-time recruitment price or an ongoing upkeep/morale
   need (a drunk wizard who works worse sober) — see [GAME-DESIGN.md](GAME-DESIGN.md) NPC companions.

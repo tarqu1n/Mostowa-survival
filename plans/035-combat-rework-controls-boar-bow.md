@@ -166,7 +166,7 @@ entries.
     range, biased toward `lastFacing` (reuse `enemyManager.all()` + distance/facing math). Fire applies
     `rangedDamage` (`combat.ts:13`, currently unused) via a resolve mirroring `resolveMeleeAttack`. **Unlimited
     ammo.** Visual: a lightweight arrow projectile from player to target (or hitscan + a tracer if simpler)
-    + a **coded draw/release** player pose (reuse the coded-swing approach; a held bow sprite pinned via the
+    - a **coded draw/release** player pose (reuse the coded-swing approach; a held bow sprite pinned via the
     `attachment.ts` anchor system, animated by a tween — no new spritesheet).
   - **Target highlight:** a stroked rect hugging the current target's bounds, re-synced each frame (mirror
     `TaskGlowRenderer.outlineCampfire` + `syncGlowTransforms`); clears when the target dies/leaves range.
@@ -236,14 +236,14 @@ execution — it leaves the *skeleton* (the MVP night-wave enemy) un-telegraphed
 ROADMAP step 1 and GAME-DESIGN name as core, and its auto-surface mechanism as written would reveal a
 non-functional movepad.
 
-| # | Finding | Lens | Severity | Suggested action |
-| - | ------- | ---- | -------- | ---------------- |
-| 1 | Telegraph built only on a new boar; skeleton keeps its un-telegraphed coded lunge, yet ROADMAP step 1 + GAME-DESIGN name the *skeleton* telegraph as the core clunk and step 2's wave is skeletons | Roadmap fit | High | Add the coded skeleton wind-up in-scope (machinery exists in `CombatFxManager.lungeAt`), or confirm deferring it; align acceptance to ROADMAP's "fight one skeleton" test |
-| 2 | Auto-surface "visibility only, don't call setMode" surfaces a dead movepad: `onCombatMove` (`:1022`), the per-frame drive (`:624`), and PointerInputController gates (`:149`,`:212`) are all keyed on `mode==='combat'`, not visibility | Gaps/risks | High | Rebase those execution gates onto a `combatActive` predicate (or split `setMode` to enter combat input without `cancelAll`); assert the movepad actually drives while auto-surfaced |
-| 3 | Front-loads a full 4-way directional-actor pipeline refactor for a brand-new boar — costliest, least-aligned piece — ahead of de-clunking the existing skeleton | Alternatives | Medium | Do the skeleton coded-telegraph + controls + bow first; defer the boar/directional pipeline |
-| 4 | Doesn't specify how `EnemyDef` selects its actor, nor the `TilesetManifest.actors` shape change (fixed `{player,enemy}` → id-keyed directional actors) | Consistency/exec | Medium | Nail the type model up front: an actor discriminator on `EnemyDef` + an id-keyed directional-actor map; keep skeleton on its global `enemy-*` keys |
-| 5 | 8 steps / ~6 substantial features in one plan | Scope discipline | Medium | Split the separable bow + HP bars from the enemy/controls foundation |
-| 6 | DebugState field-order + tripwire snapshot spread across steps | Consistency | Low | Adequately handled (append-at-end + same-step snapshot update); verify golden-scenario values |
+|#|Finding|Lens|Severity|Suggested action|
+|-|-------|----|--------|----------------|
+|1|Telegraph built only on a new boar; skeleton keeps its un-telegraphed coded lunge, yet ROADMAP step 1 + GAME-DESIGN name the *skeleton* telegraph as the core clunk and step 2's wave is skeletons|Roadmap fit|High|Add the coded skeleton wind-up in-scope (machinery exists in `CombatFxManager.lungeAt`), or confirm deferring it; align acceptance to ROADMAP's "fight one skeleton" test|
+|2|Auto-surface "visibility only, don't call setMode" surfaces a dead movepad: `onCombatMove` (`:1022`), the per-frame drive (`:624`), and PointerInputController gates (`:149`,`:212`) are all keyed on `mode==='combat'`, not visibility|Gaps/risks|High|Rebase those execution gates onto a `combatActive` predicate (or split `setMode` to enter combat input without `cancelAll`); assert the movepad actually drives while auto-surfaced|
+|3|Front-loads a full 4-way directional-actor pipeline refactor for a brand-new boar — costliest, least-aligned piece — ahead of de-clunking the existing skeleton|Alternatives|Medium|Do the skeleton coded-telegraph + controls + bow first; defer the boar/directional pipeline|
+|4|Doesn't specify how `EnemyDef` selects its actor, nor the `TilesetManifest.actors` shape change (fixed `{player,enemy}` → id-keyed directional actors)|Consistency/exec|Medium|Nail the type model up front: an actor discriminator on `EnemyDef` + an id-keyed directional-actor map; keep skeleton on its global `enemy-*` keys|
+|5|8 steps / ~6 substantial features in one plan|Scope discipline|Medium|Split the separable bow + HP bars from the enemy/controls foundation|
+|6|DebugState field-order + tripwire snapshot spread across steps|Consistency|Low|Adequately handled (append-at-end + same-step snapshot update); verify golden-scenario values|
 
 **Detail — High #1 (skeleton stays clunky):** ROADMAP step 1 and GAME-DESIGN's danger-verb section
 explicitly require the *skeleton* telegraph (coded wind-up tween + pose/flash) as the core de-clunk, and

@@ -1,6 +1,6 @@
 # The Boar — a 4-Way Directional Enemy
 
-> Status: planned — run /execute-plan to begin.
+> Status: in review
 > Split from plan 035 after critique. **Depends on plan 035a** (the combat control cluster, bow, monster
 > HP bars, dev spawn button, and telegraphed-enemy pattern must already exist — the boar plugs into them).
 
@@ -137,7 +137,17 @@ an actor discriminator on `EnemyDef` + an id-keyed directional-actor map — so 
   - Done when: DEV menu → SPAWN ENEMY drops a boar; fighting it exercises the full loop (telegraph, melee,
     bow, HP bar).
 
-- [ ] **Step 5: Docs + test sweep** `[inline]`
+- [x] **Step 5: Docs + test sweep** `[inline]`
+  - Outcome: docs updated — `STATUS.md` (boar as a 2nd enemy + the `actorKind` flip3/dir4 directional-actor
+    support + the boar's real-Attack-anim telegraph), `GAME-MECHANICS.md` (boar stats + `BOAR_ATTACK_WINDUP_MS`
+    knob + `actors.directional.boar.render` footprint), `decisions/gameplay.md` (new dated entry: "Enemy
+    rendering is a data discriminator, not a subclass"), plus the CONVENTIONS.md pattern note from Step 1.
+    No `DebugState` field was appended across 035b (wind-up+strike assert on existing counters), so the
+    refactor-tripwire golden needed no change. Full sweep: typecheck **0 errors** (the earlier tsconfig
+    `baseUrl` deprecation no longer appears post-`npm ci`), vitest **806/806**, eslint **0 errors**,
+    markdownlint **0 errors**. Full e2e: all combat/monster/boar/refactor-tripwire specs green; 5 specs fail
+    (campfire, campfire-feed, death, menu-start, survival-hunger) but are **pre-existing** — verified failing
+    identically on the base commit `3e1a679` (a container/timing issue on this runner), unrelated to 035b.
   - Update [STATUS.md](../docs/STATUS.md) (boar mob + directional-enemy actor support + boar telegraph). Note
     boar `config.ts` knobs in [GAME-MECHANICS.md](../docs/GAME-MECHANICS.md). Short
     [decisions/gameplay.md](../docs/decisions/gameplay.md) entry for the directional-actor generalization if

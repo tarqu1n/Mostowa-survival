@@ -6,6 +6,20 @@ Part of the [decision log index](../DECISIONS.md). Newest first.
 
 ---
 
+## 2026-07-20 — [DECIDED] Enemy rendering is a data discriminator (`EnemyDef.actorKind`), not a subclass
+
+Adding the boar (plan 035b) generalized the enemy actor pipeline from the single flip-mirrored skeleton
+to two render paths chosen by data: `actorKind: 'flip3'` (default — one Run strip mirrored by `setFlipX`)
+vs `'dir4'` (a distinct strip per facing, `Facing4` down/up/left/right, no flip, keyed by id under
+`ACTIVE_TILESET.actors.directional`, art allowed from its own pack). One `MonsterCharacter` branches on
+the discriminator (facing from velocity, weapon/hand rig only on flip3, single footprint on dir4) rather
+than growing a per-creature subclass. Rationale: keeps "add a creature" a data + manifest edit, matches
+the codebase's data-driven / behaviour-classes-not-data-hierarchy stance (see CONVENTIONS.md), and leaves
+the skeleton path byte-for-byte unchanged as a regression anchor. The boar's telegraph reuses 035a's
+caller-side wind-up but plays its **real Attack sheet** as the tell (a richer, per-creature telegraph the
+skeleton's coded tint can't give). Trade-off: a dir4 def needs a complete manifest entry (all 6 states ×
+4 facings) — guarded by a data-time lockstep test rather than discovered as a missing-texture box in-game.
+
 ## 2026-07-19 — [DECIDED] Combat controls (mobile): movepad + auto-surfacing Melee/Bow cluster; facing-biased auto-target w/ highlight; telegraphed enemies; minimal HP bars; no dodge
 
 Settles the fighting controls (ROADMAP step 1); full write-up in

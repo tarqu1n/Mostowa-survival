@@ -32,6 +32,15 @@ skeleton spawns holding a **club** (2 dmg, ~1500ms) or **knife** (1 dmg, ~750ms)
 a coded swing tween. Supersedes plan 010's anchor-stamp tool. See
 [ASSETS.md](wired-art.md#weapon-attachment-runtime-pinning-plan-011).
 
+A second enemy, the **boar** (data id `boar`, plan 035b), is a **4-way directional** creature — the
+enemy actor pipeline now supports two render paths via `EnemyDef.actorKind`: `'flip3'` (the skeleton's
+single Run strip mirrored by `setFlipX`, the default) and `'dir4'` (a distinct strip per facing —
+`Facing4` down/up/left/right, no flip — keyed by id under `ACTIVE_TILESET.actors.directional`, art from
+its own pack). One `MonsterCharacter` handles both, branching on the discriminator (facing from velocity
+via `facing4FromVelocity`, no weapon/hand rig for the weaponless boar, one 32px footprint). The boar is a
+fast charger (speed 70, natural bite) and the default dev spawn; the skeleton stays a regression anchor.
+See [CONVENTIONS.md](CONVENTIONS.md) ("Enemy rendering is a data discriminator").
+
 ### Footprint vs hurtbox
 
 A creature's *footprint* (occupancy, one tile) is separate from its *hurtbox* (targeting extent;
@@ -44,8 +53,11 @@ torso, not only their feet tile. Player and kid-zombie both use `{width:1,height
 - **Hit reactions:** on a landed hit both actors flash red (`HitFlashPipeline` PostFX on WebGL,
   `setTintFill` fallback on Canvas — [render/hitFlashPipeline.ts](../src/render/hitFlashPipeline.ts))
   and squash-flinch in lockstep. Logic stays keyed to `col`/`row`; feedback is purely visual.
-- **Enemy attack tell:** the skeleton's bite is a coded **lunge** (`zombieLungeAt`) moving the Arcade
-  body via `body.reset` out-and-back during the stationary contact phase.
+- **Enemy attack tell:** before a bite the enemy freezes in a readable **wind-up** (plan 035a), tinting
+  toward a warning colour; leaving contact cancels the strike (a whiff). The skeleton's tell is the coded
+  tint + a **lunge** (`lungeAt`, Arcade `body.reset` out-and-back); the **boar plays its real Attack
+  sheet** as the tell (plan 035b) on a punchier `BOAR_ATTACK_WINDUP_MS`, the strike landing as the anim
+  completes.
 - **Hit clarity:** camera kick (firm on player bitten, light on landing a punch) + a **damage
   vignette** — `render/vignetteTexture.ts` bakes a red radial edge-glow once, UIScene pulses it on a
   `player:hit` event. Kept off starvation drain.

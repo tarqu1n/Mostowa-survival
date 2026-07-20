@@ -54,6 +54,13 @@ All knobs in [src/config.ts](../src/config.ts); behaviour in [STATUS.md](STATUS.
   `ENEMY_ATTACK_WINDUP_MS` (**350ms**), tinting toward `ENEMY_WINDUP_TINT`, then strikes. The wind-up
   is carved out of the *tail* of the bite cadence (weapon `attackMs` / `CONTACT_DAMAGE_COOLDOWN_MS`), so
   DPS is unchanged — leaving contact during it whiffs the strike.
+- **The boar (plan 035b):** a 4-way directional (`dir4`) charger and the default dev spawn. Stats in
+  `ENEMIES.boar` (`src/data/enemies.ts`): `maxHp` **5**, `speed` **70** (vs the zombie's 45), `vision`
+  **100**, `strength` **2** (unarmed bite = `UNARMED_BASE_DAMAGE` 1 + 2 = 3), wide/short hurtbox
+  `{2,1}`, no `weaponPool`. Its wind-up plays its **real Attack sheet** as the tell on the punchier
+  `BOAR_ATTACK_WINDUP_MS` (**250ms**, sized to the 5-frame anim at `ACTION_ANIM_FRAMERATE`) rather than
+  the coded tint; same carve-from-cadence rule. Render footprint tuned by `actors.directional.boar.render`
+  in `src/data/tileset.ts` (**originY 0.82**).
 - **Move-slow while committing:** melee roots you to `ATTACK_MOVE_SLOW` (**0.2**) during the swing lock;
   the bow only drops you to `BOW_MOVE_SLOW` (**0.75**) for `BOW_DRAW_MS` (**450ms**) — the "ranged is
   safer / kite-able" gap. Both applied via `PlayerCharacter.effectiveMoveSpeed` (melee wins if they

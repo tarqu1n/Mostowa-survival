@@ -428,6 +428,28 @@ export const CAMPFIRE_FLAME_LARGE_SCALE_MIN = 0.85;
 export const CAMPFIRE_FLAME_RISE_PX = 2;
 export const CAMPFIRE_SMOKE_RISE_PX = 22;
 
+/**
+ * Night wave (plan 038 Step 3 — `scenes/world/WaveDirector.ts`). At night, skeletons spawn from the
+ * "treeline": a fixed direction (`WAVE_SPAWN_DIR`, north) off the **defended centre** (the nearest lit
+ * hearth, else the player) at ~`WAVE_SPAWN_RADIUS` tiles, spread laterally up to `WAVE_SPAWN_SPREAD`,
+ * landing on a walkable tile. NOTE: decision #3 planned a literal *grid*-perimeter spawn; on the-moon
+ * (245×280, camp near centre) that perimeter is ~140 tiles of void from the base, so spawns anchor to
+ * the defended centre instead — same "code-side, directional, no authoring" intent, playable now.
+ * Switch to a real map/treeline edge when the MVP arena map lands (roadmap Step 0).
+ *
+ * `NIGHT_WAVE_BEATS` is the pacing curve over normalized night progress (0 = dusk, 1 = dawn): the
+ * spawn interval by beat gives a trickle → push → lull shape. Placeholder numbers — the real
+ * fuel-vs-DPS-vs-pacing tuning is plan 038 Step 5; per-night escalation scales these there too.
+ */
+export const WAVE_SPAWN_DIR = { dCol: 0, dRow: -1 } as const; // north — the "treeline" side of camp
+export const WAVE_SPAWN_RADIUS = 14; // tiles from the defended centre to the spawn ring
+export const WAVE_SPAWN_SPREAD = 10; // lateral half-width along the edge (± perpendicular to DIR)
+export const NIGHT_WAVE_BEATS: readonly { untilNorm: number; intervalMs: number }[] = [
+  { untilNorm: 0.25, intervalMs: 20_000 }, // trickle — first quarter of the night, sparse
+  { untilNorm: 0.7, intervalMs: 14_000 }, // push — the bulk of the assault
+  { untilNorm: 1.0, intervalMs: 26_000 }, // lull — taper before dawn ("the lull is a trap")
+];
+
 /** Semantic colour palette (dark & grotty). Expand as the art identity firms up. */
 export const COLORS = {
   background: 0x14100f,

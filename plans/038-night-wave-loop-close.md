@@ -52,9 +52,16 @@ new combat.
 2b. **Fire-out darkness stays full — owner decision 2026-07-20.** No ambient/vision floor when the light
    is out; losing the light is *meant* to be dire. **No change to the night overlay / `VisionController`**
    — leave rendering as-is (this plan touches no vision code).
-3. **Spawn source = code-side edge rule** (spawn along the map perimeter, biased to a direction — the
-   "wood-facing" edge), no map authoring. Authored treeline markers are post-MVP (no marker/point entity
-   exists today — `MapObject` is only node/decor/portal; zones are unused and the-moon has none).
+3. **Spawn source = code-side edge rule**, no map authoring. Authored treeline markers are post-MVP (no
+   marker/point entity exists today — `MapObject` is only node/decor/portal; zones are unused and
+   the-moon has none). **ADJUSTED at execution (Step 3, 2026-07-20):** the plan said "spawn along the
+   *map* perimeter." But the-moon is **245×280** with the camp near centre (`SPAWN_TILE {118,140}`), so
+   the literal grid perimeter is ~140 tiles of void from the base — unplayable (that rule assumed the MVP
+   *arena* map from roadmap Step 0, which isn't built yet). So spawns anchor to the **defended centre**
+   (nearest lit hearth, else the player) at `WAVE_SPAWN_RADIUS` tiles in a fixed **treeline direction**
+   (`WAVE_SPAWN_DIR`) with a lateral spread, landing on a walkable tile. Same intent (code-side,
+   directional, no authoring) but playable on any map. Switch to a true map/treeline edge when the arena
+   map lands (roadmap Step 0).
 4. **Pacing = data-driven trickle→push→lull** over normalized night progress (`tNorm` from
    `time:changed`), numbers placeholder/tunable. Escalation = a small **per-night** bump (count +
    composition), data-driven, progress-keyed (`gameplay.md:192`).
@@ -177,7 +184,23 @@ new combat.
   - Done when: `npm run build`/tests green; a fire with a normal fuel load stays `lit` across a night in a
     scenario (assert `lit` at representative `cycleMs` points).
 
-- [ ] **Step 3: WaveDirector — night-triggered paced spawns from the edge (+ begin-wave seam)** `[inline]`
+- [x] **Step 3: WaveDirector — night-triggered paced spawns from the edge (+ begin-wave seam)** `[inline]`
+  - Outcome: new `src/scenes/world/WaveDirector.ts` (world-manager convention — narrow deps, side-effect-
+    free ctor, `tick(delta)` above the no-action early-return + below the dying-freeze, `reset()`/
+    SHUTDOWN split). Starts/stops a wave on `time:changed` (wired in `wireBus` with SHUTDOWN off) AND
+    reconciles phase on its first tick (a night-seeded scenario emits no event — critique #1). Paces
+    spawns on the `NIGHT_WAVE_BEATS` trickle→push→lull curve (config), spawning `kidZombie` from a
+    walkable tile in the "treeline" band off the defended centre. `beginWave()` force seam on `__test`
+    (+ `GameTestApi` + harness) — also Step 6's dev-hook target. `WaveDirector.reset()` wired into
+    `TestApi.resetWorld`. **Spawn-source deviation (recorded in decision #3):** anchored to the defended
+    centre, NOT the literal grid perimeter — the-moon is 245×280 with the camp near centre, so grid
+    perimeter is ~140 tiles of void (that rule assumed the not-yet-built arena map, roadmap Step 0).
+    Config: `WAVE_SPAWN_DIR/RADIUS/SPREAD` + `NIGHT_WAVE_BEATS` (placeholders, tuned Step 5). New Tier-2
+    `tests/e2e/wave.spec.ts` (no day spawns / paced walkable local spawns via `beginWave` / night-seed
+    reconcile). **Verified:** typecheck + lint clean; 814/814 unit; wave.spec 3/3; tripwire green (no
+    `DebugState` change). **Pre-existing failures (NOT mine, confirmed via stash):** `campfire.spec`
+    "tryPlace base zone" and `death.spec` respawn-coord assertion both fail on the clean tree — stale
+    pre-`SPAWN_TILE`-move (118,140) coords, orthogonal to 038 (base-zone = plan 039 territory).
   - New `src/scenes/world/WaveDirector.ts` (world-manager convention: narrow `deps` closures —
     `spawnEnemy(id,col,row,opts)`→`enemyManager.addEnemy`, `dims()`, `enemies()`, `campfires()`/`lightSources()`,
     `dayContext()`; constructed after SurvivalClock; `tick(delta)` above the early-return; `reset()`/

@@ -23,6 +23,7 @@ import type { PlayerCharacter } from '../entities/PlayerCharacter';
 import type { MonsterCharacter, MonsterSpawnOpts } from '../entities/MonsterCharacter';
 import type { BuildManager } from './build/BuildManager';
 import type { CampfireManager } from './world/CampfireManager';
+import type { WaveDirector } from './world/WaveDirector';
 import type { TaskGlowRenderer } from './fx/TaskGlowRenderer';
 import type { CombatFxManager } from './fx/CombatFxManager';
 import type { PointerInputController } from './input/PointerInputController';
@@ -96,6 +97,7 @@ export interface DebugState {
 export interface TestApiDeps {
   readonly buildManager: BuildManager;
   readonly campfireManager: CampfireManager;
+  readonly waveDirector: WaveDirector;
   readonly taskGlowRenderer: TaskGlowRenderer;
   readonly fx: CombatFxManager;
   readonly pointerInput: PointerInputController;
@@ -194,6 +196,7 @@ export class TestApi {
     this.deps.resetTreesAndEnemies();
     this.deps.buildManager.reset(); // sites/siteTiles/occupied/walls/nextSiteId/buildMode
     this.deps.campfireManager.reset(); // destroy fire sprites + clear the collection (RUNTIME path)
+    this.deps.waveDirector.reset(); // clear any running wave + its first-tick reconcile flag (plan 038)
     this.deps.taskGlowRenderer.reset(); // queue markers + glow halos/pulse + outlinedTreeIds
 
     this.deps.queue.clear();
@@ -388,6 +391,13 @@ export class TestApi {
     const c = this.deps.campfireManager.all()[index];
     if (!c) return false;
     return this.deps.campfireManager.damageFire(c.id, amount);
+  }
+
+  /** DEV/test-only: start a night wave immediately (plan 038 Step 3) — the deterministic entry point
+   *  for spawn/pacing specs, independent of crossing a day→night clock edge. Idempotent (no-op if a
+   *  wave is already running). Also the target of the dev force-wave hook (Step 6). */
+  beginWave(): void {
+    this.deps.waveDirector.beginWave();
   }
 
   /** DEV-only: relocate the enemy at `index` to a tile — sprite, physics body AND logical col/row —

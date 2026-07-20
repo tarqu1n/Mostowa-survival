@@ -87,6 +87,9 @@ export interface GameTestApi {
    *  plan 038) — knocks its light out (fuel→0 douses it → dark) without the wave AI. NOT a loss; relight
    *  via feedCampfire. Returns false if there's no campfire at that index. */
   damageFire(index: number, amount: number): boolean;
+  /** DEV/test-only: start a night wave immediately (plan 038 Step 3), independent of the day→night
+   *  clock edge — the deterministic entry point for spawn/pacing specs. Idempotent. */
+  beginWave(): void;
   /** The authored zone id at global tile `(col,row)`, `0` = no zone (plan 014 zones read path). */
   zoneAt(col: number, row: number): number;
   /** DEV/test-only: relocate the enemy at `index` (sprite + body + logical tile) without a world

@@ -53,6 +53,7 @@ import { DecorManager } from './world/DecorManager';
 import { EnemyManager } from './world/EnemyManager';
 import { CampfireManager } from './world/CampfireManager';
 import { SurvivalClock } from './world/SurvivalClock';
+import { WaveDirector } from './world/WaveDirector';
 import { VisionController } from './fx/VisionController';
 import { TestApi } from './testApi';
 import { registerActorAnims } from './world/actorAnims';
@@ -140,6 +141,12 @@ export class GameScene extends Phaser.Scene {
   // Constructed fresh in buildWorld() each (re)start, at the same point the old inline night-overlay
   // block used to run; wires its own SHUTDOWN teardown directly.
   private survivalClock!: SurvivalClock;
+
+  // Night wave scheduler (plan 038 Step 3) — see src/scenes/world/WaveDirector.ts. Paces skeleton
+  // spawns from the "treeline" during the night phase over the existing EnemyManager + day/night clock.
+  // Constructed fresh in buildWorld() each (re)start (after SurvivalClock); its time:changed
+  // subscription is wired in wireBus() with the matching SHUTDOWN off (like the other game.events).
+  private waveDirector!: WaveDirector;
 
   // Resource nodes — trees/rocks/bushes: spawn, harvest, regrow (plan 015 Step 1) — see
   // src/scenes/world/ResourceNodeManager.ts. Constructed fresh in buildWorld() each (re)start, before
@@ -484,6 +491,21 @@ export class GameScene extends Phaser.Scene {
       worldPx, // night overlay spans the loaded map (plan 018 A9) instead of fixed MAP_WIDTH/HEIGHT
     });
 
+    // Night wave (plan 038 Step 3) — constructed after SurvivalClock so its `phase()` reconcile reads a
+    // live clock. Side-effect-free; the time:changed subscription is wired in wireBus(). `defendCentre`
+    // is the nearest lit hearth (the thing the wave converges on) or the player when no fire is lit.
+    this.waveDirector = new WaveDirector(this, {
+      spawnEnemy: (id, col, row) => this.enemyManager.addEnemy(id, col, row),
+      dims: () => this.gridDims,
+      isBlocked: (col, row) => this.isBlocked(col, row),
+      defendCentre: () => {
+        const lit = this.campfireManager.all().find((c) => c.lit);
+        return lit ? { col: lit.col, row: lit.row } : this.playerChar.tile();
+      },
+      rng: () => this.rng(),
+      phase: () => this.survivalClock.dayPhase,
+    });
+
     // HUD overlay runs alongside this scene; grab its instance for the UI-tap guard. UIScene
     // itself isn't restarted on a death-restart (only 'Game' is), so re-emit mode:changed here to
     // resync its mode-toggle/movepad visuals in case death happened mid-Combat/Inspect mode.
@@ -506,6 +528,7 @@ export class GameScene extends Phaser.Scene {
     this.game.events.on('debug:randomise', this.randomiseWorld, this); // dev menu: scatter nodes + enemies
     this.game.events.on('debug:spawnEnemy', this.spawnEnemyNearPlayer, this); // dev menu: drop one enemy by the player to fight
     this.game.events.on('debug:toggleTime', this.survivalClock.toggleDayNight, this.survivalClock); // dev menu: flip day/night
+    this.game.events.on('time:changed', this.waveDirector.onTimeChanged, this.waveDirector); // start/stop the night wave on dusk/dawn
     this.game.events.on('zoom:delta', this.pointerInput.adjustZoom, this.pointerInput);
     this.game.events.on('camera:center', this.pointerInput.centerOnPlayer, this.pointerInput);
     this.game.events.on('combat:attack', this.attack, this);
@@ -527,6 +550,7 @@ export class GameScene extends Phaser.Scene {
         this.survivalClock.toggleDayNight,
         this.survivalClock,
       );
+      this.game.events.off('time:changed', this.waveDirector.onTimeChanged, this.waveDirector);
       this.game.events.off('zoom:delta', this.pointerInput.adjustZoom, this.pointerInput);
       this.game.events.off('camera:center', this.pointerInput.centerOnPlayer, this.pointerInput);
       this.game.events.off('combat:attack', this.attack, this);
@@ -554,6 +578,7 @@ export class GameScene extends Phaser.Scene {
     const testApi = new TestApi(this, {
       buildManager: this.buildManager,
       campfireManager: this.campfireManager,
+      waveDirector: this.waveDirector,
       taskGlowRenderer: this.taskGlowRenderer,
       fx: this.fx,
       pointerInput: this.pointerInput,
@@ -633,6 +658,7 @@ export class GameScene extends Phaser.Scene {
       inLight: (c, r) => testApi.inLight(c, r),
       feedCampfire: (i) => testApi.feedCampfire(i),
       damageFire: (i, amount) => testApi.damageFire(i, amount),
+      beginWave: () => testApi.beginWave(),
       zoneAt: (c, r) => this.zoneAt(c, r),
       moveEnemy: (i, c, r) => testApi.moveEnemy(i, c, r),
       setPlayerMelee: (id) => testApi.setPlayerMelee(id),
@@ -659,6 +685,11 @@ export class GameScene extends Phaser.Scene {
     // Campfire fuel drains every frame too (above the early-return), so a fire burns down whether or
     // not a worker task is active — mirrors the survival tick. See src/scenes/world/CampfireManager.ts.
     this.campfireManager.tick(delta);
+
+    // Night wave scheduler (plan 038 Step 3) — meter out spawns during the night. Above the no-action
+    // early-return (so it runs whether or not a task is active) but below the `playerChar.dying` freeze
+    // above, so no skeletons spawn during the death beat. See src/scenes/world/WaveDirector.ts.
+    this.waveDirector.tick(delta);
 
     // Recompute the auto-surface predicate (enemy-near / night) before any movement gating below —
     // it decides whether the movepad is authoritative this frame (see movepadDrives).

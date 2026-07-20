@@ -180,6 +180,11 @@ export function damageFire(page: Page, index: number, amount: number): Promise<b
   );
 }
 
+/** Start a night wave immediately (plan 038 Step 3), independent of the day→night clock edge. */
+export function beginWave(page: Page): Promise<void> {
+  return page.evaluate(() => (window as any).game.__test.beginWave());
+}
+
 /** The live campfires (col/row/fuel/lit), spec order — a shortcut over `state(page).campfires`. */
 export function campfires(page: Page): Promise<DebugState['campfires']> {
   return page.evaluate(() => (window as any).game.__test.state().campfires);

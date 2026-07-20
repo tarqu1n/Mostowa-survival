@@ -6,16 +6,20 @@
 
 Build the MVP's **first playable loop** (roadmap Step 2): night falls → a paced wave of skeletons
 comes from the map edge → they path to and **attack the campfire (the fire-heart) and the player** →
-you defend to dawn → **day N+1** arrives a little harder. **Lose** = the fire is knocked out **or** the
-player dies. This is the riskiest unbuilt piece and the earliest "feel the loop" milestone. It reuses
-the existing seams almost entirely — the day/night clock + `time:changed` event, `CampfireManager` +
-`lightSources()`, the `MonsterCharacter`/`EnemyManager` FSM + `addEnemy`, and the existing
-death→`scene.restart()` path — and adds a **`WaveDirector`** scheduler over them plus two genuinely new
-pieces: **fire integrity** (attackable fire + loss) and **objective-target enemy AI** (path to the fire,
-not just the player).
+you defend to dawn → **day N+1** arrives a little harder. **Lose** = the player dies. **The fire is NOT
+a loss condition** (owner decision, 2026-07-20 — see decisions #1/#2): a fire knocked out (by mob
+attacks draining its fuel, or plain neglect) just **loses its light → darkness floods in** — a dire,
+recoverable state you claw back by relighting, not a game-over. This is the riskiest unbuilt piece and
+the earliest "feel the loop" milestone. It reuses the existing seams almost entirely — the day/night
+clock + `time:changed` event, `CampfireManager` + `lightSources()`, the `MonsterCharacter`/`EnemyManager`
+FSM + `addEnemy`, and the existing death→`scene.restart()` path — and adds a **`WaveDirector`** scheduler
+over them plus one genuinely new piece: **objective-target enemy AI** (path to & attack the fire, not
+just the player). The "attackable fire" is just an `attackFire`→`damageFire` seam that drains the
+**existing fuel meter** — no new integrity meter, no loss funnel (decision #2).
 
-**Milestones:** **A — Fire-heart** (Steps 1–2): the fire becomes an attackable, losable target with
-retuned fuel — testable in isolation via a direct `damageFire`/fuel-starvation test seam, no wave needed.
+**Milestones:** **A — Fire-heart** (Steps 1–2): the fire becomes an attackable target whose light can be
+knocked out (drain its fuel to 0 → it douses → dark; feed wood → relit) — NOT a loss — with retuned
+fuel; testable in isolation via a direct `damageFire` test seam, no wave needed.
 **B — The wave loop** (Steps 3–5): night-triggered paced spawns + objective AI + loop-close/escalation —
 the playable loop. **C — Surface & harness** (Steps 6–7): dev force-wave hook, HUD, scenario API + tests.
 The fire-heart **light-radius claim** (lit radius replaces the base rect for placement) is **peeled to
@@ -33,13 +37,21 @@ new combat.
 
 **Locked decisions (planning defaults — recorded for execution):**
 
-1. **Fire loss = instant.** Fire knocked out → immediate loss (roadmap's lean for MVP clarity). No
-   claw-back/relight-to-recover this slice.
-2. **Fire integrity = a separate meter** on the campfire, distinct from fuel. Mob attacks drain
-   integrity; **fuel** still drives light radius / claim (existing). Two failure routes into one loss:
-   **integrity ≤ 0** (attacked out) **or** the fire fully unlit via fuel starvation. Integrity is *not*
-   the inert `maxHp:20` (that stays Inspect-only) — add a real `integrity` field. **For visual coherence
-   (critique #5), `damageFire`-to-0 also douses the fire** so both loss routes read the same.
+1. **No fire loss — REVERSED 2026-07-20 (owner).** *Was:* "fire loss = instant." *Now:* the fire being
+   knocked out is **NOT a loss** — only **player death** loses. A knocked-out fire floods darkness (a
+   dire, recoverable state); **claw-back by relighting IS the MVP behavior** (feed wood → relit). This
+   flips the roadmap's "lean instant-loss" and moves claw-back from Out-of-scope to in-scope. The
+   knock-out mechanic still matters as *pressure* (fighting the wave in the dark), just not a fail state.
+2. **No separate integrity meter — REVERSED 2026-07-20 (owner), follows from #1.** *Was:* a distinct
+   `integrity` meter as the attacked-out loss route. *Now:* with no loss route, a second meter has no
+   purpose. **Mob attacks drain the fire's existing `fuel`** (via `damageFire`) — the same meter natural
+   burn drains and feeding wood restores — so an attacked fire dims (light radius lerps with fuel) and
+   goes out exactly like a neglected one, and relighting recovers it. No `integrity` field on
+   `CampfireUnit`; the inert `maxHp:20` stays Inspect-only. `damageFire` clamps fuel ≥0 and douses on a
+   zero-crossing (same path as burn-out) so the visual is coherent by construction.
+2b. **Fire-out darkness stays full — owner decision 2026-07-20.** No ambient/vision floor when the light
+   is out; losing the light is *meant* to be dire. **No change to the night overlay / `VisionController`**
+   — leave rendering as-is (this plan touches no vision code).
 3. **Spawn source = code-side edge rule** (spawn along the map perimeter, biased to a direction — the
    "wood-facing" edge), no map authoring. Authored treeline markers are post-MVP (no marker/point entity
    exists today — `MapObject` is only node/decor/portal; zones are unused and the-moon has none).
@@ -96,8 +108,8 @@ new combat.
   `debug:toggleTime` at `:508`).
 - **HUD:** `UIScene.ts` — passive top-centre `timeText` `Day N [phase]` (`:313`, synced on `time:changed`
   `:975`); dev `GO NIGHT/GO DAY` button emits `debug:toggleTime` → `SurvivalClock.toggleDayNight` (extend
-  to also force a wave). Fire-integrity bar mirrors the HP/hunger bar pattern; a night/wave indicator slots
-  beside `timeText`.
+  to also force a wave). Fire-**fuel** bar mirrors the HP/hunger bar pattern (no integrity meter, decision
+  #2); a night/wave indicator slots beside `timeText`.
 - **Scenario/test API:** `testApi.ts` + `GameScene` `TestApi` (`:552-638`) — `setClockMs`/`setDayPhase`/
   `setDayCount`, `addEnemy`, `step(ms)` (deterministic 1/60s slices). **`DebugState` tripwire**
   (`testApi.ts:35-81`, serializer `:394`, `refactor-tripwire.spec.ts` golden): new fields **appended at
@@ -106,28 +118,30 @@ new combat.
 
 ## Steps
 
-- [ ] **Step 1: Fire integrity + the loss funnel + test seam (fire-out OR player-dead)** `[inline]`
-  - Add a real `integrity` (+`maxIntegrity`) field to the campfire runtime record (`CampfireUnit`) and a
-    `CampfireManager.damageFire(id, amount)` seam that drains it (clamped ≥0), leaving `maxHp:20` untouched
-    (still Inspect-only). **When integrity reaches 0, also douse the fire** (set `lit=false`) so the
-    attacked-out and starved-out states look identical (critique #5). Expose `isKnockedOut(unit)` =
-    `integrity<=0 || fully-unlit-via-fuel`.
-  - Add `GameScene.loseGame(reason: 'player'|'fire')` running the existing death→restart mechanism
-    (`cancelAll()`, freeze, log a test-assertable signal e.g. `"game over (fire) — restarting"`, then
-    `scene.restart()` after a hold). Refactor `killPlayer()` to funnel through `loseGame('player')`
-    (preserve/route its `"player down — restarting"` signal). Add a per-tick check — **all hearths knocked
-    out → `loseGame('fire')`**.
-  - **Test seam (do it here, not Step 7 — critique #1/#2):** expose `damageFire(id, amount)` (and if
-    needed a `loseGame`/hearth query) on the `__test` API so milestone A is acceptance-testable *without*
-    the wave AI. Integrity numbers placeholder (e.g. 100), tuned in Step 5.
-  - Side effects: `entities/types.ts` (`CampfireUnit`); `CampfireManager` (tick + seam + reset); `GameScene`
-    (`killPlayer`/`damagePlayer` funnel, per-tick fire-out check); scenario reset re-inits integrity;
-    `testApi.ts`/`harness.ts` + tripwire if a `DebugState` field is added now (else defer field to Step 7).
-  - Docs: `docs/STATUS.md`; note in `docs/decisions/gameplay.md` that integrity is a separate meter that
-    also douses at 0 (decision #2).
-  - Done when: Tier-2 scenario — call `__test.damageFire` to drain integrity to 0 → the game-over/restart
-    signal fires and the fire douses; separately, seed low `campfireFuel` + `step` past starvation → same
-    loss; and player death still restarts. **No wave/objective AI needed.**
+- [ ] **Step 1: Attackable fire (`damageFire` drains fuel) + test seam** `[inline]` — *rescoped
+  2026-07-20 (owner): NO integrity meter, NO loss funnel — see decisions #1/#2.*
+  - Add a `CampfireManager.damageFire(id, amount)` seam that drains the fire's **existing `fuel`** (clamped
+    ≥0), then douses on a zero-crossing exactly like the per-frame burn (`if (c.lit && !isLit(c.fuel))
+    this.douse(c)`) so an attacked-out fire and a burned-out fire are identical state. No new field on
+    `CampfireUnit`; the inert `maxHp:20` stays Inspect-only. Relight is the **existing** feed-wood path
+    (unchanged) — no new recovery logic. This is the mob→fire coupling Step 4's `attackFire` calls.
+  - **No loss funnel.** Do NOT add `loseGame`, do NOT refactor `killPlayer`, do NOT add a per-tick
+    fire-out check. Player death → `scene.restart()` stays exactly as-is (the only loss). The fire going
+    dark is just darkness (rendering already re-floods the night mask when no light source remains — no
+    change needed there; owner wants it fully dark, decision #2b).
+  - **Test seam (here, not Step 7):** expose `damageFire(index, amount)` on the `__test` API (index-based,
+    mirroring `feedCampfire(index)`) so the attackable fire is acceptance-testable *without* the wave AI.
+    Damage numbers placeholder, tuned in Step 5.
+  - Side effects: `CampfireManager` (the `damageFire` seam only — tick/reset/materialise unchanged, no
+    integrity to init); `testApi.ts` (`TestApi.damageFire` + `TestApiDeps` if needed) + `harness.ts` +
+    `testTypes.ts` `GameTestApi`. **No `DebugState` field** (fuel/lit already surfaced in
+    `campfires[]`), so **no tripwire bump** this step. `GameScene`/`entities/types.ts` untouched.
+  - Docs: `docs/STATUS.md`; flip the fire-loss lines in `docs/decisions/gameplay.md` + `docs/ROADMAP.md`
+    Step 2 (fire out = dire darkness, not a loss — decisions #1/#2).
+  - Done when: Tier-2 scenario — `__test.damageFire(0, N)` enough to drain a lit fire's fuel to 0 → it
+    douses (`campfires[0].lit === false`, `inLight` false around it) and **no restart fires**; then
+    `feedCampfire(0)` relights it. Existing `campfire.spec.ts` (burn-out → relight) stays green unchanged.
+    **No wave/objective AI needed.**
 
 - [ ] **Step 2: Retune campfire fuel for the 15-min cycle** `[delegate]`
   - Data-only: retune `CAMPFIRE_FUEL_MAX` / `CAMPFIRE_FUEL_BURN_PER_SEC` / `CAMPFIRE_FUEL_PER_WOOD` in
@@ -174,46 +188,49 @@ new combat.
   - Wave-mobs opt in to the fire objective via a per-enemy property set by the WaveDirector spawn;
     dev-spawned/scenario enemies stay player-targeting as today.
   - Side effects: `EnemyManager.update` env; `monsterAI` FSM + tests (`src/systems/__tests__/monsterAI*`);
-    `MonsterCharacter`; the fire-out loss (Step 1) becomes mob-reachable.
+    `MonsterCharacter`; the fire's fuel (Step 1) becomes mob-drainable → its light can be knocked out.
   - Docs: `docs/STATUS.md`; note the objective-target seam is the one plan 037 will build on.
   - Done when: Tier-2 scenario — a wave skeleton with no player nearby paths to the fire and attacks it
-    (integrity drops, assertable via `step`); a skeleton near the player instead engages the player.
+    (its `fuel` drops, assertable via `campfires[]` after `step`, and it can be driven to douse → dark);
+    a skeleton near the player instead engages the player.
 
 - [ ] **Step 5: Loop-close + per-night escalation + tuning pass** `[inline]`
   - On `phase==='day'` with an incremented `dayCount` (night survived), the WaveDirector records it and
     **escalates the next wave** via a data-driven curve (count + composition — more skeletons, later nights
     add a boar). `dayCount` already increments in the clock; the director keys difficulty off it.
-  - Tuning pass now that the loop runs: fire integrity vs wave DPS, fuel (Step 2) vs night length, pacing
-    numbers → a night is *winnable but tense*. Keep in data/config with comments; final numbers may be "by
-    feel", but each has an acceptance anchor (e.g. "night 1 survivable with N refuels + M kills"; not a
-    bare "feels right").
+  - Tuning pass now that the loop runs: fire **fuel** drain (natural burn + `damageFire` from mob attacks,
+    Step 1/4) vs wave DPS vs night length, plus the pacing numbers → a night is *winnable but tense* and
+    keeping the fire lit is a real ask (letting it go dark should sting via the darkness, not end the run).
+    Keep in data/config with comments; final numbers may be "by feel", but each has an acceptance anchor
+    (e.g. "night 1 survivable with N refuels + M kills"; not a bare "feels right").
   - Side effects: WaveDirector state (survived-night counter, per-night config); `reset()` restores day-1
     baseline for scenarios.
   - Docs: `docs/STATUS.md`; `docs/ROADMAP.md` — Step 2 loop closes.
   - Done when: Tier-2 scenario — run a full night→dawn: player+fire survive → `dayCount` increments → the
     next night spawns more/tougher than the first (assert spawn count/composition delta across two nights).
 
-- [ ] **Step 6: Dev force-wave hook + HUD (night/wave indicator + fire-integrity bar)** `[inline]`
+- [ ] **Step 6: Dev force-wave hook + HUD (night/wave indicator + fire-fuel bar)** `[inline]`
   - Dev hook: `debug:forceWave` (wired in `wireBus`, mirror `debug:toggleTime` at `:508`) that jumps to
     night AND kicks off a wave immediately (reusing Step 3's begin-wave seam); surface it on/next to the
     existing `GO NIGHT` dev button.
-  - HUD (`UIScene.ts`): a **fire-integrity bar** (mirror the HP/hunger bar pattern, synced on a new
-    `fire:changed` event from CampfireManager) and a small **night/wave indicator** beside `timeText`
-    (reuse the `time:changed` payload). Passive, additive.
-  - Side effects: `GameScene.wireBus` + SHUTDOWN off; `CampfireManager` emits `fire:changed` on integrity
+  - HUD (`UIScene.ts`): a **fire-fuel bar** (the fire's light/life meter — mirror the HP/hunger bar
+    pattern, synced on a new `fire:changed` event from CampfireManager, emitted when fuel changes — burn,
+    feed, or `damageFire`) and a small **night/wave indicator** beside `timeText` (reuse the `time:changed`
+    payload). Passive, additive. *(No integrity meter — the bar tracks `fuel`, decision #2.)*
+  - Side effects: `GameScene.wireBus` + SHUTDOWN off; `CampfireManager` emits `fire:changed` on fuel
     change; `UIScene` new passive elements.
   - Docs: `docs/STATUS.md`; `docs/WORKFLOW.md` dev-hooks note if one exists (else skip).
-  - Done when: the dev force-wave control starts a wave on demand in-game; the fire-integrity bar tracks
-    `damageFire`; the night indicator shows during night.
+  - Done when: the dev force-wave control starts a wave on demand in-game; the fire-fuel bar tracks burn +
+    `damageFire` + feed; the night indicator shows during night.
 
 - [ ] **Step 7: Scenario API surface, tests, tripwire & docs** `[inline]`
   - `testApi.ts`: consolidate the `__test` seams (`damageFire` from Step 1, `beginWave` from Step 3) and
-    expose new `DebugState` fields (fire `integrity`, active-wave state, spawn count this night) **appended
-    at END** of the interface + serializer (`:394`); update `tests/e2e/harness.ts` + the `refactor-tripwire`
-    golden together (intentional bump). Ensure `applyScenario` can seed a hearth + start a night
-    deterministically.
+    expose new `DebugState` fields (active-wave state, spawn count this night — **no `integrity` field**,
+    decision #2; fuel/lit already surfaced in `campfires[]`) **appended at END** of the interface +
+    serializer (`:394`); update `tests/e2e/harness.ts` + the `refactor-tripwire` golden together
+    (intentional bump). Ensure `applyScenario` can seed a hearth + start a night deterministically.
   - Tests: Tier-1 pure tests for new pure logic (pacing-curve sampling, edge-tile selection, escalation
-    curve, `isKnockedOut`); a Tier-2 spec for the roadmap acceptance test ("clock to night → assert edge
+    curve); a Tier-2 spec for the roadmap acceptance test ("clock to night → assert edge
     spawns → step to dawn → assert survival + day increment"). Confirm `npm run smoke`.
   - Docs: `docs/ROADMAP.md` (Step 2 done); `docs/STATUS.md`; `docs/GAME-DESIGN.md`/`docs/DECISIONS.md`
     touch-ups if built behaviour refines the design; CLAUDE.md Status line.
@@ -229,7 +246,9 @@ new combat.
 - **Defence structures** (plan 037 — destructible walls, gate, spike trap): deferred; they reuse Step 4's
   objective-target seam and are tuned against this live wave.
 - **Multiple hearths / unioned claims, walls extending the claim, torches** — MVP has the single hearth.
-- **Claw-back / relight-to-recover** after the fire is out — instant-loss for MVP (decision #1).
+- ~~**Claw-back / relight-to-recover** after the fire is out — instant-loss for MVP.~~ **NOW IN SCOPE**
+  (decisions #1/#2 reversed 2026-07-20): the fire is not a loss condition; relighting a doused fire is
+  the recovery, and it's just the existing feed-wood path.
 - **Enemy hide-in-dark / fog aggro gating** (deferred from plan 012) — the wave doesn't need it.
 - **Authored treeline / spawn-marker map entities** — code-side edge rule for MVP (decision #3).
 - **Hunger going lethal** (roadmap Step 4) — `HUNGER_LETHAL` stays false; only the fuel comment is touched.
@@ -241,6 +260,12 @@ new combat.
 > Independent fresh-eyes review (critique-plan), 2026-07-20. **Applied** — findings #1–#5 folded into the
 > steps/decisions above (test seams pulled into Steps 1 & 3; first-tick phase reconcile; claim peeled to
 > plan 039; objective seam kept minimal; integrity-0 also douses). Recorded here for provenance.
+>
+> **⚠ Superseded in part (owner, 2026-07-20, at execution start):** decisions #1/#2 were reversed — the
+> fire is **no longer a loss condition** and there is **no integrity meter** (`damageFire` drains fuel).
+> This moots critique #5 (no two loss routes to keep symmetric) and softens #2 (Milestone A is now
+> testable purely via the `damageFire`→fuel→douse seam, no loss to assert). The verdict's "integrity as a
+> distinct meter / instant-loss" core bets below are historical — see the updated Summary + decisions.
 
 **Verdict:** Well-grounded, roadmap-aligned plan with the right core bets (separate `WaveDirector`,
 integrity as a distinct meter, code-side edge rule, instant-loss) — proceed after tightening a few Medium

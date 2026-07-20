@@ -77,11 +77,11 @@ test('fuel drains to 0 (douses) then feeding wood relights it', async ({ page })
   await applyScenario(page, {
     player: [22, 40],
     campfires: [[22, 38]],
-    campfireFuel: 1, // near-empty — a short step exhausts it rather than the full ~120s tank
+    campfireFuel: 1, // near-empty — a short step exhausts it rather than the full ~300s tank
     inventory: { wood: 5 },
   });
 
-  await step(page, 1200); // 1 fuel - 1/s * 1.2s -> clamped to 0
+  await step(page, 3000); // 1 fuel - 0.4/s * 3s -> clamped to 0 (burn retuned in plan 038 Step 2)
 
   const drained = await state(page);
   expect(drained.campfires[0].fuel).toBe(0);

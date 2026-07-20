@@ -83,10 +83,11 @@ new combat.
   "tolerates a fire destroyed mid-order"). `CampfireUnit` tracks `fuel`/`lit`, not hp. Fuel consts + the
   stale-tuning comment: `config.ts:386-405` (`CAMPFIRE_FUEL_MAX=120`, `_BURN_PER_SEC=1`, `_PER_WOOD=30`,
   `_FEED_INTERVAL_MS=1000`, `_LIGHT_MIN_FRAC=0.4`). Fire `maxHp:20` inert (`buildables.ts:27`, comment `:8-9`).
-- **Loss/restart (exists — reuse):** `GameScene.damagePlayer` (`:1003-1011`) → `killPlayer()`
+- **Loss/restart (exists — reuse AS-IS):** `GameScene.damagePlayer` (`:1003-1011`) → `killPlayer()`
   (`:1124-1131`) logs `"player down — restarting"` then `scene.restart()` after a death hold; `update()`
-  freezes on `playerChar.dying` (`:648-651`). **New:** a `loseGame(reason)` both `killPlayer` and a
-  fire-out check funnel into. No game-over screen — `scene.restart()` rebuilds via `create()`→`buildWorld()`.
+  freezes on `playerChar.dying` (`:648-651`). **Player death stays the ONLY loss** — decisions #1/#2
+  dropped the planned `loseGame(reason)`/fire-out funnel, so this path is UNCHANGED by plan 038. No
+  game-over screen — `scene.restart()` rebuilds via `create()`→`buildWorld()`.
 - **Vision (mostly free):** night = `SurvivalClock.nightOverlay` (`:93-118`) with an inverted mask
   punched per lit fire (redrawn each tick, `:220-224`); fog = `fx/VisionController.ts`. Both read
   `lightSources()` per-frame, so **a knocked-out fire → its disc vanishes → darkness re-floods that frame**
@@ -154,7 +155,18 @@ new combat.
     `feedCampfire(0)` relights it. Existing `campfire.spec.ts` (burn-out → relight) stays green unchanged.
     **No wave/objective AI needed.**
 
-- [ ] **Step 2: Retune campfire fuel for the 15-min cycle** `[delegate]`
+- [x] **Step 2: Retune campfire fuel for the 15-min cycle** `[inline]` — *did inline, not delegated: the
+  design reversal makes fuel the sole fire meter and the retune is coupled to rate-dependent existing
+  tests that needed judgement to update.*
+  - Outcome: `config.ts` `CAMPFIRE_FUEL_BURN_PER_SEC` 1 → **0.4** (full 120-fuel tank now lasts ~300s,
+    just outlasting a 240s night on natural burn with ~20% headroom for mob drain; ~3 refuels/cycle vs
+    the old ~7). Kept `CAMPFIRE_FUEL_MAX=120` + `PER_WOOD=30` (leaves the "lit radius shrinks" test's
+    full/near-empty seeds valid). Rewrote the config comment for the 15-min cycle + 038 intent; added a
+    note that the **hunger** retune + `HUNGER_LETHAL` is roadmap Step 4, NOT this plan (left false).
+    Updated the rate-dependent e2e "fuel drains to 0" test (step 1200 → 3000ms) and added a Tier-1
+    `campfire.test.ts` anchor (full tank outlasts NIGHT_MS on natural burn, half tank doesn't).
+    **Verified:** typecheck clean; 814/814 unit tests pass; the four fuel-rate-dependent campfire e2e
+    tests pass.
   - Data-only: retune `CAMPFIRE_FUEL_MAX` / `CAMPFIRE_FUEL_BURN_PER_SEC` / `CAMPFIRE_FUEL_PER_WOOD` in
     `config.ts:386-405` so a fed fire comfortably survives a night with a couple of refuels (not ~13% of a
     cycle / ~7 refuels), per the stale-tuning comment there. Update that comment for the 15-min cycle + new

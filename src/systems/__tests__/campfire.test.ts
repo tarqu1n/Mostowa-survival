@@ -5,6 +5,7 @@ import {
   CAMPFIRE_FUEL_BURN_PER_SEC,
   CAMPFIRE_FUEL_PER_WOOD,
   CAMPFIRE_LIGHT_MIN_FRAC,
+  NIGHT_MS,
 } from '../../config';
 
 describe('drainFuel', () => {
@@ -18,6 +19,15 @@ describe('drainFuel', () => {
   it('clamps at 0 rather than going negative', () => {
     expect(drainFuel(1, 5000, 1)).toBe(0);
     expect(drainFuel(0, 1000, 1)).toBe(0);
+  });
+
+  // Plan 038 Step 2 fuel-retune intent, encoded against the live config: a full tank must *just*
+  // outlast a whole night on natural burn (so a well-fed fire survives an undefended night), but a
+  // half tank must NOT (so keeping it lit through a defended night — burn + mob attacks — is a real
+  // ask). If a future retune breaks either end, this fails loudly rather than silently drifting.
+  it('a full tank outlasts a night on natural burn; a half tank does not (retune anchor)', () => {
+    expect(drainFuel(CAMPFIRE_FUEL_MAX, NIGHT_MS, CAMPFIRE_FUEL_BURN_PER_SEC)).toBeGreaterThan(0);
+    expect(drainFuel(CAMPFIRE_FUEL_MAX / 2, NIGHT_MS, CAMPFIRE_FUEL_BURN_PER_SEC)).toBe(0);
   });
 });
 

@@ -348,7 +348,8 @@ export const NIGHT_MAX_ALPHA = 0.55;
  * Hunger (see systems/needs.ts). HUNGER_DRAIN_PER_SEC empties a full HUNGER_MAX in ~250s — ~0.28 of a
  * full day/night cycle (900s at DAY_MS 660s + NIGHT_MS 240s), i.e. you'd starve well within one day.
  * NOTE: this drain was tuned against the old ~210s cycle; retune by feel now the cycle is ~4x longer.
- * While starving (hunger <= 0), the
+ * That retune + flipping `HUNGER_LETHAL` is **roadmap Step 4** (hunger-live), NOT plan 038 — the
+ * campfire-fuel retune above is deliberately separate. While starving (hunger <= 0), the
  * player takes STARVE_DAMAGE every STARVE_DAMAGE_INTERVAL_MS (1 HP / 2s).
  *
  * `HUNGER_LOW_FRACTION` is the "near-empty" cutoff (fraction of HUNGER_MAX): below it the HUD hunger
@@ -387,16 +388,21 @@ export const SPAWN_TILE = { col: 118, row: 140 };
 export const BASE_ZONE_SIZE = { w: 21, h: 27 };
 
 /**
- * Campfire fuel (see plan 014 Context & decisions). The fire is always burning once built, draining
- * fuel continuously at `CAMPFIRE_FUEL_BURN_PER_SEC` — a full tank (`CAMPFIRE_FUEL_MAX`) lasts ~120s.
- * NOTE: originally sized "deliberately short of a full cycle" when that cycle was 210s; the cycle is
- * now 900s (DAY_MS 660s + NIGHT_MS 240s), so a full tank now covers only ~13% of a cycle and needs
- * ~7 refuels per cycle — likely too punishing. Retune CAMPFIRE_FUEL_MAX / burn rate by feel.
+ * Campfire fuel (see plan 014 Context & decisions; retuned for the 15-min cycle in plan 038 Step 2).
+ * The fire is always burning once built, draining fuel continuously at `CAMPFIRE_FUEL_BURN_PER_SEC` —
+ * a full tank (`CAMPFIRE_FUEL_MAX`) now lasts **~300s** (120 / 0.4). Sized so a full fire **just
+ * outlasts a whole night** (NIGHT_MS 240s) on natural burn alone, leaving ~20% headroom — which the
+ * night wave's fire attacks (`CampfireManager.damageFire`, plan 038) eat into, so keeping it lit
+ * through a defended night takes a refuel or two but isn't constant babysitting. Over a full 900s
+ * cycle that's ~3 tanks (~3 refuels) instead of the old 120s tank's ~7 — the "too punishing" tuning
+ * the pre-038 comment flagged. **Exact feel-tuning (fuel vs wave DPS vs night length) is plan 038 Step
+ * 5**, once the live wave exists; these are the baseline. The fire is NOT a loss condition (plan 038
+ * decisions #1/#2) — a fire that burns out just goes dark; relight it by feeding wood.
  * Refuelled by feeding wood: each unit adds `CAMPFIRE_FUEL_PER_WOOD` fuel (4 wood refuels an empty
  * fire). Starts full on completion.
  */
 export const CAMPFIRE_FUEL_MAX = 120;
-export const CAMPFIRE_FUEL_BURN_PER_SEC = 1;
+export const CAMPFIRE_FUEL_BURN_PER_SEC = 0.4;
 export const CAMPFIRE_FUEL_PER_WOOD = 30;
 
 /**

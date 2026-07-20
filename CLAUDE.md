@@ -48,12 +48,15 @@ Patterns each seam follows: [docs/CONVENTIONS.md](docs/CONVENTIONS.md).
 
 Core loop, worker task system, build/blueprints, basic combat + a first enemy, the Pixel Crawler art
 swap, a three-tier test harness, a first day/night + hunger survival slice, a generic monster AI +
-swappable weapons system, and the **night-wave + campfire-defense loop** (paced treeline spawns that
-seek the fire, per-night escalation, loop-close; fire-out = darkness, not a loss) have all landed.
-**Full feature/plan history:** [docs/STATUS.md](docs/STATUS.md).
+swappable weapons system, the **night-wave + campfire-defense loop** (paced treeline spawns that
+seek the fire, per-night escalation, loop-close; fire-out = darkness, not a loss), and **destructible
+base-defence walls** (a 4-way palisade the player rotates + deconstructs; mobs siege a walled-off base
+and take thorns damage) unified with the campfire under a **`StructureManager` behavior registry**
+(plan 037) have all landed. **Full feature/plan history:** [docs/STATUS.md](docs/STATUS.md).
 
 **Next:** the ordered path to a first playable MVP is in [docs/ROADMAP.md](docs/ROADMAP.md) (✅ combat
-rework → ✅ night wave + campfire defense → trap → hunger → NPC). Full vision in
+rework → ✅ night wave + campfire defense → ✅ base-defence walls → trap (plan 040) → hunger → NPC).
+Full vision in
 [docs/GAME-DESIGN.md](docs/GAME-DESIGN.md); [docs/DECISIONS.md](docs/DECISIONS.md) for settled vs open.
 
 ## The game in one line

@@ -1,10 +1,15 @@
 # Base-Defence Structures — Destructible Walls, Gate & Spike Trap
 
-> Status: **ready — executing, RESEQUENCED walls-first** (owner, 2026-07-20). The night wave (plan 038)
-> has landed, so critique #1/#2 (do the wave first) are **resolved**. Per critique #4 the owner chose to
-> **build destructible walls as a concrete feature before the StructureManager refactor**, so the
-> abstraction is generalised against two real shapes (campfire + wall), not designed from the campfire
-> alone. See "Execution order (resequenced)" below — it overrides the step numbering in "Steps".
+> Status: **in review — walls + StructureManager delivered; scope trimmed** (owner, 2026-07-20).
+> RESEQUENCED walls-first (critique #4): the night wave (plan 038) landed (resolving critique #1/#2), so
+> destructible walls were built as a concrete feature **before** the StructureManager refactor — the
+> abstraction was generalised against two real shapes (campfire + wall), not one. **Delivered:** art
+> curation, 2a wall (live 4-way destructible + player-rotate), 2b player deconstruct/DEMOLISH + refund,
+> 2c mob-siege + thorns, item 3 StructureManager + behavior registry (campfire/wall dissolved into
+> modules). **Scope trimmed (owner, 2026-07-20):** the **gate is deferred** into later *upgraded-walls*
+> work (not built here); the **spike trap is carved out to plan 040** (which now builds it as the third
+> `TrapBehavior` module on this plan's landed registry). See "Execution order (resequenced)" below.
+> All delivered chunks are committed + pushed on branch `claude/roadmap-after-plan-38-641k47`.
 
 ## Summary
 
@@ -48,12 +53,17 @@ into the behavior-module registry, designed against two real shapes.
 3. **StructureManager generalisation** (orig. Step 1, now against two shapes): fold `CampfireManager`
    **and** `WallManager` into `StructureManager` + behavior-module registry. Interface is designed from
    campfire + wall (hp/takeDamage/damage-stage already concrete), not a population of one.
-4. **Gate** (orig. Step 6) — ally-permeable destructible barrier + the split mob/ally pathing predicate.
-5. **Spike trap + re-arm** (orig. Steps 7–8) — trigger-once trap + the dawn-rearm worker order.
-6. **Scenario API, tests, tripwire & docs** (orig. Step 9).
+4. ~~**Gate**~~ — **DEFERRED (owner, 2026-07-20)** into later *upgraded-walls* work; not built in this
+   plan. (The ally-permeable barrier + split mob/ally pathing predicate come when walls get upgrade tiers.)
+5. ~~**Spike trap + re-arm**~~ — **CARVED OUT to plan 040** (owner, 2026-07-20). Plan 040 (revised) builds
+   it as the third `TrapBehavior` module on this plan's now-landed `StructureManager` registry.
+6. **Scenario API, tests, tripwire & docs** — tests/tripwire were done per-chunk (2a/2b/2c/3, golden left
+   unchanged throughout); the closing **docs wrap-up** (this status trim, ROADMAP/STATUS/CLAUDE touch-ups)
+   is the final 037 task.
 
-Final numeric tuning (wall HP vs wave DPS, funnel width, trap damage) stays deferred to live-wave
-playtest, as the original plan locks. Each numbered block above ends at a natural check-in.
+With gate deferred and trap carved out, **this plan's deliverable = destructible walls + the
+StructureManager generalisation** — both landed. Final numeric tuning (wall HP vs wave DPS, thorns) stays
+deferred to live-wave playtest.
 
 ## Context & decisions
 

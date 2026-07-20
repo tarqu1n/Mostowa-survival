@@ -6,6 +6,25 @@ Part of the [decision log index](../DECISIONS.md). Newest first.
 
 ---
 
+## 2026-07-20 — [DECIDED] Base-defence walls: mob-destructible + thorns archetype, deconstruct-not-combat, 4-way rotate (plan 037)
+
+Base-defence walls (plan 037, chunks 2a–2c) settled four gameplay calls; full rationale in
+[plan 037](../../plans/037-base-defence-structures.md) (locked decisions #1/#6/#7):
+
+- **Walls are destructible by *mobs*, not players.** A mob walled off from its objective sieges the
+  blocking wall (telegraphed strike → wall HP → destroyed → paths through). **Players never damage walls
+  with weapons** — a wall is removed by a **worker `deconstruct` order** (DEMOLISH mode) with a **partial
+  refund** (`floor(cost × 0.5)`), mirroring the build/refuel order. Explicit intent over accidental
+  weapon damage.
+- **Spiked wall = thorns + low-HP early-game archetype.** The D_2 stake palisade deals a little
+  retaliation damage to a mob attacking it (`thorns` data field), and is cheap + low `maxHp` — it chips
+  the horde but won't hold long. Sets up a later **solid high-HP, no-thorns wall** as the tradeoff, so
+  wall choice is a real decision. Thorns fire **only on a mob's attack**, never passively (keeps it
+  distinct from the step-on-tile spike trap).
+- **Walls are 4-way, facing chosen by player-rotate at placement** — neighbour auto-orient stays
+  deferred. Reverses the original front-facing-only MVP note.
+- **The gate is deferred** into later *upgraded-walls* work (not built in plan 037).
+
 ## 2026-07-20 — [DECIDED] Melee hit detection is tile-space reach/arc, not physics/geometric hitboxes (plan 036)
 
 Melee was one hardcoded front tile (`feet + facing`). Plan 036 makes it a data-driven **attack shape** —

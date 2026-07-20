@@ -108,6 +108,17 @@ path). Ordered **after** the wave so it can be tuned as a funnel against real wa
 *Done when:* you place it by day and watch it damage/stop the wave at night. *Test:* place via scenario,
 run wave, assert trap damage.
 
+> **In progress — [plan 040](../plans/040-spike-trap.md)** (the "one trap", carved out of plan 037). The
+> spike trap ships as a `TrapBehavior` module on the StructureManager registry landed below. Marks this
+> step delivered when it lands.
+>
+> **Landed ahead of this step — base-defence walls + StructureManager ([plan 037](../plans/037-base-defence-structures.md)).**
+> Not a numbered MVP step (walls "already prove the build path"), but pulled in early: **destructible
+> 4-way palisade walls** the player rotates + deconstructs (partial refund), which mobs **siege** when
+> walled off from the fire/player and take **thorns** damage from; the campfire + wall runtimes are now
+> unified under a **`StructureManager` + behavior-module registry**, which plan 040's trap plugs into as
+> the third behavior. The **gate** (ally-permeable barrier) is deferred into later *upgraded-walls* work.
+
 ### 4. Hunger live
 
 Author food on the map (berry bushes → berries already exist as an edible), set `HUNGER_LETHAL = true`,

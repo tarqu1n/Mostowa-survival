@@ -442,7 +442,10 @@ async function runAutoCommit(root, labels) {
     const message = `editor: autosave\n\n${labels.join('\n')}`;
     const commit = await git(['commit', '-m', message, '--', ...names]);
     if (!commit.ok) {
-      console.warn('[editor autocommit] commit failed:', commit.stderr.trim() || commit.stdout.trim());
+      console.warn(
+        '[editor autocommit] commit failed:',
+        commit.stderr.trim() || commit.stdout.trim(),
+      );
       return;
     }
     console.log('[editor autocommit] committed:', labels.join(', '));
@@ -472,7 +475,10 @@ async function pushWithRebase(git, labels) {
     push.stderr,
   );
   if (!rejected) {
-    console.warn('[editor autocommit] push failed (saved locally, will retry next save):', push.stderr.trim());
+    console.warn(
+      '[editor autocommit] push failed (saved locally, will retry next save):',
+      push.stderr.trim(),
+    );
     return;
   }
   // Diverged remote — replay our commit on top of it.
@@ -491,7 +497,10 @@ async function pushWithRebase(git, labels) {
   if (push2.ok) {
     console.log(`[editor autocommit] rebased onto origin/${branch} and pushed:`, labels.join(', '));
   } else {
-    console.warn('[editor autocommit] push still failing after rebase (will retry next save):', push2.stderr.trim());
+    console.warn(
+      '[editor autocommit] push still failing after rebase (will retry next save):',
+      push2.stderr.trim(),
+    );
   }
 }
 
@@ -539,7 +548,10 @@ export function editorApiPlugin() {
         // Auto-commit-on-save (opt-in): once a mutating editor request has responded 2xx, its file
         // writes are on disk — schedule a debounced stage/commit/push. Registered generically here
         // so every current + future `/__editor/*` mutation is covered without touching each handler.
-        if (AUTOCOMMIT && (req.method === 'PUT' || req.method === 'POST' || req.method === 'DELETE')) {
+        if (
+          AUTOCOMMIT &&
+          (req.method === 'PUT' || req.method === 'POST' || req.method === 'DELETE')
+        ) {
           res.once('finish', () => {
             if (res.statusCode >= 200 && res.statusCode < 300) {
               scheduleAutoCommit(root, `${req.method} ${path}`);

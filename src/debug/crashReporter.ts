@@ -73,9 +73,17 @@ function now(): number {
 
 function normalize(err: unknown): { name: string; message: string; stack: string } {
   if (err instanceof Error) {
-    return { name: err.name || 'Error', message: err.message || '', stack: err.stack || '(no stack)' };
+    return {
+      name: err.name || 'Error',
+      message: err.message || '',
+      stack: err.stack || '(no stack)',
+    };
   }
-  return { name: 'NonError', message: safeString(err), stack: '(no stack — thrown value was not an Error)' };
+  return {
+    name: 'NonError',
+    message: safeString(err),
+    stack: '(no stack — thrown value was not an Error)',
+  };
 }
 
 function safeString(v: unknown): string {

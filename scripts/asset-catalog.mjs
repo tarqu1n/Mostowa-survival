@@ -503,7 +503,9 @@ function assertValidCatalog(catalog) {
         throw new Error(`asset ${a.id} regions must be a non-empty array when present`);
       }
       if (a.type === 'object' && a.regions.length < 2) {
-        throw new Error(`asset ${a.id} (object) regions must be an array of >=2 entries when present`);
+        throw new Error(
+          `asset ${a.id} (object) regions must be an array of >=2 entries when present`,
+        );
       }
       for (const r of a.regions) {
         if (

@@ -207,16 +207,12 @@ describe('applyResize', () => {
 
   it('throws when the plan has invalid dims', () => {
     const map = makeMap();
-    expect(() => applyResize(map, { top: 0, right: 0, bottom: 0, left: -3 })).toThrow(
-      /invalid/,
-    );
+    expect(() => applyResize(map, { top: 0, right: 0, bottom: 0, left: -3 })).toThrow(/invalid/);
   });
 
   it('throws when an object would leave the new bounds', () => {
     const map = makeMap(); // node at col=1
-    expect(() => applyResize(map, { top: 0, right: 0, bottom: 0, left: -2 })).toThrow(
-      /node_0001/,
-    );
+    expect(() => applyResize(map, { top: 0, right: 0, bottom: 0, left: -2 })).toThrow(/node_0001/);
   });
 
   it('keeps the palette reference identity (unchanged, not cloned)', () => {

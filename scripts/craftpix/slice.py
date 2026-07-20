@@ -11,7 +11,7 @@ catalog/StripAnim pipeline handles them with no new schema (see docs/CRAFTPIX.md
 docs/DECISIONS.md).
 
 The row->facing order is NOT global — it differs per pack (verified visually):
-  animals: row 0..3 = up, down, left, right
+  animals: row 0..3 = down, up, left, right
   guild:   row 0..3 = down, left, right, up
 so callers pass the `dirs` list explicitly. Left/right are near-mirrors; the
 3-way (down/up/side + flipX) rig picks one side at wire time, so an L/R mix-up is
@@ -31,7 +31,7 @@ import sys
 from PIL import Image
 
 # Row-index -> facing. Verify L/R when an actor is actually wired.
-ANIMALS_DIRS = ["up", "down", "left", "right"]
+ANIMALS_DIRS = ["down", "up", "left", "right"]
 GUILD_DIRS = ["down", "left", "right", "up"]
 
 

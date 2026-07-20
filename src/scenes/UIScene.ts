@@ -109,6 +109,13 @@ export class UIScene extends Phaser.Scene {
   private hudHealthLabel!: Phaser.GameObjects.Text;
   private hudHungerBarFg!: Phaser.GameObjects.Rectangle;
   private hudHungerLabel!: Phaser.GameObjects.Text;
+  // Fire-heart fuel bar (plan 038 Step 6) — the campfire's light/life meter, fed by `fire:changed`.
+  // Whole group hidden when no hearth exists; orange while lit, dim red when knocked out (fuel 0).
+  private hudFireBarFg!: Phaser.GameObjects.Rectangle;
+  private hudFireLabel!: Phaser.GameObjects.Text;
+  private hudFireGroup: Phaser.GameObjects.Components.Visible[] = [];
+  // Night/wave indicator beside the day/night readout — shown while a wave is on (night phase).
+  private waveText!: Phaser.GameObjects.Text;
   private playerMaxHp = 0;
   private playerHp = 0; // seeded lazily from the first player:hpChanged (HP isn't on the registry)
   private eatRows: Array<{ itemId: string; button: Button; nutrition: number }> = [];
@@ -323,6 +330,17 @@ export class UIScene extends Phaser.Scene {
       )
       .setOrigin(0.5);
 
+    // Night/wave indicator (plan 038 Step 6) — a small red banner just under the day/night readout,
+    // shown while a wave is on (the night phase). Passive; toggled in onTimeChanged.
+    this.waveText = this.add
+      .text(BASE_WIDTH / 2, this.timeText.y + 13, 'NIGHT WAVE', {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#e5533a',
+      })
+      .setOrigin(0.5)
+      .setVisible(initialPhase === 'night');
+
     // Mode toggle — Command (default, no button needed) / Combat / Inspect, mutually exclusive.
     // Left side, below the wood/queue readout. Laid out in a row via the kit's arrangeRow helper.
     const mbw = 64;
@@ -471,7 +489,7 @@ export class UIScene extends Phaser.Scene {
     // children (like the Wellbeing eat-rows), so they show/hide and hit-test with the panel — only
     // the panel itself is pushed to hudElements. Hidden until DEV is tapped.
     const dpw = 124;
-    const dph = 96;
+    const dph = 128; // fits three dev buttons (SPAWN ENEMY / GO NIGHT / FORCE WAVE) + the label
     this.devPanel = new Panel(this, BASE_WIDTH - dpw / 2 - 8, BASE_HEIGHT - dbh - 16 - dph / 2, {
       width: dpw,
       height: dph,
@@ -499,7 +517,16 @@ export class UIScene extends Phaser.Scene {
       fontSize: 11,
       onDown: () => this.game.events.emit('debug:toggleTime'),
     });
-    this.devPanel.add([spawnEnemyButton, this.devTimeButton]);
+    // Force-wave (plan 038 Step 6): jump to night AND kick off a wave now, for manual playtesting.
+    const forceWaveButton = new Button(this, 0, 56, {
+      width: 108,
+      height: 24,
+      label: 'FORCE WAVE',
+      variant: 'olive',
+      fontSize: 11,
+      onDown: () => this.game.events.emit('debug:forceWave'),
+    });
+    this.devPanel.add([spawnEnemyButton, this.devTimeButton, forceWaveButton]);
     this.hudElements.push(this.devPanel);
 
     // Hotbar — always-visible row of the first HOTBAR_SLOTS slots, bottom-centre. Hidden in combat
@@ -558,6 +585,7 @@ export class UIScene extends Phaser.Scene {
     this.game.events.on('hunger:changed', this.onHungerChanged, this);
     this.game.events.on('player:hpChanged', this.onPlayerHp, this);
     this.game.events.on('player:hit', this.onPlayerHit, this);
+    this.game.events.on('fire:changed', this.onFireChanged, this);
 
     // Teardown so a future scene restart doesn't double-register on stale listeners.
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -574,6 +602,7 @@ export class UIScene extends Phaser.Scene {
       this.game.events.off('hunger:changed', this.onHungerChanged, this);
       this.game.events.off('player:hpChanged', this.onPlayerHp, this);
       this.game.events.off('player:hit', this.onPlayerHit, this);
+      this.game.events.off('fire:changed', this.onFireChanged, this);
     });
   }
 
@@ -731,14 +760,19 @@ export class UIScene extends Phaser.Scene {
     const BAR_H = 9;
     const healthY = 10;
     const hungerY = 21;
+    const fireY = 32;
 
     // Dark bg rect + left-anchored coloured fg (origin 0,0.5 keeps the left edge fixed as scaleX
     // shrinks), plus a centred value label with a black stroke so numbers stay legible over any fill.
     const makeBar = (
       yc: number,
       colour: number,
-    ): { fg: Phaser.GameObjects.Rectangle; value: Phaser.GameObjects.Text } => {
-      this.add
+    ): {
+      bg: Phaser.GameObjects.Rectangle;
+      fg: Phaser.GameObjects.Rectangle;
+      value: Phaser.GameObjects.Text;
+    } => {
+      const bg = this.add
         .rectangle(BAR_X + BAR_W / 2, yc, BAR_W, BAR_H, 0x2a2a2a)
         .setStrokeStyle(1, 0x000000, 0.5);
       const fg = this.add.rectangle(BAR_X, yc, BAR_W, BAR_H, colour).setOrigin(0, 0.5);
@@ -750,7 +784,7 @@ export class UIScene extends Phaser.Scene {
         })
         .setOrigin(0.5)
         .setStroke('#000000', 2);
-      return { fg, value };
+      return { bg, fg, value };
     };
 
     this.add
@@ -770,6 +804,40 @@ export class UIScene extends Phaser.Scene {
     const hunger = makeBar(hungerY, 0xd8a24a);
     this.hudHungerBarFg = hunger.fg;
     this.hudHungerLabel = hunger.value;
+
+    // Fire-heart fuel bar (plan 038 Step 6): the campfire's light/life. The whole group hides until a
+    // hearth exists (fed null on none) — see onFireChanged. Warm-orange fill, red when knocked out.
+    const fireLabel = this.add
+      .text(LABEL_X, fireY, 'FIRE', {
+        fontFamily: 'monospace',
+        fontSize: '8px',
+        color: '#e8dcc0',
+      })
+      .setOrigin(0, 0.5);
+    const fire = makeBar(fireY, 0xffb066);
+    this.hudFireBarFg = fire.fg;
+    this.hudFireLabel = fire.value;
+    this.hudFireGroup = [fireLabel, fire.bg, fire.fg, fire.value];
+    this.setFireHudVisible(false); // no hearth until one is built / a scenario places it
+  }
+
+  /** Show/hide the whole fire-bar group (label + bg + fg + value) — hidden when there's no hearth. */
+  private setFireHudVisible(visible: boolean): void {
+    for (const o of this.hudFireGroup) o.setVisible(visible);
+  }
+
+  /** `fire:changed` handler (plan 038 Step 6): render the fire-heart fuel bar, or hide it when there's
+   *  no hearth. Orange while lit; dim red at 0 (knocked out — dark, but not a loss). */
+  private onFireChanged(payload: { fuel: number; maxFuel: number; lit: boolean } | null): void {
+    if (!payload) {
+      this.setFireHudVisible(false);
+      return;
+    }
+    this.setFireHudVisible(true);
+    const ratio = Math.max(0, Math.min(1, payload.fuel / payload.maxFuel));
+    this.hudFireBarFg.scaleX = ratio;
+    this.hudFireBarFg.setFillStyle(payload.lit ? 0xffb066 : 0xc0392b);
+    this.hudFireLabel.setText(`${Math.round(payload.fuel)}/${payload.maxFuel}`);
   }
 
   // ---- Health & Wellbeing screen -------------------------------------------
@@ -974,6 +1042,8 @@ export class UIScene extends Phaser.Scene {
   /** Keep the passive day/night readout in sync with GameScene's clock (fires only on phase/day change). */
   private onTimeChanged({ phase, dayCount }: { phase: 'day' | 'night'; dayCount: number }): void {
     this.timeText.setText(`Day ${dayCount} [${phase}]`);
+    // Night/wave indicator (plan 038 Step 6): a wave runs the whole night, so show it during night.
+    this.waveText.setVisible(phase === 'night');
     // Dev day/night button shows the phase it'll switch *to*, so it reads as an action.
     this.devTimeButton.setLabel(phase === 'day' ? 'GO NIGHT' : 'GO DAY');
   }

@@ -530,6 +530,7 @@ export class GameScene extends Phaser.Scene {
     this.game.events.on('debug:randomise', this.randomiseWorld, this); // dev menu: scatter nodes + enemies
     this.game.events.on('debug:spawnEnemy', this.spawnEnemyNearPlayer, this); // dev menu: drop one enemy by the player to fight
     this.game.events.on('debug:toggleTime', this.survivalClock.toggleDayNight, this.survivalClock); // dev menu: flip day/night
+    this.game.events.on('debug:forceWave', this.onForceWave, this); // dev menu: jump to night + start a wave now
     this.game.events.on('time:changed', this.waveDirector.onTimeChanged, this.waveDirector); // start/stop the night wave on dusk/dawn
     this.game.events.on('zoom:delta', this.pointerInput.adjustZoom, this.pointerInput);
     this.game.events.on('camera:center', this.pointerInput.centerOnPlayer, this.pointerInput);
@@ -552,6 +553,7 @@ export class GameScene extends Phaser.Scene {
         this.survivalClock.toggleDayNight,
         this.survivalClock,
       );
+      this.game.events.off('debug:forceWave', this.onForceWave, this);
       this.game.events.off('time:changed', this.waveDirector.onTimeChanged, this.waveDirector);
       this.game.events.off('zoom:delta', this.pointerInput.adjustZoom, this.pointerInput);
       this.game.events.off('camera:center', this.pointerInput.centerOnPlayer, this.pointerInput);
@@ -1043,6 +1045,15 @@ export class GameScene extends Phaser.Scene {
       tile: { col: c.col, row: c.row },
       pos: { x: tileToWorldCenter(c.col), y: tileToWorldCenter(c.row) },
     };
+  }
+
+  /** DEV force-wave hook (plan 038 Step 6): jump to night if it's day, then kick off a wave now — the
+   *  manual-playtest counterpart to the scenario API's `beginWave`. `toggleDayNight` emits
+   *  `time:changed(night)` which already begins a wave via the WaveDirector; the explicit `beginWave`
+   *  covers the already-night case (and is idempotent), so one tap always guarantees a live wave. */
+  private onForceWave(): void {
+    if (this.survivalClock.dayPhase === 'day') this.survivalClock.toggleDayNight();
+    this.waveDirector.beginWave();
   }
 
   /** Apply incoming damage to the player; on death, restart the scene (see Context & decisions'

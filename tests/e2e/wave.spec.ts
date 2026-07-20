@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { startGame, applyScenario, step, state, beginWave, blocked } from './harness';
+import { startGame, applyScenario, step, state, beginWave, blocked, emit } from './harness';
 
 // Tier-2: the night wave (plan 038 Step 3). WaveDirector meters skeleton spawns from the "treeline" (a
 // band off the defended centre — the lit hearth) during a wave, started by the night phase edge, the
@@ -94,6 +94,22 @@ test('a fire-seeking mob with no player near attacks the fire (drains its fuel)'
   expect(s.enemyModes[0]).toBe('seek'); // seeking + striking the fire (never chasing — player is far)
   expect(s.campfires[0].fuel).toBeLessThan(before - 8); // fuel drained well past mere natural burn
   expect(s.campfires[0].lit).toBe(true); // 100 fuel doesn't fully douse in 6s — still lit (not a loss)
+});
+
+// Plan 038 Step 6: the dev force-wave hook — jump to night AND start a wave on demand (the manual
+// playtest counterpart to beginWave). Drives the same `debug:forceWave` event the DEV button emits.
+test('the dev force-wave hook jumps to night and starts a wave on demand', async ({ page }) => {
+  await startGame(page);
+  await applyScenario(page, { player: FAR_PLAYER, campfires: [[CENTRE.col, CENTRE.row]] }); // day
+  expect((await state(page)).dayPhase).toBe('day');
+  expect((await state(page)).enemies).toBe(0);
+
+  await emit(page, 'debug:forceWave');
+  await step(page, 200);
+
+  const s = await state(page);
+  expect(s.dayPhase).toBe('night'); // jumped to night…
+  expect(s.enemies).toBeGreaterThanOrEqual(1); // …and a wave kicked off immediately
 });
 
 // Plan 038 Step 5: loop-close + per-night escalation. Surviving a night rolls into a harder one —

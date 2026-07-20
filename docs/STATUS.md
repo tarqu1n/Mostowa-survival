@@ -203,7 +203,12 @@ walls/gate/trap) will build on.
 clamped so a deep run can't wall you. Player death is still the only loss (`scene.restart`), which
 resets `dayCount` → night 1. The fire-attack drain (`WAVE_FIRE_ATTACK_DAMAGE`) is tuned to a
 deterministic anchor (a lone mob douses a full fire in ~24s — tense but reactable), the #1 feel knob
-for playtest. The fire-fuel HUD + dev force-wave button are Step 6.
+for playtest.
+
+**HUD + dev hook (plan 038 Step 6):** UIScene gains a top-left **FIRE fuel bar** (fed by
+CampfireManager's `fire:changed` — orange while lit, red when knocked out, hidden when no hearth) and a
+**NIGHT WAVE** indicator beside the day/night readout (shown during night). A **FORCE WAVE** dev-menu
+button (+ `debug:forceWave` hook) jumps to night and starts a wave on demand for manual playtesting.
 
 ## Node harvest feel (plan 031)
 

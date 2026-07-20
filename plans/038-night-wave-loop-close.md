@@ -283,7 +283,19 @@ new combat.
   - Done when: Tier-2 scenario — run a full night→dawn: player+fire survive → `dayCount` increments → the
     next night spawns more/tougher than the first (assert spawn count/composition delta across two nights).
 
-- [ ] **Step 6: Dev force-wave hook + HUD (night/wave indicator + fire-fuel bar)** `[inline]`
+- [x] **Step 6: Dev force-wave hook + HUD (night/wave indicator + fire-fuel bar)** `[inline]`
+  - Outcome: `CampfireManager` emits `fire:changed` ({fuel,maxFuel,lit} | null) on materialise/feed/
+    damageFire/reset + a rounded-fuel-throttled tick emit. UIScene: a top-left **FIRE** fuel bar
+    (orange lit / red knocked-out / whole group hidden when no hearth — `onFireChanged`), a **NIGHT
+    WAVE** indicator beside `timeText` (toggled by phase in `onTimeChanged`), and a **FORCE WAVE**
+    dev-menu button (panel grown to fit 3 buttons). `GameScene.onForceWave` (wired `debug:forceWave`,
+    with SHUTDOWN off) jumps to night + `beginWave()`. **Verified:** typecheck + lint clean; prod
+    `npm run build` clean; new e2e "force-wave hook jumps to night and starts a wave"; the fire-bar
+    path (`fire:changed`→`onFireChanged`) is exercised without error by every campfire scenario.
+    **Boot canary (`npm run smoke`):** its "game booted" + **zero-console-error** gates pass on the prod
+    bundle; the scene-activation asserts fail on a **pre-existing** single-tap boot race — confirmed
+    identical on clean `origin/master` — that `smoke.mjs` (unlike the retried e2e `bootIntoGame`) never
+    got the fix. Boot→Game→UI→render is fully covered by the e2e harness here.
   - Dev hook: `debug:forceWave` (wired in `wireBus`, mirror `debug:toggleTime` at `:508`) that jumps to
     night AND kicks off a wave immediately (reusing Step 3's begin-wave seam); surface it on/next to the
     existing `GO NIGHT` dev button.

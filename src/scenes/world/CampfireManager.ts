@@ -71,6 +71,9 @@ export interface CampfireManagerDeps {
 export class CampfireManager {
   private campfires: CampfireUnit[] = [];
   private nextId = 0;
+  /** Last rounded fuel value broadcast on `fire:changed` (plan 038 Step 6) — throttles the per-frame
+   *  drain so the HUD bar only re-renders on a visible change. `-1` = nothing emitted yet. */
+  private lastFireFuelEmit = -1;
 
   constructor(
     private readonly scene: GameScene,
@@ -133,6 +136,18 @@ export class CampfireManager {
     };
     this.applyFlame(c); // full tank → large sheet at native size
     this.campfires.push(c);
+    this.emitFire(); // a new hearth → surface it on the HUD fire bar (plan 038 Step 6)
+  }
+
+  /** Broadcast the fire-heart HUD signal (plan 038 Step 6): the primary campfire's fuel/lit (the first
+   *  — a single hearth in the MVP), or `null` when none exists (the HUD hides the bar). */
+  private emitFire(): void {
+    const c = this.campfires[0];
+    this.lastFireFuelEmit = c ? Math.round(c.fuel) : -1;
+    this.scene.game.events.emit(
+      'fire:changed',
+      c ? { fuel: c.fuel, maxFuel: CAMPFIRE_FUEL_MAX, lit: c.lit } : null,
+    );
   }
 
   // --- Per-frame tick ------------------------------------------------------------
@@ -148,6 +163,10 @@ export class CampfireManager {
       else if (!c.lit && isLit(c.fuel)) this.light(c);
       else if (c.lit) this.applyFlame(c); // still lit — pick sheet + scale for the new fuel
     }
+    // Feed the HUD fire bar, throttled to the primary hearth's rounded fuel so it only re-renders on a
+    // visible change (mirrors the hunger tick's rounded-emit — plan 038 Step 6).
+    const primary = this.campfires[0];
+    if (primary && Math.round(primary.fuel) !== this.lastFireFuelEmit) this.emitFire();
   }
 
   /** Which flame sheet a given fuel level burns: the LARGE sheet at/above `CAMPFIRE_FLAME_LARGE_MIN_FRAC`
@@ -206,6 +225,7 @@ export class CampfireManager {
     c.fuel = feedFuel(c.fuel, CAMPFIRE_FUEL_PER_WOOD, CAMPFIRE_FUEL_MAX);
     if (!c.lit && isLit(c.fuel)) this.light(c);
     else this.applyFlame(c); // already lit → jump the flame up to the new fuel (may swap small→large)
+    this.emitFire(); // refuel → bump the HUD fire bar (plan 038 Step 6)
     return true;
   }
 
@@ -239,6 +259,7 @@ export class CampfireManager {
     if (c.lit && !isLit(c.fuel))
       this.douse(c); // emptied → douse (same path as burn-out in tick)
     else if (c.lit) this.applyFlame(c); // still lit → shrink the flame to the new fuel now, not next tick
+    this.emitFire(); // mob attack drained the fire → update the HUD fire bar (plan 038 Step 6)
     return true;
   }
 
@@ -321,6 +342,7 @@ export class CampfireManager {
     }
     this.campfires = [];
     this.nextId = 0;
+    this.emitFire(); // no fires left → HUD hides the bar (plan 038 Step 6)
   }
 
   /**

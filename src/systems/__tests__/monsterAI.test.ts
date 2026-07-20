@@ -243,3 +243,65 @@ describe('determinism', () => {
     expect(capture(42)).toEqual(capture(42));
   });
 });
+
+describe('seek (fire objective — plan 038 Step 4)', () => {
+  const FIRE = { col: 20, row: 20 };
+
+  it('a fire-seeker with a lit hearth and no player near seeks the fire', () => {
+    // Mid-idle-pause so the calm branch would otherwise stand — proves seek preempts calm, not just
+    // that a lapsed idle happened to move.
+    const prev: MonsterState = { ...initialMonsterState(), mode: 'idle', timerMs: 9999 };
+    const { state, targetTile, repath } = stepMonster(
+      prev,
+      baseInputs({ seeksFire: true, fireTile: FIRE }),
+      mulberry32(1),
+    );
+    expect(state.mode).toBe('seek');
+    expect(targetTile).toEqual(FIRE);
+    expect(repath).toBe(true); // first entry → path to the fire
+  });
+
+  it('player-acquire preempts the fire objective (fights the player, the roaming-pull)', () => {
+    const prev: MonsterState = { ...initialMonsterState(), mode: 'seek', goalTile: FIRE };
+    const { state } = stepMonster(
+      prev,
+      baseInputs({ seeksFire: true, fireTile: FIRE, playerPos: { x: 40, y: 0 } }), // within acquire (80)
+      mulberry32(1),
+    );
+    expect(state.mode).toBe('chase');
+  });
+
+  it('re-seeks without a redundant repath once already walking to the fire', () => {
+    const prev: MonsterState = { ...initialMonsterState(), mode: 'seek', goalTile: FIRE };
+    const { state, targetTile, repath } = stepMonster(
+      prev,
+      baseInputs({ seeksFire: true, fireTile: FIRE }),
+      mulberry32(1),
+    );
+    expect(state.mode).toBe('seek');
+    expect(targetTile).toEqual(FIRE);
+    expect(repath).toBe(false); // goal unchanged → keep the existing path
+  });
+
+  it('falls back to a calm beat when the fire goes dark (no lit hearth)', () => {
+    // Was seeking; the hearth is knocked out (fireTile null) → drop to idle, stand, re-evaluate.
+    const prev: MonsterState = { ...initialMonsterState(), mode: 'seek', goalTile: FIRE };
+    const { state, targetTile } = stepMonster(
+      prev,
+      baseInputs({ seeksFire: true, fireTile: null }),
+      mulberry32(1),
+    );
+    expect(state.mode).toBe('idle');
+    expect(targetTile).toBeNull();
+  });
+
+  it('a non-seeker ignores the fire entirely (classic behaviour)', () => {
+    const prev: MonsterState = { ...initialMonsterState(), mode: 'idle', timerMs: 9999 };
+    const { state } = stepMonster(
+      prev,
+      baseInputs({ seeksFire: false, fireTile: FIRE }),
+      mulberry32(1),
+    );
+    expect(state.mode).toBe('idle'); // stands its idle pause — never seeks
+  });
+});

@@ -183,6 +183,20 @@ an attacked-out fire and a neglected one are one state; relight is the existing 
 knocked-out fire is **not** a loss (only player death is) — it just floods darkness (decisions #1/#2 in
 the plan). Exposed on the DEV `__test.damageFire(index, amount)` seam.
 
+**Night wave + objective AI (plan 038 Steps 3–4):** `src/scenes/world/WaveDirector.ts` paces skeleton
+spawns from the "treeline" (a walkable band off the defended centre — the lit hearth, else the player)
+across the **night** phase on the `NIGHT_WAVE_BEATS` trickle→push→lull curve; started by the night
+phase edge (`time:changed`), a first-tick phase reconcile (a scenario seeded into night), or the dev/
+test `__test.beginWave` force seam. Wave mobs spawn with `objective: 'fire'`: a new `seek` FSM state
+(`systems/monsterAI`) walks them to the nearest lit hearth and, on contact, reuses the telegraphed
+wind-up/strike to **drain its fuel** (`attackFire` → `damageFire`, `WAVE_FIRE_ATTACK_DAMAGE`/hit) —
+player radius-acquire still **preempts** (near you it fights you, the roaming-pull), returning to the
+fire after. Spawn source anchors to the defended centre, not the literal grid perimeter (the-moon's
+perimeter is ~140 tiles of void); switches to a real treeline edge with the arena map (roadmap Step 0).
+The objective-target seam (`MonsterTickEnv.fire`/`attackFire`) is the one **plan 037** (destructible
+walls/gate/trap) will build on. Loop-close/escalation is Step 5; the fire-fuel HUD + dev force button
+are Step 6.
+
 ## Node harvest feel (plan 031)
 
 - **Per-hit recoil:** each chop/mine hit nudges the node sprite directionally away from the actor

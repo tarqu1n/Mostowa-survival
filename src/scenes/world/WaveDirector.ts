@@ -8,6 +8,7 @@ import {
 } from '../../config';
 import type { Cell, Dims } from '../../systems/pathfind';
 import type { DayPhase } from '../../systems/daynight';
+import type { MonsterSpawnOpts } from '../../entities/MonsterCharacter';
 import type { GameScene } from '../GameScene';
 
 /**
@@ -19,8 +20,9 @@ import type { GameScene } from '../GameScene';
  * pinned rng makes spawn placement deterministic.
  */
 export interface WaveDirectorDeps {
-  /** Spawn one enemy of `id` at a tile (→ `EnemyManager.addEnemy`). Step 4 adds the fire-objective opt. */
-  spawnEnemy(id: string, col: number, row: number): void;
+  /** Spawn one enemy of `id` at a tile (→ `EnemyManager.addEnemy`), with spawn opts (the wave passes
+   *  the fire objective, plan 038 Step 4). */
+  spawnEnemy(id: string, col: number, row: number, opts?: MonsterSpawnOpts): void;
   /** Grid bounds — spawn tiles are clamped into these. */
   dims(): Dims;
   /** Pathfinding walkability predicate (the scene's `isBlocked`) — spawn only on walkable tiles. */
@@ -134,7 +136,8 @@ export class WaveDirector {
 
   private spawnOne(): void {
     const tile = this.pickSpawnTile();
-    this.deps.spawnEnemy('kidZombie', tile.col, tile.row);
+    // Wave mobs seek + attack the fire-heart (plan 038 Step 4); player-acquire still preempts.
+    this.deps.spawnEnemy('kidZombie', tile.col, tile.row, { objective: 'fire' });
     this.spawnedThisWave++;
   }
 

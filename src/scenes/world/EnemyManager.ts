@@ -40,6 +40,12 @@ export interface EnemyManagerDeps {
   onPlayerHurt(): void;
   /** Apply bite damage to the player (scene-owned: emits hp events / triggers the death path). */
   damagePlayer(amount: number): void;
+  /** Plan 038 Step 4 — the nearest lit hearth the night wave targets (id + tile + world pos), or null
+   *  when none is lit. Shared across the tick (one hearth in the MVP); wave mobs (`seeksFire`) path to
+   *  it + strike it. */
+  litHearth(): { id: string; tile: Cell; pos: { x: number; y: number } } | null;
+  /** Drain `amount` fuel from the fire (→ CampfireManager.damageFire) — the fire-strike effect. */
+  attackFire(id: string, amount: number): void;
   /** Visible attack tell + weapon swing (routes to CombatFxManager.lungeAt). */
   lungeAt(monster: MonsterCharacter, targetX: number, targetY: number): void;
   /** Play the wind-up telegraph before a strike (routes to CombatFxManager.beginWindUp). */
@@ -172,6 +178,8 @@ export class EnemyManager {
       endWindUp: (m) => this.deps.endWindUp(m),
       onPlayerHurt: () => this.deps.onPlayerHurt(),
       damagePlayer: (amount) => this.deps.damagePlayer(amount),
+      fire: this.deps.litHearth(), // plan 038 Step 4 — shared fire target for this tick's wave mobs
+      attackFire: (id, amount) => this.deps.attackFire(id, amount),
     };
     for (const z of this.enemies) {
       if (!z.alive) continue;

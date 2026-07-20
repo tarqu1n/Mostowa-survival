@@ -19,7 +19,7 @@ export interface DebugState {
   px: number;
   py: number;
   enemies: number;
-  enemyModes: Array<'idle' | 'wander' | 'patrol' | 'chase'>;
+  enemyModes: Array<'idle' | 'wander' | 'patrol' | 'chase' | 'seek'>;
   enemyTiles: Array<{ col: number; row: number }>;
   enemyWeapons: Array<string | null>;
   corpses: number;

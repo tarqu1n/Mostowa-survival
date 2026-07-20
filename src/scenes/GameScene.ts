@@ -354,6 +354,8 @@ export class GameScene extends Phaser.Scene {
       rng: () => this.rng(),
       onPlayerHurt: () => this.onPlayerHurt(),
       damagePlayer: (amount) => this.damagePlayer(amount),
+      litHearth: () => this.litHearth(),
+      attackFire: (id, amount) => this.campfireManager.damageFire(id, amount),
       lungeAt: (m, x, y) => this.fx.lungeAt(m, x, y),
       beginWindUp: (m, ms) => this.fx.beginWindUp(m, ms),
       endWindUp: (m) => this.fx.endWindUp(m),
@@ -495,13 +497,10 @@ export class GameScene extends Phaser.Scene {
     // live clock. Side-effect-free; the time:changed subscription is wired in wireBus(). `defendCentre`
     // is the nearest lit hearth (the thing the wave converges on) or the player when no fire is lit.
     this.waveDirector = new WaveDirector(this, {
-      spawnEnemy: (id, col, row) => this.enemyManager.addEnemy(id, col, row),
+      spawnEnemy: (id, col, row, opts) => this.enemyManager.addEnemy(id, col, row, opts),
       dims: () => this.gridDims,
       isBlocked: (col, row) => this.isBlocked(col, row),
-      defendCentre: () => {
-        const lit = this.campfireManager.all().find((c) => c.lit);
-        return lit ? { col: lit.col, row: lit.row } : this.playerChar.tile();
-      },
+      defendCentre: () => this.litHearth()?.tile ?? this.playerChar.tile(),
       rng: () => this.rng(),
       phase: () => this.survivalClock.dayPhase,
     });
@@ -1029,6 +1028,19 @@ export class GameScene extends Phaser.Scene {
   // calls `this.scenePicker.inspectAt`.
 
   // --- Combat ----------------------------------------------------------------
+
+  /** The lit hearth the night wave converges on + strikes (plan 038): the first lit campfire (id + its
+   *  tile + world-centre pos), or null when none is lit. Single hearth in the MVP; shared by the
+   *  WaveDirector's spawn-anchor and the enemy AI's fire objective. */
+  private litHearth(): { id: string; tile: Cell; pos: { x: number; y: number } } | null {
+    const c = this.campfireManager.all().find((f) => f.lit);
+    if (!c) return null;
+    return {
+      id: c.id,
+      tile: { col: c.col, row: c.row },
+      pos: { x: tileToWorldCenter(c.col), y: tileToWorldCenter(c.row) },
+    };
+  }
 
   /** Apply incoming damage to the player; on death, restart the scene (see Context & decisions'
    * "Death = restart" — no in-place heal, since that let an adjacent enemy immediately re-hit a

@@ -450,6 +450,15 @@ export const NIGHT_WAVE_BEATS: readonly { untilNorm: number; intervalMs: number 
   { untilNorm: 1.0, intervalMs: 26_000 }, // lull — taper before dawn ("the lull is a trap")
 ];
 
+/**
+ * Fuel a wave mob drains from the fire per fire-strike (plan 038 Step 4 — the objective-target AI's
+ * `attackFire`). The fire has no armour/dodge, so this is a flat drain on the same `fuel` meter burn +
+ * feeding use (decision #2) — a seeking skeleton on the ~1s contact cadence knocks ~8 fuel/s off, so a
+ * few undefended mobs douse a full fire in the back half of a night unless you fight them off / refuel.
+ * Placeholder — the fire-fuel-vs-wave-DPS balance is tuned in plan 038 Step 5.
+ */
+export const WAVE_FIRE_ATTACK_DAMAGE = 8;
+
 /** Semantic colour palette (dark & grotty). Expand as the art identity firms up. */
 export const COLORS = {
   background: 0x14100f,

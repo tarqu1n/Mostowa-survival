@@ -353,19 +353,22 @@ test('night surfaces combat controls at dusk and retracts at dawn when no enemy 
   page,
 }) => {
   await startGame(page);
-  // Night start, no enemies anywhere — the night trigger alone must surface the controls.
-  await applyScenario(page, { player: [10, 10], startPhase: 'night' });
+  // Night start, no enemies near the PLAYER — the night trigger alone must surface the controls. A
+  // hearth is placed far across the map so the plan-038 night wave spawns way over there (it anchors
+  // to the defended centre), leaving the player's vicinity clear — so this still isolates the night
+  // trigger from the enemy-near trigger, now that entering night brings a wave.
+  await applyScenario(page, { player: [10, 10], campfires: [[200, 250]], startPhase: 'night' });
   await step(page, 50); // one frame so update() recomputes combatActive
   let s = await state(page);
   expect(s.dayPhase).toBe('night');
   expect(s.combatActive).toBe(true); // night trigger
 
-  // Flip to day (dev toggle) with no enemy near → the predicate retracts.
+  // Flip to day (dev toggle) with no enemy near the player → the predicate retracts.
   await emit(page, 'debug:toggleTime'); // night -> day
   await step(page, 50);
   s = await state(page);
   expect(s.dayPhase).toBe('day');
-  expect(s.combatActive).toBe(false); // retracted at dawn — no enemy near, daytime
+  expect(s.combatActive).toBe(false); // retracted at dawn — no enemy near the player, daytime
 });
 
 test('the movepad drives the player directly, bypassing the pathfinder', async ({ page }) => {

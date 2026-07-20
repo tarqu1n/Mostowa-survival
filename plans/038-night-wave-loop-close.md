@@ -222,7 +222,23 @@ new combat.
     `step`, skeletons appear from the biased edge on a paced cadence (assert perimeter spawn tiles +
     arrival spread over time); no spawns during day.
 
-- [ ] **Step 4: Objective-target enemy AI (path to & attack the fire)** `[inline]`
+- [x] **Step 4: Objective-target enemy AI (path to & attack the fire)** `[inline]`
+  - Outcome: new `seek` FSM mode in `systems/monsterAI` (`stepMonster` → `stepSeek`; `MonsterInputs`
+    gains `seeksFire`/`fireTile`) — a wave mob with a lit hearth walks to it; **player-acquire preempts**
+    (chase wins the roaming-pull); no lit fire → falls back to calm. `MonsterCharacter.update` executes
+    it: paths to a walkable tile **adjacent** to the (blocked) fire via `reachableAdjacent`, and on
+    contact reuses the telegraphed wind-up/strike — refactored into a shared `strikeContact(onStrike)`
+    helper so the player-bite and the fire-strike share one code path (fire-strike → `attackFire(id,
+    WAVE_FIRE_ATTACK_DAMAGE)`). `MonsterTickEnv` gains `fire` (nearest lit hearth id/tile/pos, shared
+    per tick — single hearth MVP) + `attackFire`; `EnemyManager` env + deps (`litHearth`/`attackFire`)
+    wired; `GameScene.litHearth()` helper reused by the env AND `WaveDirector.defendCentre`.
+    `MonsterSpawnOpts.objective` (WaveDirector spawns `'fire'`); scenario `enemies[].objective` added so
+    tests place a seeker deterministically. **Verified:** typecheck + lint clean; 819/819 unit (5 new
+    seek FSM tests in `monsterAI.test.ts`); `wave.spec` 5/5 (2 new: seeker drains fire fuel with no
+    player near; seeker next to the player chases the player); combat 18/18 + boar green. **Fixed a real
+    interaction:** the combat "night surfaces controls" test now places its hearth far away, since
+    entering night now spawns a wave whose lingering mobs would otherwise keep `combatActive` true at
+    dawn.
   - Extend `MonsterTickEnv` (`EnemyManager.ts:147`) minimally: a **nearest-lit-hearth** target (pos/id) +
     an `attackFire(id, dmg)` callback mirroring `damagePlayer`. Keep it minimal — let plan 037 refactor
     later (critique #4).

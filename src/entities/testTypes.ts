@@ -43,6 +43,8 @@ export interface ScenarioSpec {
         mode?: MonsterMode;
         /** Force the spawned weapon (else rolled from the enemy's pool) — for deterministic combat specs. */
         weaponId?: string;
+        /** `'fire'` spawns a fire-seeking wave mob (plan 038 Step 4); omitted/`'player'` = player-target. */
+        objective?: 'player' | 'fire';
       }
   >;
   walls?: Array<[number, number]>;

@@ -304,6 +304,7 @@ export class TestApi {
             patrolRoute: z.patrolRoute?.map(([c, r]) => ({ col: c, row: r })),
             mode: z.mode,
             weaponId: z.weaponId,
+            objective: z.objective,
           };
       this.deps.addEnemy(id, at[0], at[1], opts);
       enemyIds.push(this.deps.enemies()[this.deps.enemies().length - 1].id);

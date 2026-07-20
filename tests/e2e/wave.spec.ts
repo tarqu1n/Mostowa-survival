@@ -70,3 +70,51 @@ test('a wave auto-starts when the clock is seeded straight into night (first-tic
   await step(page, 1000); // first driven tick reconciles phase === 'night' → begins the wave
   expect((await state(page)).enemies).toBeGreaterThanOrEqual(1);
 });
+
+// Plan 038 Step 4: objective-target AI. A wave mob (objective 'fire') with no player near paths to &
+// attacks the fire — draining its fuel (CampfireManager.damageFire). Placed directly ADJACENT to the
+// fire so the assertion doesn't depend on the-moon's walkability between spawn and hearth.
+test('a fire-seeking mob with no player near attacks the fire (drains its fuel)', async ({
+  page,
+}) => {
+  await startGame(page);
+  const { campfireIds } = await applyScenario(page, {
+    player: FAR_PLAYER, // ~80 tiles away → the mob never acquires the player, so it stays on the fire
+    campfires: [[CENTRE.col, CENTRE.row]],
+    campfireFuel: 100, // a known, comfortably-lit level so the attack drain is unambiguous
+    startPhase: 'night',
+    enemies: [{ at: [CENTRE.col, CENTRE.row + 1], objective: 'fire' }], // adjacent (Chebyshev 1)
+  });
+  expect(campfireIds.length).toBe(1);
+
+  const before = (await state(page)).campfires[0].fuel;
+  await step(page, 6000); // several ~1s strike cadences of WAVE_FIRE_ATTACK_DAMAGE each
+
+  const s = await state(page);
+  expect(s.enemyModes[0]).toBe('seek'); // seeking + striking the fire (never chasing — player is far)
+  expect(s.campfires[0].fuel).toBeLessThan(before - 8); // fuel drained well past mere natural burn
+  expect(s.campfires[0].lit).toBe(true); // 100 fuel doesn't fully douse in 6s — still lit (not a loss)
+});
+
+// The player-aggro roaming-pull preempts the fire objective: a wave mob next to the player fights the
+// PLAYER instead of walking past to the fire.
+test('a fire-seeking mob next to the player chases the player instead of the fire', async ({
+  page,
+}) => {
+  await startGame(page);
+  await applyScenario(page, {
+    player: [CENTRE.col, CENTRE.row + 5], // by the camp, away from the hearth tile
+    campfires: [[CENTRE.col, CENTRE.row]],
+    campfireFuel: 100,
+    startPhase: 'night',
+    enemies: [{ at: [CENTRE.col, CENTRE.row + 6], objective: 'fire' }], // adjacent to the player
+  });
+
+  const before = (await state(page)).campfires[0].fuel;
+  await step(page, 3000); // short — enough to acquire + a bite or two, not enough to kill the player
+
+  const s = await state(page);
+  expect(s.enemyModes[0]).toBe('chase'); // player-acquire preempted the fire objective
+  expect(s.playerHp).toBeLessThan(10); // it's biting the player…
+  expect(s.campfires[0].fuel).toBeGreaterThan(before - 5); // …not the fire (only natural burn touched it)
+});

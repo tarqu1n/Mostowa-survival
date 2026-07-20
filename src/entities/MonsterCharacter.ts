@@ -12,6 +12,7 @@ import {
   MONSTER_IDLE_MS_MAX,
   MONSTER_WANDER_RADIUS_TILES,
   MONSTER_PATROL_PAUSE_MS,
+  WAVE_FIRE_ATTACK_DAMAGE,
 } from '../config';
 import type { CombatantStats, EnemyDef } from '../data/types';
 import { MONSTER_WEAPONS, type MonsterWeapon } from '../data/weapons';
@@ -29,7 +30,7 @@ import {
   type Facing4,
 } from '../data/tileset';
 import { tileToWorldCenter } from '../systems/grid';
-import { findPath, type Cell, type Dims } from '../systems/pathfind';
+import { findPath, reachableAdjacent, type Cell, type Dims } from '../systems/pathfind';
 import {
   stepMonster,
   initialMonsterState,
@@ -41,11 +42,19 @@ import { resolveMeleeAttack } from '../systems/combat';
 import { weaponTransform } from '../systems/attachment';
 import { Character, type CharacterSprite } from './Character';
 
-/** Scenario/spawn overrides — a forced patrol route, starting FSM mode, or held weapon. */
+/** What a mob's default (non-chase) objective is — plan 038 Step 4. `'fire'` = a night-wave mob that
+ *  seeks + attacks the fire-heart; `'player'` (default) = the classic behaviour (idle/wander/patrol,
+ *  chase only on player-acquire). Player-acquire preempts the fire objective either way. */
+export type MonsterObjective = 'player' | 'fire';
+
+/** Scenario/spawn overrides — a forced patrol route, starting FSM mode, held weapon, or objective. */
 export interface MonsterSpawnOpts {
   patrolRoute?: Cell[];
   mode?: MonsterMode;
   weaponId?: string;
+  /** Plan 038 Step 4 — set `'fire'` (the WaveDirector's spawns do) to make this a fire-seeking wave
+   *  mob. Omitted/`'player'` keeps the classic player-targeting behaviour (dev/scenario enemies). */
+  objective?: MonsterObjective;
 }
 
 /**
@@ -75,6 +84,12 @@ export interface MonsterTickEnv {
   onPlayerHurt: () => void;
   /** Apply bite damage to the player (scene-owned: emits hp events / triggers the death path). */
   damagePlayer: (amount: number) => void;
+  /** Plan 038 Step 4 — the nearest lit hearth the wave targets, or `null` when none is lit. Shared
+   *  across the tick (one hearth in the MVP); a `seeksFire` mob paths to `tile` and strikes it. */
+  fire: { id: string; tile: Cell; pos: Vec2 } | null;
+  /** Drain `amount` fuel from the fire (→ CampfireManager.damageFire) — the fire-strike effect, the
+   *  mirror of `damagePlayer` for the fire objective. */
+  attackFire: (id: string, amount: number) => void;
 }
 
 /**
@@ -93,6 +108,9 @@ export class MonsterCharacter extends Character {
   row: number;
   /** Persisted AI state — read+returned by stepMonster each tick (repath timing lives inside it). */
   ai: MonsterState;
+  /** Plan 038 Step 4 — this mob's default objective is the fire-heart (a WaveDirector spawn). Drives
+   *  the `seek` FSM branch; player-acquire still preempts. Fixed at spawn (from `opts.objective`). */
+  readonly seeksFire: boolean;
   lastContactAt = 0;
   /** >0 while the enemy is in an attack wind-up (plan 035a Step 1): the timestamp its strike lands.
    *  Set caller-side on entering the wind-up window in melee contact; cleared on the strike or on a
@@ -152,6 +170,7 @@ export class MonsterCharacter extends Character {
     this.fitBody(render);
     this.ai = initialMonsterState(opts?.patrolRoute);
     if (opts?.mode) this.ai.mode = opts.mode; // scenario override (e.g. spawn already chasing)
+    this.seeksFire = opts?.objective === 'fire'; // wave mobs target the fire-heart (plan 038 Step 4)
 
     // Weapon + hand rig — flip3 (skeleton) ONLY. A dir4 mob (boar) bites unarmed with a natural body,
     // so it carries no weapon and no layered fists (its sheets draw the whole animal).
@@ -224,70 +243,70 @@ export class MonsterCharacter extends Character {
         patrolPauseMs: MONSTER_PATROL_PAUSE_MS,
         dims: env.dims,
         isBlocked: env.isBlocked,
+        seeksFire: this.seeksFire, // plan 038 Step 4 — wave mobs seek the fire when not chasing
+        fireTile: env.fire?.tile ?? null,
       },
       env.rng,
     );
     this.ai = decision.state;
 
-    // Chase + in melee contact: stand and bite on the cadence — but TELEGRAPHED (plan 035a Step 1).
-    // Instead of an instant contact-bite, the enemy freezes in a readable wind-up first (the clunk
-    // fix), then strikes; leaving contact mid-wind-up cancels the strike.
+    // Chase + in melee contact with the player: telegraphed stand-and-bite (plan 035a Step 1). Instead
+    // of an instant contact-bite, the enemy freezes in a readable wind-up first (the clunk fix), then
+    // strikes; leaving contact mid-wind-up cancels it.
     if (this.ai.mode === 'chase') {
-      const inContact = env.playerBodyTiles.some(
-        (t) => Math.max(Math.abs(t.col - this.col), Math.abs(t.row - this.row)) <= 1,
-      );
-      if (inContact) {
-        this.sprite.body.setVelocity(0, 0);
-        // The equipped weapon sets the base damage + the attack cadence (a knife bites ~2× as often
-        // as a club); an unarmed monster falls back to the shared unarmed damage + contact cooldown.
+      if (this.inContactWith(env.playerBodyTiles)) {
+        // The equipped weapon sets the base damage; unarmed falls back to the shared unarmed damage.
         const baseDmg = this.weapon ? this.weapon.def.damage : UNARMED_BASE_DAMAGE;
-        const cooldown = this.weapon ? this.weapon.def.attackMs : CONTACT_DAMAGE_COOLDOWN_MS;
-        // A dir4 mob (the boar) telegraphs with its real Attack sheet on a punchier wind-up; the flip3
-        // skeleton uses the shared coded-tint wind-up. updateAnimDir4 plays the Attack anim while
-        // `windupUntil > 0` (this same window), so the tell is the animation, not just the tint.
-        const windupMs = this.dir4Actor ? BOAR_ATTACK_WINDUP_MS : ENEMY_ATTACK_WINDUP_MS;
-        if (this.windupUntil > 0) {
-          // Mid wind-up: hold the tell until it completes, then STRIKE. The wind-up is carved out of
-          // the tail of the cadence, so the strike still lands on schedule — just now with a warning.
-          if (env.nowMs >= this.windupUntil) {
-            this.windupUntil = 0;
-            this.lastContactAt = env.nowMs;
-            env.endWindUp(this); // drop the warning tint — the strike is landing
-            env.lungeAt(this, env.playerPos.x, env.playerPos.y); // the forward strike-lunge + weapon swing
-            const dmg = resolveMeleeAttack(this.def, env.playerStats, baseDmg, env.rng);
-            if (dmg > 0) env.onPlayerHurt(); // flash + camera kick + damage vignette when the bite lands
-            env.damagePlayer(dmg);
-          }
-        } else if (env.nowMs - this.lastContactAt >= cooldown - windupMs) {
-          // Cadence gate open → begin the wind-up telegraph (the player's cue to disengage).
-          this.windupUntil = env.nowMs + windupMs;
-          env.beginWindUp(this, windupMs);
-        }
-        this.updateAnim();
+        this.strikeContact(env, env.playerPos.x, env.playerPos.y, () => {
+          const dmg = resolveMeleeAttack(this.def, env.playerStats, baseDmg, env.rng);
+          if (dmg > 0) env.onPlayerHurt(); // flash + camera kick + damage vignette when the bite lands
+          env.damagePlayer(dmg);
+        });
         return;
       }
-      // Left contact while winding up → the player reacted to the tell: whiff (cancel, no strike).
-      if (this.windupUntil > 0) {
-        this.windupUntil = 0;
-        env.endWindUp(this);
+      this.cancelWindUp(env); // left contact while winding up → the player dodged the tell: whiff
+    }
+    // Seek + in contact with the fire: the SAME telegraphed strike, but it drains the fire's fuel
+    // (plan 038 Step 4). A fire has no armour/dodge, so a flat WAVE_FIRE_ATTACK_DAMAGE drain.
+    else if (this.ai.mode === 'seek' && env.fire) {
+      const fire = env.fire;
+      if (this.inContactWith([fire.tile])) {
+        this.strikeContact(env, fire.pos.x, fire.pos.y, () =>
+          env.attackFire(fire.id, WAVE_FIRE_ATTACK_DAMAGE),
+        );
+        return;
       }
+      this.cancelWindUp(env);
+    }
+    // Mode left chase/seek entirely mid-wind-up (e.g. the fire went dark under this mob) — clear the
+    // stale telegraph so no tint/anim lingers into a calm beat.
+    else {
+      this.cancelWindUp(env);
     }
 
-    // Otherwise honour the FSM's move command: repath when asked, then walk (or stand if no target).
+    // Otherwise honour the FSM's move command: repath when asked, then walk (or stand if no target). A
+    // `seek` target is the (blocked) fire tile, so path to a walkable tile ADJACENT to it instead
+    // (reachableAdjacent) — the same "stand next to a target" the harvest/refuel workers use.
     if (decision.repath && decision.targetTile) {
-      const path = findPath(
-        { col: this.col, row: this.row },
-        decision.targetTile,
-        env.isBlocked,
-        env.dims,
-      );
+      const goal: Cell | null =
+        this.ai.mode === 'seek'
+          ? reachableAdjacent(
+              { col: this.col, row: this.row },
+              decision.targetTile,
+              env.isBlocked,
+              env.dims,
+            )
+          : decision.targetTile;
+      const path = goal
+        ? findPath({ col: this.col, row: this.row }, goal, env.isBlocked, env.dims)
+        : null;
       this.path = path ?? [];
       this.pathIndex = 0;
       // Only a truly UNREACHABLE calm-mode pick (findPath → null) strands the monster — drop to idle
       // so it re-picks next beat. An empty path ([]) is "already on the target" (e.g. a patroller
-      // sitting on its first waypoint): keep the mode so the FSM's arrival logic (pause → next
-      // waypoint) runs. Chase keeps trying regardless (the player may be briefly unreachable).
-      if (path === null && this.ai.mode !== 'chase') {
+      // sitting on its first waypoint): keep the mode so the FSM's arrival logic runs. chase AND seek
+      // keep trying regardless (the player/fire may be briefly unreachable).
+      if (path === null && this.ai.mode !== 'chase' && this.ai.mode !== 'seek') {
         this.ai = {
           ...this.ai,
           mode: 'idle',
@@ -299,6 +318,55 @@ export class MonsterCharacter extends Character {
     if (decision.targetTile) this.advancePath();
     else this.sprite.body.setVelocity(0, 0);
 
+    this.updateAnim();
+  }
+
+  /** True if the monster's feet tile is within melee contact (Chebyshev ≤ 1) of ANY of `tiles`. */
+  private inContactWith(tiles: Cell[]): boolean {
+    return tiles.some((t) => Math.max(Math.abs(t.col - this.col), Math.abs(t.row - this.row)) <= 1);
+  }
+
+  /** Cancel an in-flight wind-up telegraph (the target left contact, or the mob left its strike mode). */
+  private cancelWindUp(env: MonsterTickEnv): void {
+    if (this.windupUntil > 0) {
+      this.windupUntil = 0;
+      env.endWindUp(this);
+    }
+  }
+
+  /**
+   * Advance the telegraphed stand-and-strike while in melee contact (plan 035a Step 1, generalised in
+   * plan 038 Step 4 to any target). Freeze, run the wind-up carved from the tail of the bite cadence,
+   * then on completion fire `onStrike` (the target-specific effect — bite the player, or drain the
+   * fire) alongside the shared lunge + anim. `lungeX/Y` is where the strike-lunge points.
+   */
+  private strikeContact(
+    env: MonsterTickEnv,
+    lungeX: number,
+    lungeY: number,
+    onStrike: () => void,
+  ): void {
+    this.sprite.body.setVelocity(0, 0);
+    // The weapon sets the attack cadence (a knife bites ~2× as often as a club); unarmed uses the
+    // shared contact cooldown. A dir4 mob (boar) telegraphs on a punchier wind-up with its real Attack
+    // sheet; the flip3 skeleton uses the shared coded-tint wind-up.
+    const cooldown = this.weapon ? this.weapon.def.attackMs : CONTACT_DAMAGE_COOLDOWN_MS;
+    const windupMs = this.dir4Actor ? BOAR_ATTACK_WINDUP_MS : ENEMY_ATTACK_WINDUP_MS;
+    if (this.windupUntil > 0) {
+      // Mid wind-up: hold the tell until it completes, then STRIKE. The wind-up is carved out of the
+      // tail of the cadence, so the strike still lands on schedule — just now with a warning.
+      if (env.nowMs >= this.windupUntil) {
+        this.windupUntil = 0;
+        this.lastContactAt = env.nowMs;
+        env.endWindUp(this); // drop the warning tint — the strike is landing
+        env.lungeAt(this, lungeX, lungeY); // the forward strike-lunge + weapon swing
+        onStrike();
+      }
+    } else if (env.nowMs - this.lastContactAt >= cooldown - windupMs) {
+      // Cadence gate open → begin the wind-up telegraph (the cue to disengage / defend the fire).
+      this.windupUntil = env.nowMs + windupMs;
+      env.beginWindUp(this, windupMs);
+    }
     this.updateAnim();
   }
 

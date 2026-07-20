@@ -4,7 +4,12 @@
  * owns the *decision*: given the monster's prior AI state plus a snapshot of the world, it returns the
  * next state, the tile to move toward this tick, and whether the path needs recomputing.
  *
- * FSM: `idle` → `wander` | `patrol` → back to `idle`, with `chase` preempting any calm mode.
+ * FSM: `idle` → `wander` | `patrol` → back to `idle`, with `chase` preempting any calm mode, and
+ * `seek` (plan 038 Step 4 — the night wave's objective-target behaviour) sitting between them: a mob
+ * flagged `seeksFire` with a lit hearth to attack walks to it and (caller-side) strikes it, but player
+ * radius-acquire still **preempts** seek (near the player it fights the player — the roaming-pull),
+ * returning to the fire once the player is gone. `seek` needs `fireTile` in the inputs; with no lit
+ * fire the mob falls back to the calm modes (and will still acquire the player).
  *  - **Acquire** is radius-only (world px) using the enemy's own `acquireRadiusPx` (= `EnemyDef.vision`);
  *    no line-of-sight / wall occlusion.
  *  - **De-aggro** is distance-only (no timeout): as the player nears the outer edge of chase range the
@@ -19,7 +24,7 @@
 
 import type { Cell, Dims } from './pathfind';
 
-export type MonsterMode = 'idle' | 'wander' | 'patrol' | 'chase';
+export type MonsterMode = 'idle' | 'wander' | 'patrol' | 'chase' | 'seek';
 
 /** A world-pixel position (radius aggro/de-aggro is measured in world px, not tiles). */
 export interface Vec2 {
@@ -71,6 +76,13 @@ export interface MonsterInputs {
   dims: Dims;
   /** True if `(col,row)` cannot be walked (out-of-bounds already excluded by the caller/`dims`). */
   isBlocked: (col: number, row: number) => boolean;
+  /** Plan 038 Step 4 — this mob's objective is the fire-heart (a wave spawn). When true AND `fireTile`
+   *  is non-null, a non-chasing mob `seek`s the fire. Off (default) ⇒ the classic idle/wander/patrol +
+   *  player-chase behaviour, unchanged. */
+  seeksFire?: boolean;
+  /** The tile of the nearest lit hearth to attack, or `null` when none is lit (mob falls back to calm
+   *  modes). Stationary, so `seek` re-paths only when it changes. */
+  fireTile?: Cell | null;
 }
 
 export interface MonsterDecision {
@@ -210,6 +222,22 @@ function stepWander(prev: MonsterState, inputs: MonsterInputs, rng: () => number
   return { state: prev, targetTile: goal, repath: false }; // keep walking the existing path
 }
 
+/**
+ * Seek the fire-heart (plan 038 Step 4): head for `fireTile` and keep the mob in `seek` mode. The fire
+ * is stationary and its tile is blocked (the fire ring), so the caller (MonsterCharacter.update) paths
+ * to a walkable tile ADJACENT to it and strikes on contact — this only sets the mode + goal + asks for
+ * a repath when the target tile changes (fire relit elsewhere / first entry). Player-acquire is handled
+ * upstream in {@link stepMonster}, so it always preempts this.
+ */
+function stepSeek(prev: MonsterState, fireTile: Cell): MonsterDecision {
+  const changed = prev.mode !== 'seek' || !prev.goalTile || !sameTile(prev.goalTile, fireTile);
+  return {
+    state: { ...prev, mode: 'seek', goalTile: fireTile, timerMs: 0 },
+    targetTile: fireTile,
+    repath: changed,
+  };
+}
+
 function stepPatrol(prev: MonsterState, inputs: MonsterInputs): MonsterDecision {
   const route = prev.patrolRoute;
   if (!route || route.length === 0) {
@@ -283,6 +311,17 @@ export function stepMonster(
       targetTile: perturbedChaseTarget(inputs, d, rng),
       repath: true,
     };
+  }
+
+  // Fire objective (plan 038 Step 4): a wave mob with a lit hearth to hit seeks it — but only once the
+  // player-acquire above has declined (so chasing the player always wins the roaming-pull). With no lit
+  // fire (`fireTile` null) it falls through to the calm modes below and can still acquire the player.
+  if (inputs.seeksFire && inputs.fireTile) {
+    return stepSeek(prev, inputs.fireTile);
+  }
+  // Was seeking, but the fire went dark (no lit hearth) → drop to a calm beat and re-evaluate.
+  if (prev.mode === 'seek') {
+    return { state: enterIdle(prev, inputs, rng), targetTile: null, repath: false };
   }
 
   // Calm modes.

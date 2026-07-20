@@ -1,8 +1,10 @@
 # Base-Defence Structures — Destructible Walls, Gate & Spike Trap
 
-> Status: **deferred** — shelved behind the night wave (roadmap Step 2) per the critique below
-> (defence structures are tuned against a live wave, so the wave lands first). Revisit after the wave;
-> expect to split + resequence per critique findings #3/#4. Do **not** run /execute-plan on this yet.
+> Status: **ready — executing, RESEQUENCED walls-first** (owner, 2026-07-20). The night wave (plan 038)
+> has landed, so critique #1/#2 (do the wave first) are **resolved**. Per critique #4 the owner chose to
+> **build destructible walls as a concrete feature before the StructureManager refactor**, so the
+> abstraction is generalised against two real shapes (campfire + wall), not designed from the campfire
+> alone. See "Execution order (resequenced)" below — it overrides the step numbering in "Steps".
 
 ## Summary
 
@@ -21,6 +23,31 @@ seam is what the deferred night wave (roadmap Step 2) will reuse. Art is the Cra
 from the CraftPix set). **③** Steps 3–5 — destructible walls (data+art → player damages them → enemy
 attacks a blocking wall). **④** Step 6 — gate. **⑤** Steps 7–8 — spike trap + re-arm loop. **⑥** Step 9
 — scenario API, tests, tripwire, docs.
+
+## Execution order (resequenced — owner, 2026-07-20, critique #4)
+
+The **step bodies in "Steps" below stay authoritative for detail**; this section reorders which runs
+when. The one substantive adaptation the reorder forces: walls become a live/damageable structure
+**before** `StructureManager` exists, so a **minimal `WallManager`** (mirroring `CampfireManager`'s
+shape — `materialise`/`reset`/`destroy` discipline, an hp record + damage-stage render hook) is stood
+up as concrete structure **#2**, wired via a `materialiseBuildable` dispatch (`campfire` →
+CampfireManager, `wall` → WallManager). The later `StructureManager` step then folds **both** managers
+into the behavior-module registry, designed against two real shapes.
+
+1. **Art curation** (orig. Step 2) — no code, no deps; do first so wall/gate/trap sprites are pinned.
+2. **Destructible walls** (orig. Steps 3–5, adapted): `wall` gains `behavior:'wall'` + CraftPix
+   barricade art, materialised by the interim **`WallManager`** (not StructureManager yet); player can
+   damage/destroy a wall (orig. Step 4); enemy attacks a blocking wall via the generic structure-target
+   seam (orig. Step 5). This is the "real example #2" the critique wants landed first.
+3. **StructureManager generalisation** (orig. Step 1, now against two shapes): fold `CampfireManager`
+   **and** `WallManager` into `StructureManager` + behavior-module registry. Interface is designed from
+   campfire + wall (hp/takeDamage/damage-stage already concrete), not a population of one.
+4. **Gate** (orig. Step 6) — ally-permeable destructible barrier + the split mob/ally pathing predicate.
+5. **Spike trap + re-arm** (orig. Steps 7–8) — trigger-once trap + the dawn-rearm worker order.
+6. **Scenario API, tests, tripwire & docs** (orig. Step 9).
+
+Final numeric tuning (wall HP vs wave DPS, funnel width, trap damage) stays deferred to live-wave
+playtest, as the original plan locks. Each numbered block above ends at a natural check-in.
 
 ## Context & decisions
 

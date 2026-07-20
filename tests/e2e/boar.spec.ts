@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { startGame, applyScenario, emit, step, state } from './harness';
+import { ATTACK_COOLDOWN_MS } from '../../src/config';
 
 // Tier-2: the boar — a 4-way directional (`dir4`) enemy (plan 035b). Proves the directional render path
 // end-to-end: its cross-pack strips load, it chases + bites through the real combat wiring, takes melee
@@ -51,17 +52,20 @@ test('a boar takes melee hits and dies onto its Death strip (the dir4 die path)'
 }) => {
   await startGame(page);
   // Adjacent, player facing it, Combat mode so Attack is live. Boar maxHp 5, player unarmed flat-1 →
-  // five hits. No step() between, so it holds its tile and each Attack resolves synchronously. Its
-  // hurtbox (width 2, height 1) covers the feet tile the player faces.
+  // five hits, each spaced past the attack cooldown; 'chase' holds it on the adjacent tile through the
+  // longer fight. Its hurtbox (width 2, height 1) covers the feet tile the player faces.
   await applyScenario(page, {
     player: [10, 10],
-    enemies: [{ at: [11, 10], id: 'boar' }],
+    enemies: [{ at: [11, 10], id: 'boar', mode: 'chase' }],
     facing: 'right',
     mode: 'combat',
   });
   expect((await state(page)).enemies).toBe(1);
 
-  for (let i = 0; i < 5; i++) await emit(page, 'combat:attack');
+  for (let i = 0; i < 5; i++) {
+    await emit(page, 'combat:attack');
+    await step(page, ATTACK_COOLDOWN_MS + 20);
+  }
   const s = await state(page);
   expect(s.enemies).toBe(0); // dead on the fifth hit
   expect(s.corpses).toBe(1); // lingers as a corpse on its Death collapse, like the skeleton

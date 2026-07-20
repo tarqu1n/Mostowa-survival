@@ -32,6 +32,12 @@ export class PlayerCharacter extends Character {
    *  but with a far lighter move-slow (`BOW_MOVE_SLOW` vs `ATTACK_MOVE_SLOW`), so shooting lets you
    *  keep kiting where melee roots you. Written by the scene's bow handler (`GameScene.bow`). */
   bowLockUntil = 0;
+  /** Scene-clock time before which a new melee swing is refused (the cooldown gate, `ATTACK_COOLDOWN_MS`).
+   *  Set by `GameScene.attack`; a press while `now < meleeReadyAt` is ignored so mashing can't stack
+   *  hits or restart the swing. Distinct from `attackLockUntil` (the move-slow commit window). */
+  meleeReadyAt = 0;
+  /** As {@link meleeReadyAt} but for the bow (`BOW_COOLDOWN_MS`) — set by `GameScene.bow`. */
+  bowReadyAt = 0;
 
   constructor(scene: Phaser.Scene, spawn: { x: number; y: number }) {
     // Player: 3-way directional idle + walk (down/side/up). Each strip is its own texture (key ==
@@ -126,6 +132,8 @@ export class PlayerCharacter extends Character {
     this.dying = true;
     this.sprite.body.setVelocity(0, 0);
     this.attackLockUntil = 0;
+    this.meleeReadyAt = 0;
+    this.bowReadyAt = 0;
     const facing = this.facingDir();
     this.sprite.setScale((this.sprite.getData('baseScale') as number | undefined) ?? 1);
     this.sprite.setFlipX(facing === 'side' && this.lastFacing.dCol < 0);

@@ -16,6 +16,8 @@ import {
   ENEMY_HIT_SHAKE_INTENSITY,
   DEATH_HOLD_MS,
   BOW_DRAW_MS,
+  ATTACK_COOLDOWN_MS,
+  BOW_COOLDOWN_MS,
   BOW_RANGE_TILES,
   BOW_BASE_DAMAGE,
   COMBAT_ACTIVE_RADIUS_TILES,
@@ -1012,7 +1014,11 @@ export class GameScene extends Phaser.Scene {
    * tile — but an enemy is hit anywhere its hurtbox reaches it (see EnemyManager.enemyAt). Enemies
    * only; trees keep using chop(). */
   private attack(): void {
-    this.fx.playAttackSwing(); // swing on every press, even a whiff, so the input always feels heard
+    // Cooldown gate (playtest fix): a press inside the window is ignored outright — no swing, no
+    // damage — so mashing MELEE can't machine-gun hits or restart the swing mid-animation.
+    if (this.time.now < this.playerChar.meleeReadyAt) return;
+    this.playerChar.meleeReadyAt = this.time.now + ATTACK_COOLDOWN_MS;
+    this.fx.playAttackSwing(); // swing on every (accepted) press, even a whiff, so the input feels heard
     const pt = this.playerChar.tile();
     const col = pt.col + this.playerChar.lastFacing.dCol;
     const row = pt.row + this.playerChar.lastFacing.dRow;
@@ -1037,6 +1043,10 @@ export class GameScene extends Phaser.Scene {
    * plays the draw pose (the Bow button always feels heard) and just clears the target.
    */
   private bow(): void {
+    // Cooldown gate (playtest fix), same as melee: a press inside the window is ignored so the Bow
+    // button can't be spammed to loose arrows faster than the draw cadence.
+    if (this.time.now < this.playerChar.bowReadyAt) return;
+    this.playerChar.bowReadyAt = this.time.now + BOW_COOLDOWN_MS;
     this.playerChar.bowLockUntil = this.time.now + BOW_DRAW_MS;
     const target = this.pickBowTarget();
     if (!target) {

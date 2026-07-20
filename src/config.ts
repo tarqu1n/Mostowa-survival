@@ -162,6 +162,17 @@ export const BOW_MOVE_SLOW = 0.75;
 export const BOW_DRAW_MS = 450;
 
 /**
+ * Attack cadence gate (playtest fix). A melee swing / bow loose can only re-fire once this cooldown
+ * has elapsed since the last one — a press inside the window is ignored, so mashing the button can't
+ * machine-gun hits or restart the swing mid-animation. Distinct from the move-slow *commit* windows
+ * above (which govern movement during an action); this governs when the NEXT action is allowed. Kept
+ * roughly in step with each action's animation (melee swing ≈ 400ms, bow draw = BOW_DRAW_MS) so "you
+ * finish the action before you can start another" reads honestly. Playtest-tune.
+ */
+export const ATTACK_COOLDOWN_MS = 400;
+export const BOW_COOLDOWN_MS = 450;
+
+/**
  * The bow itself (plan 035a Step 5). Loosing an arrow auto-targets the nearest live enemy within
  * `BOW_RANGE_TILES` (Euclidean tiles), biased toward the player's current facing, and deals
  * `BOW_BASE_DAMAGE` through the shared ranged formula (base + the attacker's `dex`; the player's dex

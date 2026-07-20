@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { startGame, applyScenario, emit, step, state } from './harness';
 import type { DebugState } from './harness';
+import { ATTACK_COOLDOWN_MS } from '../../src/config';
 
 // Plan 013 Step 2: the refactor tripwire. Steps 3–6 relocate large chunks of GameScene (CombatFxManager,
 // Character/PlayerCharacter/MonsterCharacter, PointerInputController, BuildManager/TaskGlowRenderer/
@@ -69,13 +70,16 @@ test('golden debugState() snapshot survives a scripted world + combat sequence',
   await step(page, 1600);
 
   // Three player attacks on the adjacent enemy (kidZombie maxHp 3, unarmed 1 dmg/hit, dodge 0 → exactly
-  // 3 hits to kill). Only 50ms between each — nowhere near the enemy's 1500ms cooldown again, so no
-  // second bite lands while we finish it off. The killing 3rd hit skips the enemy's hit-flash (attack()
-  // only flashes a hit the target *survives* — see GameScene.attack), so enemyHitFlashes lands on 2.
+  // 3 hits to kill). Each is spaced just past ATTACK_COOLDOWN_MS — the melee cooldown ignores presses
+  // inside the window, so tighter gaps would drop the 2nd/3rd swing. The cooldown-paced fight now runs
+  // long enough that a SECOND club bite lands mid-fight (enemyAttacks 2, playerHitFlashes 2, playerHp
+  // 4 = 10 − 2×3) — that's the honest new pacing, and it's deterministic on the fixed-step clock. The
+  // killing 3rd hit skips the enemy's hit-flash (attack() only flashes a hit the target *survives* —
+  // see GameScene.attack), so enemyHitFlashes still lands on 2.
   await emit(page, 'combat:attack');
-  await step(page, 50);
+  await step(page, ATTACK_COOLDOWN_MS + 20);
   await emit(page, 'combat:attack');
-  await step(page, 50);
+  await step(page, ATTACK_COOLDOWN_MS + 20);
   await emit(page, 'combat:attack');
   await step(page, 50);
 
@@ -107,17 +111,17 @@ test('golden debugState() snapshot survives a scripted world + combat sequence',
     enemyTiles: [],
     enemyWeapons: [],
     corpses: 1, // the killed enemy's death-collapse corpse (5-minute TEMP linger — see killEnemy)
-    playerHp: 7, // 10 - one landed club bite (2 base + kidZombie strength 1, armour 0)
+    playerHp: 4, // 10 - two landed club bites (2×3: 2 base + kidZombie strength 1, armour 0) over the cooldown-paced fight
     playerDying: false,
     playerFlash: 0, // hit-flash tween (260ms) long settled by the final 10x200ms settle loop
-    playerHitFlashes: 1,
+    playerHitFlashes: 2, // the two landed club bites
     enemyHitFlashes: 2, // hits #1 and #2 (survived); the killing #3 skips flashHit
-    enemyAttacks: 1,
+    enemyAttacks: 2, // two club bites land during the now longer, cooldown-paced fight
     mode: 'combat',
-    hunger: 60.5, // 62 − HUNGER_DRAIN_PER_SEC (0.4/s) × the 3.75s of driven time (rounded, see normalize)
+    hunger: 60.2, // 62 − HUNGER_DRAIN_PER_SEC (0.4/s) × the 4.5s of driven time (rounded, see normalize)
     dayPhase: 'day',
     dayCount: 1,
-    clockMs: 23750, // 20_000 + 1600 + 50*3 + 10*200, bucketed to the nearest 50 (see normalize)
+    clockMs: 24500, // 20_000 + 1600 + (420*2 + 50) + 10*200, bucketed to the nearest 50 (see normalize)
     nightAlpha: 0, // still deep in day 1 (DAY_MS 120_000), no twilight tint yet
     outlinedTreeIds: [],
     pulsingTreeId: null,

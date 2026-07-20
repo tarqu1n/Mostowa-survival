@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { startGame, applyScenario, emit, step, state, captured, order, moveEnemy } from './harness';
 import { oneEnemy } from './scenarios';
+import { ATTACK_COOLDOWN_MS, BOW_COOLDOWN_MS } from '../../src/config';
 
 // Tier-2: the enemy AI + contact damage + Attack paths through the real scene. Damage/hit-chance math
 // is Tier-1 (combat.ts); these prove the scene wires them to movement, cooldowns and the Attack input.
@@ -21,26 +22,54 @@ test('Attack kills an adjacent enemy in three hits', async ({ page }) => {
   // Player facing right with the enemy on the adjacent tile; Combat mode so Attack is live.
   await applyScenario(page, {
     player: [10, 10],
-    enemies: [[11, 10]],
+    enemies: [{ at: [11, 10], mode: 'chase' }],
     facing: 'right',
     mode: 'combat',
   });
   expect((await state(page)).enemies).toBe(1);
 
-  // kidZombie maxHp 3, unarmed flat-1 damage → exactly three attacks. dodge 0 → always hits.
+  // kidZombie maxHp 3, unarmed flat-1 damage → exactly three attacks. dodge 0 → always hits. Each is
+  // spaced past ATTACK_COOLDOWN_MS (a press inside the window is now ignored); 'chase' keeps the enemy
+  // glued adjacent through the longer fight.
   for (let i = 0; i < 3; i++) {
     await emit(page, 'combat:attack');
-    await step(page, 100); // let the swing/kill resolve
+    await step(page, ATTACK_COOLDOWN_MS + 20); // clear the cooldown so the next swing is accepted
   }
   expect((await state(page)).enemies).toBe(0);
+});
+
+test('the melee attack has a cooldown — mashing the button does not machine-gun hits (plan 035b playtest fix)', async ({
+  page,
+}) => {
+  await startGame(page);
+  await applyScenario(page, {
+    player: [10, 10],
+    enemies: [{ at: [11, 10], mode: 'chase' }],
+    facing: 'right',
+    mode: 'combat',
+  });
+
+  // Three presses in the SAME frame (no step between). Only the first is outside the cooldown, so only
+  // one hit lands — kidZombie maxHp 3, unarmed 1 dmg → it survives, proving the spam didn't stack 3 hits.
+  for (let i = 0; i < 3; i++) await emit(page, 'combat:attack');
+  await step(page, 50); // let the single hit's flash bookkeeping run a frame
+  expect((await state(page)).enemies).toBe(1);
+  expect((await state(page)).enemyHitFlashes).toBe(1); // exactly one hit registered, not three
+
+  // Once the cooldown elapses a fresh press is accepted again.
+  await step(page, ATTACK_COOLDOWN_MS);
+  await emit(page, 'combat:attack');
+  await step(page, 50);
+  expect((await state(page)).enemyHitFlashes).toBe(2);
 });
 
 test('Attack connects with a tall enemy body, not only its feet tile', async ({ page }) => {
   await startGame(page);
   // Enemy feet at row 10; its ~2-tile body (hurtbox height 2) overhangs UP into row 9. Player one
   // tile above that torso, facing down → Attack targets row 9, the torso tile (NOT the feet tile).
-  // Without the body hurtbox this whiffs. No step() between attacks, so the enemy stays on its
-  // frame-0 tile (Attack resolves synchronously) — three flat-1 hits on maxHp 3 kill it.
+  // Without the body hurtbox this whiffs. A single attack (no step first, so the enemy is still on its
+  // frame-0 tile) that lands a survived-hit flash proves the swing reached the torso tile — one hit is
+  // enough now that the attack cooldown makes a same-frame 3-hit kill impossible.
   await applyScenario(page, {
     player: [10, 8],
     enemies: [[10, 10]],
@@ -49,8 +78,11 @@ test('Attack connects with a tall enemy body, not only its feet tile', async ({ 
   });
   expect((await state(page)).enemies).toBe(1);
 
-  for (let i = 0; i < 3; i++) await emit(page, 'combat:attack');
-  expect((await state(page)).enemies).toBe(0);
+  await emit(page, 'combat:attack');
+  await step(page, 50); // let the hit-flash bookkeeping run a frame
+  const s = await state(page);
+  expect(s.enemies).toBe(1); // survived the single flat-1 hit (maxHp 3)...
+  expect(s.enemyHitFlashes).toBeGreaterThan(0); // ...but the swing DID connect with the torso tile (row 9)
 });
 
 test('a biting enemy plays an attack lunge and the player flashes on the hit', async ({ page }) => {
@@ -114,12 +146,16 @@ test('a killed enemy leaves a lingering corpse playing its death collapse', asyn
   await startGame(page);
   await applyScenario(page, {
     player: [10, 10],
-    enemies: [[11, 10]],
+    enemies: [{ at: [11, 10], mode: 'chase' }],
     facing: 'right',
     mode: 'combat',
   });
 
-  for (let i = 0; i < 3; i++) await emit(page, 'combat:attack'); // kidZombie maxHp 3, flat-1 → dead on the 3rd
+  // kidZombie maxHp 3, flat-1 → dead on the 3rd. Spaced past the attack cooldown; 'chase' holds it adjacent.
+  for (let i = 0; i < 3; i++) {
+    await emit(page, 'combat:attack');
+    await step(page, ATTACK_COOLDOWN_MS + 20);
+  }
 
   // Killed = out of the AI set immediately, but the sprite lingers as a corpse playing the one-shot
   // Death strip — it isn't destroyed on the same frame it dies (that was the old instant `destroy()`).
@@ -221,9 +257,10 @@ test('the bow kills an enemy from range while the player stays put, then clears 
   });
   expect((await state(page)).enemies).toBe(1);
 
-  // kidZombie maxHp 3, bow BOW_BASE_DAMAGE 2 (player dex 0), dodge 0 → two arrows kill it.
+  // kidZombie maxHp 3, bow BOW_BASE_DAMAGE 2 (player dex 0), dodge 0 → two arrows kill it. The two
+  // shots are spaced past BOW_COOLDOWN_MS (a bow press inside the window is now ignored).
   await emit(page, 'combat:bow');
-  await step(page, 100);
+  await step(page, BOW_COOLDOWN_MS + 20);
   expect((await state(page)).enemies).toBe(1); // first shot: 3 → 1, still alive
 
   await emit(page, 'combat:bow');

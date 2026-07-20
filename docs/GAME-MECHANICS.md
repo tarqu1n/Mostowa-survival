@@ -65,9 +65,15 @@ All knobs in [src/config.ts](../src/config.ts); behaviour in [STATUS.md](STATUS.
   the bow only drops you to `BOW_MOVE_SLOW` (**0.75**) for `BOW_DRAW_MS` (**450ms**) — the "ranged is
   safer / kite-able" gap. Both applied via `PlayerCharacter.effectiveMoveSpeed` (melee wins if they
   overlap).
+- **Attack cooldown:** a melee swing / bow loose can only re-fire once `ATTACK_COOLDOWN_MS` (**400ms**) /
+  `BOW_COOLDOWN_MS` (**450ms**) has elapsed — a press inside the window is ignored outright (no swing FX,
+  no damage), so mashing the button can't machine-gun hits or restart the swing. Gated in `GameScene`
+  via `PlayerCharacter.meleeReadyAt` / `bowReadyAt`; distinct from the move-slow commit windows above.
 - **Auto-surface:** the fighting HUD reveals + the movepad becomes authoritative whenever a live enemy
-  is within `COMBAT_ACTIVE_RADIUS_TILES` (**7**, Chebyshev) OR it's night. Never flips input `mode`
-  (that would cancel the task queue); command-mode taps keep queuing orders.
+  is within `COMBAT_ACTIVE_RADIUS_TILES` (**7**, Chebyshev) OR it's night. **Hysteresis:** once engaged
+  it only retracts past `COMBAT_ACTIVE_RADIUS_TILES + COMBAT_ACTIVE_HYSTERESIS_TILES` (**+3**), so an
+  enemy loitering at the boundary can't flicker the HUD on/off. Never flips input `mode` (that would
+  cancel the task queue); command-mode taps keep queuing orders.
 - **Bow:** auto-targets the facing-biased nearest live enemy within `BOW_RANGE_TILES` (**6**,
   Euclidean), deals `BOW_BASE_DAMAGE` (**2**) + the attacker's `dex` (**0** today → 2/shot, kills a
   3-HP kidZombie in 2) via `resolveRangedAttack` — **hitscan**; the arrow is a coded tracer

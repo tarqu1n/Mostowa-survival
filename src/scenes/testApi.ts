@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import { DAY_MS, HUNGER_MAX } from '../config';
 import { NODES } from '../data/nodes';
+import { MELEE_WEAPONS } from '../data/weapons';
 import type { ParsedNodeDef } from '../systems/nodeDefs';
 import type { Inventory } from '../systems/Inventory';
 import type { Dims } from '../systems/pathfind';
@@ -203,6 +204,7 @@ export class TestApi {
     this.deps.setChopElapsed(0);
     this.deps.setHarvestSwing(null);
     pc.attackLockUntil = 0;
+    pc.setMeleeWeapon(undefined); // back to unarmed — a scenario never inherits a prior run's weapon (plan 036)
     this.deps.setCombatMoveVec({ dx: 0, dy: 0 });
     this.deps.clearBowTarget(); // no bow target carried into a fresh scenario (highlight cleared below)
     this.deps.fx.resetCombatFx(); // start each scenario with clean FX counters/flags (see create())
@@ -242,6 +244,10 @@ export class TestApi {
       : { dCol: 0, dRow: 1 };
 
     this.deps.setModeAndEmit(spec.mode ?? 'command');
+
+    // Optional: spawn the player already holding a demo melee weapon (mirrors enemy `weaponId`). An
+    // unknown id resolves to undefined → unarmed. resetWorld already cleared it, so only set when given.
+    if (spec.melee != null) this.deps.playerChar.setMeleeWeapon(MELEE_WEAPONS[spec.melee]);
 
     const inv = spec.inventory ?? (spec.wood != null ? { wood: spec.wood } : {});
     for (const [id, n] of Object.entries(inv)) if (n > 0) this.deps.inv.add(id, n);
@@ -388,6 +394,13 @@ export class TestApi {
     z.col = col;
     z.row = row;
     return true;
+  }
+
+  /** DEV/test-only: equip the player's melee weapon by id (looks up `MELEE_WEAPONS[id]`), or clear to
+   *  unarmed with `null` (an unknown id also clears — `MELEE_WEAPONS[id]` is undefined). Lets a Tier-2
+   *  spec select a weapon deterministically to assert reach/arc (plan 036). */
+  setPlayerMelee(id: string | null): void {
+    this.deps.playerChar.setMeleeWeapon(id != null ? MELEE_WEAPONS[id] : undefined);
   }
 
   /** State snapshot for the Tier-2 Playwright suite + the smoke test. */

@@ -149,7 +149,8 @@ Unarmed default (no weapon) = `{reach:1, arc:'single'}`, `damage = UNARMED_BASE_
   - Done when: `combat.spec.ts` + `refactor-tripwire.spec.ts` green unchanged; a cleave/spear shape (set via
     a temporary direct call or the Step-4 seam) hits the expected enemies; typecheck + `vitest` green.
 
-- [ ] **Step 4: Dev/test seam + Tier-2 scenarios** `[inline]`
+- [x] **Step 4: Dev/test seam + Tier-2 scenarios** `[inline]`
+  - Outcome: `setPlayerMelee(id: string|null)` seam wired through all layers — `src/scenes/testApi.ts` (impl, looks up `MELEE_WEAPONS[id]` else unarmed) + `src/entities/testTypes.ts` (`GameTestApi` decl) + `src/scenes/GameScene.ts` (`__test` api) + `tests/e2e/harness.ts` (wrapper). Added optional `melee?: string` to `ScenarioSpec` (in `testTypes.ts`, not `types.ts` as planned — that's where `ScenarioSpec` lives); `applyScenario` equips it when set, `resetWorld` clears the weapon so runs don't inherit. New `tests/e2e/weapon-reach-arc.spec.ts` (3 scenarios: reach via spear, cleave via cleaver spawn, unarmed-stays-narrow — asserts via `enemies`/`enemyHitFlashes`; demo weapons deal 1 dmg vs kidZombie maxHp 3 so a survived hit flashes deterministically). Unarmed-miss guard uses a flank tile _above_ the front line (enemy hurtboxes rise upward). Optional DEV cycle button skipped (plan permits). No `DebugState` field. typecheck clean; vitest 813 green; e2e 21 passed (new 3/3 + combat + tripwire); lint 0 errors.
   - Add a `__test` API method to select the player's melee weapon deterministically, e.g.
     `setPlayerMelee(id: string | null)` (looks up `MELEE_WEAPONS[id]` or clears to unarmed) — wire it in
     `src/scenes/testApi.ts` + the `GameTestApi` type + the `harness.ts` wrapper. Optionally also accept a

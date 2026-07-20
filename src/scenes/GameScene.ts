@@ -634,6 +634,7 @@ export class GameScene extends Phaser.Scene {
       feedCampfire: (i) => testApi.feedCampfire(i),
       zoneAt: (c, r) => this.zoneAt(c, r),
       moveEnemy: (i, c, r) => testApi.moveEnemy(i, c, r),
+      setPlayerMelee: (id) => testApi.setPlayerMelee(id),
     };
     (this.game as unknown as { __test?: GameTestApi }).__test = api;
   }

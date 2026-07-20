@@ -28,6 +28,9 @@ export interface ScenarioSpec {
   mode?: 'command' | 'combat' | 'inspect';
   wood?: number;
   inventory?: Record<string, number>;
+  /** Spawn the player holding a demo melee weapon (`MELEE_WEAPONS` id; unknown/omitted = unarmed) —
+   *  mirrors an enemy's `weaponId`, for deterministic reach/arc specs (plan 036). */
+  melee?: string;
   trees?: Array<[number, number]>;
   rocks?: Array<[number, number]>;
   bushes?: Array<[number, number]>;
@@ -85,4 +88,7 @@ export interface GameTestApi {
   /** DEV/test-only: relocate the enemy at `index` (sprite + body + logical tile) without a world
    *  reset — lets a spec cross a distance threshold mid-test. Returns false if no such enemy. */
   moveEnemy(index: number, col: number, row: number): boolean;
+  /** DEV/test-only: equip the player's melee weapon by `MELEE_WEAPONS` id, or clear to unarmed with
+   *  `null` (an unknown id also clears) — lets a spec assert reach/arc deterministically (plan 036). */
+  setPlayerMelee(id: string | null): void;
 }

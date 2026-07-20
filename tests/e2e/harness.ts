@@ -137,6 +137,11 @@ export function moveEnemy(page: Page, index: number, col: number, row: number): 
   );
 }
 
+/** Equip the player's melee weapon by `MELEE_WEAPONS` id, or clear to unarmed with `null` (plan 036). */
+export function setPlayerMelee(page: Page, id: string | null): Promise<void> {
+  return page.evaluate((i) => (window as any).game.__test.setPlayerMelee(i), id);
+}
+
 /** Inspect the entity at a tile (same panel path as an Inspect-mode tap). */
 export function inspect(page: Page, col: number, row: number): Promise<void> {
   return page.evaluate(([c, r]) => (window as any).game.__test.inspect(c, r), [col, row] as const);

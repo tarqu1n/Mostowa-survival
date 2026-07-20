@@ -4,7 +4,7 @@ import { tileToWorldCenter } from '../../systems/grid';
 import { SUB_ROW_EPSILON } from '../../systems/mapFormat';
 import { bakeGlowTexture } from '../../render/glowTexture';
 import type { Action } from '../../systems/tasks';
-import type { TreeNode, BuildSite, CampfireUnit } from '../../entities/types';
+import type { TreeNode, BuildSite, CampfireUnit, PlacedWall } from '../../entities/types';
 import type { ResourceNodeDef } from '../../data/types';
 import type { GameScene } from '../GameScene';
 
@@ -28,6 +28,8 @@ export interface TaskGlowRendererDeps {
   siteById(id: string): BuildSite | undefined;
   /** Look up a built campfire by id (undefined once gone) — for the queued-refuel outline. */
   campfireById(id: string): CampfireUnit | undefined;
+  /** Look up a live barricade wall by id (undefined once gone) — for the queued-deconstruct outline. */
+  wallById(id: string): PlacedWall | undefined;
   /** Base display scale for a node's sprite (see GameScene.nodeScale) — the glow halo's radius is
    *  converted to source texels through this, so it reads the same regardless of source resolution.
    *  Pass the instance's skin so a per-skin `scale` override sizes the halo correctly. */
@@ -77,6 +79,9 @@ export class TaskGlowRenderer {
       } else if (a.kind === 'refuel') {
         const c = this.deps.campfireById(a.campfireId);
         if (c) this.outlineCampfire(c);
+      } else if (a.kind === 'deconstruct') {
+        const w = this.deps.wallById(a.wallId);
+        if (w) this.outlineWall(w);
       } else {
         this.queueMarkers.push(
           this.scene.add
@@ -172,6 +177,23 @@ export class TaskGlowRenderer {
         COLORS.queued,
         0, // no fill — outline only
       )
+      .setStrokeStyle(2, COLORS.queued, 1)
+      .setDepth(4);
+    this.queueMarkers.push(box);
+  }
+
+  /**
+   * Outline a wall queued for deconstruct (plan 037 2b): a yellow stroked rect hugging the barricade
+   * sprite's rendered bounds (+ a small pad) — the demolish analogue of {@link outlineCampfire}, so a
+   * marked-for-unbuild wall reads the same as a queued refuel/build target. A stroked rect (not a baked
+   * silhouette halo like {@link addTreeGlow}) keeps it simple and robust to the wall's HP-stage frame
+   * swaps; pushed into `queueMarkers` so {@link reset} tears it down.
+   */
+  outlineWall(w: PlacedWall): void {
+    const b = w.sprite.getBounds();
+    const pad = 4;
+    const box = this.scene.add
+      .rectangle(b.centerX, b.centerY, b.width + pad, b.height + pad, COLORS.queued, 0)
       .setStrokeStyle(2, COLORS.queued, 1)
       .setDepth(4);
     this.queueMarkers.push(box);

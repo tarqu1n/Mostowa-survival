@@ -90,6 +90,13 @@ export class GameScene extends Phaser.Scene {
   // exclusive; UIScene mirrors this for HUD highlighting/visibility via 'mode:changed'.
   private mode: 'command' | 'combat' | 'inspect' = 'command';
 
+  // Demolish mode (plan 037 chunk 2b): while on, a command-mode tap on a finished wall enqueues a
+  // `deconstruct` worker order for it (walk adjacent → remove + partial refund). Layered on command
+  // mode (like build mode, it's not one of the three `mode` values) and MUTUALLY EXCLUSIVE with build
+  // mode — turning either on turns the other off. Non-destructive: toggling it never cancelAll()s the
+  // queue (mirrors build mode). UIScene mirrors it via `demolish:modeChanged` for the DEMOLISH button.
+  private demolishMode = false;
+
   // Auto-surface combat controls (plan 035a Step 3): recomputed every frame (updateCombatActive) —
   // true while a live enemy is within COMBAT_ACTIVE_RADIUS_TILES of the player OR it's night. Drives
   // whether the movepad is authoritative (movepadDrives) and whether UIScene reveals the fighting HUD
@@ -252,6 +259,7 @@ export class GameScene extends Phaser.Scene {
     if (a.kind === 'harvest') return a.treeId;
     if (a.kind === 'refuel') return a.campfireId;
     if (a.kind === 'build') return a.siteId;
+    if (a.kind === 'deconstruct') return a.wallId;
     return `(${a.col},${a.row})`;
   }
 
@@ -283,6 +291,7 @@ export class GameScene extends Phaser.Scene {
     this.nodeFx.armShutdown();
     this.nodeFx.reset();
     this.mode = 'command';
+    this.demolishMode = false; // a death-restart starts clear of demolish mode (UIScene resynced in buildWorld)
   }
 
   /**
@@ -419,6 +428,11 @@ export class GameScene extends Phaser.Scene {
     this.wallManager = new WallManager(this, {
       freeTile: (c, r) => this.buildManager.releaseTile(c, r),
       repath: () => this.repath(),
+      // Deconstruct refund (plan 037 2b) — credit each refunded resource back the same way costs are
+      // spent (through the shared Inventory), mirroring CampfireManagerDeps.spend's decoupling.
+      addItems: (items) => {
+        for (const [id, n] of Object.entries(items)) this.inv.add(id, n);
+      },
     });
 
     // Pointer "raycast" + tap/inspect intent (plan 015 Step 5) — constructed here, after
@@ -430,6 +444,7 @@ export class GameScene extends Phaser.Scene {
       trees: () => this.resourceNodeManager.all(),
       allSites: () => this.buildManager.allSites(),
       campfires: () => this.campfireManager.all(),
+      walls: () => this.wallManager.all(),
     });
 
     // Queue/glow presentation (plan 013 Step 6) — pure presentation over the queue, so it has no
@@ -441,6 +456,7 @@ export class GameScene extends Phaser.Scene {
       allSites: () => this.buildManager.allSites(),
       siteById: (id) => this.buildManager.siteById(id),
       campfireById: (id) => this.campfireManager.campfireById(id),
+      wallById: (id) => this.wallManager.wallById(id),
       nodeScale: (def, skin) => this.resourceNodeManager.nodeScale(def, skin),
     });
 
@@ -461,6 +477,14 @@ export class GameScene extends Phaser.Scene {
       getMode: () => this.mode,
       isMovepadHeld: () => this.ui.isMovepadHeld(),
       onTap: (pointer) => {
+        // Demolish mode (plan 037 2b): a tap on a finished wall enqueues its deconstruct order; a tap
+        // on empty ground / a non-wall does nothing (no move/harvest). Checked before the normal tap
+        // dispatch so it fully owns the tap while the mode is on.
+        if (this.demolishMode) {
+          const wall = this.scenePicker.wallAt(pointer.worldX, pointer.worldY);
+          if (wall) this.enqueue({ kind: 'deconstruct', wallId: wall.id });
+          return;
+        }
         const action = this.scenePicker.actionAt(pointer.worldX, pointer.worldY);
         // A tap on a tree or a campfire queues a job (harvest / refuel): it falls in behind the current
         // work (or starts at once if the worker is idle) instead of interrupting an in-progress job —
@@ -539,6 +563,9 @@ export class GameScene extends Phaser.Scene {
     // survives a death-restart (only 'Game' restarts), so a stale `true` from the prior run would
     // otherwise leave the fighting HUD showing; update() re-emits on the first frame if it flips true.
     this.game.events.emit('combat:activeChanged', this.combatActive);
+    // Same resync for demolish mode — UIScene survives a death-restart, so re-emit the reset value
+    // (false) so its DEMOLISH button/hint don't linger toggled from the prior run (plan 037 2b).
+    this.game.events.emit('demolish:modeChanged', this.demolishMode);
   }
 
   /** Wire every `game.events` scene↔UIScene listener + its matching SHUTDOWN teardown (the same 12
@@ -548,6 +575,8 @@ export class GameScene extends Phaser.Scene {
     this.game.events.on('build:toggle', this.buildManager.toggleBuild, this.buildManager);
     this.game.events.on('build:rotate', this.buildManager.rotatePlacement, this.buildManager);
     this.game.events.on('build:select', this.onBuildSelect, this);
+    this.game.events.on('build:modeChanged', this.onBuildModeChanged, this); // turn demolish off when build turns on (plan 037 2b)
+    this.game.events.on('demolish:toggle', this.onDemolishToggle, this);
     this.game.events.on('tasks:cancel', this.cancelAll, this);
     this.game.events.on('debug:randomise', this.randomiseWorld, this); // dev menu: scatter nodes + enemies
     this.game.events.on('debug:spawnEnemy', this.spawnEnemyNearPlayer, this); // dev menu: drop one enemy by the player to fight
@@ -568,6 +597,8 @@ export class GameScene extends Phaser.Scene {
       this.game.events.off('build:toggle', this.buildManager.toggleBuild, this.buildManager);
       this.game.events.off('build:rotate', this.buildManager.rotatePlacement, this.buildManager);
       this.game.events.off('build:select', this.onBuildSelect, this);
+      this.game.events.off('build:modeChanged', this.onBuildModeChanged, this);
+      this.game.events.off('demolish:toggle', this.onDemolishToggle, this);
       this.game.events.off('tasks:cancel', this.cancelAll, this);
       this.game.events.off('debug:randomise', this.randomiseWorld, this);
       this.game.events.off('debug:spawnEnemy', this.spawnEnemyNearPlayer, this);
@@ -688,6 +719,14 @@ export class GameScene extends Phaser.Scene {
       damageFire: (i, amount) => testApi.damageFire(i, amount),
       walls: () => testApi.walls(),
       damageWall: (i, amount) => testApi.damageWall(i, amount),
+      // Enqueue the real deconstruct worker order for the wall at `index` (the order the demolish-mode
+      // tap enqueues) — drives the full walk-adjacent → remove + refund path under step() (plan 037 2b).
+      deconstructWall: (i) => {
+        const w = this.wallManager.all()[i];
+        if (!w) return false;
+        this.enqueue({ kind: 'deconstruct', wallId: w.id });
+        return true;
+      },
       beginWave: () => testApi.beginWave(),
       zoneAt: (c, r) => this.zoneAt(c, r),
       moveEnemy: (i, c, r) => testApi.moveEnemy(i, c, r),
@@ -770,6 +809,9 @@ export class GameScene extends Phaser.Scene {
         break;
       case 'refuel':
         this.runRefuel(action, delta);
+        break;
+      case 'deconstruct':
+        this.runDeconstruct(action);
         break;
     }
     this.playerChar.updateAnim(this.harvestSwing);
@@ -882,6 +924,19 @@ export class GameScene extends Phaser.Scene {
       if (!stand || !this.pathTo(stand)) this.completeCurrent();
       return;
     }
+    if (a.kind === 'deconstruct') {
+      const w = this.wallManager.wallById(a.wallId);
+      if (!w) return this.completeCurrent(); // wall already gone (e.g. a mob destroyed it) — drop the order
+      // Stand on any tile adjacent to the wall's foot tile (it blocks its own tile, like the fire).
+      const stand = reachableAdjacent(
+        this.playerChar.tile(),
+        { col: w.col, row: w.row },
+        this.isBlocked,
+        this.gridDims,
+      );
+      if (!stand || !this.pathTo(stand)) this.completeCurrent();
+      return;
+    }
     // build
     const site = this.buildManager.siteById(a.siteId);
     if (!site || site.done) return this.completeCurrent();
@@ -920,6 +975,10 @@ export class GameScene extends Phaser.Scene {
       this.toggleRefuel(a.campfireId);
       return;
     }
+    if (a.kind === 'deconstruct' && this.isDeconstructQueued(a.wallId)) {
+      this.toggleDeconstruct(a.wallId);
+      return;
+    }
     const wasIdle = this.queue.current === null;
     this.queue.append(a);
     if (wasIdle) this.beginCurrent();
@@ -951,6 +1010,22 @@ export class GameScene extends Phaser.Scene {
   private toggleRefuel(campfireId: string): void {
     const wasCurrent = this.queue.removeWhere(
       (x) => x.kind === 'refuel' && x.campfireId === campfireId,
+    );
+    if (wasCurrent) this.beginCurrent();
+    this.emitTasks();
+  }
+
+  /** True if a wall already has a deconstruct order (current or pending). */
+  private isDeconstructQueued(wallId: string): boolean {
+    return this.queue.all().some((x) => x.kind === 'deconstruct' && x.wallId === wallId);
+  }
+
+  /** Remove a wall's deconstruct order — the demolish analogue of {@link toggleRefuel}: tapping a wall
+   *  that's already marked for demolition un-marks it (tap again to re-queue at the end). If it was the
+   *  live order, advance to the next (or go idle) so the worker stops heading to a wall you un-marked. */
+  private toggleDeconstruct(wallId: string): void {
+    const wasCurrent = this.queue.removeWhere(
+      (x) => x.kind === 'deconstruct' && x.wallId === wallId,
     );
     if (wasCurrent) this.beginCurrent();
     this.emitTasks();
@@ -1048,6 +1123,25 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Deconstruct a wall (plan 037 chunk 2b, decision #6): walk to the stand tile (set in beginCurrent),
+   * then on arrival remove the wall — crediting its partial refund — and END the order. Like
+   * {@link runRefuel} it's a walk-adjacent-then-act order that self-terminates on a *condition* (the
+   * wall is gone), not the target's death; but it's a single act (one wall, removed once), so there's
+   * no per-interval feed loop. If the wall vanished before the worker arrived (e.g. a mob destroyed it
+   * mid-walk), drop the order rather than stall — WallManager.deconstruct also no-ops on a gone wall.
+   */
+  private runDeconstruct(a: Extract<Action, { kind: 'deconstruct' }>): void {
+    const w = this.wallManager.wallById(a.wallId);
+    if (!w) return this.completeCurrent();
+    if (this.playerChar.advancePath()) {
+      this.player.body.setVelocity(0, 0);
+      this.playerChar.faceTile(w.col, w.row); // face the wall as it comes down
+      this.wallManager.deconstruct(a.wallId); // remove + credit the partial refund
+      this.completeCurrent(); // condition-terminate: the wall is gone
+    }
+  }
+
   // --- Input gate ----------------------------------------------------------
   //
   // Gesture recognition (tap/long-press-paint/pan/pinch) + the camera it drives live in
@@ -1108,6 +1202,10 @@ export class GameScene extends Phaser.Scene {
     this.fx.playAttackSwing(); // swing on every (accepted) press, even a whiff, so the input feels heard
     const shape = this.playerChar.meleeShape();
     const tiles = attackTiles(this.playerChar.tile(), this.playerChar.lastFacing, shape);
+    // Enemies only — walls are deliberately IMMUNE to player weapons (plan 037 decision #1): the only
+    // targets are the enemies in the swing tiles, never `wallManager`. A wall is removed by a worker
+    // deconstruct order (decision #6, see runDeconstruct), not by hitting it; only mob attacks lower a
+    // wall's HP (chunk 2c). (Plan 036 will fold this into the `attackTiles` generator when it lands.)
     const targets = this.enemyManager.enemiesInTiles(tiles);
     const base = this.playerChar.meleeBaseDamage();
     let anyHit = false;
@@ -1243,6 +1341,28 @@ export class GameScene extends Phaser.Scene {
    *  selection and enters build mode. */
   private onBuildSelect({ id }: { id: string }): void {
     this.buildManager.select(id);
+  }
+
+  /** Toggle demolish mode (plan 037 2b) — UIScene DEMOLISH button / ESC via `demolish:toggle`. */
+  private onDemolishToggle(): void {
+    this.setDemolishMode(!this.demolishMode);
+  }
+
+  /** Set demolish mode + notify UIScene (`demolish:modeChanged`). Turning it ON exits build mode (the
+   *  two are mutually exclusive — a base-building session is either placing or unbuilding, never both).
+   *  Deliberately does NOT cancelAll() (mirrors build mode's non-destructive toggle): entering demolish
+   *  leaves any in-flight worker order running until you actually mark a wall. */
+  private setDemolishMode(on: boolean): void {
+    this.demolishMode = on;
+    if (on && this.buildManager.buildMode) this.buildManager.toggleBuild(); // leave build mode
+    this.game.events.emit('demolish:modeChanged', this.demolishMode);
+  }
+
+  /** Build mode changed (`build:modeChanged`, from BuildManager) — if it just turned ON while demolish
+   *  mode was active, drop demolish (the mutual-exclusion's other direction: BuildManager.select/toggle
+   *  own build mode, so this closes the loop without them knowing demolish exists). */
+  private onBuildModeChanged(active: boolean): void {
+    if (active && this.demolishMode) this.setDemolishMode(false);
   }
 
   /** True while the movepad is authoritative — manual Combat mode OR the combatActive auto-surface

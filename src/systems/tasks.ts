@@ -3,12 +3,13 @@
  * No side effects or Phaser imports; wired into the game scene by Step 3.
  */
 
-/** An action in a worker's task queue: move, harvest, build, or refuel. */
+/** An action in a worker's task queue: move, harvest, build, refuel, or deconstruct. */
 export type Action =
   | { kind: 'move'; col: number; row: number } // path to the tile and stop
   | { kind: 'harvest'; treeId: string } // path adjacent to the tree, chop until felled
   | { kind: 'build'; siteId: string } // path adjacent to the blueprint, work until built
-  | { kind: 'refuel'; campfireId: string }; // path adjacent to the fire, feed wood until topped up / out
+  | { kind: 'refuel'; campfireId: string } // path adjacent to the fire, feed wood until topped up / out
+  | { kind: 'deconstruct'; wallId: string }; // path adjacent to the wall, remove it + refund (plan 037 2b)
 
 /** Queue holding a current action and pending actions for a worker. */
 export class TaskQueue {

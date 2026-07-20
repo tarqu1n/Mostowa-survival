@@ -109,7 +109,8 @@ export type PointerPick =
   | { kind: 'tree'; tree: TreeNode }
   | { kind: 'enemy'; enemy: MonsterCharacter }
   | { kind: 'site'; site: BuildSite }
-  | { kind: 'campfire'; campfire: CampfireUnit };
+  | { kind: 'campfire'; campfire: CampfireUnit }
+  | { kind: 'wall'; wall: PlacedWall };
 
 /** Cardinal facing shorthand for {@link ScenarioSpec}, mapped to `lastFacing` deltas below. */
 export type FacingSpec = 'up' | 'down' | 'left' | 'right';

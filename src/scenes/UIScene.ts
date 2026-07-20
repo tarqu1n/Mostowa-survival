@@ -52,6 +52,11 @@ export class UIScene extends Phaser.Scene {
   private inv?: Inventory;
   private buildButton!: Button;
   private modeIndicator!: Phaser.GameObjects.Text;
+  // Demolish mode (plan 037 2b): a DEMOLISH toggle in the build column that flips demolish mode
+  // (emits `demolish:toggle`; mirrored back via `demolish:modeChanged`), plus its own bottom-centre
+  // mode hint. Mutually exclusive with build mode — GameScene turns one off when the other turns on.
+  private demolishButton!: Button;
+  private demolishIndicator!: Phaser.GameObjects.Text;
 
   // Build palette (plan 012): BUILD opens a centred Panel listing every BUILDABLES entry (Wall,
   // Campfire) with name + cost, each row dimmed when unaffordable. Picking a row emits `build:select`
@@ -276,6 +281,38 @@ export class UIScene extends Phaser.Scene {
       onDown: () => this.toggleInventory(),
     });
     this.hudElements.push(this.inventoryButton);
+
+    // DEMOLISH toggle (plan 037 2b) — in the build column, under ITEMS. Flips demolish mode (tap a
+    // finished wall to enqueue its unbuild); GameScene keeps it mutually exclusive with build mode.
+    // Danger-styled since it destroys, mirroring the BUILD button's toggled-state affordance.
+    const dmw = 76;
+    const dmh = 22;
+    this.demolishButton = new Button(
+      this,
+      BASE_WIDTH - dmw / 2 - 8,
+      8 + bh + cbh + ibh + dmh / 2 + 18,
+      {
+        width: dmw,
+        height: dmh,
+        label: 'DEMOLISH',
+        variant: 'danger',
+        fontSize: 10,
+        onDown: () => this.game.events.emit('demolish:toggle'),
+      },
+    );
+    this.hudElements.push(this.demolishButton);
+
+    // Demolish-mode hint — bottom-centre, sharing the build-mode indicator's slot (the two modes are
+    // mutually exclusive, so only one is ever visible). Mirrors modeIndicator.
+    this.demolishIndicator = this.add
+      .text(BASE_WIDTH / 2, BASE_HEIGHT - 14, 'DEMOLISH — tap a wall to unbuild', {
+        fontFamily: 'monospace',
+        fontSize: '9px',
+        color: '#e8dcc0',
+      })
+      .setOrigin(0.5)
+      .setVisible(false);
+    this.hudElements.push(this.demolishIndicator);
 
     // Queue indicator — current action + queued count, top-left.
     this.queueText = this.add.text(10, 26, '', {
@@ -594,6 +631,7 @@ export class UIScene extends Phaser.Scene {
     this.refreshInventory();
     this.inv?.on('change', this.refreshInventory, this);
     this.game.events.on('build:modeChanged', this.onBuildMode, this);
+    this.game.events.on('demolish:modeChanged', this.onDemolishMode, this);
     this.game.events.on('build:select', this.onBuildSelected, this);
     this.game.events.on('tasks:changed', this.onTasks, this);
     this.game.events.on('zoom:changed', this.onZoomChanged, this);
@@ -612,6 +650,7 @@ export class UIScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.inv?.off('change', this.refreshInventory, this);
       this.game.events.off('build:modeChanged', this.onBuildMode, this);
+      this.game.events.off('demolish:modeChanged', this.onDemolishMode, this);
       this.game.events.off('build:select', this.onBuildSelected, this);
       this.game.events.off('tasks:changed', this.onTasks, this);
       this.game.events.off('zoom:changed', this.onZoomChanged, this);
@@ -761,10 +800,12 @@ export class UIScene extends Phaser.Scene {
     }
   }
 
-  /** ESC: close the palette if open, else exit build mode (mirrors tapping BUILD again). */
+  /** ESC: close the palette if open, else exit build mode, else exit demolish mode (each mirrors
+   *  tapping its own toggle again — plan 037 2b adds the demolish rung). */
   private onEscape(): void {
     if (this.buildPalette.visible) this.setBuildPaletteOpen(false);
     else if (this.buildButton.isToggled()) this.game.events.emit('build:toggle');
+    else if (this.demolishButton.isToggled()) this.game.events.emit('demolish:toggle');
   }
 
   /** R (build mode only): rotate the placement facing — the keyboard mirror of the ROTATE button. */
@@ -1054,6 +1095,13 @@ export class UIScene extends Phaser.Scene {
     this.buildButton.setToggled(active);
     if (active) this.setBuildPaletteOpen(false); // a picked buildable enters build mode → drop the palette
     this.refreshRotateButton(); // show/hide ROTATE with build mode (plan 037)
+  }
+
+  /** Reflect demolish mode (plan 037 2b): the DEMOLISH button's toggled state + its bottom-centre hint.
+   *  GameScene owns the authoritative flag (and the mutual exclusion with build mode); this only mirrors. */
+  private onDemolishMode(active: boolean): void {
+    this.demolishButton.setToggled(active);
+    this.demolishIndicator.setVisible(active);
   }
 
   /** Reflect the worker's live task state: current action label + queued count, and Cancel visibility. */

@@ -282,11 +282,27 @@ committed rules — **trigger-once + re-armed by a queued worker order each morn
   - Done when: placing a wall in-scene plays the build animation and stands as a barricade sprite; a
     scenario can read the wall's `hp`/`maxHp`.
 
-- [ ] **Step 4: Player can damage & destroy structures** `[inline]`
+- [x] **Step 4: Player can damage & destroy structures** `[inline]` — REPLACED by decision #6, DELIVERED as chunk **2b**.
   - **OVERRIDDEN by decision #6 (owner, 2026-07-20) → see resequence chunk 2b.** Players do NOT damage
     walls in combat; this becomes a **worker deconstruct/unbuild order with partial refund**. Ignore the
     combat-damage / ObjectStats-as-defender-on-the-player-path detail below; the HP/damage path is
     mob-driven only (chunk 2c). Kept below for the enemy-side adapter reference only.
+  - Outcome (2026-07-20, chunk 2b — delegated + reviewed): player removes a wall via a **worker
+    `deconstruct` order** (new `tasks.ts` action, mirrors `refuel`): tap a finished wall in a new
+    **DEMOLISH mode** → worker paths adjacent → `WallManager.deconstruct(id)` removes it + credits a
+    **partial refund** (`floor(cost × DECONSTRUCT_REFUND_FRACTION)`, 0.5 in `config.ts`; wall → 1 wood).
+    Confirmed walls take **zero** player weapon damage (`GameScene.attack` only hits
+    `enemyManager.enemiesInTiles` — no change needed, comment added). DEMOLISH toggle button (UIScene,
+    right column under ITEMS, danger-styled, mutually exclusive with build mode, ESC-exitable, no
+    `cancelAll`); tap routes via a new ScenePicker `wall` pick (foot-tile+alpha, tree pattern) →
+    `deconstruct` enqueue; queued walls get an `outlineWall` glow (mirrors refuel). Inspect now reads a
+    live wall via `placedWallStats`. Shared tile-free/repath teardown factored into `WallManager.retireWall`
+    (deconstruct = clean removal, mob-kill = crumble anim) — the seam 2c's kill path already uses. Files:
+    config/tasks/GameScene/UIScene/ScenePicker/WallManager/entities.types+testTypes/systems.stats/
+    TaskGlowRenderer/harness + STATUS.md; new `tests/e2e/wall-deconstruct.spec.ts`. **Verified:** build
+    clean, Tier-1 829 pass, lint 0 errors, prettier clean, e2e new spec + tripwire PASS (golden unchanged,
+    `__test.deconstructWall` not in DebugState); only the 5 known pre-existing reds. Eyeballed the DEMOLISH
+    HUD (screenshot).
   - Give `PlacedStructure` a `takeDamage(amount)` and `hp`. Add an **ObjectStats-as-defender adapter**
     so `resolveMeleeAttack` accepts a structure (wrap `ObjectStats` with zeroed `strength/dex/dodge`, or
     widen the defender type in `combat.ts` — prefer the adapter to keep `combat.ts` pure and unchanged).

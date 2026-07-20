@@ -105,6 +105,14 @@ export const LONGPRESS_MS = 350;
 /** On-site work time (ms) for a worker to finish one wall from its blueprint. */
 export const BUILD_MS = 2500;
 
+/**
+ * Deconstruct refund (plan 037 chunk 2b, decision #6). Unbuilding a finished wall via a worker
+ * deconstruct order credits back this fraction of its buildable `cost`, floored per resource (the
+ * wall's `{ wood: 2 }` → 1 wood back). A partial refund so demolish-and-rebuild churn isn't free, but
+ * a misplacement isn't fully punished either. Tuning knob — playtest-tune.
+ */
+export const DECONSTRUCT_REFUND_FRACTION = 0.5;
+
 /** Pointer travel (px, base res) above which a press is treated as a drag, not an order. */
 export const DRAG_PX = 12;
 

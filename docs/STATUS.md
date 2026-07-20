@@ -210,7 +210,7 @@ CampfireManager's `fire:changed` — orange while lit, red when knocked out, hid
 **NIGHT WAVE** indicator beside the day/night readout (shown during night). A **FORCE WAVE** dev-menu
 button (+ `debug:forceWave` hook) jumps to night and starts a wave on demand for manual playtesting.
 
-## Base-defence walls (plan 037, chunk 2a)
+## Base-defence walls (plan 037, chunks 2a–2b)
 
 The `wall` buildable is now a **live, 4-way, mob-destructible structure** (was a static tile),
 materialised by an interim **`src/scenes/world/WallManager.ts`** — mirrors `CampfireManager`'s
@@ -224,10 +224,19 @@ rubble by HP fraction and, at `hp≤0`, plays it through and removes the wall (i
 button + R key; `BuildManager.rotatePlacement` cycles down→right→up→left, stamped per site as `facing`;
 left = the side sheet flipped). `finishSite` routes `wall` through the `behavior` dispatch
 (`campfire`→CampfireManager, `wall`→WallManager) — the static-tile branch is now dead for walls.
-Art paths + frame slicing: [wired-art.md](wired-art.md). DEV test seam: `__test.walls()` /
-`__test.damageWall(index, amount)` (NOT part of `DebugState`, so the tripwire golden is untouched).
-**Deferred to later chunks:** player deconstruct/unbuild + refund (2b), enemy-attacks-a-wall + thorns
-firing (2c) — `thorns` is data-only for now.
+Art paths + frame slicing: [wired-art.md](wired-art.md).
+
+**Player deconstruct/unbuild (chunk 2b).** Players do **not** damage walls in combat — walls are
+immune to player weapons (`GameScene.attack()` targets only enemies; decision #1). Removal is a
+**`deconstruct` worker order** (mirrors the `refuel` order): a **DEMOLISH** mode (HUD button below
+ITEMS + `demolish:toggle`/`demolish:modeChanged`, mutually exclusive with build mode, ESC-exitable,
+non-destructive to the queue) → tap a finished wall → the worker walks adjacent → `WallManager.deconstruct`
+removes it (a clean removal, no crumble anim; shared tile-free/repath teardown with the mob-kill destroy
+path) and **credits a partial refund** — `floor(cost × DECONSTRUCT_REFUND_FRACTION)` (0.5, `config.ts`
+tuning knob) per resource (wall `{wood:2}` → 1 wood back). A queued deconstruct shows a yellow outline
+(like a queued refuel). DEV test seams: `__test.walls()` / `__test.damageWall(index, amount)` /
+`__test.deconstructWall(index)` — none part of `DebugState`, so the tripwire golden is untouched.
+**Deferred to 2c:** enemy-attacks-a-wall + thorns firing — `thorns` is data-only for now.
 
 ## Node harvest feel (plan 031)
 

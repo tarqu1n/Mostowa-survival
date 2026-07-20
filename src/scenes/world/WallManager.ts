@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TILE_SIZE } from '../../config';
+import { TILE_SIZE, DECONSTRUCT_REFUND_FRACTION } from '../../config';
 import { tileToWorldCenter } from '../../systems/grid';
 import { rowDepthOffset } from '../../systems/mapFormat';
 import { BUILDABLES } from '../../data/buildables';
@@ -24,6 +24,9 @@ export interface WallManagerDeps {
   freeTile(col: number, row: number): void;
   /** Recompute the active path after a wall was removed (the tile just opened up). */
   repath(): void;
+  /** Credit a deconstruct's partial refund back to the inventory (mirrors CampfireManagerDeps.spend's
+   *  decoupling — WallManager never touches the raw Inventory). Called only from {@link deconstruct}. */
+  addItems(items: Record<string, number>): void;
 }
 
 /**
@@ -138,6 +141,23 @@ export class WallManager {
     return BUILDABLES[wallBuildableId(w)].thorns ?? 0;
   }
 
+  /** Player deconstruct/unbuild (plan 037 chunk 2b, decision #6): remove a finished wall and CREDIT a
+   *  partial refund (`floor(cost × DECONSTRUCT_REFUND_FRACTION)` of each resource in the buildable's
+   *  `cost`; wall `{ wood: 2 }` → 1 wood) back to the inventory via the {@link WallManagerDeps.addItems}
+   *  dep. Unlike the mob-kill {@link destroyWall} path, this is a CLEAN removal — no Destroy crumble
+   *  anim (a deliberate player unbuild, not a combat kill) — and it refunds (a kill does not). Shares
+   *  the tile-free/repath teardown with destroy via {@link retireWall}. Returns whether a wall was
+   *  removed; no-op (false) if `id` is unknown (a wall gone mid-order — tolerated, like {@link takeDamage}).
+   *  Driven by the GameScene `deconstruct` worker order once the worker stands adjacent. */
+  deconstruct(id: string): boolean {
+    const w = this.wallById(id);
+    if (!w) return false;
+    this.deps.addItems(refundFor(wallBuildableId(w)));
+    this.retireWall(w);
+    if (w.sprite.active) w.sprite.destroy(); // clean removal — no crumble anim (see doc)
+    return true;
+  }
+
   /** Show the damage-stage frame for a wall's current hp (Destroy sheet, frame 0 intact → 5 rubble). */
   private applyDamageStage(w: PlacedWall): void {
     const frame = Phaser.Math.Clamp(Math.round((1 - w.hp / w.maxHp) * 5), 0, 5);
@@ -145,14 +165,22 @@ export class WallManager {
     w.sprite.setTexture(barricadeDestroyKey(orientOf(w.facing)), frame);
   }
 
-  /** Remove a destroyed wall: free its tile NOW (so pathing/occupancy open immediately and the mob can
-   *  repath through as it crumbles), drop it from the collection, then play the Destroy anim through and
-   *  self-destroy the sprite on completion (tracked in {@link dying} so a scenario reset can free it). */
-  private destroyWall(w: PlacedWall): void {
+  /** Free a wall's tile + collision (via {@link WallManagerDeps.freeTile}, BuildManager the sole writer)
+   *  NOW so pathing/occupancy open immediately, drop it from the collection, and repath. Shared by
+   *  {@link destroyWall} (mob kill — then crumbles) and {@link deconstruct} (player unbuild — then a
+   *  clean removal); the caller owns the sprite teardown, since the two differ (crumble anim vs vanish). */
+  private retireWall(w: PlacedWall): void {
     this.deps.freeTile(w.col, w.row);
     this.deps.repath();
     this.walls = this.walls.filter((x) => x !== w);
+  }
 
+  /** Remove a destroyed wall (mob kill): free its tile NOW (so pathing/occupancy open immediately and
+   *  the mob can repath through as it crumbles), drop it from the collection, then play the Destroy anim
+   *  through and self-destroy the sprite on completion (tracked in {@link dying} so a scenario reset can
+   *  free it). No refund — a kill is not a player unbuild (contrast {@link deconstruct}). */
+  private destroyWall(w: PlacedWall): void {
+    this.retireWall(w);
     const sprite = w.sprite;
     this.dying.push(sprite);
     sprite.play(barricadeDestroyKey(orientOf(w.facing)));
@@ -217,4 +245,15 @@ function orientOf(facing: FacingSpec): Facing {
  *  isolated here so a later multi-wall variant (the solid `D_1`) threads its id through PlacedWall. */
 function wallBuildableId(_w: PlacedWall): string {
   return 'wall';
+}
+
+/** The partial deconstruct refund for a buildable: `floor(cost × DECONSTRUCT_REFUND_FRACTION)` of each
+ *  resource in its `cost` (wall `{ wood: 2 }` → `{ wood: 1 }`), dropping any entry that floors to 0. */
+function refundFor(buildableId: string): Record<string, number> {
+  const refund: Record<string, number> = {};
+  for (const [id, amount] of Object.entries(BUILDABLES[buildableId].cost)) {
+    const give = Math.floor(amount * DECONSTRUCT_REFUND_FRACTION);
+    if (give > 0) refund[id] = give;
+  }
+  return refund;
 }

@@ -200,6 +200,12 @@ export function damageWall(page: Page, index: number, amount: number): Promise<b
   );
 }
 
+/** Enqueue the real deconstruct worker order for the wall at `index` (plan 037 2b) — walk-adjacent →
+ *  remove + partial refund; returns false if there's no wall at that index. */
+export function deconstructWall(page: Page, index: number): Promise<boolean> {
+  return page.evaluate((i) => (window as any).game.__test.deconstructWall(i), index);
+}
+
 /** Start a night wave immediately (plan 038 Step 3), independent of the day→night clock edge. */
 export function beginWave(page: Page): Promise<void> {
   return page.evaluate(() => (window as any).game.__test.beginWave());

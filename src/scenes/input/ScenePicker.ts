@@ -1,9 +1,21 @@
 import type { Action } from '../../systems/tasks';
 import { worldToTile } from '../../systems/grid';
 import { hurtboxContains, DEFAULT_HURTBOX } from '../../systems/hurtbox';
-import { treeStats, wallStats, enemyStats, campfireStats } from '../../systems/stats';
+import {
+  treeStats,
+  wallStats,
+  placedWallStats,
+  enemyStats,
+  campfireStats,
+} from '../../systems/stats';
 import { BUILDABLES } from '../../data/buildables';
-import type { PointerPick, TreeNode, BuildSite, CampfireUnit } from '../../entities/types';
+import type {
+  PointerPick,
+  TreeNode,
+  BuildSite,
+  CampfireUnit,
+  PlacedWall,
+} from '../../entities/types';
 import type { MonsterCharacter } from '../../entities/MonsterCharacter';
 import type { GameScene } from '../GameScene';
 
@@ -25,6 +37,9 @@ export interface ScenePickerDeps {
   allSites(): readonly BuildSite[];
   /** Every built campfire (CampfireManager.all()) — picked over its own (hidden) site rect by draw order. */
   campfires(): CampfireUnit[];
+  /** Every live barricade wall (WallManager.all()) — picked over its own (hidden) site rect by draw
+   *  order, so a demolish-mode tap resolves the wall and inspecting it reads its live hp (plan 037). */
+  walls(): PlacedWall[];
 }
 
 /**
@@ -61,7 +76,19 @@ export class ScenePicker {
     const pick = this.pickSpriteAt(x, y);
     if (pick?.kind === 'tree') return { kind: 'harvest', treeId: pick.tree.id };
     if (pick?.kind === 'campfire') return { kind: 'refuel', campfireId: pick.campfire.id };
+    // A wall falls through to a plain move to the tapped tile (deconstructing is a DEMOLISH-mode-only
+    // intent — see GameScene's onTap + demolishMode; command-mode taps never unbuild a wall).
     return { kind: 'move', col: worldToTile(x), row: worldToTile(y) };
+  }
+
+  // --- Demolish-mode intent --------------------------------------------------
+
+  /** The barricade wall whose sprite is drawn under a world point, or undefined for a non-wall / empty
+   *  ground. GameScene routes this to a `deconstruct` worker order only while DEMOLISH mode is on; it
+   *  reuses the same raycast as command/inspect taps so a wall is hit on its foot tile or up its art. */
+  wallAt(x: number, y: number): PlacedWall | undefined {
+    const pick = this.pickSpriteAt(x, y);
+    return pick?.kind === 'wall' ? pick.wall : undefined;
   }
 
   // --- Inspect-mode intent ----------------------------------------------------
@@ -79,6 +106,8 @@ export class ScenePicker {
       return void this.scene.game.events.emit('inspect:show', wallStats(pick.site));
     if (pick?.kind === 'campfire')
       return void this.scene.game.events.emit('inspect:show', campfireStats(pick.campfire));
+    if (pick?.kind === 'wall')
+      return void this.scene.game.events.emit('inspect:show', placedWallStats(pick.wall));
     this.scene.game.events.emit('inspect:hide');
   }
 
@@ -130,6 +159,15 @@ export class ScenePicker {
       const obj = s.visual ?? s.rect;
       const spriteHit = s.visual ? this.alphaHit(s.visual, x, y) : obj.getBounds().contains(x, y);
       if ((s.col === col && s.row === row) || spriteHit) consider(obj, { kind: 'site', site: s });
+    }
+    // A built barricade wall's oriented sprite is created after (and over) its now-hidden site rect, so
+    // it wins the pick tie-break by draw order — a wall tile resolves to the wall (its live hp), not its
+    // site. Hit on the foot tile (reliable even where the stake art is transparent) OR an opaque pixel
+    // of the sprite (up its ~1-tile art), like a tree — NOT the campfire's full tilesTall column, since
+    // the wall art sits at the bottom of its frame (no rising flame to reach for).
+    for (const w of this.deps.walls()) {
+      if ((w.col === col && w.row === row) || this.alphaHit(w.sprite, x, y))
+        consider(w.sprite, { kind: 'wall', wall: w });
     }
     // A built campfire's fire sprite is created after (and over) its now-hidden site rect, so it wins
     // the pick tie-break by draw order — inspecting a built fire yields the campfire, not its site.

@@ -95,6 +95,10 @@ export interface GameTestApi {
   /** DEV/test-only: damage the wall at `index` by `amount` (WallManager.takeDamage — the path chunk
    *  2c's enemy drives). Returns whether the blow destroyed it; false if no wall at that index. */
   damageWall(index: number, amount: number): boolean;
+  /** DEV/test-only: enqueue the real `deconstruct` worker order for the wall at `index` (the order the
+   *  demolish-mode tap enqueues) — drives the walk-adjacent → remove + partial-refund path under step()
+   *  (plan 037 2b). Returns false if there's no wall at that index. */
+  deconstructWall(index: number): boolean;
   /** DEV/test-only: start a night wave immediately (plan 038 Step 3), independent of the day→night
    *  clock edge — the deterministic entry point for spawn/pacing specs. Idempotent. */
   beginWave(): void;

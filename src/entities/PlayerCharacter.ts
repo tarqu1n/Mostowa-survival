@@ -6,8 +6,12 @@ import {
   PLAYER_HURTBOX,
   ATTACK_MOVE_SLOW,
   BOW_MOVE_SLOW,
+  UNARMED_BASE_DAMAGE,
+  UNARMED_MELEE_SHAPE,
 } from '../config';
 import { ACTIVE_TILESET, playerAnimKey, type PlayerState } from '../data/tileset';
+import type { AttackShape } from '../data/types';
+import type { MeleeWeapon } from '../data/weapons';
 import { worldToTile } from '../systems/grid';
 import type { Cell } from '../systems/pathfind';
 import { Character, type CharacterSprite } from './Character';
@@ -38,6 +42,10 @@ export class PlayerCharacter extends Character {
   meleeReadyAt = 0;
   /** As {@link meleeReadyAt} but for the bow (`BOW_COOLDOWN_MS`) — set by `GameScene.bow`. */
   bowReadyAt = 0;
+  /** Currently equipped melee weapon, or `undefined` for unarmed (plan 036). Sources the swing's
+   *  footprint + base damage via {@link meleeShape}/{@link meleeBaseDamage}. Minimal by design: no
+   *  inventory, no equipment slot, no render change — Step 3 wires the scene to read these. */
+  meleeWeapon?: MeleeWeapon;
 
   constructor(scene: Phaser.Scene, spawn: { x: number; y: number }) {
     // Player: 3-way directional idle + walk (down/side/up). Each strip is its own texture (key ==
@@ -64,6 +72,24 @@ export class PlayerCharacter extends Character {
     this.sprite.setData('baseScale', playerActor.render.scale); // rest scale the flinch squash returns to
     this.sprite.body.setCollideWorldBounds(true);
     this.fitBody(playerActor.render);
+  }
+
+  /** Equip (or, with `undefined`, unequip back to unarmed) the player's melee weapon (plan 036). */
+  setMeleeWeapon(w?: MeleeWeapon): void {
+    this.meleeWeapon = w;
+  }
+
+  /** The footprint the current melee swing covers — the equipped weapon's shape, or the unarmed
+   *  default ({@link UNARMED_MELEE_SHAPE}: today's single front tile). Consumed by the scene's attack
+   *  (Step 3) via `attackTiles`. */
+  meleeShape(): AttackShape {
+    return this.meleeWeapon?.attackShape ?? UNARMED_MELEE_SHAPE;
+  }
+
+  /** Base damage of the current melee swing — the equipped weapon's `damage`, or
+   *  {@link UNARMED_BASE_DAMAGE} when bare-handed. */
+  meleeBaseDamage(): number {
+    return this.meleeWeapon?.damage ?? UNARMED_BASE_DAMAGE;
   }
 
   /** The player's current move speed, cut while an action commits you in place: hard to

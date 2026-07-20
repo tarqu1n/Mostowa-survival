@@ -38,6 +38,24 @@ export interface Hurtbox {
   height: number; // tiles tall, counted up from the feet row (1 = feet tile only)
 }
 
+/**
+ * A weapon's melee attack footprint **in tiles**, oriented to a cardinal-snapped facing (diagonal
+ * facings snap to their dominant axis inside the generator). Independent of the target's `Hurtbox`:
+ * this is the set of tiles the swing *covers*, resolved by `attackTiles` in `src/systems/hurtbox.ts`.
+ * - `reach` — forward depth in tiles from the attacker's feet (clamped to `≥1`; the feet tile itself
+ *   is never covered). `reach:1` reaches the one tile directly in front.
+ * - `arc` — lateral profile of the swing:
+ *   - `'single'` — just the tip tile at `reach` (a thrust). `{reach:1, arc:'single'}` = today's one
+ *     front tile.
+ *   - `'line'` — the full straight column from the feet out to `reach` (a spear that hits everything
+ *     in its path).
+ *   - `'wide'` — a 3-wide swath (front tile plus its two perpendicular neighbours) to depth `reach`.
+ */
+export interface AttackShape {
+  reach: number; // forward depth in tiles (≥1)
+  arc: 'single' | 'wide' | 'line'; // lateral profile of the swing
+}
+
 /** Stats for things that fight (player, enemies). */
 export interface CombatantStats extends BaseStats {
   strength: number; // flat bonus to melee damage dealt

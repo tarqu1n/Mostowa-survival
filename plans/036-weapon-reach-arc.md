@@ -89,7 +89,8 @@ Unarmed default (no weapon) = `{reach:1, arc:'single'}`, `damage = UNARMED_BASE_
 
 ## Steps
 
-- [ ] **Step 1: `AttackShape` type + pure `attackTiles` generator + Tier-1 tests** `[inline]`
+- [x] **Step 1: `AttackShape` type + pure `attackTiles` generator + Tier-1 tests** `[inline]`
+  - Outcome: added `AttackShape` interface to `src/data/types.ts` (after `Hurtbox`) and the pure `attackTiles(feet, facing, shape)` generator to `src/systems/hurtbox.ts` (imports `Cell` from `./pathfind`); 7 new tests in `src/systems/__tests__/hurtbox.test.ts` (exact tile sets per arc at reach 1/2 across 4 cardinals, diagonal→dominant-axis snap, reach clamp, dedupe). Additive only, no runtime change. `npm run typecheck` clean; full `vitest` green (813 tests, 60 files). No `DebugState` field, tripwire untouched.
   - Add `AttackShape` to `src/data/types.ts` (near `Hurtbox`): `{ reach: number; arc: 'single' | 'wide' |
     'line' }`, with a doc comment covering the exact semantics above (reach = forward depth; arc = lateral
     profile; oriented to a cardinal-snapped facing).
@@ -106,7 +107,8 @@ Unarmed default (no weapon) = `{reach:1, arc:'single'}`, `damage = UNARMED_BASE_
   - Docs: none (Step 5).
   - Done when: typecheck clean, new Tier-1 tests green, full `vitest` green, no behaviour change in-game.
 
-- [ ] **Step 2: Melee weapon data + player melee-shape source** `[inline]`
+- [x] **Step 2: Melee weapon data + player melee-shape source** `[inline]`
+  - Outcome: `src/data/weapons.ts` — added `MeleeWeapon` type + `MELEE_WEAPONS` (spear `{reach:2,line}`, cleaver `{reach:1,wide}`, each damage 1) mirroring `MONSTER_WEAPONS`, plus a type-only optional `attackShape?` seam on `MonsterWeapon` (no consumer, no existing entry sets it; `EnemyDef` left untouched). `src/config.ts` — `UNARMED_MELEE_SHAPE = {reach:1,arc:'single'}` near `UNARMED_BASE_DAMAGE` (plan-036 tagged). `src/entities/PlayerCharacter.ts` — optional `meleeWeapon?` field + `setMeleeWeapon(w?)` + resolvers `meleeShape()`/`meleeBaseDamage()` (fall back to unarmed). Additive; nothing consumes the player field until Step 3. `npm run typecheck` clean; `vitest` green (813 tests, incl. `data.test.ts` 27).
   - In `src/data/weapons.ts` add, alongside `MONSTER_WEAPONS`: a `MeleeWeapon` type `{ id: string; name:
     string; damage: number; attackShape: AttackShape }` and a `MELEE_WEAPONS: Record<string, MeleeWeapon>`
     with the two demo entries (`spear {reach:2,arc:'line',damage:1}`, `cleaver {reach:1,arc:'wide',

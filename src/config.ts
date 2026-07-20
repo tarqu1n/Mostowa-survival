@@ -2,7 +2,7 @@
  * Global game constants. Keep tunables here so they're easy to find and change from any device.
  */
 
-import type { Hurtbox } from './data/types';
+import type { AttackShape, Hurtbox } from './data/types';
 
 /**
  * Base render resolution. Mobile-first: a portrait canvas (9:16-ish) that Phaser's Scale.FIT
@@ -140,6 +140,11 @@ export const PLAYER_HURTBOX: Hurtbox = { width: 1, height: 2 };
 
 /** Base damage of an unarmed hit — shared by an unarmed attack and an enemy's bite via resolveMeleeAttack. */
 export const UNARMED_BASE_DAMAGE = 1;
+
+/** Melee footprint of an unarmed swing (plan 036): today's single front tile — a `reach:1` thrust
+ *  with no spread. The default `PlayerCharacter.meleeShape()` returns when no weapon is equipped, so
+ *  bare-handed combat is unchanged (no regression) until a weapon overrides the shape. */
+export const UNARMED_MELEE_SHAPE: AttackShape = { reach: 1, arc: 'single' };
 
 /**
  * Attack commitment: while a swing is in progress (the attack-lock window, see GameScene.playAttackSwing)

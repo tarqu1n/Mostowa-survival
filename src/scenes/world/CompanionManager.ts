@@ -5,11 +5,21 @@ import {
   NPC_REPAIR_MS,
   NPC_REPAIR_WOOD_PER_TICK,
   NPC_REPAIR_HP_PER_TICK,
+  NPC_VISION,
+  NPC_ATTACK_WINDUP_MS,
+  NPC_ATTACK_COOLDOWN_MS,
+  NPC_COMBAT_REPATH_MS,
 } from '../../config';
 import type { DayPhase } from '../../systems/daynight';
 import { tileToWorldCenter } from '../../systems/grid';
 import { findPath, reachableAdjacent, type Cell, type Dims } from '../../systems/pathfind';
 import { TaskQueue } from '../../systems/tasks';
+import { resolveMeleeAttack } from '../../systems/combat';
+import {
+  acquireNearestTarget,
+  inMeleeContact,
+  type CombatTarget,
+} from '../../systems/companionCombat';
 import type { SupplyItem } from '../../systems/baseSupply';
 import type { TreeNode } from '../../entities/types';
 import { NpcCharacter } from '../../entities/NpcCharacter';
@@ -62,6 +72,17 @@ export interface CompanionManagerDeps {
   /** Withdraw `n` of a supply kind from the base pool (`baseSupply.take`); false (and no-op) when short,
    *  so the repair tick stops the moment wood runs out. */
   supplyTake(item: SupplyItem, n: number): boolean;
+  /** Every live enemy as a combat target (plan 042 Step 7) — id + world pos + feet tile + body tiles +
+   *  stats, for the night combat stepper's nearest-enemy acquire. A plain snapshot (013/015 rule), never
+   *  the raw MonsterCharacter; a dead/absent mob is omitted so it's never a valid target. */
+  enemies(): CombatTarget[];
+  /** Deal `amount` to the live enemy `id` through the SAME kill/flash/corpse path the player's attack
+   *  uses (`EnemyManager.hurtEnemy`) — reused so enemy death/FX/corpse bookkeeping stays consistent and
+   *  isn't duplicated. No-op on an unknown/dead id. */
+  damageEnemy(id: string, amount: number): void;
+  /** Injectable combat rng (the scene's `this.rng`) for the strike's hit roll — threaded like
+   *  {@link import('./EnemyManager').EnemyManagerDeps.rng} so the DEV test API's pinned rng reaches it. */
+  rng(): number;
 }
 
 /** The narrow per-wall snapshot the `repair` planner reads (via {@link CompanionManagerDeps.walls}) —
@@ -108,8 +129,15 @@ const SUPPLY_KIND: Readonly<Record<string, SupplyItem>> = { wood: 'wood', stone:
  * together economically (gather fills the pool, repair drains it). An empty pool → idle (surface
  * nothing); a full wall is never targeted (no path-thrash), and reaching `maxHp` replans to the next.
  *
- * The night phase (or a `follow`-only future role) idles the loop for now (the sprite still advances
- * any residual path so a dev-spawned walk-to-player still plays).
+ * **Night combat (plan 042 Step 7).** By night the SAME per-frame drive runs a small dedicated combat
+ * stepper instead of the day roles: acquire the nearest live enemy within {@link NPC_VISION} (the pure
+ * {@link acquireNearestTarget}), chase to a stand-adjacent tile, and land a telegraphed strike on
+ * contact — reusing the monster's acquire → chase → contact SHAPE (never its FSM), the shared
+ * {@link resolveMeleeAttack}, and the weapon-pin swing. The hit routes back through the existing enemy
+ * kill/flash/corpse path (`deps.damageEnemy`). A downed companion (0 HP, {@link NpcCharacter.die})
+ * stays inert on its Death strip until the night→day edge revives it ({@link NpcCharacter.revive}) at
+ * {@link NPC_REVIVE_HP}. Posture nuance (guard/follow/refuel positioning) is Step 8; this step just
+ * fights the wave.
  *
  * **Occupancy.** The companion's pathfinder veto is the player's `isBlocked` composite PLUS the
  * player's current tile, so the two actors never route onto the same tile. Its own tile is never
@@ -149,6 +177,21 @@ export class CompanionManager {
    *  it into the occupancy veto without re-querying per pathfind call. */
   private playerTileTick: Cell = { col: -1, row: -1 };
 
+  // --- Night-combat state (plan 042 Step 7) — the dedicated companion combat stepper ---------------
+  /** >0 while a strike wind-up is in flight: the timestamp (ms) the blow lands. Set on entering a
+   *  telegraphed strike in contact, cleared on the strike or on leaving contact (mirrors the mob). */
+  private combatWindupUntil = 0;
+  /** Earliest time (ms) the NEXT strike may begin winding up — the cadence gate ({@link NPC_ATTACK_COOLDOWN_MS}). */
+  private combatReadyAt = 0;
+  /** Chase-repath accumulator (ms) — the path to a stand-adjacent tile refreshes at most every
+   *  {@link NPC_COMBAT_REPATH_MS} while closing on the target (throttled, like the mob's chase repath). */
+  private combatRepathElapsed = 0;
+  /** The enemy id currently engaged — so a change of target forces an immediate repath. */
+  private combatTargetId: string | null = null;
+  /** Previous phase, for the dawn (night→day) revive edge; `null` until the first tick so a scenario
+   *  seeded into day never spuriously revives on frame one. */
+  private prevPhase: DayPhase | null = null;
+
   constructor(
     private readonly scene: GameScene,
     private readonly deps: CompanionManagerDeps,
@@ -181,22 +224,36 @@ export class CompanionManager {
   // --- Per-frame tick --------------------------------------------------------------
 
   /**
-   * Per-frame drive for the companion: run its own task loop (gather, plan 042 Step 4), then refresh
+   * Per-frame drive for the companion: reconcile the dawn revive, then run its role loop and refresh
    * its animation. Above GameScene's no-action early-return, so it ticks whether or not the PLAYER has
-   * an active task. A downed companion is left to its Death strip (the revive lands in a later step);
-   * off-role / night just advances any residual path so a dev-spawned walk still plays.
+   * an active task. By DAY it gathers/repairs (plan 042 Steps 4/5); by NIGHT it fights the nearest live
+   * enemy (Step 7). A downed companion is left inert on its Death strip until the dawn revive stands it
+   * back up.
    */
   update(delta: number): void {
     const npc = this.npc;
     if (!npc) return;
+
+    // Dawn revive edge (plan 042 Step 7): on the night→day transition a downed companion stands back up
+    // at NPC_REVIVE_HP and resumes its day role. Edge-detected here (tracking the previous phase) rather
+    // than via a `time:changed` listener so the whole revive stays self-contained in this manager — Step
+    // 8 consolidates the full day/night role switch alongside it. Runs BEFORE the downed early-return so
+    // a still-downed companion is the one revived.
+    const phase = this.deps.dayPhase();
+    if (this.prevPhase === 'night' && phase === 'day' && npc.downed) {
+      npc.revive();
+      this.resetCombatState(); // clear any stale wind-up/engage so the next night starts fresh
+    }
+    this.prevPhase = phase;
+
     if (npc.downed) {
       npc.updateAnim();
       return;
     }
-    const day = this.deps.dayPhase() === 'day';
+    const day = phase === 'day';
     if (day && npc.dayRole === 'gather') this.driveGather(npc, delta);
     else if (day && npc.dayRole === 'repair') this.driveRepair(npc, delta);
-    else npc.advancePath(); // idle role/phase — finish any residual path, issue no new orders
+    else this.driveCombat(npc, delta); // night → engage the nearest live enemy (plan 042 Step 7)
     npc.updateAnim();
   }
 
@@ -401,6 +458,96 @@ export class CompanionManager {
     if (this.deps.repairWall(wallId, NPC_REPAIR_HP_PER_TICK)) this.finishOrder(); // hit maxHp — mend the next damaged wall
   }
 
+  // --- Night combat executor (plan 042 Step 7) — the dedicated companion combat stepper --------------
+
+  /**
+   * One frame of the companion's night combat: acquire the NEAREST live enemy within vision (the pure
+   * {@link acquireNearestTarget}), then — reusing the monster's acquire → chase → telegraphed-contact
+   * SHAPE (NOT its FSM) — either stand and land a telegraphed strike when in melee contact, or path to a
+   * tile adjacent to it and close in. No enemy in sight ⇒ settle in place (Step 8's postures refine
+   * positioning). Engages ENEMIES only (never the player / itself — they're not in the list).
+   */
+  private driveCombat(npc: NpcCharacter, delta: number): void {
+    this.playerTileTick = this.deps.playerTile();
+
+    const target = acquireNearestTarget(
+      { x: npc.sprite.x, y: npc.sprite.y },
+      this.deps.enemies(),
+      NPC_VISION,
+    );
+    if (!target) {
+      this.combatTargetId = null;
+      this.combatWindupUntil = 0; // nothing to strike — drop any pending tell
+      npc.advancePath(); // settle any residual movement, issue no new orders
+      return;
+    }
+
+    const npcTile = npc.tile();
+    if (inMeleeContact(npcTile, target.bodyTiles)) {
+      // In contact — plant and run the telegraphed strike (the mob's clunk-fix wind-up, mirrored).
+      npc.path = [];
+      npc.pathIndex = 0;
+      npc.sprite.body.setVelocity(0, 0);
+      this.tryStrike(npc, target);
+      this.combatTargetId = target.id;
+      return;
+    }
+
+    // Chase: refresh the path to a stand-adjacent tile on the repath cadence (or when the target changed
+    // / the path ran out), then advance — with the same stuck-guard/repath the gather loop uses.
+    this.combatWindupUntil = 0; // out of contact — any wind-up whiffs (the target slipped away)
+    this.combatRepathElapsed += delta;
+    const needPath =
+      this.combatTargetId !== target.id ||
+      npc.pathIndex >= npc.path.length ||
+      this.combatRepathElapsed >= NPC_COMBAT_REPATH_MS;
+    if (needPath) {
+      this.combatRepathElapsed = 0;
+      const stand = reachableAdjacent(npcTile, target.tile, this.npcBlocked, this.deps.dims());
+      if (stand) this.pathTo(npc, stand);
+    }
+    this.combatTargetId = target.id;
+    npc.advancePath();
+    if (npc.isStuck()) this.repath(npc);
+  }
+
+  /**
+   * Advance the telegraphed stand-and-strike while in melee contact (mirrors MonsterCharacter's
+   * strikeContact shape): begin a {@link NPC_ATTACK_WINDUP_MS} wind-up once the cadence gate
+   * ({@link NPC_ATTACK_COOLDOWN_MS}) is open, then on completion resolve the hit through the shared
+   * {@link resolveMeleeAttack} (attacker = NPC stats, defender = the enemy's stats, base = the equipped
+   * cleaver's damage) and route the damage back through the existing enemy kill/flash/corpse path
+   * (`deps.damageEnemy`). The visible swing rides the weapon-pin rig ({@link NpcCharacter.swingWeapon}).
+   */
+  private tryStrike(npc: NpcCharacter, target: CombatTarget): void {
+    const now = this.scene.time.now;
+    if (this.combatWindupUntil > 0) {
+      if (now >= this.combatWindupUntil) {
+        this.combatWindupUntil = 0;
+        this.combatReadyAt = now + NPC_ATTACK_COOLDOWN_MS; // gate the next wind-up (the bite cadence)
+        npc.swingWeapon(target.tile.col, target.tile.row); // coded swing + face the struck tile
+        const dmg = resolveMeleeAttack(
+          npc.stats,
+          target.stats,
+          npc.meleeWeapon.damage,
+          this.deps.rng,
+        );
+        if (dmg > 0) this.deps.damageEnemy(target.id, dmg); // reuse the player-attack enemy-death path
+      }
+    } else if (now >= this.combatReadyAt) {
+      this.combatWindupUntil = now + NPC_ATTACK_WINDUP_MS; // cadence open → begin the telegraph
+    }
+  }
+
+  /** Zero the night-combat stepper's transient state (wind-up / cadence gate / repath / engaged id) —
+   *  on (re)spawn, the DEV reset, and the dawn revive, so a fresh night never inherits a stale strike. */
+  private resetCombatState(): void {
+    this.combatWindupUntil = 0;
+    this.combatReadyAt = 0;
+    this.combatRepathElapsed = 0;
+    this.combatTargetId = null;
+  }
+
   /** Path the companion toward `goal`, recording it for repath; false (leaving the path empty) if
    *  unreachable. Uses the SAME pure `findPath` + occupancy inputs the player's `pathTo` does, plus the
    *  player-tile veto. `[]` (already there) still counts as pathed — advancePath returns true at once. */
@@ -441,14 +588,17 @@ export class CompanionManager {
 
   // --- Reset / teardown --------------------------------------------------------------
 
-  /** Zero the gather loop's state — an empty queue + carry buffer + cadence. Called on (re)spawn and
-   *  on the DEV scenario reset so a fresh companion never inherits a prior run's haul or order. */
+  /** Zero the gather/repair loop's state — an empty queue + carry buffer + cadence — AND the night
+   *  combat stepper's transient state + the phase-edge tracker. Called on (re)spawn and on the DEV
+   *  scenario reset so a fresh companion never inherits a prior run's haul, order, or pending strike. */
   private resetGatherState(): void {
     this.queue.clear();
     this.carryBuf = { wood: 0, rock: 0 };
     this.chopElapsed = 0;
     this.repairElapsed = 0;
     this.goal = null;
+    this.resetCombatState();
+    this.prevPhase = null;
   }
 
   /**

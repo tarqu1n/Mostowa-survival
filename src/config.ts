@@ -193,6 +193,16 @@ export const NPC_VISION = TILE_SIZE * 4;
 export const NPC_STRENGTH = 1;
 export const NPC_CARRY_CAP = 5;
 export const NPC_ATTACK_WINDUP_MS = 300;
+/**
+ * Companion night-combat cadence (plan 042 Step 7). Between directed strikes the companion waits
+ * `NPC_ATTACK_COOLDOWN_MS`; the strike itself is telegraphed by `NPC_ATTACK_WINDUP_MS` of wind-up
+ * first (the acquire→chase→telegraphed-contact shape reused from the monster, not its FSM). While
+ * chasing the nearest live enemy it refreshes its path to a stand-adjacent tile at most every
+ * `NPC_COMBAT_REPATH_MS` (the gather/repair loop's stuck-guard still applies). PLACEHOLDER tuning
+ * (un-playtested), flagged per plan 040's convention — retune vs wave DPS once the loop is playable.
+ */
+export const NPC_ATTACK_COOLDOWN_MS = 700;
+export const NPC_COMBAT_REPATH_MS = 300;
 export const NPC_REPAIR_MS = 400;
 /**
  * Per-repair-tick economy for the `repair` day role (plan 042 Step 5). On each `NPC_REPAIR_MS` cadence

@@ -39,7 +39,7 @@ import type { MapFile, DecorObject, NodeObject, PortalObject } from '../systems/
 import { breadcrumb, setCrashContext } from '../debug/crashReporter';
 import { TaskQueue, type Action } from '../systems/tasks';
 import { resolveMeleeAttack, resolveRangedAttack, objectAsDefender } from '../systems/combat';
-import { attackTiles } from '../systems/hurtbox';
+import { attackTiles, hurtboxTiles, DEFAULT_HURTBOX } from '../systems/hurtbox';
 import type { DayPhase } from '../systems/daynight';
 import type { UIScene } from './UIScene';
 import type { GameTestApi } from '../entities/testTypes';
@@ -496,6 +496,27 @@ export class GameScene extends Phaser.Scene {
       repairWall: (id, amount) => this.wall.repair(id, amount),
       supplyCount: (item) => this.baseSupply.count(item),
       supplyTake: (item, n) => this.baseSupply.take(item, n),
+      // Night combat (plan 042 Step 7) — the enemy-facing deps. A plain per-tick snapshot of the live
+      // mobs as combat targets (id + world pos + feet tile + body tiles + stats), and a damage op that
+      // routes back through EnemyManager.hurtEnemy BY ID — the SAME kill/flash/corpse path the player's
+      // attack + the trap use, so enemy-death bookkeeping isn't duplicated. `rng` mirrors EnemyManager's
+      // so the DEV test API's pinned rng reaches the companion's hit rolls too.
+      enemies: () =>
+        this.enemyManager
+          .all()
+          .filter((z) => z.alive)
+          .map((z) => ({
+            id: z.id,
+            pos: { x: z.sprite.x, y: z.sprite.y },
+            tile: { col: z.col, row: z.row },
+            bodyTiles: hurtboxTiles({ col: z.col, row: z.row }, z.def.hurtbox ?? DEFAULT_HURTBOX),
+            stats: z.def,
+          })),
+      damageEnemy: (id, amount) => {
+        const z = this.enemyManager.all().find((e) => e.id === id && e.alive);
+        if (z) this.enemyManager.hurtEnemy(z, amount);
+      },
+      rng: () => this.rng(),
     });
 
     // Build placement (plan 013 Step 6) — constructed fresh each (re)start; its constructor wires a

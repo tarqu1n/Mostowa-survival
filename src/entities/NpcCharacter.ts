@@ -6,6 +6,10 @@ import {
   NPC_STRENGTH,
   NPC_HURTBOX,
   NPC_MELEE_WEAPON_ID,
+  NPC_REVIVE_HP,
+  WEAPON_SWING_ARC_DEG,
+  WEAPON_SWING_SCALE_POP,
+  WEAPON_SWING_MS,
 } from '../config';
 import {
   ACTIVE_TILESET,
@@ -64,8 +68,10 @@ export class NpcCharacter extends Character {
   /** Which footprint the sprite currently shows — the 32px Idle vs the 64px Run/`walk` — so
    *  {@link setFootprint} only swaps scale/origin/body on an actual state change (see the skeleton). */
   private activeStrip: 'idle' | 'walk' = 'walk'; // the constructor sets up the 64px Run footprint
-  /** The held blade (plain image, no physics body), pinned to the main hand each tick. */
-  private weapon?: { sprite: Phaser.GameObjects.Image; art: WeaponArt };
+  /** The held blade (plain image, no physics body), pinned to the main hand each tick. `swingRot` is
+   *  the live coded-swing angle (deg) the directed strike tween drives (plan 042 Step 7); 0 at rest, so
+   *  a still companion holds the blade at its rest angle. */
+  private weapon?: { sprite: Phaser.GameObjects.Image; art: WeaponArt; swingRot: number };
   /** The two visible mitts (the Rogue's own hands are unreadable nubs): `main` grips the weapon, `off`
    *  is the free fist — always present, pinned each tick in {@link syncAttachments} (see the skeleton). */
   private hands?: { main: Phaser.GameObjects.Image; off: Phaser.GameObjects.Image };
@@ -94,29 +100,37 @@ export class NpcCharacter extends Character {
     this.sprite.body.setCollideWorldBounds(true);
     this.fitBody(npcActor.render);
 
-    // Weapon + hand rig — the SAME approach as the skeleton (MonsterCharacter): a plain weapon image
-    // pinned to the main-hand anchor, drawn over two layered mitts. All pinned each tick in
-    // syncAttachments; the swing tween is Step 7 (rest angle for now).
+    this.buildRig(); // create the weapon + fists (rebuilt on the dawn revive, plan 042 Step 7)
+    this.syncAttachments(); // place weapon + fists on frame 0
+  }
+
+  /**
+   * Build the held-weapon + two-mitt rig — the SAME approach as the skeleton (MonsterCharacter): a
+   * plain weapon image pinned to the main-hand anchor, drawn over two layered mitts, all pinned each
+   * tick in {@link syncAttachments}. Extracted so the dawn {@link revive} can rebuild it after
+   * {@link die} tore it down. The coded swing rides `weapon.swingRot` (plan 042 Step 7, {@link swingWeapon}).
+   */
+  private buildRig(): void {
+    const npcActor = ACTIVE_TILESET.actors.npc;
+    const sprite = this.sprite;
     const art = npcActor.weapons[NPC_MELEE_WEAPON_ID];
     if (art) {
-      const wsprite = scene.add
+      const wsprite = this.scene.add
         .image(sprite.x, sprite.y, resolveTile(art.source).key)
         .setOrigin(art.pivot[0], art.pivot[1])
         .setScale(art.scale ?? 1)
         .setDepth(sprite.depth + art.z);
-      this.weapon = { sprite: wsprite, art };
+      this.weapon = { sprite: wsprite, art, swingRot: 0 };
     }
     const handArt = npcActor.hand;
     const offKey = resolveTile(handArt.source).key;
     const mainKey = resolveTile(handArt.mainSource ?? handArt.source).key;
     const mkHand = (key: string, z: number): Phaser.GameObjects.Image =>
-      scene.add
+      this.scene.add
         .image(sprite.x, sprite.y, key)
         .setOrigin(handArt.pivot[0], handArt.pivot[1])
         .setDepth(sprite.depth + z);
     this.hands = { main: mkHand(mainKey, handArt.mainZ), off: mkHand(offKey, handArt.offZ) };
-
-    this.syncAttachments(); // place weapon + fists on frame 0
   }
 
   protected override moveSpeed(): number {
@@ -152,6 +166,7 @@ export class NpcCharacter extends Character {
   override die(): void {
     this.downed = true;
     if (this.weapon) {
+      this.scene.tweens.killTweensOf(this.weapon); // stop an in-flight swing before the image goes away
       this.weapon.sprite.destroy();
       this.weapon = undefined;
     }
@@ -161,6 +176,7 @@ export class NpcCharacter extends Character {
       this.hands = undefined;
     }
     this.sprite.body.setVelocity(0, 0);
+    this.sprite.body.enable = false; // inert while downed — no collision on the collapsed body (revive re-enables)
     // Death is a 32px strip — settle onto its own footprint (like the Idle) so the collapse grounds on
     // the tile instead of playing at the 64px Run scale/origin.
     const { death, render } = ACTIVE_TILESET.actors.npc;
@@ -168,6 +184,68 @@ export class NpcCharacter extends Character {
     this.sprite.setScale(deathRender.scale).setOrigin(deathRender.originX, deathRender.originY);
     this.sprite.setData('baseScale', deathRender.scale);
     this.sprite.anims.play(npcAnimKey('death'));
+  }
+
+  /**
+   * The directed melee swing (plan 042 Step 7): face the struck tile and arc the held blade about its
+   * grip (`WEAPON_SWING_*`, yoyo with a small scale pop), reusing the weapon-pin rig —
+   * {@link syncAttachments} folds `weapon.swingRot` into the main-hand pin each tick, so the blade
+   * arcs while still tracking the hand (the SAME coded swing the skeleton's bite uses; the pack ships
+   * the Rogue no attack strip). Purely visual — the hit is resolved by `CompanionManager`. No-op while
+   * downed or unarmed.
+   */
+  swingWeapon(col: number, row: number): void {
+    if (this.downed) return;
+    this.faceTile(col, row); // point the swing at the struck tile, whatever side we stood on
+    const w = this.weapon;
+    if (!w) return;
+    this.scene.tweens.killTweensOf(w); // a rapid re-strike restarts the swing rather than stacking it
+    w.swingRot = 0;
+    const baseScale = w.sprite.scale;
+    this.scene.tweens.add({
+      targets: w,
+      swingRot: WEAPON_SWING_ARC_DEG, // always a +arc; weaponTransform mirrors it when facing left
+      duration: WEAPON_SWING_MS,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+      onUpdate: () => {
+        if (!w.sprite.active) return; // destroyed mid-swing (die/teardown) — don't poke it
+        const p = w.swingRot / WEAPON_SWING_ARC_DEG; // 0→1→0 across the yoyo
+        w.sprite.setScale(baseScale * (1 + (WEAPON_SWING_SCALE_POP - 1) * p));
+      },
+      onComplete: () => {
+        w.swingRot = 0;
+        if (w.sprite.active) w.sprite.setScale(baseScale);
+      },
+    });
+  }
+
+  /**
+   * The dawn revive (plan 042 Step 7): stand a downed companion back up at {@link NPC_REVIVE_HP}. Clears
+   * `downed`, re-enables the physics body, rebuilds the weapon/fist rig {@link die} tore down, and
+   * restores the default Run footprint (die switched the sprite to the 32px Death render) so
+   * {@link updateAnim} resumes normally. Idempotent — a no-op when not downed. `CompanionManager`
+   * calls this on the night→day edge, then resumes the day role.
+   */
+  revive(): void {
+    if (!this.downed) return;
+    this.downed = false;
+    this.hp = NPC_REVIVE_HP;
+    const npcActor = ACTIVE_TILESET.actors.npc;
+    this.sprite.body.enable = true;
+    this.sprite.body.setVelocity(0, 0);
+    // Restore the default Run footprint (die() left the sprite on the 32px Death render) and re-fit the
+    // body — mirrors setFootprint's work, but forced (activeStrip may still read 'walk', which would
+    // otherwise short-circuit the swap).
+    this.activeStrip = 'walk';
+    this.sprite.setTexture(npcAnimKey('walk'), 0);
+    this.sprite
+      .setScale(npcActor.render.scale)
+      .setOrigin(npcActor.render.originX, npcActor.render.originY);
+    this.sprite.setData('baseScale', npcActor.render.scale);
+    this.fitBody(npcActor.render);
+    this.buildRig(); // die() destroyed the weapon + fists — rebuild them
+    this.syncAttachments(); // pin the fresh rig onto the current frame
   }
 
   /**
@@ -237,7 +315,7 @@ export class NpcCharacter extends Character {
     };
 
     if (this.weapon) {
-      const t = pin(strip.anchors?.mainHand, 0);
+      const t = pin(strip.anchors?.mainHand, this.weapon.swingRot); // fold the live coded swing into the pin
       if (t)
         this.weapon.sprite
           .setPosition(this.sprite.x + t.x, this.sprite.y + t.y)

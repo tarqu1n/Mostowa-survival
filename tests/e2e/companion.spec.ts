@@ -9,6 +9,8 @@ import {
   step,
   walls,
   damageWall,
+  moveEnemy,
+  type DebugState,
 } from './harness';
 
 // Tier-2 (plan 042 Step 2): the CompanionManager + scenario/DebugState scaffolding. Step 2 lands the
@@ -207,4 +209,92 @@ test('a mob adjacent to the companion deals it damage (the NPC is a valid threat
 
   const after = (await companion(page))!;
   expect(after.hp).toBeLessThan(before.hp); // the mob acquired + bit the NPC → its HP fell
+});
+
+// Tier-2 (plan 042 Step 7): the companion NIGHT combat + downed + dawn revive, through the REAL scene.
+// By night the companion runs its dedicated combat stepper (acquire nearest live enemy → chase →
+// telegraphed strike, reusing resolveMeleeAttack + the weapon rig; NOT the monster FSM); at 0 HP it
+// collapses to `downed` (inert, on the Death strip, sprite kept), and on the next dawn it revives at
+// NPC_REVIVE_HP. Driven deterministically with step(). A lit campfire sits at the camp (the wave's
+// defended centre) so the night wave converges THERE, far from the row-3 skirmish — keeping the
+// companion's local fight a clean function of the mob(s) we place, not stray wave spawns.
+const NPC_REVIVE_HP = 3; // mirrors config.ts (harness DebugState carries no consts)
+const CAMP: [number, number] = [118, 140]; // near SPAWN_TILE — the lit hearth = the wave's defended centre
+
+/** Count of ALIVE enemies within `radius` tiles (Chebyshev) of the companion — the placed skirmish
+ *  mob(s) only, since the wave converges on the far camp hearth. */
+function enemiesNearCompanion(s: DebugState, radius: number): number {
+  const c = s.companion!;
+  return s.enemyTiles.filter(
+    (t) => Math.max(Math.abs(t.col - c.col), Math.abs(t.row - c.row)) <= radius,
+  ).length;
+}
+
+test('a night companion attacks and kills an adjacent mob', async ({ page }) => {
+  test.setTimeout(60_000); // a live scene + a few strike/bite cadences — fill-rate-heavy under load
+  await startGame(page);
+
+  // Player at [3,3]; companion at [8,3] (full HP); a plain mob adjacent at [7,3], club-armed for a
+  // deterministic bite. The mob's nearest threat is the companion (1 tile) over the player (4 tiles),
+  // so it engages the NPC — and by NIGHT the NPC fights back (unlike the day-gather Step-6 spec).
+  await applyScenario(page, {
+    player: [3, 3],
+    companion: { at: [8, 3] },
+    enemies: [{ at: [7, 3], weaponId: 'club' }],
+    campfires: [CAMP],
+    startPhase: 'night',
+  });
+
+  const before = await state(page);
+  expect(before.companion!.hp).toBe(8); // NPC_MAX_HP baseline
+  expect(enemiesNearCompanion(before, 4)).toBe(1); // the one skirmish mob (wave is at the far camp)
+
+  await step(page, 3000); // strike windup+cadence → 2 strikes (2 dmg each) kill the 3-HP mob
+
+  const after = await state(page);
+  expect(enemiesNearCompanion(after, 4)).toBe(0); // the adjacent mob was killed by the companion
+  expect(after.companion!.downed).toBe(false); // the companion won the exchange (still up)
+  expect(after.companion!.hp).toBeLessThan(8); // it took a bite or two in the real fight
+  expect(after.companion!.hp).toBeGreaterThan(0);
+});
+
+test('a night companion is downed by real mob damage, then revives at the next dawn', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await startGame(page);
+
+  // Seed the clock ~6s before dawn (cycle 900_000; dawn at 900_000 → clockMs 894_000 = night of day 1).
+  // Companion seeded to 1 HP (a LOW STARTING HP — NOT a force-seeded `downed`), so a single real club
+  // bite collapses it in-play. Player far so, once the NPC is down, the mob has no threat to chase.
+  await applyScenario(page, {
+    player: [3, 3],
+    companion: { at: [8, 3], hp: 1 },
+    enemies: [{ at: [7, 3], weaponId: 'club' }],
+    campfires: [CAMP],
+    clockMs: 894_000,
+  });
+
+  const seeded = await state(page);
+  expect(seeded.dayPhase).toBe('night');
+  expect(seeded.companion!.downed).toBe(false); // starts UP (not force-downed) — the bite must down it
+
+  // A couple of bite cadences: the mob bites the 1-HP companion to 0 → downed (by real damage, in play).
+  await step(page, 2500);
+  const downed = await state(page);
+  expect(downed.dayPhase).toBe('night'); // still night (2.5s < the ~6s to dawn)
+  expect(downed.companion!.downed).toBe(true); // collapsed to downed by the mob's bite — no force-seed
+  expect(downed.companion!.hp).toBeLessThanOrEqual(0); // 0-HP collapse, not a heal
+
+  // Clear the skirmish mob (index 0 — placed before any wave spawn) far away so the revived companion
+  // isn't immediately re-bitten, letting the dawn HP be read cleanly.
+  await moveEnemy(page, 0, 200, 200);
+
+  // Cross dawn (894_000 + 2500 + 5000 = 901_500 > 900_000) → the night→day edge revives the companion.
+  await step(page, 5000);
+  const dawn = await state(page);
+  expect(dawn.dayPhase).toBe('day'); // survived into the next day…
+  expect(dawn.companion!.downed).toBe(false); // …and the downed companion stood back up
+  expect(dawn.companion!.hp).toBe(NPC_REVIVE_HP); // revived at NPC_REVIVE_HP
+  expect(dawn.companion!.dayRole).toBe('gather'); // resumes its day role (default gather)
 });

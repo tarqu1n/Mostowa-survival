@@ -244,6 +244,15 @@ four pillars into single objects and reuse built machinery.
     `BASE_ZONE` is retained as the **no-hearth bootstrap** so the first campfire can still be placed. The
     claim breathes with fuel. Post-037, the light seam lives on `CampfireBehavior` (unioned by
     `StructureManager`), not the old `CampfireManager`.
+  - **Light-only sightline landed 2026-07-21 (plan 039 Steps 2/3), decision #4 = darkness conceals.**
+    Night is now **fully dark** (`NIGHT_MAX_ALPHA` 1.0, near-black `COLORS.night`) with **no ambient
+    floor** — away from light you see nothing, enemies and their attack tells included. Light reveals via
+    a **soft radial gradient** (dims to black at the rim, no hard ring) composited by erasing a baked
+    brush (`render/lightTexture.ts`) into a screen-space `RenderTexture` — no bitmap mask, no frame-loop
+    shader (honours "bake, don't shade"). The **player always emits a tiny light** (`PLAYER_LIGHT_RADIUS`
+    ~1.25 tiles, render-only — never the claim) so they're not blind. This delivers the "light is a must
+    — don't let the lights go out" line and **resolves plan 012's deferred enemy fog-gating for free**
+    (unlit actors are simply unrendered under the depth-15 overlay). Torch item/buildable still deferred.
 
 ## 2026-07-19 — [DECIDED] Core-loop framing: three-horizon progression, hard-countdown-no-fallback dusk, progress-keyed escalation, pacing targets
 

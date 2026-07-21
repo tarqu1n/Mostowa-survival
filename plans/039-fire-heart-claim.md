@@ -1,7 +1,6 @@
 # Fire-Heart Claim & the Lit Sightline — the Fire's Light Is Both Base and Vision
 
-> Status: planned — run /execute-plan to begin. **Depends on plan 038** (needs the fire-heart / lit
-> hearth in place). Non-blocking for the first playable loop — sequence after 038's wave loop lands.
+> Status: in review
 
 ## Summary
 
@@ -216,7 +215,27 @@ the claim. The full-dark / light-only sightline is the natural companion to "fir
     clearly matter, big enough not to walk blind. (Deliberately, it does **not** make enemy tells readable
     beyond its small reach — decision #4.)
 
-- [ ] **Step 4: Legibility + tests + docs** `[inline]`
+- [x] **Step 4: Legibility + tests + docs** `[inline]`
+  - Outcome: wrap-up — tests + docs finalised. **Claim legibility:** DEFERRED (per the plan's "optional,
+    only if playtest shows confusion") — the full-dark gradient + bright-core claim should read naturally
+    ("placement stops where the light dims"); no extra build-preview tint cue added, revisit at playtest.
+    **DebugState:** NO new field (and NO tripwire bump) — the claim is already testable via `tryPlace`
+    (bool) and fuel/lit via `campfires[]`; an `inClaim` readout wasn't worth the golden churn (the plan
+    made it optional). **Tier-1 tests:** added `campfire.test.ts` "claim bright-core (CLAIM_LIGHT_FRAC)"
+    (2 tests) pinning decision #7's invariant — the claim core is a *strict subset* of the light radius
+    (guards `CLAIM_LIGHT_FRAC ∈ (0,1)` against drift) and *breathes with fuel*. Note: the plan also
+    imagined pure tests for the gradient/world→screen transform, but Step 2's world-space-RT deviation
+    ELIMINATED the transform math (texture-local coords) and the gradient is a canvas bake — no pure
+    surface to test there; the claim predicate + fuel-shrink are covered by the Step 1/3 Tier-2 e2e.
+    **Docs:** `STATUS.md` (new "Light-only night" para + the day/night line rewritten), `GAME-DESIGN.md`
+    (base-claim section delivered-note + `CampfireBehavior` fix), `docs/decisions/gameplay.md` (light-only
+    sightline landed sub-note), `RENDERING.md` (light-layer section — landed in Step 2). **Verified (full
+    sweep):** typecheck + lint clean; **unit 838/838** (61 files, incl. the 2 new); prod build clean;
+    **e2e 80 passed / 4 failed — all 4 pre-existing** (confirmed by error signature: `survival-hunger`
+    HUNGER_LETHAL-false, `death` stale respawn coords, `menu-start`/`campfire-feed` headless single-tap
+    race — identical to plan 038 Step 7's documented reds on clean master, none touching the light layer);
+    boot canary booted + zero-console-error gates green. **Deferred to playtest:** brush-falloff feel,
+    player-light size, claim-edge legibility, on-device gradient look at 300% zoom.
   - Claim legibility: with the gradient + bright-core claim, the dimming edge reads as "why placement
     stops". Optional extra cue only if playtest shows confusion (reuse the build-preview invalid tint at
     the claim boundary; **no** frame-loop shader). Note any deferral.

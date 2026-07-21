@@ -5,6 +5,7 @@ import {
   CAMPFIRE_FUEL_BURN_PER_SEC,
   CAMPFIRE_FUEL_PER_WOOD,
   CAMPFIRE_LIGHT_MIN_FRAC,
+  CLAIM_LIGHT_FRAC,
   NIGHT_MS,
 } from '../../config';
 
@@ -71,5 +72,30 @@ describe('fuelFrac', () => {
 
   it('never drops below the floor even past empty', () => {
     expect(fuelFrac(-10, CAMPFIRE_FUEL_MAX, 0.4)).toBe(0.4);
+  });
+});
+
+// Plan 039 (base claim). The `baseOnly` claim tests a lit hearth's BRIGHT CORE — the light radius ×
+// CLAIM_LIGHT_FRAC — not the full geometric radius (decision #7: never let placement fall in the
+// soft-gradient fringe you can't see). Both the light radius and its claim core are `light-base ×
+// fuelFrac`, so the base cancels and the invariants below hold for any base. These are the pure
+// anchors behind the Tier-2 e2e (bright-core accept/reject + fuel-shrink); they catch a config drift
+// (e.g. CLAIM_LIGHT_FRAC bumped to ≥ 1) that would silently break the "inside the visible core" rule.
+describe('claim bright-core (CLAIM_LIGHT_FRAC)', () => {
+  // Claim-core / light-radius, both as multiples of the (cancelled) light base.
+  const light = (fuel: number) => fuelFrac(fuel, CAMPFIRE_FUEL_MAX, CAMPFIRE_LIGHT_MIN_FRAC);
+  const claimCore = (fuel: number) => light(fuel) * CLAIM_LIGHT_FRAC;
+
+  it('is a strict subset of the light radius (decision #7 — no claiming the invisible fringe)', () => {
+    expect(CLAIM_LIGHT_FRAC).toBeGreaterThan(0);
+    expect(CLAIM_LIGHT_FRAC).toBeLessThan(1);
+    for (const fuel of [0, 30, 60, CAMPFIRE_FUEL_MAX]) {
+      expect(claimCore(fuel)).toBeLessThan(light(fuel));
+    }
+  });
+
+  it('breathes with fuel — a fuller fire claims strictly more ground', () => {
+    expect(claimCore(30)).toBeLessThan(claimCore(90));
+    expect(claimCore(CAMPFIRE_FUEL_MAX)).toBeGreaterThan(claimCore(CAMPFIRE_FUEL_MAX / 2));
   });
 });

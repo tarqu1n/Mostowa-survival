@@ -349,10 +349,19 @@ stations carry a kind + level; the UI filters recipes by which stations/levels a
 
 ## Base claim — the campfire heart
 
+> **Delivered (plan 039, staging (1) + the light-only sightline).** `baseOnly` placement now gates on a
+> lit hearth's **bright core** (light radius × `CLAIM_LIGHT_FRAC`), with the old `BASE_ZONE` rect kept
+> only as the no-hearth bootstrap; the claim breathes with fuel. Night is now **fully dark and conceals**
+> — light (fires + a tiny player light) is the only thing that reveals, via a soft gradient that dims to
+> black (see [STATUS.md](STATUS.md) "Light-only night"). This resolves the deferred plan-012 enemy
+> fog-gating for free: unlit enemies and their tells are simply unrendered under the overlay. Still
+> pending: multiple-hearth unioned claims (staging 2), walls extending the claim (staging 3), torches.
+
 Replaces the placeholder fixed base rect (`BASE_ZONE_SIZE` centred on spawn — plan 018 A8, always a
 stopgap). **Decided 2026-07-19: your base is everywhere your fire's light reaches** — the hearth *is*
 the claim. This collapses base-building + survival + defense into one object and reuses the already-built
-campfire light/vision/fuel systems (`CampfireManager`, `lightSources()`, fuel-scaled radius).
+campfire light/vision/fuel systems (`CampfireBehavior` under the `StructureManager` registry,
+`lightSources()`, fuel-scaled radius).
 
 - **Claim = lit area.** Standing in it grants auto-access to base storage (the "being home opens the bag"
   rule → "being in the light"), buildable/station placement, and vision.

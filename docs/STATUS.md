@@ -130,10 +130,21 @@ Selectable in tests via the `setPlayerMelee(id)` `__test` seam + a `ScenarioSpec
 
 ## Day/night + hunger survival slice (plan 004)
 
-Real-time **day/night cycle** (`src/systems/daynight.ts`, pure): a continuous clock drives a map-sized
-tint overlay (smooth dawn/dusk ramps, flat mid-day/night) and a queryable `day`/`night` phase,
-surfaced as a passive `Day N` HUD readout. **Night is tint + phase state only** — no enemy waves yet
-(they layer on later via the same phase state).
+Real-time **day/night cycle** (`src/systems/daynight.ts`, pure): a continuous clock drives the night
+light-layer alpha (smooth dawn/dusk ramps, flat mid-day/night) and a queryable `day`/`night` phase,
+surfaced as a passive `Day N` HUD readout.
+
+**Light-only night (plan 039 Step 2/3).** Night is now **fully dark** (`NIGHT_MAX_ALPHA` 1.0, near-black
+`COLORS.night`) and **darkness conceals** — away from light you see nothing, including approaching enemies
+and their attack tells (every gameplay sprite/FX sits below the depth-15 overlay). Light is the only thing
+that reveals, via a **soft radial gradient** that dims to black at its rim (no hard ring). Rendering: `SurvivalClock`
+owns a **world-space, viewport-sized `RenderTexture`** (re-centred on the camera each frame, never map-sized)
+that each frame `clear`s → fills the night colour at `tintAlphaAt()` → `erase`s a **baked gradient brush**
+(`render/lightTexture.ts`, `destination-out`) per **render** light — no bitmap mask, no frame-loop shader
+(replaced the old inverted-geometry-mask `Rectangle`). Render lights = the lit hearths (unioned by
+`StructureManager`) **plus the player's tiny personal light** (`PLAYER_LIGHT_RADIUS`, ~1.25 tiles) so the
+player is never fully blind. `VisionController`'s day fog (its own geometry mask + `VISION_RADIUS`) is
+unchanged — invisible under full-black night anyway. A future torch just adds a source to the render seam.
 
 **Hunger** (`src/systems/needs.ts`, pure) drains continuously and at zero cascades into combat-owned
 `playerHp` (`damagePlayer`) on a fixed interval, reusing combat's death/restart path. A forageable

@@ -1,35 +1,117 @@
 import Phaser from 'phaser';
+import { CHOP_INTERVAL_MS, NPC_CARRY_CAP } from '../../config';
+import type { DayPhase } from '../../systems/daynight';
 import { tileToWorldCenter } from '../../systems/grid';
+import { findPath, reachableAdjacent, type Cell, type Dims } from '../../systems/pathfind';
+import { TaskQueue } from '../../systems/tasks';
+import type { SupplyItem } from '../../systems/baseSupply';
+import type { TreeNode } from '../../entities/types';
 import { NpcCharacter } from '../../entities/NpcCharacter';
 import type { GameScene } from '../GameScene';
 
 /**
- * The AI companion — spawn, per-frame drive, and the reset/teardown half of a world reset (plan 042
- * Step 2). Mirrors {@link EnemyManager} but owns exactly ONE `NpcCharacter | null` (the game has a
- * single companion), so there's no collection and no id counter — {@link get} returns the one NPC or
- * null. It does NOT own the *decision* of when the companion gathers/guards/fights: those behaviours
- * (and the tick ENV they read) land in later steps. For now {@link update} just advances the
- * companion's path + refreshes its animation, folding the throwaway `GameScene.tickDevNpc` seam.
+ * Narrow scene state {@link CompanionManager} needs but doesn't own — GameScene supplies these as
+ * closures over its own private fields/methods at construction (the plan 013/015 coupling rule the
+ * other world managers follow: managers get a narrow interface, never raw field access, and never a
+ * direct manager↔manager edge — the scene mediates). All are resolved at CALL time (during
+ * {@link CompanionManager.update}), so construction order stays irrelevant — the companion is built
+ * before BuildManager/StructureManager, whose closures below only fire once the scene is running.
+ */
+export interface CompanionManagerDeps {
+  /** Live grid extent (per loaded map) — the same dims the player's pathfinder reads. */
+  dims(): Dims;
+  /** Walkability veto for the pathfinder — the SAME composite the player's `pathTo` uses (walls +
+   *  live blocking nodes + decor + map). The companion adds the player's tile on top (see
+   *  {@link CompanionManager} occupancy note) so the two actors never path onto the same tile. */
+  isBlocked(col: number, row: number): boolean;
+  /** The player's current logical tile — folded into the companion's occupancy veto so it doesn't
+   *  stack on the player. */
+  playerTile(): Cell;
+  /** Current day/night phase — gather only runs by day (plan 042 Step 4; night postures are Steps 6-8). */
+  dayPhase(): DayPhase;
+  /** Every resource node, alive and dead (`ResourceNodeManager.all()`); the gather planner filters to
+   *  alive wood/rock nodes itself. Returns the manager's raw backing array — read-only here. */
+  nodes(): TreeNode[];
+  /** Fell one hit off a node through the shared `ResourceNodeManager.chop` path (hp/deplete/regrow/fx),
+   *  redirecting the yield into `onYield` (the companion's carry buffer) instead of the player's bag. */
+  chopNode(
+    tree: TreeNode,
+    facing: { dCol: number; dRow: number },
+    onYield: (itemId: string, n: number) => void,
+  ): void;
+  /** The lit hearth's tile (the walk-to deposit anchor), or null when no fire is lit. */
+  litHearthTile(): Cell | null;
+  /** Deposit `n` of a supply kind into the shared base-supply pool (`baseSupply.add`). */
+  supplyAdd(item: SupplyItem, n: number): void;
+}
+
+/** yieldItemId → base-supply kind. Gather only targets nodes that map to a supply kind — a node
+ *  whose yield isn't wood/rock (e.g. a berry bush's `berries`) is never a gather target. */
+const SUPPLY_KIND: Readonly<Record<string, SupplyItem>> = { wood: 'wood', stone: 'rock' };
+
+/**
+ * The AI companion (plan 042) — spawn, per-frame drive, and the reset/teardown half of a world reset.
+ * Mirrors {@link EnemyManager} but owns exactly ONE `NpcCharacter | null` (the game has a single
+ * companion), so there's no collection and no id counter — {@link get} returns the one NPC or null.
+ *
+ * **The companion owns its OWN slimmed task loop (plan 042 Step 4, critique #5).** The player's ~350-
+ * line scene executor (`GameScene.beginCurrent`/`runHarvest`/…) is deliberately NOT reused or
+ * refactored — this manager runs a small dedicated executor that borrows only the PURE pieces
+ * (`findPath`/`reachableAdjacent`, the `CHOP_INTERVAL_MS` cadence) and the shared node bookkeeping
+ * (`deps.chopNode` → `ResourceNodeManager.chop`), so node depletion stays consistent whichever actor
+ * chops. It NEVER touches `GameScene.queue`; it holds its own {@link TaskQueue} instance ({@link queue})
+ * — kept on the manager (not the NpcCharacter), mirroring how the player's queue lives on the scene
+ * rather than on `PlayerCharacter`, and reset whenever the single companion is (re)spawned or cleared.
+ *
+ * **Gather state machine (day role `gather`, day only).** While idle it plans the next order:
+ *   1. find the nearest reachable alive wood/rock node → path adjacent → chop it on the cadence,
+ *      accruing the yield into a carry buffer (up to {@link NPC_CARRY_CAP});
+ *   2. once the buffer is full (or no reachable node remains and it's carrying something) → path to a
+ *      tile adjacent to the lit hearth and deposit the whole buffer into `baseSupply`, then repeat.
+ * With no lit hearth to walk to, it deposits IN PLACE (the base-supply store is global — the hearth is
+ * only the walk-to anchor, not a gate on the count), so a carry never wedges the loop. Any other day
+ * role (`repair`, Step 5) or the night phase idles the loop for now (the sprite still advances any
+ * residual path so a dev-spawned walk-to-player still plays).
+ *
+ * **Occupancy.** The companion's pathfinder veto is the player's `isBlocked` composite PLUS the
+ * player's current tile, so the two actors never route onto the same tile. Its own tile is never
+ * vetoed (findPath rejects a blocked start), so it can always path away from where it stands.
  *
  * Constructed fresh in `buildWorld()` each (re)start, AFTER the player exists (construction order is
- * load-bearing — see GameScene): later steps' tick env will read player state, so the manager must
- * outlive nothing the player owns. It does NOT auto-spawn — {@link spawn} is a separate call (the dev
- * seam / a scenario), so construction stays side-effect-free.
+ * load-bearing — the tick env reads player state). It does NOT auto-spawn — {@link spawn} is a
+ * separate call (the dev seam / a scenario), so construction stays side-effect-free.
  *
  * **SHUTDOWN vs Arcade physics — the same trap {@link EnemyManager} documents.** The companion's
- * sprite carries an Arcade physics body (`scene.physics.add.existing` in NpcCharacter's constructor).
- * Phaser's scene teardown, PLUS Arcade's own SHUTDOWN-triggered World teardown, destroy every sprite/
- * body BEFORE this manager's SHUTDOWN listener runs (Arcade registers its handler when the plugin
- * boots — long before this manager's, re-added fresh every `buildWorld()`). So {@link destroy} may
- * ONLY drop the reference — it must NEVER call `dispose()`/`sprite.destroy()` (those poke an already-
- * freed sprite/body and throw). That is DIFFERENT from {@link reset}, which runs at RUNTIME (physics
- * alive) where tearing the sprite down via `NpcCharacter.dispose()` IS correct — the DEV-only scenario
- * reset, called with the scene very much alive.
+ * sprite carries an Arcade physics body. Phaser's scene teardown, PLUS Arcade's own SHUTDOWN-triggered
+ * World teardown, destroy every sprite/body BEFORE this manager's SHUTDOWN listener runs. So
+ * {@link destroy} may ONLY drop the reference — it must NEVER call `dispose()`/`sprite.destroy()`.
+ * That is DIFFERENT from {@link reset}, which runs at RUNTIME (physics alive) where tearing the sprite
+ * down via `NpcCharacter.dispose()` IS correct.
  */
 export class CompanionManager {
   private npc: NpcCharacter | null = null;
 
-  constructor(private readonly scene: GameScene) {
+  // --- Companion-owned task loop (plan 042 Step 4) — never GameScene.queue -------------------------
+  /** The companion's own order queue — one auto-planned action at a time (a `harvest` of a chosen node,
+   *  or a `move` to the hearth-deposit stand tile). Distinct from the player's `GameScene.queue`. */
+  private readonly queue = new TaskQueue();
+  /** The carry buffer, split by supply kind so a mixed haul (a tree then a rock) deposits correctly;
+   *  `npc.carry` mirrors the total for `debugState().companion.carry`. */
+  private carryBuf: { wood: number; rock: number } = { wood: 0, rock: 0 };
+  /** Harvest-cadence accumulator (ms), mirroring the player's `chopElapsed` — one chop per
+   *  `CHOP_INTERVAL_MS` while standing at the node. */
+  private chopElapsed = 0;
+  /** The current pathfinding goal (a node-adjacent or hearth-adjacent stand tile) — re-fed to
+   *  `findPath` on a stuck-repath, like the player's `actionGoal`. */
+  private goal: Cell | null = null;
+  /** The player's tile this tick — captured at the top of the gather drive so {@link npcBlocked} folds
+   *  it into the occupancy veto without re-querying per pathfind call. */
+  private playerTileTick: Cell = { col: -1, row: -1 };
+
+  constructor(
+    private readonly scene: GameScene,
+    private readonly deps: CompanionManagerDeps,
+  ) {
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
 
@@ -40,6 +122,7 @@ export class CompanionManager {
    *  the scene is alive here). Callers seed scaffold state (role/posture/hp/…) on the returned NPC. */
   spawn(col: number, row: number): NpcCharacter {
     if (this.npc) this.npc.dispose(); // one companion — replace any prior at runtime
+    this.resetGatherState(); // a fresh companion starts with an empty queue + carry
     this.npc = new NpcCharacter(this.scene, {
       x: tileToWorldCenter(col),
       y: tileToWorldCenter(row),
@@ -57,19 +140,195 @@ export class CompanionManager {
   // --- Per-frame tick --------------------------------------------------------------
 
   /**
-   * Per-frame drive for the companion. Step 2 is deliberately minimal — advance its path + refresh its
-   * animation (folds the old `GameScene.tickDevNpc`), so a dev-spawned or scenario-placed NPC still
-   * walks. The shared tick ENV (player snapshot + FX/damage effect callbacks, mirroring
-   * {@link EnemyManager.update}) is built here once the gather/guard/combat behaviour lands (Steps 4-8);
-   * `_delta` is threaded now so that signature is already in place.
+   * Per-frame drive for the companion: run its own task loop (gather, plan 042 Step 4), then refresh
+   * its animation. Above GameScene's no-action early-return, so it ticks whether or not the PLAYER has
+   * an active task. A downed companion is left to its Death strip (the revive lands in a later step);
+   * off-role / night just advances any residual path so a dev-spawned walk still plays.
    */
-  update(_delta: number): void {
-    if (!this.npc) return;
-    this.npc.advancePath();
-    this.npc.updateAnim();
+  update(delta: number): void {
+    const npc = this.npc;
+    if (!npc) return;
+    if (npc.downed) {
+      npc.updateAnim();
+      return;
+    }
+    const gathering = npc.dayRole === 'gather' && this.deps.dayPhase() === 'day';
+    if (gathering) this.driveGather(npc, delta);
+    else npc.advancePath(); // idle role/phase — finish any residual path, issue no new orders
+    npc.updateAnim();
   }
 
+  // --- Gather executor (the companion's slimmed task loop) -----------------------------------------
+
+  /** One frame of the gather loop: refresh the occupancy veto, plan an order if idle, then run the
+   *  current one — with the same stuck-guard/repath the player's loop uses so a deflected walk recovers. */
+  private driveGather(npc: NpcCharacter, delta: number): void {
+    this.playerTileTick = this.deps.playerTile();
+
+    if (this.queue.current === null) this.planNext(npc);
+
+    const action = this.queue.current;
+    if (!action) {
+      npc.advancePath(); // nothing to do (no reachable node, empty carry) — settle in place
+      return;
+    }
+    if (action.kind === 'harvest') this.runHarvest(npc, action.treeId, delta);
+    else if (action.kind === 'move') this.runDeposit(npc);
+
+    // Stuck guard (belt-and-braces behind the corner-safe pathfinder), mirroring GameScene.update: if
+    // the walk stopped closing on its waypoint, repath to the same goal (or drop it if now walled off).
+    if (npc.isStuck()) this.repath(npc);
+  }
+
+  /** Decide the next order when idle: deposit a full/stranded haul, else harvest the nearest node. */
+  private planNext(npc: NpcCharacter): void {
+    const carried = this.carryBuf.wood + this.carryBuf.rock;
+    if (carried >= NPC_CARRY_CAP) return this.beginDeposit(npc); // buffer full — go bank it
+
+    const tree = this.nearestHarvestable(npc);
+    if (tree) {
+      // Prefer this species' stand tiles (a tall tree restricts to its base); fall back to any adjacent
+      // tile if those are walled off — the SAME two-tier lookup the player's beginCurrent uses.
+      const target = { col: tree.col, row: tree.row };
+      const stand =
+        reachableAdjacent(
+          npc.tile(),
+          target,
+          this.npcBlocked,
+          this.deps.dims(),
+          tree.def.standOffsets,
+        ) ?? reachableAdjacent(npc.tile(), target, this.npcBlocked, this.deps.dims());
+      if (stand && this.pathTo(npc, stand)) {
+        this.queue.replace({ kind: 'harvest', treeId: tree.id });
+        this.chopElapsed = 0;
+      }
+      return;
+    }
+    // No reachable node left: bank whatever we're carrying, else idle until one regrows.
+    if (carried > 0) this.beginDeposit(npc);
+  }
+
+  /** Nearest alive wood/rock node with a reachable adjacent stand tile, by tile distance from the NPC
+   *  (candidates sorted near→far so the first reachable one wins — matching the player picking the
+   *  closest actionable target). Bushes / non-supply yields are never gather targets. */
+  private nearestHarvestable(npc: NpcCharacter): TreeNode | null {
+    const from = npc.tile();
+    const dims = this.deps.dims();
+    const candidates = this.deps
+      .nodes()
+      .filter((t) => t.alive && t.def.yieldItemId in SUPPLY_KIND)
+      .sort((a, b) => dist2(from, a) - dist2(from, b));
+    for (const tree of candidates) {
+      const target = { col: tree.col, row: tree.row };
+      const stand =
+        reachableAdjacent(from, target, this.npcBlocked, dims, tree.def.standOffsets) ??
+        reachableAdjacent(from, target, this.npcBlocked, dims);
+      if (stand) return tree;
+    }
+    return null;
+  }
+
+  /** Harvest a chosen node: walk to the stand tile, then chop it on the cadence, accruing the yield
+   *  into the carry buffer. Mirrors GameScene.runHarvest's shape (walk-then-swing-in-place) but banks
+   *  into the buffer instead of the player's bag, and completes on fell OR a full buffer. */
+  private runHarvest(npc: NpcCharacter, treeId: string, delta: number): void {
+    const tree = this.deps.nodes().find((t) => t.id === treeId);
+    if (!tree || !tree.alive) return this.finishOrder();
+    if (!npc.advancePath()) return; // still walking to the stand tile
+    npc.faceTile(tree.col, tree.row); // swing toward the node, whatever side we stood on
+    this.chopElapsed += delta;
+    if (this.chopElapsed < CHOP_INTERVAL_MS) return;
+    this.chopElapsed = 0;
+    this.deps.chopNode(tree, npc.lastFacing, (itemId, n) => this.addToCarry(npc, itemId, n));
+    const carried = this.carryBuf.wood + this.carryBuf.rock;
+    if (!tree.alive || carried >= NPC_CARRY_CAP) this.finishOrder(); // felled or buffer full — replan next frame
+  }
+
+  /** Accrue a harvested hit's yield into the carry buffer (by supply kind) and mirror the total onto
+   *  `npc.carry` so `debugState().companion.carry` reflects the live buffer. */
+  private addToCarry(npc: NpcCharacter, itemId: string, n: number): void {
+    const kind = SUPPLY_KIND[itemId];
+    if (!kind) return; // defensive — nearestHarvestable only ever picks wood/rock nodes
+    this.carryBuf[kind] += n;
+    npc.carry = this.carryBuf.wood + this.carryBuf.rock;
+  }
+
+  /** Enter the deposit phase: path to a tile adjacent to the lit hearth. With no lit hearth (or none
+   *  reachable), deposit IN PLACE — the base-supply store is global, so the hearth is only the walk-to
+   *  anchor, and depositing in place keeps a carried haul from wedging the loop (documented fallback). */
+  private beginDeposit(npc: NpcCharacter): void {
+    const hearth = this.deps.litHearthTile();
+    if (!hearth) return this.deposit(npc);
+    const stand = reachableAdjacent(npc.tile(), hearth, this.npcBlocked, this.deps.dims());
+    if (stand && this.pathTo(npc, stand)) {
+      this.queue.replace({ kind: 'move', col: stand.col, row: stand.row });
+    } else {
+      this.deposit(npc); // hearth unreachable — fall back to depositing in place
+    }
+  }
+
+  /** Run the deposit walk: on arrival at the hearth stand tile, dump the buffer into base supply. A
+   *  `move` order in this executor is only ever a deposit walk (planNext queues nothing else). */
+  private runDeposit(npc: NpcCharacter): void {
+    if (npc.advancePath()) this.deposit(npc);
+  }
+
+  /** Dump the whole carry buffer into the shared base-supply pool and clear the order/buffer. */
+  private deposit(npc: NpcCharacter): void {
+    if (this.carryBuf.wood > 0) this.deps.supplyAdd('wood', this.carryBuf.wood);
+    if (this.carryBuf.rock > 0) this.deps.supplyAdd('rock', this.carryBuf.rock);
+    this.carryBuf = { wood: 0, rock: 0 };
+    npc.carry = 0;
+    this.finishOrder();
+  }
+
+  /** Path the companion toward `goal`, recording it for repath; false (leaving the path empty) if
+   *  unreachable. Uses the SAME pure `findPath` + occupancy inputs the player's `pathTo` does, plus the
+   *  player-tile veto. `[]` (already there) still counts as pathed — advancePath returns true at once. */
+  private pathTo(npc: NpcCharacter, goal: Cell): boolean {
+    const path = findPath(npc.tile(), goal, this.npcBlocked, this.deps.dims());
+    if (path === null) return false;
+    npc.path = path;
+    npc.pathIndex = 0;
+    this.goal = goal;
+    return true;
+  }
+
+  /** Recompute the path to the active goal after a stall; drop the order if it's now walled off. */
+  private repath(npc: NpcCharacter): void {
+    if (!this.goal) return;
+    const path = findPath(npc.tile(), this.goal, this.npcBlocked, this.deps.dims());
+    if (path === null) {
+      this.finishOrder(); // goal walled off — drop it, don't shove forever
+      return;
+    }
+    npc.path = path;
+    npc.pathIndex = 0;
+  }
+
+  /** Clear the current order + its goal so the next tick replans. */
+  private finishOrder(): void {
+    this.queue.clear();
+    this.goal = null;
+    this.chopElapsed = 0;
+  }
+
+  /** The companion's pathfinder veto: the player's walkability composite PLUS the player's current
+   *  tile (so the two actors never stack). Its own tile is never added, so findPath can path away. */
+  private readonly npcBlocked = (col: number, row: number): boolean =>
+    this.deps.isBlocked(col, row) ||
+    (col === this.playerTileTick.col && row === this.playerTileTick.row);
+
   // --- Reset / teardown --------------------------------------------------------------
+
+  /** Zero the gather loop's state — an empty queue + carry buffer + cadence. Called on (re)spawn and
+   *  on the DEV scenario reset so a fresh companion never inherits a prior run's haul or order. */
+  private resetGatherState(): void {
+    this.queue.clear();
+    this.carryBuf = { wood: 0, rock: 0 };
+    this.chopElapsed = 0;
+    this.goal = null;
+  }
 
   /**
    * Tear down the companion + drop it. Called at RUNTIME (the scene/physics world is alive), so
@@ -81,6 +340,7 @@ export class CompanionManager {
       this.npc.dispose();
       this.npc = null;
     }
+    this.resetGatherState();
   }
 
   /**
@@ -93,4 +353,11 @@ export class CompanionManager {
   private destroy(): void {
     this.npc = null;
   }
+}
+
+/** Squared tile distance — cheap ordering key for nearest-node selection (no sqrt needed). */
+function dist2(a: Cell, b: { col: number; row: number }): number {
+  const dc = a.col - b.col;
+  const dr = a.row - b.row;
+  return dc * dc + dr * dr;
 }

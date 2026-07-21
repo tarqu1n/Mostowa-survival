@@ -6,6 +6,7 @@ import {
   companion,
   setNpcDayRole,
   setNpcNightPosture,
+  step,
 } from './harness';
 
 // Tier-2 (plan 042 Step 2): the CompanionManager + scenario/DebugState scaffolding. Step 2 lands the
@@ -72,4 +73,38 @@ test('the setNpc* dev seams mutate the placed companion (round-trips through deb
   await setNpcNightPosture(page, 'refuel');
 
   expect(await companion(page)).toMatchObject({ dayRole: 'repair', nightPosture: 'refuel' });
+});
+
+// Tier-2 (plan 042 Step 4): the companion's OWN gather loop through the REAL scene — its slimmed
+// executor (own TaskQueue, never GameScene.queue) walks to the nearest wood/rock node, fells it via the
+// shared ResourceNodeManager.chop path (yield redirected into its carry buffer, NOT the player's bag),
+// then deposits the buffer into the shared base-supply pool. Driven deterministically with step().
+test('a gather-role companion chops a tree by day and deposits wood into base supply', async ({
+  page,
+}) => {
+  await startGame(page);
+
+  // Player at [3,3]; companion two tiles east of a lone tree, in gather role, by day; empty stockpile.
+  // No campfire in this scenario, so the deposit exercises the documented no-lit-hearth fallback
+  // (the base-supply store is global — deposit in place). Coords sit in the proven-walkable row-3 band
+  // the chop/queue specs use.
+  await applyScenario(page, {
+    player: [3, 3],
+    companion: { at: [8, 3], dayRole: 'gather' },
+    trees: [[6, 3]],
+    startPhase: 'day',
+    baseSupply: { wood: 0 },
+  });
+
+  // Baseline: nothing banked, nothing carried yet.
+  expect((await state(page)).baseSupply).toEqual({ wood: 0, rock: 0 });
+
+  // Short walk to the tree + 3 chop intervals (maxHp 3) + a deposit — well inside this budget.
+  await step(page, 6000);
+
+  const s = await state(page);
+  expect(s.baseSupply.wood).toBeGreaterThan(0); // it chopped and banked wood
+  expect(s.baseSupply.wood).toBe(3); // whole tree (maxHp 3 × 1 wood/hit) deposited
+  expect(s.companion?.carry).toBe(0); // carry buffer emptied by the deposit (accrued, then reset)
+  expect(s.baseSupply.rock).toBe(0); // gather only touched the wood node
 });

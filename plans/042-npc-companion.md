@@ -153,7 +153,8 @@ under the owner's full-scope call.
   - Done when: a unit test drives `add`/`take` (incl. `take` failing when empty); HUD shows counts;
     store clears on world reset; `debugState().baseSupply` reflects it.
 
-- [ ] **Step 4: Day role — Gather (own executor → deposit to stockpile)** `[inline]`
+- [x] **Step 4: Day role — Gather (own executor → deposit to stockpile)** `[inline]`
+  - Outcome: NPC gather executor lives in `CompanionManager.ts`, driven from `update(delta)`, owning its OWN `TaskQueue` (`this.queue`, reset on respawn) — never touches `GameScene.queue`. State machine (`planNext`→`runHarvest`→`beginDeposit`/`runDeposit`), runs only while `dayRole==='gather'` && day; reuses pure `findPath`/`reachableAdjacent` (same two-tier standOffsets fallback) + `CHOP_INTERVAL_MS` cadence; player's ~350-line loop untouched. Node depletion stays consistent: added optional `onYield` sink to `ResourceNodeManager.chop` (omitted = player inventory, byte-identical; companion passes its carry sink) — hp/deplete/regrow/fx unchanged. Node→supply map `{wood:'wood', stone:'rock'}`; non-matching yields (berries) never targeted. Occupancy = player's `isBlocked` composite + player's live tile (own tile excluded). No-lit-hearth fallback: deposit in place (store is global). `carry` surfaces via existing `companionSnapshot()`. `CompanionManager` now takes a narrow `CompanionManagerDeps` closure object. Gather e2e spec added (baseSupply.wood→3, carry→0). 857 tests + build/typecheck/lint clean; player harvest + golden tripwire unregressed.
   - Give the NPC its **own slimmed task loop** (resolves critique #5 — do **not** refactor the player's
     scene executor): the NPC owns a `TaskQueue` and a small executor that reuses the pure pieces
     (`findPath`, `reachableAdjacent`, the `CHOP_INTERVAL_MS` cadence). When role = `gather`: find the

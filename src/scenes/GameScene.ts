@@ -461,7 +461,16 @@ export class GameScene extends Phaser.Scene {
     // AI companion (plan 042 Step 2) — constructed AFTER the player (construction order is load-bearing:
     // later steps' per-frame tick env reads player state). Side-effect-free like EnemyManager: it does
     // NOT auto-spawn — a dev seam / scenario calls spawn() — and wires its own SHUTDOWN teardown.
-    this.companionManager = new CompanionManager(this);
+    this.companionManager = new CompanionManager(this, {
+      dims: () => this.gridDims,
+      isBlocked: (col, row) => this.isBlocked(col, row),
+      playerTile: () => this.playerChar.tile(),
+      dayPhase: () => this.survivalClock.dayPhase,
+      nodes: () => this.resourceNodeManager.all(),
+      chopNode: (tree, facing, onYield) => this.resourceNodeManager.chop(tree, facing, onYield),
+      litHearthTile: () => this.litHearth()?.tile ?? null,
+      supplyAdd: (item, n) => this.baseSupply.add(item, n),
+    });
 
     // Build placement (plan 013 Step 6) — constructed fresh each (re)start; its constructor wires a
     // physics collider against the player sprite just constructed above, and its own SHUTDOWN

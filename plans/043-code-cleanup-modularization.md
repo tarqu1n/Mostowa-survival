@@ -82,15 +82,15 @@ safely parallel: no lane edits another lane's consumers.
 
 **Proposed new module layout (confirm during execution):**
 
-| Source | Splits into |
+|Source|Splits into|
 |---|---|
-| `editor/store/editorStore.ts` | `store/slices/*.ts` (document/tabs, tools, underlay, world, nodeDefs, resize, paint-tiles, walkability, zones, shape, terrain, layers, palettes, objects) + pure helpers beside their `*Ops.ts`; `editorStore.ts` stays the `create()` barrel composing slices |
-| `editor/EditorScene.ts` | `editor/scene/{EditorInputController,EditorCameraController,textureBaker,overlaysRenderer,objectRenderer}.ts`; `EditorScene.ts` stays composition root |
-| `editor/panels/LibraryPanel.tsx` | `panels/library/{cards,AtlasSheetPicker,AnimatedStripPicker,AssetReclassify}.tsx`; consumes shared `usePanZoom` |
-| `editor/tabs/ObjectEditorTab.tsx` | `tabs/objectEditor/{ObjectEditorForm,RegionsEditor}.tsx` + pure `editor/regionGeometry.ts`; consumes `usePanZoom` + alpha helper |
-| `scenes/GameScene.ts` | `scenes/combat/CombatController.ts` (+ dev/randomise helper); Action-registry in Phase 4 |
-| `scenes/UIScene.ts` | `scenes/hud/*` per-widget builders/view classes (build-palette, wellbeing, hud-bars, combat-controls, inspect, dev-menu) |
-| `systems/mapFormat.ts` | `systems/mapFormat/{schema,parse,serialize,resize}.ts` + `index.ts` barrel (keeps `systems/mapFormat` import path) |
+|`editor/store/editorStore.ts`|`store/slices/*.ts` (document/tabs, tools, underlay, world, nodeDefs, resize, paint-tiles, walkability, zones, shape, terrain, layers, palettes, objects) + pure helpers beside their `*Ops.ts`; `editorStore.ts` stays the `create()` barrel composing slices|
+|`editor/EditorScene.ts`|`editor/scene/{EditorInputController,EditorCameraController,textureBaker,overlaysRenderer,objectRenderer}.ts`; `EditorScene.ts` stays composition root|
+|`editor/panels/LibraryPanel.tsx`|`panels/library/{cards,AtlasSheetPicker,AnimatedStripPicker,AssetReclassify}.tsx`; consumes shared `usePanZoom`|
+|`editor/tabs/ObjectEditorTab.tsx`|`tabs/objectEditor/{ObjectEditorForm,RegionsEditor}.tsx` + pure `editor/regionGeometry.ts`; consumes `usePanZoom` + alpha helper|
+|`scenes/GameScene.ts`|`scenes/combat/CombatController.ts` (+ dev/randomise helper); Action-registry in Phase 4|
+|`scenes/UIScene.ts`|`scenes/hud/*` per-widget builders/view classes (build-palette, wellbeing, hud-bars, combat-controls, inspect, dev-menu)|
+|`systems/mapFormat.ts`|`systems/mapFormat/{schema,parse,serialize,resize}.ts` + `index.ts` barrel (keeps `systems/mapFormat` import path)|
 
 **Shared extractions (Phase 2, consumed by Phase 3):** `editor/hooks/usePanZoom.ts` (unifies the
 duplicated pan/zoom viewport in `LibraryPanel.AtlasSheetPicker` and `ObjectEditorTab.RegionsEditor`),
@@ -102,7 +102,13 @@ duplicated pan/zoom viewport in `LibraryPanel.AtlasSheetPicker` and `ObjectEdito
 
 ### Phase 1 — Review lenses (parallel: A) — read-only, each writes its own findings doc
 
-- [ ] **Step 1: Code-smells lens** `[delegate]` (parallel: A)
+- [x] **Step 1: Code-smells lens** `[delegate]` (parallel: A)
+  - Outcome: wrote `docs/cleanup/smells.md` (14 findings: High 4 / Med 6 / Low 4; [fix] 4, [log] 10).
+    Seed line-refs drifted — real locations: wireBus mirror `GameScene.ts:773-843`, toggle/queue quartet
+    `:1244-1326` (8 methods), parked portals `:264-266`/`416-418`/`300`. Null byte confirmed at
+    `editorStore.ts:971` (offset 61841). **Correction:** the seeded "duplicated alpha decode"
+    (`ObjectEditorTab.tsx:553-568`) is a *single* occurrence, not a duplicate — logged as an extraction
+    candidate only (affects Step 6/10 framing). No `any` types in `src/`.
   - Read `src/` and produce `docs/cleanup/smells.md`: a severity-ranked table of concrete smells with
     `file:line` refs (god objects, duplicated logic, dead/parked code, magic numbers). Seeded by
     research: `GameScene.wireBus()` 28-on/28-off mirror (`GameScene.ts:639-687`), the toggle/queue
@@ -118,7 +124,13 @@ duplicated pan/zoom viewport in `LibraryPanel.AtlasSheetPicker` and `ObjectEdito
   - Docs: creates `docs/cleanup/smells.md`.
   - Done when: doc exists, every finding has a `file:line` and a fix/log tag.
 
-- [ ] **Step 2: Competing-standards / consistency lens** `[delegate]` (parallel: A)
+- [x] **Step 2: Competing-standards / consistency lens** `[delegate]` (parallel: A)
+  - Outcome: wrote `docs/cleanup/standards.md` (6 rows: 1 [fix], 5 [log]). Config-vs-data cost split
+    CONFIRMED — `spike_trap` cost is `SPIKE_TRAP_COST` in `config.ts:545` imported into `buildables.ts:5,57`
+    while wall/campfire costs are inline (`:16,:34`); recommended resolution = inline the `{wood:5}` into
+    buildables (Step 16). Only [fix] is a stale STANDARDS.md event-namespace list. Editor `ui/` lowercase
+    (shadcn) vs PascalCase split and game-bus-vs-Zustand both tagged [log]/accepted. src/ already clean on:
+    no default exports, event-name/registry-key shapes, no manager↔manager coupling, no non-test `any`.
   - Produce `docs/cleanup/standards.md`: inconsistencies vs STANDARDS.md/CONVENTIONS.md — module
     patterns, naming drift, event/registry-key conventions, the two state paradigms (game
     `game.events`+`registry` vs editor Zustand — document as an accepted split, tag **[log]**),
@@ -127,7 +139,14 @@ duplicated pan/zoom viewport in `LibraryPanel.AtlasSheetPicker` and `ObjectEdito
   - Docs: creates `docs/cleanup/standards.md`.
   - Done when: doc exists with tagged rows.
 
-- [ ] **Step 3: Performance lens** `[delegate]` (parallel: A)
+- [x] **Step 3: Performance lens** `[delegate]` (parallel: A)
+  - Outcome: wrote `docs/cleanup/perf.md` (9 items: 5 safe, 4 needs-review). **Two seed corrections:**
+    `enemyManager.all()` returns the raw backing array — NO allocation, no fix (`EnemyManager.ts:157-159`);
+    `syncGlowTransforms` is unconditional but iterates only `glowSprites` (empty when idle) — low cost.
+    The two applicable safe `[fix]` items for Step 15: guard `syncEnemyHealthBars` on
+    `enemies.length===0 && hpBars.size===0` (must gate on hpBars too, else stale bars leak,
+    `CombatFxManager.ts:432-438`) and guard `syncGlowTransforms` on `glowSprites.size===0`. Everything
+    heavier (env/closure churn in `EnemyManager`/`MonsterCharacter`/companion snapshot) is needs-review/[log].
   - Produce `docs/cleanup/perf.md`: per-frame allocation/iteration and redundant-work audit of the
     `update()` path — `enemyManager.all()` array returns + `fx.syncEnemyHealthBars` iterating all
     enemies each frame (`GameScene.ts:838-900`), `taskGlowRenderer.syncGlowTransforms()` running
@@ -137,7 +156,15 @@ duplicated pan/zoom viewport in `LibraryPanel.AtlasSheetPicker` and `ObjectEdito
   - Docs: creates `docs/cleanup/perf.md`.
   - Done when: doc lists hot-path items with a proposed safe fix + risk tag each.
 
-- [ ] **Step 4: Extensibility lens** `[delegate]` (parallel: A)
+- [x] **Step 4: Extensibility lens** `[delegate]` (parallel: A)
+  - Outcome: wrote `docs/cleanup/extensibility.md`. Action-kind registry (Step 14): adding one order kind
+    today touches **8-9 sites across 4 files** (not the seed's "3+") — `Action` union `tasks.ts:7-14`,
+    `switch` `GameScene.ts:1045`, `runX`, `beginCurrent` `:1134-1224`, enqueue de-dupe `:1245-1259`,
+    `isXQueued`/`toggleX` quartet `:1268-1326`, `describeActionTarget` `:307`, `TaskGlowRenderer` highlight
+    `:71-102`, opt. `ScenePicker.actionAt`. Proposed `OrderRegistry` mirroring `StructureManager`
+    (`register(key,module)` + `behavior<M>`) collapsing 8→1 registration. Other seams: editor `TOOL_DEFS`
+    data table (lower priority). Testability targets: order-registry decision core + `regionGeometry.ts`
+    (primary), `zoom.ts` pure, `pixelAlpha.ts` thin/optional.
   - Produce `docs/cleanup/extensibility.md`: spots that resist "edit data, not code", biased to the
     three chosen goals (adding content · editor tooling · testability). Seeded: the `update()`
     `switch(action.kind)` (`GameScene.ts:873`) + toggle/queue quartet needing edits in 3+ places for a
@@ -250,7 +277,7 @@ delegate lanes — just driven inline, not blind-delegated.
     non-stateful one-shot builders may be free functions.
   - Side effects: **highest-risk lane — no UIScene unit tests.** Guardrail is `npm run smoke` (boot
     canary: reaches Game+UI, renders, zero console errors) + the HUD-touching e2e (mode/inspect/feed)
-    + manual parity. Keep every `game.events` handler + registry key identical.
+    - manual parity. Keep every `game.events` handler + registry key identical.
   - Docs: none inline.
   - Done when: smoke green (zero console errors), HUD e2e green, full gate green.
 
@@ -378,11 +405,11 @@ separation — but the "7 concurrent lanes on one branch" + "full gate every ste
 self-contradictory and had to be resolved before execution. Findings #1–#4 have been folded into the
 plan above; #5–#6 are noted-only.
 
-| # | Finding | Lens | Severity | Status |
-| - | ------- | ---- | -------- | ------ |
-| 1 | 7 concurrent Phase-3 lanes on one shared branch can't each satisfy the whole-tree full-gate invariant — gates race on a shared tree | Executability/sequencing | High | **Resolved** — worktree-per-lane + gate-at-merge (Context: Execution model; Phase 3 header; Parallelisation summary) |
-| 2 | editorStore split labelled mechanical but ~120 actions cross-call via get()/set(); higher-effort than a move, export surface broader than stated | Right-sizing / risk | Medium | **Resolved** — Step 7 reclassified `[inline]`, full export surface to be enumerated first |
-| 3 | Step 17 sharding load-on-demand leaves (STATUS/GAME-DESIGN/EDITOR) adds shards without cutting standing cost | Operational / premise | Medium | **Resolved** — Step 17 re-scoped to always-loaded CLAUDE.md |
-| 4 | 19-step refactor delivers zero roadmap feature; NPC precedence unargued | Roadmap fit | Medium | **Resolved** — timing-vs-roadmap rationale added to Context |
-| 5 | Seeded line ranges may have drifted (e.g. update() switch ~1343, plan cites :873) | Consistency | Low | Noted — treat ranges as indicative; "confirm during execution" already stated |
-| 6 | One-PR-on-branch deviates from WORKFLOW's master/no-PR model | Consistency | Low | Noted — acknowledged in Context; deploy is master-triggered |
+|#|Finding|Lens|Severity|Status|
+|-|-------|----|--------|------|
+|1|7 concurrent Phase-3 lanes on one shared branch can't each satisfy the whole-tree full-gate invariant — gates race on a shared tree|Executability/sequencing|High|**Resolved** — worktree-per-lane + gate-at-merge (Context: Execution model; Phase 3 header; Parallelisation summary)|
+|2|editorStore split labelled mechanical but ~120 actions cross-call via get()/set(); higher-effort than a move, export surface broader than stated|Right-sizing / risk|Medium|**Resolved** — Step 7 reclassified `[inline]`, full export surface to be enumerated first|
+|3|Step 17 sharding load-on-demand leaves (STATUS/GAME-DESIGN/EDITOR) adds shards without cutting standing cost|Operational / premise|Medium|**Resolved** — Step 17 re-scoped to always-loaded CLAUDE.md|
+|4|19-step refactor delivers zero roadmap feature; NPC precedence unargued|Roadmap fit|Medium|**Resolved** — timing-vs-roadmap rationale added to Context|
+|5|Seeded line ranges may have drifted (e.g. update() switch ~1343, plan cites :873)|Consistency|Low|Noted — treat ranges as indicative; "confirm during execution" already stated|
+|6|One-PR-on-branch deviates from WORKFLOW's master/no-PR model|Consistency|Low|Noted — acknowledged in Context; deploy is master-triggered|

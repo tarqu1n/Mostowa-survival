@@ -28,6 +28,7 @@ import { zoneAt } from '../systems/mapZones';
 import type { MapFile, DecorObject, NodeObject, PortalObject } from '../systems/mapFormat';
 import { breadcrumb, setCrashContext } from '../debug/crashReporter';
 import { TaskQueue, type Action } from '../systems/tasks';
+import { ORDER_META, isOrderQueued, orderTargetId, toggleOrder } from '../systems/orders';
 import { objectAsDefender } from '../systems/combat';
 import { hurtboxTiles, DEFAULT_HURTBOX } from '../systems/hurtbox';
 import type { DayPhase } from '../systems/daynight';
@@ -296,15 +297,10 @@ export class GameScene extends Phaser.Scene {
     breadcrumb('scene', 'GameScene create done');
   }
 
-  /** One-line description of an action's target for the crash report (no sprite refs). */
+  /** One-line description of an action's target for the crash report (no sprite refs). Every ordered
+   *  kind reports its target id (`orderTargetId`); a bare move reports its tile. */
   private describeActionTarget(a: Action): string {
-    if (a.kind === 'harvest') return a.treeId;
-    if (a.kind === 'refuel') return a.campfireId;
-    if (a.kind === 'build') return a.siteId;
-    if (a.kind === 'deconstruct') return a.wallId;
-    if (a.kind === 'rearm') return a.trapId;
-    if (a.kind === 'repair') return a.wallId; // companion-only order (never in the player queue) — keeps the union exhaustive
-    return `(${a.col},${a.row})`;
+    return orderTargetId(a) ?? (a.kind === 'move' ? `(${a.col},${a.row})` : '');
   }
 
   /**
@@ -801,96 +797,46 @@ export class GameScene extends Phaser.Scene {
    *  listeners create() always registered — build/zoom/camera route to the managers that now own
    *  those methods), then push the first queue-highlight refresh. */
   private wireBus(): void {
-    this.game.events.on('build:toggle', this.buildManager.toggleBuild, this.buildManager);
-    this.game.events.on('build:rotate', this.buildManager.rotatePlacement, this.buildManager);
-    this.game.events.on('build:select', this.onBuildSelect, this);
-    this.game.events.on('build:modeChanged', this.onBuildModeChanged, this); // turn demolish off when build turns on (plan 037 2b)
-    this.game.events.on('demolish:toggle', this.onDemolishToggle, this);
-    this.game.events.on('tasks:cancel', this.cancelAll, this);
-    this.game.events.on('debug:randomise', this.devWorldTools.randomiseWorld, this.devWorldTools); // dev menu: scatter nodes + enemies
-    this.game.events.on(
-      'debug:spawnEnemy',
-      this.devWorldTools.spawnEnemyNearPlayer,
-      this.devWorldTools,
-    ); // dev menu: drop one enemy by the player to fight
-    this.game.events.on(
-      'debug:spawnNpc',
-      this.devWorldTools.spawnNpcNearPlayer,
-      this.devWorldTools,
-    ); // dev menu: drop the companion Rogue by the player (plan 042)
-    this.game.events.on('debug:toggleTime', this.survivalClock.toggleDayNight, this.survivalClock); // dev menu: flip day/night
-    this.game.events.on('debug:forceWave', this.onForceWave, this); // dev menu: jump to night + start a wave now
-    this.game.events.on('time:changed', this.waveDirector.onTimeChanged, this.waveDirector); // start/stop the night wave on dusk/dawn
-    this.game.events.on('time:changed', this.rearmTrapsAtDawn, this); // dawn → auto-enqueue rearm for spent traps (plan 040)
-    this.game.events.on(
-      'time:changed',
-      this.companionManager.onPhaseChanged,
-      this.companionManager,
-    ); // night→adopt posture / day→resume role + revive (plan 042 Step 8)
-    this.game.events.on('zoom:delta', this.pointerInput.adjustZoom, this.pointerInput);
-    this.game.events.on('camera:center', this.pointerInput.centerOnPlayer, this.pointerInput);
-    this.game.events.on('combat:attack', this.combatController.attack, this.combatController);
-    this.game.events.on('combat:bow', this.combatController.bow, this.combatController);
-    this.game.events.on('mode:combatToggle', this.onCombatToggle, this);
-    this.game.events.on('mode:inspectToggle', this.onInspectToggle, this);
-    this.game.events.on('needs:eat', this.survivalClock.onNeedsEat, this.survivalClock);
-    this.game.events.on('combat:move', this.onCombatMove, this);
-    this.game.events.on('combat:moveEnd', this.onCombatMoveEnd, this);
-    // Companion assignment menu (plan 042 Step 9) — UIScene's popover buttons route back here through
-    // the same shared setters the `__test` seams call; "Guard here" arms the place-point mode.
-    this.game.events.on('npc:assignDayRole', this.setNpcDayRole, this);
-    this.game.events.on('npc:assignNightPosture', this.setNpcNightPosture, this);
-    this.game.events.on('npc:beginPlaceGuard', this.beginPlaceGuardPoint, this);
-    this.game.events.on('npc:cancelPlaceGuard', this.cancelPlaceGuardPoint, this); // Escape while armed
-
+    const bus = this.game.events;
+    // Table-driven bus wiring (plan 043 Step 14): one [event, handler, context] list drives BOTH the
+    // `on` here and the matching `off` at SHUTDOWN, so a subscription can never be registered without
+    // its teardown — the old parallel on/off blocks (~40 lines each) could, and were the exact kind of
+    // 28-on/28-off mirror flagged in the smells lens. `never[]`-param typing lets any handler signature
+    // sit in one homogeneous list without `any` (a fn is assignable to `(...args: never[]) => void`).
+    const subs: ReadonlyArray<readonly [string, (...args: never[]) => void, object]> = [
+      ['build:toggle', this.buildManager.toggleBuild, this.buildManager],
+      ['build:rotate', this.buildManager.rotatePlacement, this.buildManager],
+      ['build:select', this.onBuildSelect, this],
+      ['build:modeChanged', this.onBuildModeChanged, this], // turn demolish off when build turns on (plan 037 2b)
+      ['demolish:toggle', this.onDemolishToggle, this],
+      ['tasks:cancel', this.cancelAll, this],
+      ['debug:randomise', this.devWorldTools.randomiseWorld, this.devWorldTools], // dev menu: scatter nodes + enemies
+      ['debug:spawnEnemy', this.devWorldTools.spawnEnemyNearPlayer, this.devWorldTools], // dev menu: drop one enemy by the player to fight
+      ['debug:spawnNpc', this.devWorldTools.spawnNpcNearPlayer, this.devWorldTools], // dev menu: drop the companion Rogue by the player (plan 042)
+      ['debug:toggleTime', this.survivalClock.toggleDayNight, this.survivalClock], // dev menu: flip day/night
+      ['debug:forceWave', this.onForceWave, this], // dev menu: jump to night + start a wave now
+      ['time:changed', this.waveDirector.onTimeChanged, this.waveDirector], // start/stop the night wave on dusk/dawn
+      ['time:changed', this.rearmTrapsAtDawn, this], // dawn → auto-enqueue rearm for spent traps (plan 040)
+      ['time:changed', this.companionManager.onPhaseChanged, this.companionManager], // night→adopt posture / day→resume role + revive (plan 042 Step 8)
+      ['zoom:delta', this.pointerInput.adjustZoom, this.pointerInput],
+      ['camera:center', this.pointerInput.centerOnPlayer, this.pointerInput],
+      ['combat:attack', this.combatController.attack, this.combatController],
+      ['combat:bow', this.combatController.bow, this.combatController],
+      ['mode:combatToggle', this.onCombatToggle, this],
+      ['mode:inspectToggle', this.onInspectToggle, this],
+      ['needs:eat', this.survivalClock.onNeedsEat, this.survivalClock],
+      ['combat:move', this.onCombatMove, this],
+      ['combat:moveEnd', this.onCombatMoveEnd, this],
+      // Companion assignment menu (plan 042 Step 9) — UIScene's popover buttons route back here through
+      // the same shared setters the `__test` seams call; "Guard here" arms the place-point mode.
+      ['npc:assignDayRole', this.setNpcDayRole, this],
+      ['npc:assignNightPosture', this.setNpcNightPosture, this],
+      ['npc:beginPlaceGuard', this.beginPlaceGuardPoint, this],
+      ['npc:cancelPlaceGuard', this.cancelPlaceGuardPoint, this], // Escape while armed
+    ];
+    for (const [event, handler, ctx] of subs) bus.on(event, handler, ctx);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.game.events.off('build:toggle', this.buildManager.toggleBuild, this.buildManager);
-      this.game.events.off('build:rotate', this.buildManager.rotatePlacement, this.buildManager);
-      this.game.events.off('build:select', this.onBuildSelect, this);
-      this.game.events.off('build:modeChanged', this.onBuildModeChanged, this);
-      this.game.events.off('demolish:toggle', this.onDemolishToggle, this);
-      this.game.events.off('tasks:cancel', this.cancelAll, this);
-      this.game.events.off(
-        'debug:randomise',
-        this.devWorldTools.randomiseWorld,
-        this.devWorldTools,
-      );
-      this.game.events.off(
-        'debug:spawnEnemy',
-        this.devWorldTools.spawnEnemyNearPlayer,
-        this.devWorldTools,
-      );
-      this.game.events.off(
-        'debug:spawnNpc',
-        this.devWorldTools.spawnNpcNearPlayer,
-        this.devWorldTools,
-      );
-      this.game.events.off(
-        'debug:toggleTime',
-        this.survivalClock.toggleDayNight,
-        this.survivalClock,
-      );
-      this.game.events.off('debug:forceWave', this.onForceWave, this);
-      this.game.events.off('time:changed', this.waveDirector.onTimeChanged, this.waveDirector);
-      this.game.events.off('time:changed', this.rearmTrapsAtDawn, this);
-      this.game.events.off(
-        'time:changed',
-        this.companionManager.onPhaseChanged,
-        this.companionManager,
-      );
-      this.game.events.off('zoom:delta', this.pointerInput.adjustZoom, this.pointerInput);
-      this.game.events.off('camera:center', this.pointerInput.centerOnPlayer, this.pointerInput);
-      this.game.events.off('combat:attack', this.combatController.attack, this.combatController);
-      this.game.events.off('combat:bow', this.combatController.bow, this.combatController);
-      this.game.events.off('mode:combatToggle', this.onCombatToggle, this);
-      this.game.events.off('mode:inspectToggle', this.onInspectToggle, this);
-      this.game.events.off('needs:eat', this.survivalClock.onNeedsEat, this.survivalClock);
-      this.game.events.off('combat:move', this.onCombatMove, this);
-      this.game.events.off('combat:moveEnd', this.onCombatMoveEnd, this);
-      this.game.events.off('npc:assignDayRole', this.setNpcDayRole, this);
-      this.game.events.off('npc:assignNightPosture', this.setNpcNightPosture, this);
-      this.game.events.off('npc:beginPlaceGuard', this.beginPlaceGuardPoint, this);
-      this.game.events.off('npc:cancelPlaceGuard', this.cancelPlaceGuardPoint, this);
+      for (const [event, handler, ctx] of subs) bus.off(event, handler, ctx);
     });
 
     this.emitTasks();
@@ -1094,26 +1040,12 @@ export class GameScene extends Phaser.Scene {
       this.enemyManager.update();
       return;
     }
-    switch (action.kind) {
-      case 'move':
-        if (this.playerChar.advancePath()) this.completeCurrent();
-        break;
-      case 'harvest':
-        this.runHarvest(action, delta);
-        break;
-      case 'build':
-        this.runBuild(action, delta);
-        break;
-      case 'refuel':
-        this.runRefuel(action, delta);
-        break;
-      case 'deconstruct':
-        this.runDeconstruct(action);
-        break;
-      case 'rearm':
-        this.runRearm(action);
-        break;
-    }
+    // Dispatch the per-frame work by kind through the runner table (below) — the registry-driven
+    // replacement for the old switch. A kind with no runner (e.g. companion-only `repair`) is a no-op.
+    (this.orderRunners[action.kind] as ((a: Action, delta: number) => void) | undefined)?.(
+      action,
+      delta,
+    );
     // Stuck guard (belt-and-braces behind the pathfinder's corner rule): if the worker stopped
     // closing on its waypoint — e.g. deflected by the wall collider backstop — repath to the same
     // goal. The corner-safe pathfinder then routes clear; if the goal got walled off, repath drops
@@ -1171,7 +1103,9 @@ export class GameScene extends Phaser.Scene {
 
   // --- Task queue lifecycle ------------------------------------------------
 
-  /** Begin executing whatever is `current` — compute its path / stand tile, or skip if impossible. */
+  /** Begin executing whatever is `current` — compute its path / stand tile, or skip if impossible.
+   *  Shared prelude (reset path/goal + breadcrumb) then dispatch the per-kind stand-tile resolution
+   *  through {@link orderBeginners} (the registry-driven replacement for the old if-chain). */
   private beginCurrent(): void {
     this.chopElapsed = 0;
     this.playerChar.path = [];
@@ -1183,88 +1117,123 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     breadcrumb('action', `begin ${a.kind}`, { target: this.describeActionTarget(a) });
-    if (a.kind === 'move') {
+    (this.orderBeginners[a.kind] as ((a: Action) => void) | undefined)?.(a);
+  }
+
+  /**
+   * Per-frame executors keyed by order kind — the dispatch table `update()` runs (plan 043 Step 14,
+   * the registry pattern mirroring StructureManager). A kind with no runner (companion-only `repair`)
+   * is a no-op. Arrow closures so `this` binds to the scene; a new order kind's per-frame work is one
+   * entry here + its {@link orderBeginners} block, not a new `switch` case.
+   */
+  private readonly orderRunners: {
+    [K in Action['kind']]?: (a: Extract<Action, { kind: K }>, delta: number) => void;
+  } = {
+    move: () => {
+      if (this.playerChar.advancePath()) this.completeCurrent();
+    },
+    harvest: (a, delta) => this.runHarvest(a, delta),
+    build: (a, delta) => this.runBuild(a, delta),
+    refuel: (a, delta) => this.runRefuel(a, delta),
+    deconstruct: (a) => this.runDeconstruct(a),
+    rearm: (a) => this.runRearm(a),
+  };
+
+  /**
+   * Stand-tile resolution keyed by order kind — the dispatch table {@link beginCurrent} runs. Each
+   * resolves the walk-to tile (or aborts via {@link completeCurrent}) for its kind. `repair` is a
+   * companion-only order (driven on CompanionManager's own queue, plan 042 Step 5) — it never reaches
+   * the player's queue; drop it defensively so the kind union stays exhaustive.
+   */
+  private readonly orderBeginners: {
+    [K in Action['kind']]?: (a: Extract<Action, { kind: K }>) => void;
+  } = {
+    move: (a) => {
       if (!this.pathTo({ col: a.col, row: a.row })) this.completeCurrent();
-      return;
+    },
+    repair: () => this.completeCurrent(),
+    harvest: (a) => this.beginHarvest(a),
+    refuel: (a) => this.beginRefuel(a),
+    deconstruct: (a) => this.beginDeconstruct(a),
+    rearm: (a) => this.beginRearm(a),
+    build: (a) => this.beginBuild(a),
+  };
+
+  private beginHarvest(a: Extract<Action, { kind: 'harvest' }>): void {
+    const tree = this.resourceNodeManager.treeById(a.treeId);
+    if (!tree || !tree.alive) return this.completeCurrent();
+    // Bag can't accept this node's yield → don't even start the walk-and-swing; abort the order.
+    if (!this.inv.canAccept(tree.def.yieldItemId, tree.def.yieldPerHit)) {
+      this.resourceNodeManager.flashBagFull(tree);
+      return this.completeCurrent();
     }
-    // `repair` is a companion-only order (driven on CompanionManager's own queue, plan 042 Step 5) —
-    // it never reaches the player's queue; drop it defensively so the kind union stays exhaustive.
-    if (a.kind === 'repair') return this.completeCurrent();
-    if (a.kind === 'harvest') {
-      const tree = this.resourceNodeManager.treeById(a.treeId);
-      if (!tree || !tree.alive) return this.completeCurrent();
-      // Bag can't accept this node's yield → don't even start the walk-and-swing; abort the order.
-      if (!this.inv.canAccept(tree.def.yieldItemId, tree.def.yieldPerHit)) {
-        this.resourceNodeManager.flashBagFull(tree);
-        return this.completeCurrent();
-      }
-      const target = { col: tree.col, row: tree.row };
-      // Prefer this species' stand tiles (a tall tree restricts to its base, never up in the canopy);
-      // fall back to any adjacent tile if those are walled off. A rock omits standOffsets → all-adjacent.
-      const stand =
-        reachableAdjacent(
-          this.playerChar.tile(),
-          target,
-          this.isBlocked,
-          this.gridDims,
-          tree.def.standOffsets,
-        ) ?? reachableAdjacent(this.playerChar.tile(), target, this.isBlocked, this.gridDims);
-      if (!stand || !this.pathTo(stand)) this.completeCurrent();
-      return;
-    }
-    if (a.kind === 'refuel') {
-      const c = this.campfire.campfireById(a.campfireId);
-      if (!c) return this.completeCurrent();
-      // Nothing to do → flash a refusal and drop the order rather than walk over for a no-op: the bag's
-      // empty, or the fire's already topped up (a full wood wouldn't fit — the no-waste rule runRefuel
-      // also completes on). Mirrors harvest's "can't-start → flashBagFull + complete" abort.
-      if (
-        !this.inv.canAfford({ wood: 1 }) ||
-        CAMPFIRE_FUEL_MAX - c.state.fuel < CAMPFIRE_FUEL_PER_WOOD
-      ) {
-        this.campfire.flashNoFuel(c);
-        return this.completeCurrent();
-      }
-      // Stand on any tile adjacent to the fire's foot tile (it blocks its own tile, like a rock).
-      const stand = reachableAdjacent(
+    const target = { col: tree.col, row: tree.row };
+    // Prefer this species' stand tiles (a tall tree restricts to its base, never up in the canopy);
+    // fall back to any adjacent tile if those are walled off. A rock omits standOffsets → all-adjacent.
+    const stand =
+      reachableAdjacent(
         this.playerChar.tile(),
-        { col: c.col, row: c.row },
+        target,
         this.isBlocked,
         this.gridDims,
-      );
-      if (!stand || !this.pathTo(stand)) this.completeCurrent();
-      return;
+        tree.def.standOffsets,
+      ) ?? reachableAdjacent(this.playerChar.tile(), target, this.isBlocked, this.gridDims);
+    if (!stand || !this.pathTo(stand)) this.completeCurrent();
+  }
+
+  private beginRefuel(a: Extract<Action, { kind: 'refuel' }>): void {
+    const c = this.campfire.campfireById(a.campfireId);
+    if (!c) return this.completeCurrent();
+    // Nothing to do → flash a refusal and drop the order rather than walk over for a no-op: the bag's
+    // empty, or the fire's already topped up (a full wood wouldn't fit — the no-waste rule runRefuel
+    // also completes on). Mirrors harvest's "can't-start → flashBagFull + complete" abort.
+    if (
+      !this.inv.canAfford({ wood: 1 }) ||
+      CAMPFIRE_FUEL_MAX - c.state.fuel < CAMPFIRE_FUEL_PER_WOOD
+    ) {
+      this.campfire.flashNoFuel(c);
+      return this.completeCurrent();
     }
-    if (a.kind === 'deconstruct') {
-      const w = this.wall.wallById(a.wallId);
-      if (!w) return this.completeCurrent(); // wall already gone (e.g. a mob destroyed it) — drop the order
-      // Stand on any tile adjacent to the wall's foot tile (it blocks its own tile, like the fire).
-      const stand = reachableAdjacent(
-        this.playerChar.tile(),
-        { col: w.col, row: w.row },
-        this.isBlocked,
-        this.gridDims,
-      );
-      if (!stand || !this.pathTo(stand)) this.completeCurrent();
-      return;
-    }
-    if (a.kind === 'rearm') {
-      const t = this.trap.trapById(a.trapId);
-      if (!t) return this.completeCurrent(); // trap gone (e.g. a scenario reset) — drop the order
-      if (t.state.armed) return this.completeCurrent(); // already re-armed (fired-and-reset race) — nothing to do
-      // Stand ADJACENT to the trap (a trap tile is walkable, but standing off it avoids re-tripping a
-      // just-re-armed trap on the worker's own feet — the trigger only queries enemies, but adjacency
-      // reads as "reach over and reset it", mirroring the fire/wall tend-from-adjacent orders).
-      const stand = reachableAdjacent(
-        this.playerChar.tile(),
-        { col: t.col, row: t.row },
-        this.isBlocked,
-        this.gridDims,
-      );
-      if (!stand || !this.pathTo(stand)) this.completeCurrent();
-      return;
-    }
-    // build
+    // Stand on any tile adjacent to the fire's foot tile (it blocks its own tile, like a rock).
+    const stand = reachableAdjacent(
+      this.playerChar.tile(),
+      { col: c.col, row: c.row },
+      this.isBlocked,
+      this.gridDims,
+    );
+    if (!stand || !this.pathTo(stand)) this.completeCurrent();
+  }
+
+  private beginDeconstruct(a: Extract<Action, { kind: 'deconstruct' }>): void {
+    const w = this.wall.wallById(a.wallId);
+    if (!w) return this.completeCurrent(); // wall already gone (e.g. a mob destroyed it) — drop the order
+    // Stand on any tile adjacent to the wall's foot tile (it blocks its own tile, like the fire).
+    const stand = reachableAdjacent(
+      this.playerChar.tile(),
+      { col: w.col, row: w.row },
+      this.isBlocked,
+      this.gridDims,
+    );
+    if (!stand || !this.pathTo(stand)) this.completeCurrent();
+  }
+
+  private beginRearm(a: Extract<Action, { kind: 'rearm' }>): void {
+    const t = this.trap.trapById(a.trapId);
+    if (!t) return this.completeCurrent(); // trap gone (e.g. a scenario reset) — drop the order
+    if (t.state.armed) return this.completeCurrent(); // already re-armed (fired-and-reset race) — nothing to do
+    // Stand ADJACENT to the trap (a trap tile is walkable, but standing off it avoids re-tripping a
+    // just-re-armed trap on the worker's own feet — the trigger only queries enemies, but adjacency
+    // reads as "reach over and reset it", mirroring the fire/wall tend-from-adjacent orders).
+    const stand = reachableAdjacent(
+      this.playerChar.tile(),
+      { col: t.col, row: t.row },
+      this.isBlocked,
+      this.gridDims,
+    );
+    if (!stand || !this.pathTo(stand)) this.completeCurrent();
+  }
+
+  private beginBuild(a: Extract<Action, { kind: 'build' }>): void {
     const site = this.buildManager.siteById(a.siteId);
     if (!site || site.done) return this.completeCurrent();
     const stand = reachableAdjacent(
@@ -1291,89 +1260,24 @@ export class GameScene extends Phaser.Scene {
     this.emitTasks();
   }
 
-  /** Append an order; if the worker was idle, start it. Tapping a tree that's already queued toggles
-   *  it back off (see {@link toggleHarvest}) — never a duplicate chop order. */
+  /**
+   * Append an order; if the worker was idle, start it. Tapping a target that already has an order of
+   * the same kind toggles it back off instead of duplicating it (the toggle/queue behaviour, now
+   * generic over `orderTargetId` — see systems/orders.ts). Only the kinds flagged `dedupeOnEnqueue`
+   * toggle (harvest/refuel/deconstruct/rearm); `build`/`move` always append. Toggling off re-queues at
+   * the END on a later tap (a fresh append); if the live order is cancelled, {@link beginCurrent}
+   * advances to the next (or goes idle) so the worker stops working a target you un-queued. The rearm
+   * de-dupe also stops the dawn auto-enqueue from queuing a trap twice (plan 040).
+   */
   private enqueue(a: Action): void {
-    if (a.kind === 'harvest' && this.isHarvestQueued(a.treeId)) {
-      this.toggleHarvest(a.treeId);
-      return;
-    }
-    if (a.kind === 'refuel' && this.isRefuelQueued(a.campfireId)) {
-      this.toggleRefuel(a.campfireId);
-      return;
-    }
-    if (a.kind === 'deconstruct' && this.isDeconstructQueued(a.wallId)) {
-      this.toggleDeconstruct(a.wallId);
-      return;
-    }
-    if (a.kind === 'rearm' && this.isRearmQueued(a.trapId)) {
-      this.toggleRearm(a.trapId);
+    if (ORDER_META[a.kind].dedupeOnEnqueue && isOrderQueued(this.queue, a)) {
+      if (toggleOrder(this.queue, a)) this.beginCurrent();
+      this.emitTasks();
       return;
     }
     const wasIdle = this.queue.current === null;
     this.queue.append(a);
     if (wasIdle) this.beginCurrent();
-    this.emitTasks();
-  }
-
-  /** True if a tree already has a harvest order (current or pending). */
-  private isHarvestQueued(treeId: string): boolean {
-    return this.queue.all().some((x) => x.kind === 'harvest' && x.treeId === treeId);
-  }
-
-  /** Remove a tree's harvest order. Tapping a queued tree un-queues it; tapping it again re-queues it
-   *  at the END of the list (a fresh `enqueue` append). If it was the live chop, advance to the next
-   *  order (or go idle) so the worker doesn't keep swinging at a tree you just cancelled. */
-  private toggleHarvest(treeId: string): void {
-    const wasCurrent = this.queue.removeWhere((x) => x.kind === 'harvest' && x.treeId === treeId);
-    if (wasCurrent) this.beginCurrent();
-    this.emitTasks();
-  }
-
-  /** True if a campfire already has a refuel order (current or pending). */
-  private isRefuelQueued(campfireId: string): boolean {
-    return this.queue.all().some((x) => x.kind === 'refuel' && x.campfireId === campfireId);
-  }
-
-  /** Remove a campfire's refuel order — the fire-tending analogue of {@link toggleHarvest}: tapping a
-   *  fire that's already queued un-queues it (tap again to re-queue at the end). If it was the live
-   *  refuel, advance to the next order (or go idle) so the worker stops tending a fire you cancelled. */
-  private toggleRefuel(campfireId: string): void {
-    const wasCurrent = this.queue.removeWhere(
-      (x) => x.kind === 'refuel' && x.campfireId === campfireId,
-    );
-    if (wasCurrent) this.beginCurrent();
-    this.emitTasks();
-  }
-
-  /** True if a wall already has a deconstruct order (current or pending). */
-  private isDeconstructQueued(wallId: string): boolean {
-    return this.queue.all().some((x) => x.kind === 'deconstruct' && x.wallId === wallId);
-  }
-
-  /** Remove a wall's deconstruct order — the demolish analogue of {@link toggleRefuel}: tapping a wall
-   *  that's already marked for demolition un-marks it (tap again to re-queue at the end). If it was the
-   *  live order, advance to the next (or go idle) so the worker stops heading to a wall you un-marked. */
-  private toggleDeconstruct(wallId: string): void {
-    const wasCurrent = this.queue.removeWhere(
-      (x) => x.kind === 'deconstruct' && x.wallId === wallId,
-    );
-    if (wasCurrent) this.beginCurrent();
-    this.emitTasks();
-  }
-
-  /** True if a trap already has a rearm order (current or pending) — de-dupes a tap AND the dawn
-   *  auto-enqueue so a trap is never queued for rearm twice (plan 040). */
-  private isRearmQueued(trapId: string): boolean {
-    return this.queue.all().some((x) => x.kind === 'rearm' && x.trapId === trapId);
-  }
-
-  /** Remove a trap's rearm order — the trap analogue of {@link toggleRefuel}: tapping a spent trap
-   *  that's already queued un-queues it (tap again to re-queue at the end). If it was the live rearm,
-   *  advance to the next (or go idle) so the worker stops heading to a trap you un-queued. */
-  private toggleRearm(trapId: string): void {
-    const wasCurrent = this.queue.removeWhere((x) => x.kind === 'rearm' && x.trapId === trapId);
-    if (wasCurrent) this.beginCurrent();
     this.emitTasks();
   }
 
@@ -1512,8 +1416,9 @@ export class GameScene extends Phaser.Scene {
    * SPENT trap — the game's first SYSTEM-initiated worker order (no player tap). `time:changed` only
    * emits on a phase/day change (SurvivalClock.tick), so `phase==='day'` here IS the dawn edge. Routes
    * through the same {@link enqueue} the player's tap uses, so these compose with any pending player
-   * order: enqueue APPENDS (never replaces the active order) and its `isRearmQueued` de-dupe means a
-   * trap already queued for rearm (e.g. a player tapped it overnight) isn't double-queued. Subscribed
+   * order: enqueue APPENDS (never replaces the active order) and its `dedupeOnEnqueue` de-dupe (rearm
+   * is a dedupe kind — see systems/orders.ts) means a trap already queued for rearm (e.g. a player
+   * tapped it overnight) isn't double-queued. Subscribed
    * in {@link wireBus} with a SHUTDOWN `off` (mirrors WaveDirector.onTimeChanged).
    */
   private rearmTrapsAtDawn({ phase }: { phase: DayPhase }): void {

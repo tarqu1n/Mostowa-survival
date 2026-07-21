@@ -389,7 +389,25 @@ delegate lanes — just driven inline, not blind-delegated.
 
 ### Phase 4 — Re-architecture (sequential, inline) — judgment-heavy, runs after the splits
 
-- [ ] **Step 14: Action-kind registry for order handling** `[inline]`
+- [x] **Step 14: Action-kind registry for order handling** `[inline]`
+  - Outcome: chose the **decision-core registry** (user, this session — over the full OrderBehavior
+    registry) — pure/testable half in the registry, scene-coupled `begin`/`run` stay in the scene as
+    dispatch tables. New `src/systems/orders.ts` (Phaser-free): `orderTargetId` (exhaustive switch),
+    `sameOrderTarget`/`isOrderQueued`/`toggleOrder` (generic over `TaskQueue`), `ORDER_META`
+    (`Record<Action['kind'], {highlight, dedupeOnEnqueue}>`). +14 unit tests
+    (`systems/__tests__/orders.test.ts`, 925 total). In `GameScene`: the toggle/queue **quartet**
+    (4 `isXQueued` + 4 `toggleX` = 8 methods) deleted → `enqueue` gates on `ORDER_META[kind].dedupeOnEnqueue`
+    - generic `isOrderQueued`/`toggleOrder`; `describeActionTarget` collapsed to `orderTargetId(a) ?? …move`;
+    `update()` switch → `orderRunners` dispatch table; `beginCurrent` if-chain → `orderBeginners` table
+    - extracted `beginHarvest/beginRefuel/beginDeconstruct/beginRearm/beginBuild`; `wireBus()` 28-on/28-off
+    mirror → one `subs` `[event,handler,ctx]` table iterated for both on + SHUTDOWN off (`never[]`-param
+    typing, no `any`). `TaskGlowRenderer` highlight branch → data-driven `switch(ORDER_META[kind].highlight)`
+    (the 3 structure-tending kinds fold to one `structure` case). **Behavior-critical guards preserved:**
+    only harvest/refuel/deconstruct/rearm dedupe on enqueue (build/move append); repair stays
+    companion-only + defensive. Net: adding a structure-tending order kind no longer touches the quartet,
+    describe, or the highlight branch. Gates: `check` green (925 tests), `build` green, **refactor-tripwire
+    green** (behavior identical), queue/glow/chop/build/campfire/wall-deconstruct/spike-trap/mode e2e green
+    (campfire at `--workers=1` per handoff flake note), smoke green.
   - Replace the `update()` `switch(action.kind)` (`GameScene.ts:873`) and the near-identical
     toggle/queue quartet (`isHarvest/Refuel/Deconstruct/Rearm` + `toggle*`, `:1093-1152`) with a
     registry keyed by action kind, mirroring `StructureManager`'s `register`/`behavior<M>` pattern.

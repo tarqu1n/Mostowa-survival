@@ -4,6 +4,7 @@ import { tileToWorldCenter } from '../../systems/grid';
 import { SUB_ROW_EPSILON } from '../../systems/mapFormat';
 import { bakeGlowTexture } from '../../render/glowTexture';
 import type { Action } from '../../systems/tasks';
+import { ORDER_META, orderTargetId } from '../../systems/orders';
 import type { TreeNode, BuildSite, PlacedStructure } from '../../entities/types';
 import type { ResourceNodeDef } from '../../data/types';
 import type { GameScene } from '../GameScene';
@@ -67,38 +68,46 @@ export class TaskGlowRenderer {
     // The head-of-queue harvest (first alive tree in queue order) pulses; the rest are static.
     const headId = this.headHarvestTreeId();
 
+    // Draw each queued order's highlight by its kind's `ORDER_META.highlight` class (plan 043 Step 14)
+    // — the three structure-tending kinds (refuel/deconstruct/rearm) all share the one `structure`
+    // outline, keyed off the generic `orderTargetId`, so a new tending order needs no branch here.
     for (const a of this.deps.queueActions()) {
-      if (a.kind === 'harvest') {
-        const tree = this.deps.treeById(a.treeId);
-        if (tree?.alive) {
-          this.addTreeGlow(tree, tree.id === headId);
-          this.outlinedTreeIds.add(tree.id);
+      const id = orderTargetId(a);
+      switch (ORDER_META[a.kind].highlight) {
+        case 'tree': {
+          const tree = id ? this.deps.treeById(id) : undefined;
+          if (tree?.alive) {
+            this.addTreeGlow(tree, tree.id === headId);
+            this.outlinedTreeIds.add(tree.id);
+          }
+          break;
         }
-      } else if (a.kind === 'build') {
-        const site = this.deps.siteById(a.siteId);
-        if (site && !site.done) site.rect.setStrokeStyle(2, COLORS.queued, 1);
-      } else if (a.kind === 'refuel') {
-        const s = this.deps.structureById(a.campfireId);
-        if (s) this.outlineStructure(s);
-      } else if (a.kind === 'deconstruct') {
-        const s = this.deps.structureById(a.wallId);
-        if (s) this.outlineStructure(s);
-      } else if (a.kind === 'rearm') {
-        const s = this.deps.structureById(a.trapId);
-        if (s) this.outlineStructure(s);
-      } else if (a.kind === 'move') {
-        this.queueMarkers.push(
-          this.scene.add
-            .rectangle(
-              tileToWorldCenter(a.col),
-              tileToWorldCenter(a.row),
-              6,
-              6,
-              COLORS.queued,
-              0.85,
-            )
-            .setDepth(4),
-        );
+        case 'site': {
+          const site = id ? this.deps.siteById(id) : undefined;
+          if (site && !site.done) site.rect.setStrokeStyle(2, COLORS.queued, 1);
+          break;
+        }
+        case 'structure': {
+          const s = id ? this.deps.structureById(id) : undefined;
+          if (s) this.outlineStructure(s);
+          break;
+        }
+        case 'move': {
+          if (a.kind === 'move')
+            this.queueMarkers.push(
+              this.scene.add
+                .rectangle(
+                  tileToWorldCenter(a.col),
+                  tileToWorldCenter(a.row),
+                  6,
+                  6,
+                  COLORS.queued,
+                  0.85,
+                )
+                .setDepth(4),
+            );
+          break;
+        }
       }
     }
   }

@@ -29,6 +29,7 @@ import { ITEMS } from '../data/items';
 import { NODES } from '../data/nodes';
 import { BUILDABLES } from '../data/buildables';
 import { Inventory } from '../systems/Inventory';
+import { BaseSupply } from '../systems/baseSupply';
 import { tileKey, tileToWorldCenter } from '../systems/grid';
 import { findPath, reachableAdjacent, type Cell } from '../systems/pathfind';
 import { originOf } from '../systems/mapRuntime';
@@ -86,11 +87,19 @@ export class GameScene extends Phaser.Scene {
   // tick env reads player state); wires its own SHUTDOWN teardown. Replaces the Step-1 dev seam.
   private companionManager!: CompanionManager;
 
-  /** SCAFFOLD (plan 042 Step 2): the shared base-supply pool the companion's gather/repair loop will
-   *  draw on — wood/rock counts only for now, surfaced in `debugState().baseSupply` + seeded by a
-   *  scenario's `baseSupply`. TODO(plan 042 Step 3): replace this placeholder holder with the dedicated
-   *  base-supply store module (which owns deposits/withdrawals); this Step only fixes the field SHAPE. */
-  private baseSupply = { wood: 0, rock: 0 };
+  /** The shared base-supply pool (plan 042 Step 3): a `wood`/`rock` stockpile SEPARATE from the player
+   *  {@link Inventory} (critique #3), the sink the companion gathers into (Step 4) + the source wall
+   *  repairs draw from (Step 5). Owned here, constructed fresh per `buildWorld()` (so a death-restart
+   *  starts empty), surfaced in `debugState().baseSupply`, seeded by a scenario's `baseSupply`, and
+   *  bridged to the HUD via `supply:changed` (see buildWorld). Exposed to CompanionManager via
+   *  {@link supply} when Steps 4/5 need it. See src/systems/baseSupply.ts. */
+  private baseSupply!: BaseSupply;
+
+  /** The shared base-supply stockpile — CompanionManager reaches it here once the gather/repair loop
+   *  lands (plan 042 Steps 4/5). Constructed in buildWorld, so only valid after (re)start. */
+  get supply(): BaseSupply {
+    return this.baseSupply;
+  }
 
   /** The player's sprite — camera/fog/pointer code addresses the display object this way. */
   private get player(): CharacterSprite {
@@ -325,7 +334,8 @@ export class GameScene extends Phaser.Scene {
     this.nodeFx.reset();
     this.mode = 'command';
     this.demolishMode = false; // a death-restart starts clear of demolish mode (UIScene resynced in buildWorld)
-    this.baseSupply = { wood: 0, rock: 0 }; // plan 042 Step 2 scaffold — reset the pool on a death-restart (TODO Step 3: store module)
+    // baseSupply is (re)constructed fresh in buildWorld (like the shared Inventory), so a death-restart
+    // starts with an empty pool without an explicit reset here — see plan 042 Step 3.
   }
 
   /**
@@ -360,6 +370,14 @@ export class GameScene extends Phaser.Scene {
       maxStackOf: (id) => ITEMS[id]?.maxStack ?? DEFAULT_MAX_STACK,
     });
     this.registry.set('inventory', this.inv);
+
+    // Shared base-supply pool (plan 042 Step 3) — fresh each (re)start (so a death-restart starts
+    // empty). Bridge its 'change' to a `supply:changed` game event so the HUD (UIScene) reflects
+    // deposits/withdrawals/seeding, mirroring how CampfireBehavior feeds the fire bar via `fire:changed`.
+    this.baseSupply = new BaseSupply();
+    this.baseSupply.on('change', (snap: { wood: number; rock: number }) =>
+      this.game.events.emit('supply:changed', snap),
+    );
 
     // Resource nodes (plan 015 Step 1) — constructed before the player (its constructor must not
     // touch player closures); loadNodes() is a separate call right after so construction itself
@@ -649,6 +667,9 @@ export class GameScene extends Phaser.Scene {
     // Same resync for demolish mode — UIScene survives a death-restart, so re-emit the reset value
     // (false) so its DEMOLISH button/hint don't linger toggled from the prior run (plan 037 2b).
     this.game.events.emit('demolish:modeChanged', this.demolishMode);
+    // Seed the base-supply HUD readout with this (re)start's pool (fresh = 0/0). UIScene survives a
+    // death-restart, so re-emit the current counts so its readout reflects this run (plan 042 Step 3).
+    this.game.events.emit('supply:changed', this.baseSupply.snapshot());
   }
 
   /** Wire every `game.events` scene↔UIScene listener + its matching SHUTDOWN teardown (the same 12
@@ -787,12 +808,10 @@ export class GameScene extends Phaser.Scene {
       emitTasks: () => this.emitTasks(),
       inspectAt: (x, y) => this.scenePicker.inspectAt(x, y),
       isBlocked: (col, row) => this.isBlocked(col, row),
-      // Base-supply pool (plan 042 Step 2 scaffold) — read/seed the placeholder holder (TODO Step 3:
-      // the dedicated store module owns this). A copy in/out so a scenario reset can't alias the field.
-      getBaseSupply: () => ({ ...this.baseSupply }),
-      setBaseSupply: (v) => {
-        this.baseSupply = { wood: v.wood, rock: v.rock };
-      },
+      // Base-supply pool (plan 042 Step 3) — read/seed the dedicated store. `snapshot()` hands out a
+      // copy; `set()` overwrites both counts (and emits 'change' → the HUD updates via `supply:changed`).
+      getBaseSupply: () => this.baseSupply.snapshot(),
+      setBaseSupply: (v) => this.baseSupply.set(v),
     });
     const api: GameTestApi = {
       applyScenario: (spec) => testApi.applyScenario(spec),

@@ -107,8 +107,8 @@ export interface DebugState {
     carry: number;
   } | null;
   // Appended (plan 042 Step 2) — the shared base-supply pool (wood/rock) the companion's gather/repair
-  // loop draws on. The dedicated store module lands in Step 3, so this reads a placeholder holder for
-  // now; the shape is frozen here so Step 3 just fills it. New fields go at the END + golden bumped.
+  // loop draws on. Backed by the dedicated `BaseSupply` store since Step 3 (see src/systems/baseSupply.ts);
+  // the `{wood, rock}` shape is frozen. New fields go at the END + golden bumped.
   baseSupply: { wood: number; rock: number };
 }
 
@@ -193,8 +193,8 @@ export interface TestApiDeps {
   inspectAt(x: number, y: number): void;
   isBlocked(col: number, row: number): boolean;
 
-  // Base-supply pool (plan 042 Step 2 scaffold) — read for debugState, seeded/zeroed for a scenario.
-  // A placeholder holder until Step 3's store module (TODO Step 3).
+  // Base-supply pool (plan 042 Step 3) — read for debugState, seeded/zeroed for a scenario. Backed by
+  // GameScene's `BaseSupply` store (snapshot in / set out); set() also drives the HUD via `supply:changed`.
   getBaseSupply(): { wood: number; rock: number };
   setBaseSupply(v: { wood: number; rock: number }): void;
 }
@@ -271,7 +271,7 @@ export class TestApi {
     this.deps.setDayCount(1);
     this.deps.setHunger(HUNGER_MAX);
     this.deps.setStarveElapsed(0);
-    this.deps.setBaseSupply({ wood: 0, rock: 0 }); // plan 042 Step 2 — a scenario never inherits a prior pool (re-seeded below via spec.baseSupply)
+    this.deps.setBaseSupply({ wood: 0, rock: 0 }); // plan 042 Step 3 — clear the pool so a scenario never inherits a prior one (re-seeded below via spec.baseSupply)
 
     // Zero the shared Inventory in place (keep the same instance so UIScene's 'change' binding holds).
     const snap = this.deps.inv.snapshot();
@@ -385,8 +385,8 @@ export class TestApi {
       if (c.downed != null) npc.downed = c.downed;
     }
 
-    // Base-supply pool (plan 042 Step 2 scaffold) — seed the placeholder holder (resetWorld zeroed it
-    // above). TODO(Step 3): the dedicated store module replaces the holder; this seed shape is frozen.
+    // Base-supply pool (plan 042 Step 3) — seed the dedicated store (resetWorld cleared it above); the
+    // set() emits 'change', so the HUD readout reflects the seeded counts. The `{wood, rock}` shape is frozen.
     if (spec.baseSupply)
       this.deps.setBaseSupply({
         wood: spec.baseSupply.wood ?? 0,

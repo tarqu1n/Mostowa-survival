@@ -124,6 +124,11 @@ export class UIScene extends Phaser.Scene {
   private hudFireBarFg!: Phaser.GameObjects.Rectangle;
   private hudFireLabel!: Phaser.GameObjects.Text;
   private hudFireGroup: Phaser.GameObjects.Components.Visible[] = [];
+  // Base-supply pool readout (plan 042 Step 3) — the shared wood/rock stockpile the companion gathers
+  // into / repairs from, fed by `supply:changed`. Always visible (the pool is global); counts, not a
+  // bar, so it's a label + value like FIRE/FOOD rather than a scaled meter.
+  private hudSupplyWoodLabel!: Phaser.GameObjects.Text;
+  private hudSupplyRockLabel!: Phaser.GameObjects.Text;
   // Night/wave indicator beside the day/night readout — shown while a wave is on (night phase).
   private waveText!: Phaser.GameObjects.Text;
   private playerMaxHp = 0;
@@ -645,6 +650,7 @@ export class UIScene extends Phaser.Scene {
     this.game.events.on('player:hpChanged', this.onPlayerHp, this);
     this.game.events.on('player:hit', this.onPlayerHit, this);
     this.game.events.on('fire:changed', this.onFireChanged, this);
+    this.game.events.on('supply:changed', this.onSupplyChanged, this);
 
     // Teardown so a future scene restart doesn't double-register on stale listeners.
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -664,6 +670,7 @@ export class UIScene extends Phaser.Scene {
       this.game.events.off('player:hpChanged', this.onPlayerHp, this);
       this.game.events.off('player:hit', this.onPlayerHit, this);
       this.game.events.off('fire:changed', this.onFireChanged, this);
+      this.game.events.off('supply:changed', this.onSupplyChanged, this);
     });
   }
 
@@ -902,6 +909,28 @@ export class UIScene extends Phaser.Scene {
     this.hudFireLabel = fire.value;
     this.hudFireGroup = [fireLabel, fire.bg, fire.fg, fire.value];
     this.setFireHudVisible(false); // no hearth until one is built / a scenario places it
+
+    // Base-supply pool counts (plan 042 Step 3): the shared wood/rock stockpile below the FIRE bar.
+    // Label + value rows (like FIRE/FOOD), not a bar — counts have no max to scale against. Always
+    // visible (the pool is global); seeded to 0 here and fed by `supply:changed` (see onSupplyChanged).
+    const woodY = fireY + 11;
+    const rockY = woodY + 11;
+    const countRow = (yc: number, label: string): Phaser.GameObjects.Text => {
+      this.add
+        .text(LABEL_X, yc, label, { fontFamily: 'monospace', fontSize: '8px', color: '#e8dcc0' })
+        .setOrigin(0, 0.5);
+      return this.add
+        .text(BAR_X, yc, '0', { fontFamily: 'monospace', fontSize: '8px', color: '#e8dcc0' })
+        .setOrigin(0, 0.5);
+    };
+    this.hudSupplyWoodLabel = countRow(woodY, 'WOOD');
+    this.hudSupplyRockLabel = countRow(rockY, 'ROCK');
+  }
+
+  /** `supply:changed` handler (plan 042 Step 3): render the shared base-supply pool's wood/rock counts. */
+  private onSupplyChanged(payload: { wood: number; rock: number }): void {
+    this.hudSupplyWoodLabel.setText(`${payload.wood}`);
+    this.hudSupplyRockLabel.setText(`${payload.rock}`);
   }
 
   /** Show/hide the whole fire-bar group (label + bg + fg + value) — hidden when there's no hearth. */

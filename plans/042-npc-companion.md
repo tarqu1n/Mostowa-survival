@@ -140,7 +140,8 @@ under the owner's full-scope call.
   - Done when: NPC lifecycle owned by the manager; a scenario can place the NPC and read it back via
     `debugState().companion`; scene restart (boot canary) clean; typecheck + lint + existing tests pass.
 
-- [ ] **Step 3: `baseSupply` stockpile + HUD** `[inline]`
+- [x] **Step 3: `baseSupply` stockpile + HUD** `[inline]`
+  - Outcome: New pure `src/systems/baseSupply.ts` (`eventemitter3`-based like `Inventory`; `count`/`add`/`take→bool` atomic all-or-nothing/`snapshot`/`set`/`reset`; emits `'change'`). Owned by `GameScene` (`private baseSupply!: BaseSupply`, fresh per `buildWorld()`, `get supply()` for CompanionManager's Steps 4/5). Swapped every Step-2 placeholder touch point (field, `resetState`, `TestApiDeps` get/set, `applyScenario` seed, `resetWorld` clear) — `{wood,rock}` DebugState shape unchanged so golden tripwire still passes. HUD: `supply:changed` bus event (mirrors `fire:changed`); `UIScene.buildHudBars()` shows WOOD/ROCK count rows below FIRE. New `src/systems/__tests__/baseSupply.test.ts` (19 cases incl. take-fails-when-empty/insufficient without mutation). 857 tests pass; build/typecheck/lint clean; e2e round-trip confirms `debugState().baseSupply` reads the real store.
   - Add `src/systems/baseSupply.ts` — a small pure store (`add(item,n)`, `take(item,n)→boolean`,
     `count(item)`) for shared resource counts (`wood`, `rock`), owned by the scene/`CompanionManager`,
     anchored to `litHearth()` as the walk-to deposit tile. Separate from the player `Inventory`

@@ -1,6 +1,7 @@
 # Code Cleanup & Modularization
 
-> Status: planned — run /execute-plan to begin.
+> Status: in progress — Phase 1–3 complete (Steps 1–13, all committed+pushed on `claude/plan-43-szlkkd`);
+> Phase 4–6 (Steps 14–19) remaining. Resume with /execute-plan. See "Execution handoff" at the foot.
 
 ## Summary
 
@@ -413,10 +414,14 @@ delegate lanes — just driven inline, not blind-delegated.
   - Done when: tripwire green, no visual regression in smoke, full gate green.
 
 - [ ] **Step 16: Apply clear-fix standardizations; land the backlog** `[inline]`
+  - **DECISION (user, this session): consolidate costs INTO data** — inline `spike_trap`'s `{wood:5}` into
+    `src/data/buildables.ts` (matching `wall`/`campfire`), remove `SPIKE_TRAP_COST` from `config.ts` and update
+    its consumers, leaving the non-cost trap tunables (`SPIKE_TRAP_DAMAGE`/`SPIKE_TRAP_TRIGGER_MS`) in config.
+    (Standards lens tagged this `[log]`; user resolved it to `[fix]`.)
   - Apply the cross-cutting **[fix]** rows from `docs/cleanup/smells.md` + `standards.md` not already
     handled in a lane: split `assetSwatch.tsx` into consts/helpers/component, consolidate structure/
-    tool **costs** into a single source (data `BUILDABLES` over `config.ts` — pick one, update
-    consumers), any remaining naming/consistency nits. Leave every **[log]** item recorded (parked
+    tool **costs** into a single source (data `BUILDABLES` over `config.ts` — per the decision above),
+    any remaining naming/consistency nits. Leave every **[log]** item recorded (parked
     portals, disabled two-finger gesture, game-bus-vs-Zustand split) — do not touch them.
   - Side effects: cost consolidation touches `config.ts` + `data/buildables.ts` + consumers — verify
     build costs unchanged in-game (e2e build spec).
@@ -504,3 +509,32 @@ plan above; #5–#6 are noted-only.
 |4|19-step refactor delivers zero roadmap feature; NPC precedence unargued|Roadmap fit|Medium|**Resolved** — timing-vs-roadmap rationale added to Context|
 |5|Seeded line ranges may have drifted (e.g. update() switch ~1343, plan cites :873)|Consistency|Low|Noted — treat ranges as indicative; "confirm during execution" already stated|
 |6|One-PR-on-branch deviates from WORKFLOW's master/no-PR model|Consistency|Low|Noted — acknowledged in Context; deploy is master-triggered|
+
+## Execution handoff (paused after Phase 3)
+
+**Branch:** `claude/plan-43-szlkkd` (this session's pinned branch — supersedes the plan-summary's
+`claude/code-cleanup-modularization-s487ra`). All Phase 1–3 work committed + pushed.
+
+**Done:** Steps 1–13. Every oversized file split, public API preserved via barrels/composition roots;
+`docs/cleanup/{smells,standards,perf,extensibility}.md` written. **Remaining:** Steps 14–19 (Phase 4–6).
+
+**Resume order:** Step 14 (Action-kind registry — spec already in `docs/cleanup/extensibility.md`: the
+`OrderBehavior` interface + ~9 current edit-sites) → 15 (apply ONLY `safe`-tagged rows from
+`docs/cleanup/perf.md`) → 16 (standardizations; **cost consolidation → INTO data**, see Step 16) →
+17 (optimise-context on CLAUDE.md) → 18 (docs) → 19 (final gate).
+
+**Gate commands (this environment):**
+
+- `npm run check` (typecheck+lint+lint:md+format:check+unit, ~8s, 911 tests) and `npm run build` — plain.
+- `npm run smoke` and `npm run e2e` need a browser: prefix with
+  `SMOKE_CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome` (the pinned Playwright wants
+  chromium-1228, absent; the config + smoke read this env var). `smoke` needs `npm run preview` running first.
+- **No editor e2e exists.** To verify editor lanes at runtime, load `/editor.html` via Playwright (React
+  mounts at `#editor-root`; assert zero console errors) against a `vite` dev server.
+- **Two e2e specs are NOT real failures:** `menu-start` (fails identically on `master` — a pre-existing
+  boot-timing-fragile test in this slower container) and `campfire-feed` (parallel-load flake — passes at
+  `--workers=1`). A run of **104/106 with exactly those two red = green.** `refactor-tripwire.spec.ts` is the
+  behavior-preservation guardrail; it must stay green.
+
+**Landing note:** `master` has advanced since this branch forked (new berry-bush content etc.); Step 19 /
+the single PR will need a rebase-or-merge decision. Deploy is master-triggered (WORKFLOW.md).

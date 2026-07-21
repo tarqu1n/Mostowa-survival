@@ -9,16 +9,6 @@ import {
   CAMPFIRE_FEED_INTERVAL_MS,
   LONGPRESS_MS,
   BUILD_MS,
-  PLAYER_HIT_SHAKE_MS,
-  PLAYER_HIT_SHAKE_INTENSITY,
-  ENEMY_HIT_SHAKE_MS,
-  ENEMY_HIT_SHAKE_INTENSITY,
-  DEATH_HOLD_MS,
-  BOW_DRAW_MS,
-  ATTACK_COOLDOWN_MS,
-  BOW_COOLDOWN_MS,
-  BOW_RANGE_TILES,
-  BOW_BASE_DAMAGE,
   COMBAT_ACTIVE_RADIUS_TILES,
   COMBAT_ACTIVE_HYSTERESIS_TILES,
   INVENTORY_SLOTS,
@@ -27,11 +17,10 @@ import {
   RENDER_SCALE,
 } from '../config';
 import { ITEMS } from '../data/items';
-import { NODES } from '../data/nodes';
 import { BUILDABLES } from '../data/buildables';
 import { Inventory } from '../systems/Inventory';
 import { BaseSupply } from '../systems/baseSupply';
-import { tileKey, tileToWorldCenter, worldToTile } from '../systems/grid';
+import { tileToWorldCenter, worldToTile } from '../systems/grid';
 import { findPath, reachableAdjacent, type Cell } from '../systems/pathfind';
 import { originOf } from '../systems/mapRuntime';
 import { mapBlocks } from '../systems/mapWalkability';
@@ -39,14 +28,13 @@ import { zoneAt } from '../systems/mapZones';
 import type { MapFile, DecorObject, NodeObject, PortalObject } from '../systems/mapFormat';
 import { breadcrumb, setCrashContext } from '../debug/crashReporter';
 import { TaskQueue, type Action } from '../systems/tasks';
-import { resolveMeleeAttack, resolveRangedAttack, objectAsDefender } from '../systems/combat';
-import { attackTiles, hurtboxTiles, DEFAULT_HURTBOX } from '../systems/hurtbox';
+import { objectAsDefender } from '../systems/combat';
+import { hurtboxTiles, DEFAULT_HURTBOX } from '../systems/hurtbox';
 import type { DayPhase } from '../systems/daynight';
 import type { UIScene } from './UIScene';
 import type { GameTestApi } from '../entities/testTypes';
 import type { CharacterSprite } from '../entities/Character';
 import { PlayerCharacter } from '../entities/PlayerCharacter';
-import type { MonsterCharacter } from '../entities/MonsterCharacter';
 import { CombatFxManager } from './fx/CombatFxManager';
 import { NodeFxManager } from './fx/NodeFxManager';
 import { PointerInputController } from './input/PointerInputController';
@@ -65,6 +53,8 @@ import { TrapBehavior } from './world/TrapBehavior';
 import { SurvivalClock } from './world/SurvivalClock';
 import { WaveDirector } from './world/WaveDirector';
 import { VisionController } from './fx/VisionController';
+import { CombatController } from './combat/CombatController';
+import { DevWorldTools } from './world/DevWorldTools';
 import { TestApi } from './testApi';
 import { registerActorAnims } from './world/actorAnims';
 import { drawMapLayers } from './world/groundRenderer';
@@ -138,12 +128,15 @@ export class GameScene extends Phaser.Scene {
   // (that cancelAll()s the task queue), so command-mode taps keep queuing orders while it's true.
   private combatActive = false;
 
-  // The enemy the bow currently has locked as its auto-target (plan 035a Step 5), by MonsterCharacter
-  // id — or null when no target. Set on a bow fire (pickBowTarget), reconciled every frame
-  // (syncBowTarget: cleared when the target dies or leaves BOW_RANGE_TILES) and surfaced in debugState
-  // (`bowTargetId`). Drives the persistent target highlight (CombatFxManager.syncBowTargetHighlight)
-  // and, later, the persistent HP bar (Step 6).
-  private bowTargetId: string | null = null;
+  // Player combat — melee/bow/damage/death flow + the bow's auto-target (plan 011 combat; extracted to
+  // src/scenes/combat/CombatController.ts). Constructed fresh in buildWorld() each (re)start (after the
+  // player exists); wires its own SHUTDOWN teardown. wireBus() routes combat:attack/combat:bow here,
+  // and the EnemyManager bite + SurvivalClock starve edges route to its damagePlayer.
+  private combatController!: CombatController;
+
+  // DEV-only world tools — the dev-menu scatter/spawn seams + the scenario-reset primitive (extracted
+  // to src/scenes/world/DevWorldTools.ts). Stateless; constructed fresh in buildWorld() each (re)start.
+  private devWorldTools!: DevWorldTools;
 
   private inv!: Inventory;
 
@@ -330,7 +323,8 @@ export class GameScene extends Phaser.Scene {
     this.harvestSwing = null;
     this.combatMoveVec = { dx: 0, dy: 0 };
     this.combatActive = false; // recomputed on the first update() tick; UIScene resynced in buildWorld
-    this.bowTargetId = null; // no bow target across a death-restart (FX highlight cleared via fx.resetCombatFx below)
+    // The bow's auto-target lives on CombatController now (reconstructed fresh in buildWorld, so a
+    // death-restart starts with no target); its FX highlight is cleared via fx.resetCombatFx below.
     // Combat-FX state — (re-)arm the SHUTDOWN flush (see CombatFxManager.armShutdown) then clear so a
     // death-restart starts clean: the maps/set held tweens+sprites from the dead run (Phaser destroyed
     // them on teardown, so drop the stale references). Player-side state (hp/facing/path/attack-lock/
@@ -429,8 +423,8 @@ export class GameScene extends Phaser.Scene {
       dims: () => this.gridDims,
       isBlocked: (col, row) => this.isBlocked(col, row),
       rng: () => this.rng(),
-      onPlayerHurt: () => this.onPlayerHurt(),
-      damagePlayer: (amount) => this.damagePlayer(amount),
+      onPlayerHurt: () => this.combatController.onPlayerHurt(),
+      damagePlayer: (amount) => this.combatController.damagePlayer(amount),
       // Companion NPC as a threat (plan 042 Step 6) — a narrow snapshot assembled from CompanionManager
       // (the scene mediates; no manager↔manager edge). Null when unspawned; EnemyManager omits a downed
       // NPC from the threat list. `damageNpc`/`onNpcHurt` are the NPC twins of the player bite seams.
@@ -535,6 +529,23 @@ export class GameScene extends Phaser.Scene {
       },
     });
 
+    // Player combat (extracted) — constructed after the player + EnemyManager exist; the FX/enemy seams
+    // route through the scene (no manager↔manager edge). `rng` is a live closure (picks up a pinned
+    // setRng). wireBus() points combat:attack/combat:bow here; damagePlayer is the bite/starve sink.
+    this.combatController = new CombatController(this, {
+      playerChar: () => this.playerChar,
+      rng: () => this.rng(),
+      enemies: () => this.enemyManager.all(),
+      enemiesInTiles: (tiles) => this.enemyManager.enemiesInTiles(tiles),
+      killEnemy: (target) => this.enemyManager.killEnemy(target),
+      playAttackSwing: () => this.fx.playAttackSwing(),
+      flashHit: (sprite) => this.fx.flashHit(sprite),
+      fireArrow: (fromX, fromY, toX, toY) => this.fx.fireArrow(fromX, fromY, toX, toY),
+      syncBowTargetHighlight: (sprite) => this.fx.syncBowTargetHighlight(sprite),
+      cleanupActorFx: (sprite) => this.fx.cleanupActorFx(sprite),
+      cancelAll: () => this.cancelAll(),
+    });
+
     // Build placement (plan 013 Step 6) — constructed fresh each (re)start; its constructor wires a
     // physics collider against the player sprite just constructed above, and its own SHUTDOWN
     // teardown. See BuildManagerDeps for why each closure below is narrowed the way it is.
@@ -626,6 +637,25 @@ export class GameScene extends Phaser.Scene {
       structureById: (id) => this.structureManager.byId(id),
       structureBounds: (s) => this.structureManager.highlightBounds(s),
       nodeScale: (def, skin) => this.resourceNodeManager.nodeScale(def, skin),
+    });
+
+    // DEV-only world tools (extracted) — the dev-menu scatter/spawn seams + scenario-reset primitive.
+    // Stateless; all seams route through the node/enemy/companion managers via the scene. Constructed
+    // here alongside the other world managers (its dep closures read their real methods at call time).
+    this.devWorldTools = new DevWorldTools(this, {
+      cancelAll: () => this.cancelAll(),
+      resetNodeFx: () => this.nodeFx.reset(),
+      clearNodes: (opts) => this.resourceNodeManager.clearAll(opts),
+      clearEnemies: (opts) => this.enemyManager.clearAll(opts),
+      addNode: (def, col, row) => this.resourceNodeManager.addNode(def, col, row),
+      addEnemy: (id, col, row) => this.enemyManager.addEnemy(id, col, row),
+      playerTile: () => this.playerChar.tile(),
+      dims: () => this.gridDims,
+      isBlocked: (col, row) => this.isBlocked(col, row),
+      isOccupied: (col, row) => this.buildManager.isOccupied(col, row),
+      hasSiteTile: (col, row) => this.buildManager.hasSiteTile(col, row),
+      companion: () => this.companionManager.get(),
+      spawnCompanion: (col, row) => this.companionManager.spawn(col, row),
     });
 
     // Gesture + camera controller (plan 013 Step 5) — constructed fresh each (re)start; wires its own
@@ -722,7 +752,7 @@ export class GameScene extends Phaser.Scene {
     // the overlay reference (never destroys it — see SurvivalClock's class doc). `damagePlayer`/
     // `canAfford`/`spend` are the only scene-owned edges it needs (the starve loop + `eat`).
     this.survivalClock = new SurvivalClock(this, {
-      damagePlayer: (amount) => this.damagePlayer(amount),
+      damagePlayer: (amount) => this.combatController.damagePlayer(amount),
       canAfford: (cost) => this.inv.canAfford(cost),
       spend: (cost) => this.inv.spend(cost),
       // RENDER light sources for the night light-layer (plan 039): the lit hearths (unioned by
@@ -777,9 +807,17 @@ export class GameScene extends Phaser.Scene {
     this.game.events.on('build:modeChanged', this.onBuildModeChanged, this); // turn demolish off when build turns on (plan 037 2b)
     this.game.events.on('demolish:toggle', this.onDemolishToggle, this);
     this.game.events.on('tasks:cancel', this.cancelAll, this);
-    this.game.events.on('debug:randomise', this.randomiseWorld, this); // dev menu: scatter nodes + enemies
-    this.game.events.on('debug:spawnEnemy', this.spawnEnemyNearPlayer, this); // dev menu: drop one enemy by the player to fight
-    this.game.events.on('debug:spawnNpc', this.spawnNpcNearPlayer, this); // dev menu: drop the companion Rogue by the player (plan 042)
+    this.game.events.on('debug:randomise', this.devWorldTools.randomiseWorld, this.devWorldTools); // dev menu: scatter nodes + enemies
+    this.game.events.on(
+      'debug:spawnEnemy',
+      this.devWorldTools.spawnEnemyNearPlayer,
+      this.devWorldTools,
+    ); // dev menu: drop one enemy by the player to fight
+    this.game.events.on(
+      'debug:spawnNpc',
+      this.devWorldTools.spawnNpcNearPlayer,
+      this.devWorldTools,
+    ); // dev menu: drop the companion Rogue by the player (plan 042)
     this.game.events.on('debug:toggleTime', this.survivalClock.toggleDayNight, this.survivalClock); // dev menu: flip day/night
     this.game.events.on('debug:forceWave', this.onForceWave, this); // dev menu: jump to night + start a wave now
     this.game.events.on('time:changed', this.waveDirector.onTimeChanged, this.waveDirector); // start/stop the night wave on dusk/dawn
@@ -791,8 +829,8 @@ export class GameScene extends Phaser.Scene {
     ); // night→adopt posture / day→resume role + revive (plan 042 Step 8)
     this.game.events.on('zoom:delta', this.pointerInput.adjustZoom, this.pointerInput);
     this.game.events.on('camera:center', this.pointerInput.centerOnPlayer, this.pointerInput);
-    this.game.events.on('combat:attack', this.attack, this);
-    this.game.events.on('combat:bow', this.bow, this);
+    this.game.events.on('combat:attack', this.combatController.attack, this.combatController);
+    this.game.events.on('combat:bow', this.combatController.bow, this.combatController);
     this.game.events.on('mode:combatToggle', this.onCombatToggle, this);
     this.game.events.on('mode:inspectToggle', this.onInspectToggle, this);
     this.game.events.on('needs:eat', this.survivalClock.onNeedsEat, this.survivalClock);
@@ -812,9 +850,21 @@ export class GameScene extends Phaser.Scene {
       this.game.events.off('build:modeChanged', this.onBuildModeChanged, this);
       this.game.events.off('demolish:toggle', this.onDemolishToggle, this);
       this.game.events.off('tasks:cancel', this.cancelAll, this);
-      this.game.events.off('debug:randomise', this.randomiseWorld, this);
-      this.game.events.off('debug:spawnEnemy', this.spawnEnemyNearPlayer, this);
-      this.game.events.off('debug:spawnNpc', this.spawnNpcNearPlayer, this);
+      this.game.events.off(
+        'debug:randomise',
+        this.devWorldTools.randomiseWorld,
+        this.devWorldTools,
+      );
+      this.game.events.off(
+        'debug:spawnEnemy',
+        this.devWorldTools.spawnEnemyNearPlayer,
+        this.devWorldTools,
+      );
+      this.game.events.off(
+        'debug:spawnNpc',
+        this.devWorldTools.spawnNpcNearPlayer,
+        this.devWorldTools,
+      );
       this.game.events.off(
         'debug:toggleTime',
         this.survivalClock.toggleDayNight,
@@ -830,8 +880,8 @@ export class GameScene extends Phaser.Scene {
       );
       this.game.events.off('zoom:delta', this.pointerInput.adjustZoom, this.pointerInput);
       this.game.events.off('camera:center', this.pointerInput.centerOnPlayer, this.pointerInput);
-      this.game.events.off('combat:attack', this.attack, this);
-      this.game.events.off('combat:bow', this.bow, this);
+      this.game.events.off('combat:attack', this.combatController.attack, this.combatController);
+      this.game.events.off('combat:bow', this.combatController.bow, this.combatController);
       this.game.events.off('mode:combatToggle', this.onCombatToggle, this);
       this.game.events.off('mode:inspectToggle', this.onInspectToggle, this);
       this.game.events.off('needs:eat', this.survivalClock.onNeedsEat, this.survivalClock);
@@ -874,7 +924,7 @@ export class GameScene extends Phaser.Scene {
       treeById: (id) => this.resourceNodeManager.treeById(id),
       addNode: (def, col, row) => this.resourceNodeManager.addNode(def, col, row),
       addEnemy: (id, col, row, opts) => this.enemyManager.addEnemy(id, col, row, opts),
-      resetTreesAndEnemies: () => this.resetTreesAndEnemies(),
+      resetTreesAndEnemies: () => this.devWorldTools.resetTreesAndEnemies(),
       clearActionGoal: () => {
         this.actionGoal = null;
       },
@@ -889,10 +939,8 @@ export class GameScene extends Phaser.Scene {
       },
       getMode: () => this.mode,
       getCombatActive: () => this.combatActive,
-      getBowTargetId: () => this.bowTargetId,
-      clearBowTarget: () => {
-        this.bowTargetId = null;
-      },
+      getBowTargetId: () => this.combatController.bowTargetId,
+      clearBowTarget: () => this.combatController.clearBowTarget(),
       setModeAndEmit: (m) => {
         this.mode = m;
         this.game.events.emit('mode:changed', this.mode);
@@ -1012,12 +1060,16 @@ export class GameScene extends Phaser.Scene {
     // Reconcile the bow's auto-target + keep its highlight glued to the target (plan 035a Step 5).
     // Above the movement early-return below so the highlight tracks even on the idle/movepad-drive
     // path (a kiting player shooting while backing away).
-    this.syncBowTarget();
+    this.combatController.syncBowTarget();
 
     // Draw the attention-scoped monster HP bars (plan 035a Step 6) — the bow target's bar persists,
     // any recently-hit enemy flashes a brief one, capped + near-death sprite tell. Also above the
     // early-return so bars track on the idle/movepad path.
-    this.fx.syncEnemyHealthBars(this.enemyManager.all(), this.bowTargetId, this.playerChar.tile());
+    this.fx.syncEnemyHealthBars(
+      this.enemyManager.all(),
+      this.combatController.bowTargetId,
+      this.playerChar.tile(),
+    );
 
     const action = this.queue.current;
     // Movepad precedence (plan 035a Step 3): while combat controls are surfaced (manual Combat mode OR
@@ -1511,20 +1563,8 @@ export class GameScene extends Phaser.Scene {
     this.waveDirector.beginWave();
   }
 
-  /** Apply incoming damage to the player; on death, restart the scene (see Context & decisions'
-   * "Death = restart" — no in-place heal, since that let an adjacent enemy immediately re-hit a
-   * "reset" player). */
-  private damagePlayer(amount: number): void {
-    if (this.playerChar.dying) return; // already collapsing — ignore further bites/starve ticks until restart
-    this.playerChar.takeDamage(amount);
-    this.game.events.emit('player:hpChanged', {
-      hp: this.playerChar.hp,
-      maxHp: this.playerChar.stats.maxHp,
-    });
-    if (this.playerChar.hp <= 0) this.killPlayer();
-  }
-
-  /** Apply a mob's bite to the companion NPC (plan 042 Step 6 — the NPC twin of {@link damagePlayer}).
+  /** Apply a mob's bite to the companion NPC (plan 042 Step 6 — the NPC twin of
+   *  {@link CombatController.damagePlayer}).
    *  A no-op once downed (mobs stop targeting it, but this also guards against an in-flight strike landing
    *  the same tick it collapsed). On a lethal blow it collapses into the `downed` state via the
    *  character-side die(); the dawn revive that stands it back up is plan 042 Step 7. FX are cleaned up
@@ -1539,142 +1579,12 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Landed-bite feedback on the companion — its sprite flash (the NPC twin of {@link onPlayerHurt},
-   *  without the player-only screen-edge damage vignette / camera kick). No-op if it's gone/downed. */
+  /** Landed-bite feedback on the companion — its sprite flash (the NPC twin of
+   *  {@link CombatController.onPlayerHurt}, without the player-only screen-edge damage vignette /
+   *  camera kick). No-op if it's gone/downed. */
   private onNpcHurt(): void {
     const npc = this.companionManager.get();
     if (npc && !npc.downed) this.fx.flashHit(npc.sprite);
-  }
-
-  /** Attack the tiles the current melee swing covers: flat damage via the shared combat formula to
-   * EVERY distinct alive enemy the swing's shape reaches (plan 036 — a cleave/line hits all of them,
-   * each once; unarmed's single front tile reproduces the old one-target behaviour). Shape + base
-   * damage come from the equipped weapon (or the unarmed default); an enemy is hit anywhere its
-   * hurtbox reaches a swing tile (see EnemyManager.enemiesInTiles). Enemies only; trees keep chop(). */
-  private attack(): void {
-    // Cooldown gate (playtest fix): a press inside the window is ignored outright — no swing, no
-    // damage — so mashing MELEE can't machine-gun hits or restart the swing mid-animation.
-    if (this.time.now < this.playerChar.meleeReadyAt) return;
-    this.playerChar.meleeReadyAt = this.time.now + ATTACK_COOLDOWN_MS;
-    this.fx.playAttackSwing(); // swing on every (accepted) press, even a whiff, so the input feels heard
-    const shape = this.playerChar.meleeShape();
-    const tiles = attackTiles(this.playerChar.tile(), this.playerChar.lastFacing, shape);
-    // Enemies only — walls are deliberately IMMUNE to player weapons (plan 037 decision #1): the only
-    // targets are the enemies in the swing tiles, never the wall structures. A wall is removed by a worker
-    // deconstruct order (decision #6, see runDeconstruct), not by hitting it; only mob attacks lower a
-    // wall's HP (chunk 2c). (Plan 036 will fold this into the `attackTiles` generator when it lands.)
-    const targets = this.enemyManager.enemiesInTiles(tiles);
-    const base = this.playerChar.meleeBaseDamage();
-    let anyHit = false;
-    for (const target of targets) {
-      const dmg = resolveMeleeAttack(this.playerChar.stats, target.def, base, this.rng);
-      target.takeDamage(dmg);
-      if (target.hp <= 0) {
-        this.enemyManager.killEnemy(target); // play the death collapse, then remove the corpse
-        anyHit = true;
-      } else if (dmg > 0) {
-        this.fx.flashHit(target.sprite); // red flash + flinch on a hit it survived (killing hits skip this)
-        anyHit = true;
-      }
-    }
-    // One camera kick for the swing if it connected at all (not per enemy) — a whiff gets just the swing.
-    if (anyHit) this.cameras.main.shake(ENEMY_HIT_SHAKE_MS, ENEMY_HIT_SHAKE_INTENSITY);
-  }
-
-  /**
-   * Loose an arrow (plan 035a Step 5). Commit to the brief bow-fire lock (light `BOW_MOVE_SLOW` — you
-   * can keep kiting, unlike the melee root), then auto-target the nearest live enemy in bow range
-   * biased to the current facing ({@link pickBowTarget}). With a target: turn to face it, fly a coded
-   * arrow tracer at it, and resolve ranged damage (hitscan — the tracer is pure FX) via the shared
-   * {@link resolveRangedAttack}. Unlimited ammo. Firing with nothing in range still spends the lock +
-   * plays the draw pose (the Bow button always feels heard) and just clears the target.
-   */
-  private bow(): void {
-    // Cooldown gate (playtest fix), same as melee: a press inside the window is ignored so the Bow
-    // button can't be spammed to loose arrows faster than the draw cadence.
-    if (this.time.now < this.playerChar.bowReadyAt) return;
-    this.playerChar.bowReadyAt = this.time.now + BOW_COOLDOWN_MS;
-    this.playerChar.bowLockUntil = this.time.now + BOW_DRAW_MS;
-    const target = this.pickBowTarget();
-    if (!target) {
-      this.bowTargetId = null;
-      return;
-    }
-    this.bowTargetId = target.id;
-    this.playerChar.faceTile(target.col, target.row); // release pose + tracer point at the target
-    this.fx.fireArrow(this.player.x, this.player.y, target.sprite.x, target.sprite.y);
-    const dmg = resolveRangedAttack(this.playerChar.stats, target.def, BOW_BASE_DAMAGE, this.rng);
-    target.takeDamage(dmg);
-    if (target.hp <= 0) {
-      this.enemyManager.killEnemy(target); // death collapse + corpse linger, same as a melee kill
-      this.bowTargetId = null;
-    } else if (dmg > 0) {
-      this.fx.flashHit(target.sprite); // red flash + flinch on a hit it survived (mirrors attack())
-      this.cameras.main.shake(ENEMY_HIT_SHAKE_MS, ENEMY_HIT_SHAKE_INTENSITY);
-    }
-  }
-
-  /**
-   * Pick the bow's auto-target: the nearest live enemy within {@link BOW_RANGE_TILES} (Euclidean
-   * tiles) of the player, **biased to the current facing** — if any in-range enemy lies in the facing
-   * hemisphere (the dot of its offset with `lastFacing` is positive), the nearest of THOSE wins;
-   * otherwise the nearest in range regardless of side. So facing a direction preferentially shoots
-   * what you're looking at, but you still hit something creeping up behind if it's all that's near.
-   */
-  private pickBowTarget(): MonsterCharacter | undefined {
-    const pt = this.playerChar.tile();
-    const f = this.playerChar.lastFacing;
-    const dist = (z: MonsterCharacter): number => Math.hypot(z.col - pt.col, z.row - pt.row);
-    const inRange = this.enemyManager.all().filter((z) => z.alive && dist(z) <= BOW_RANGE_TILES);
-    if (inRange.length === 0) return undefined;
-    const inFacing = inRange.filter(
-      (z) => (z.col - pt.col) * f.dCol + (z.row - pt.row) * f.dRow > 0,
-    );
-    const pool = inFacing.length ? inFacing : inRange;
-    return pool.reduce((best, z) => (dist(z) < dist(best) ? z : best));
-  }
-
-  /** Reconcile the bow's current target each frame + keep its highlight glued to it (plan 035a Step
-   *  5). Drops the target when it's gone (killed/removed) or has walked out of {@link BOW_RANGE_TILES}
-   *  — "clears when the target dies/leaves range" — then hands the live target sprite (or null) to the
-   *  FX highlight, which re-hugs its bounds. */
-  private syncBowTarget(): void {
-    let target = this.bowTargetId
-      ? this.enemyManager.all().find((z) => z.id === this.bowTargetId && z.alive)
-      : undefined;
-    if (target) {
-      const pt = this.playerChar.tile();
-      if (Math.hypot(target.col - pt.col, target.row - pt.row) > BOW_RANGE_TILES)
-        target = undefined;
-    }
-    this.bowTargetId = target?.id ?? null;
-    this.fx.syncBowTargetHighlight(target?.sprite ?? null);
-  }
-
-  /** Player took a landed hit: the shared "you're hurt" feedback — the red flash + squash on the
-   * sprite, a firm camera kick, and a `player:hit` event UIScene turns into a red damage vignette round
-   * the screen edges. Deliberately *not* on the starvation drain (a passive tick, not an impact); it
-   * fires from the bite site so getting bitten is unmissable even when you're not watching your feet. */
-  private onPlayerHurt(): void {
-    this.fx.flashHit(this.player);
-    this.cameras.main.shake(PLAYER_HIT_SHAKE_MS, PLAYER_HIT_SHAKE_INTENSITY);
-    this.game.events.emit('player:hit');
-  }
-
-  /**
-   * Player death: freeze the world on a one-shot Death collapse, then restart the scene (the existing
-   * "Death = restart" reset — see damagePlayer). Guarded by `playerChar.dying` so a crowd of enemies
-   * can't re-enter this each frame. We cancel any active order and clear an in-flight hit-flash, then
-   * `playerChar.die()` freezes + plays the collapse; update() holds everything still until the
-   * scheduled restart fires (the delayedCall runs on the scene clock, which the test harness drives).
-   */
-  private killPlayer(): void {
-    console.log('player down — restarting'); // the death→restart signal the death spec asserts
-    breadcrumb('world', 'player died → scene.restart scheduled');
-    this.cancelAll();
-    this.fx.cleanupActorFx(this.player); // clear an in-flight hit-flash so the corpse isn't left mid-squash
-    const dur = this.playerChar.die(); // freezes + plays the collapse; returns its duration
-    this.time.delayedCall(dur + DEATH_HOLD_MS, () => this.scene.restart());
   }
 
   /** Switch input mode (mutually exclusive) and notify UIScene to update its HUD accordingly. */
@@ -1829,137 +1739,5 @@ export class GameScene extends Phaser.Scene {
   private onCombatMoveEnd(): void {
     this.combatMoveVec = { dx: 0, dy: 0 };
     if (this.movepadDrives()) this.player.body.setVelocity(0, 0);
-  }
-
-  // --- Resource nodes / harvesting -----------------------------------------
-  //
-  // Spawning/harvest/regrow + the "does a live node block this tile" query live in
-  // ResourceNodeManager (plan 015 Step 1) — see src/scenes/world/ResourceNodeManager.ts.
-
-  /** Destroy every resource node + enemy GameObject and reset both arrays + id counters — the shared
-   *  preamble of a full world reset (used by the DEV-only scenario reset via
-   *  TestApiDeps.resetTreesAndEnemies; mirrors randomiseWorld's own calls below, which pass
-   *  `resetIds: false` since a dev-menu scatter has no need for ids restarting at 0). */
-  private resetTreesAndEnemies(): void {
-    this.nodeFx.reset(); // stop node-fx tweens + destroy fell clones BEFORE their node sprites are freed
-    this.resourceNodeManager.clearAll({ resetIds: true });
-    this.enemyManager.clearAll({ resetIds: true });
-  }
-
-  /**
-   * Dev menu: clear the scattered world — every resource node and enemy — then scatter a fresh
-   * random batch on empty tiles: a mix of trees/rocks/bushes (trees weighted so wood stays plentiful)
-   * plus a pack of enemies. The player's own walls/blueprints are left standing (only `occupied`/`siteTiles`
-   * are read, never cleared). Enemies keep a few tiles clear of the player so a randomise never spawns
-   * an instant bite. Wired to the dev-menu Randomise button.
-   */
-  private randomiseWorld(): void {
-    this.cancelAll(); // drop harvest orders that reference the nodes we're about to destroy
-    this.nodeFx.reset(); // stop node-fx tweens + destroy fell clones BEFORE their node sprites are freed
-    this.resourceNodeManager.clearAll({ resetIds: false }); // keeps its id counter running (pre-existing)
-    this.enemyManager.clearAll({ resetIds: false }); // same — id counter keeps running (pre-existing)
-
-    const pt = this.playerChar.tile();
-    const used = new Set<string>([tileKey(pt.col, pt.row)]);
-    // Pick a random empty tile (in bounds, not a wall/blueprint/already-used), at least `minPlayerDist`
-    // tiles (Chebyshev) from the player. Returns null if it can't find one within the attempt budget.
-    const pickTile = (minPlayerDist: number): Cell | null => {
-      for (let attempt = 0; attempt < 40; attempt++) {
-        const col = Math.floor(Math.random() * this.gridDims.cols);
-        const row = Math.floor(Math.random() * this.gridDims.rows);
-        const key = tileKey(col, row);
-        if (
-          used.has(key) ||
-          this.buildManager.isOccupied(col, row) ||
-          this.buildManager.hasSiteTile(col, row)
-        )
-          continue;
-        if (Math.max(Math.abs(col - pt.col), Math.abs(row - pt.row)) < minPlayerDist) continue;
-        used.add(key);
-        return { col, row };
-      }
-      return null;
-    };
-
-    const nodePool = [NODES.tree, NODES.tree, NODES.tree, NODES.rock, NODES.berryBush];
-    const nodeCount = 24 + Math.floor(Math.random() * 25); // 24..48
-    for (let i = 0; i < nodeCount; i++) {
-      const tile = pickTile(0);
-      if (!tile) break;
-      this.resourceNodeManager.addNode(
-        nodePool[Math.floor(Math.random() * nodePool.length)],
-        tile.col,
-        tile.row,
-      );
-    }
-
-    const enemyCount = 8 + Math.floor(Math.random() * 9); // 8..16
-    for (let i = 0; i < enemyCount; i++) {
-      const tile = pickTile(6); // keep enemies clear of the player's tile
-      if (!tile) break;
-      this.enemyManager.addEnemy('kidZombie', tile.col, tile.row);
-    }
-  }
-
-  /**
-   * Dev menu: drop a single enemy right beside the player so there's always something to fight-test
-   * on demand — the quick counterpart to Randomise's scatter. Scans outward in Chebyshev rings from
-   * the player's tile (starting at distance 2, so it never lands on or directly touching the player)
-   * up to a small cap, taking the first empty, walkable, unoccupied tile it finds. No-ops if the
-   * player is boxed in with no clear tile in range. Wired to the dev-menu Spawn Enemy button.
-   */
-  private spawnEnemyNearPlayer(): void {
-    // The boar is the default dev spawn (plan 035b Step 4) — fighting it exercises the full loop:
-    // 4-way facing, the Attack-anim telegraph, melee, bow, and the HP bar. The skeleton stays
-    // reachable via scenarios (the combat/monster e2e specs) as a regression anchor.
-    const t = this.firstSpawnableTileNearPlayer();
-    if (t) this.enemyManager.addEnemy('boar', t.col, t.row);
-  }
-
-  /**
-   * First empty, walkable, unoccupied tile near the player — scanned outward in Chebyshev rings from
-   * distance 2 (so it never lands on or directly touching the player) up to a small cap. Returns null
-   * if the player is boxed in with no clear tile in range. Shared by the dev spawn seams below.
-   */
-  private firstSpawnableTileNearPlayer(): Cell | null {
-    const pt = this.playerChar.tile();
-    const canSpawn = (col: number, row: number): boolean =>
-      col >= 0 &&
-      row >= 0 &&
-      col < this.gridDims.cols &&
-      row < this.gridDims.rows &&
-      !this.buildManager.isOccupied(col, row) &&
-      !this.buildManager.hasSiteTile(col, row) &&
-      !this.isBlocked(col, row);
-
-    // Walk out ring by ring; the first empty tile on the nearest ring wins.
-    for (let dist = 2; dist <= 8; dist++) {
-      for (let col = pt.col - dist; col <= pt.col + dist; col++) {
-        for (let row = pt.row - dist; row <= pt.row + dist; row++) {
-          if (Math.max(Math.abs(col - pt.col), Math.abs(row - pt.row)) !== dist) continue; // ring edge only
-          if (canSpawn(col, row)) return { col, row };
-        }
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Dev menu: spawn the companion Rogue near the player and hand it a path walking back toward the
-   * player, so the sprite (idle/walk/death anims) and the walk can be eyeballed on demand. Routes
-   * through {@link CompanionManager} (which owns the single companion); reachable from the console via
-   * `window.game.events.emit('debug:spawnNpc')` (wired in wireBus, mirroring `debug:spawnEnemy`).
-   * No-ops if a companion is already present (one at a time) or the player is boxed in.
-   */
-  private spawnNpcNearPlayer(): void {
-    if (this.companionManager.get()) return; // one companion at a time — no-op if already spawned
-    const t = this.firstSpawnableTileNearPlayer();
-    if (!t) return;
-    const npc = this.companionManager.spawn(t.col, t.row);
-    const path = findPath(t, this.playerChar.tile(), this.isBlocked, this.gridDims);
-    if (path) {
-      npc.path = path;
-      npc.pathIndex = 0;
-    }
   }
 }

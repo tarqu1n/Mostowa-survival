@@ -303,7 +303,16 @@ delegate lanes — just driven inline, not blind-delegated.
   - Docs: none inline.
   - Done when: region editor drags/resizes/auto-detects as before, geometry unit tests green, full gate green.
 
-- [ ] **Step 11: Mechanical split of `GameScene.ts` (combat + dev)** `[delegate]` (parallel: C)
+- [x] **Step 11: Mechanical split of `GameScene.ts` (combat + dev)** `[delegate]` (parallel: C)
+  - Outcome: `GameScene.ts` 1965 → **1727 lines** (−238; further trimmed by the Phase-4 Action-registry).
+    `src/scenes/combat/CombatController.ts` (`attack`/`bow`/`pickBowTarget`/`syncBowTarget`/`damagePlayer`/
+    `onPlayerHurt`/`killPlayer` + owns `bowTargetId`; `destroy()` on SHUTDOWN) with a narrow `deps` closure
+    (`playerChar`/`rng`/`enemies`/`enemiesInTiles`/`killEnemy`/`playAttackSwing`/`flashHit`/`fireArrow`/
+    `syncBowTargetHighlight`/`cleanupActorFx`/`cancelAll`). `src/scenes/world/DevWorldTools.ts` (DEV
+    randomise/spawn helpers; stateless like ScenePicker). `wireBus()` combat:*/debug:* handlers repointed to
+    the managers (SHUTDOWN offs matched). NO bus event/registry key changed; `window.game.__test` surface
+    preserved. NO Phase-4 work. tsc clean project-wide; eslint 0 err (57 pre-existing unbound-method warns);
+    374 system specs pass. Real guardrail = refactor-tripwire + combat/death/boar e2e (run at integration).
   - Extract combat (`attack`/`bow`/`pickBowTarget`/`syncBowTarget`/`damagePlayer`/`onPlayerHurt`/
     `killPlayer`, `:1342-1483`) into `src/scenes/combat/CombatController.ts` following the manager
     contract (`(scene, deps-closure)`, own `destroy()` on SHUTDOWN, direct calls only). Extract

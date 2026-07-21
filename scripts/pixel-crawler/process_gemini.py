@@ -42,9 +42,15 @@ REORDER = [2, 1, 3, 4, 0]
 # olive ramp and the (neutral) dagger greys never compete — the freckle bug came from
 # a single nearest-colour snap where bright highlights fell onto the metal tones.
 OUTLINE = (20, 20, 18)                    # black outline + face void (idle tone)
-OLIVE = [(37, 39, 22), (55, 58, 32), (95, 86, 37), (146, 130, 48), (178, 158, 72)]
+# Olive ramp skewed BRIGHT: (146,130,48) is the idle's dominant cloak tone (the
+# "highlight green"); the darker entries are shadow only. Thresholds (below) keep the
+# bulk of the cloak on the two lightest so it doesn't read as the shadow green.
+OLIVE = [(55, 58, 32), (95, 86, 37), (146, 130, 48), (178, 158, 72)]
+OLIVE_THRESH = [66, 96, 150]
 METAL = [(70, 72, 78), (140, 143, 148), (205, 207, 212)]
 ORANGE = [(181, 108, 48), (232, 150, 82)]  # belt / sash
+EYE = (12, 152, 214)                       # idle glowing blue
+MOUTH = (147, 45, 139)                     # idle purple grin
 
 MAGENTA = np.array([255, 0, 255])
 NEIGHBOURS = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
@@ -77,10 +83,15 @@ def posterize_cel(sheet):
     M = alpha > 16
     out = np.zeros((*M.shape, 3), np.uint8)
 
+    # face accents: keep the gen's own blue-eye / purple-mouth pixels (they survive the
+    # quantise under the void) and repaint them in the idle's exact tones, on top.
+    eyes = M & (H >= 128) & (H <= 178) & (S >= 55) & (V >= 70)   # pale blue
+    mouth = M & (H >= 188) & (H <= 232) & (S >= 55)              # purple/magenta
+
     metal = M & (S < 46)                                   # near-neutral -> blade
     orange = M & ~metal & (H < 26) & (S >= 90)             # warm+low-hue -> belt
     olive = M & ~metal & ~orange                           # everything else -> cloak
-    _fill_by_brightness(out, olive, V, OLIVE, [60, 100, 150, 190])
+    _fill_by_brightness(out, olive, V, OLIVE, OLIVE_THRESH)
     _fill_by_brightness(out, metal, V, METAL, [110, 185])
     _fill_by_brightness(out, orange, V, ORANGE, [150])
 
@@ -89,6 +100,9 @@ def posterize_cel(sheet):
     for dy, dx in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
         bnd |= M & ~np.roll(np.roll(M, dy, 0), dx, 1)
     out[bnd] = OUTLINE
+
+    out[eyes & ~bnd] = EYE                                 # accents last, over the void
+    out[mouth & ~bnd] = MOUTH
 
     return Image.fromarray(np.dstack([out, np.where(M, 255, 0).astype(np.uint8)]), "RGBA")
 

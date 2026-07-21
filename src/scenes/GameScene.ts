@@ -881,6 +881,11 @@ export class GameScene extends Phaser.Scene {
         this.runRearm(action);
         break;
     }
+    // Stuck guard (belt-and-braces behind the pathfinder's corner rule): if the worker stopped
+    // closing on its waypoint — e.g. deflected by the wall collider backstop — repath to the same
+    // goal. The corner-safe pathfinder then routes clear; if the goal got walled off, repath drops
+    // the order rather than shove forever. No-op while idle/working in place (isStuck stays false).
+    if (this.playerChar.isStuck()) this.repath();
     this.playerChar.updateAnim(this.harvestSwing);
     this.visionController.update();
     this.enemyManager.update();

@@ -28,6 +28,18 @@ export abstract class Character {
   path: Cell[] = [];
   pathIndex = 0;
 
+  /** Frames of no measurable progress toward the current waypoint before {@link isStuck} trips
+   *  (≈0.5s at 60fps) — long enough to ignore normal deceleration, short enough to feel responsive. */
+  private static readonly STUCK_FRAMES = 30;
+  /** Stuck-detection state: the waypoint we're metering, the closest we've come to it, and how many
+   *  consecutive frames we've failed to improve on that. The center-to-center mover can be deflected
+   *  off its line by the wall collider backstop; if it stops closing on the waypoint, the path owner
+   *  should repath (see {@link isStuck}). `NaN` target = meter idle, restarts on the next step. */
+  private stuckTargetX = NaN;
+  private stuckTargetY = NaN;
+  private stuckBestDist = Infinity;
+  private stuckFrames = 0;
+
   protected constructor(
     protected readonly scene: Phaser.Scene,
     readonly sprite: CharacterSprite,
@@ -92,14 +104,54 @@ export abstract class Character {
     const wx = tileToWorldCenter(wp.col);
     const wy = tileToWorldCenter(wp.row);
     this.onBeforeStep(wp);
-    if (Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, wx, wy) <= 2) {
+    const dist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, wx, wy);
+    if (dist <= 2) {
       this.sprite.body.reset(wx, wy);
       this.onWaypointReached(wp);
       this.pathIndex += 1;
+      this.resetStuck(); // fresh waypoint next frame — clear the progress meter
       return this.pathIndex >= this.path.length;
     }
+    this.trackProgress(wx, wy, dist);
     this.scene.physics.moveTo(this.sprite, wx, wy, this.moveSpeed());
     return false;
+  }
+
+  /** Feed the stuck meter: restart it whenever the target waypoint changes (advanced or repathed),
+   *  otherwise count a frame that failed to get meaningfully closer as no-progress. */
+  private trackProgress(wx: number, wy: number, dist: number): void {
+    if (wx !== this.stuckTargetX || wy !== this.stuckTargetY) {
+      this.stuckTargetX = wx;
+      this.stuckTargetY = wy;
+      this.stuckBestDist = dist;
+      this.stuckFrames = 0;
+      return;
+    }
+    if (dist < this.stuckBestDist - 0.5) {
+      this.stuckBestDist = dist;
+      this.stuckFrames = 0;
+    } else {
+      this.stuckFrames += 1;
+    }
+  }
+
+  private resetStuck(): void {
+    this.stuckTargetX = NaN;
+    this.stuckTargetY = NaN;
+    this.stuckBestDist = Infinity;
+    this.stuckFrames = 0;
+  }
+
+  /**
+   * True once the actor has failed to close on its current waypoint for {@link STUCK_FRAMES}
+   * consecutive frames — the owner of the path decision (the scene's task loop for the player)
+   * should repath. Reading it consumes the signal (resets the meter) so one stall fires one
+   * repath, not one per frame. Returns false while idle or working in place (no active waypoint).
+   */
+  isStuck(): boolean {
+    if (this.stuckFrames < Character.STUCK_FRAMES) return false;
+    this.resetStuck();
+    return true;
   }
 
   /** Semantic damage hook — callers pair it with the FX manager (flash/shake) and any bus emissions.

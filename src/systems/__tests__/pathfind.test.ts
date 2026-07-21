@@ -79,11 +79,19 @@ describe('findPath', () => {
     }
   });
 
-  it('allows a diagonal corner-cut when only one shared orthogonal cell is blocked', () => {
+  it('rejects a diagonal that grazes a single blocked corner (no wall-edge snag)', () => {
+    // Only (1,0) blocked: the direct diagonal (0,0)→(1,1) would graze that one wall corner. The
+    // stricter corner rule forbids it — a full-tile wall body there would otherwise deflect and
+    // stall the mover — so the path must detour orthogonally instead of cutting the diagonal.
     const blocked = new Set(['1,0']);
     const isBlocked = blockedFromSet(blocked);
     const path = findPath({ col: 0, row: 0 }, { col: 1, row: 1 }, isBlocked, DIMS);
-    expect(path).toEqual([{ col: 1, row: 1 }]);
+    expect(path).not.toBeNull();
+    expect(path!.length).toBeGreaterThan(1); // detour, not the length-1 direct diagonal
+    for (const cell of path!) {
+      expect(isBlocked(cell.col, cell.row)).toBe(false);
+    }
+    expect(path![path!.length - 1]).toEqual({ col: 1, row: 1 });
   });
 });
 

@@ -3,8 +3,10 @@
  * Pure — no Phaser, no scene deps. Obstacles are supplied by the caller via `isBlocked`
  * (completed walls + live trees, etc.); out-of-bounds always counts as blocked.
  *
- * 8-connected with an octile heuristic. Diagonal moves may not cut between two blocked
- * orthogonal corners (no squeezing through a wall's diagonal gap).
+ * 8-connected with an octile heuristic. A diagonal move requires BOTH shared orthogonal cells to
+ * be clear, so a path never cuts OR grazes a wall corner — a single-corner graze would otherwise
+ * send the center-to-center mover past a full-tile wall body, and the collider backstop deflects it
+ * into the wall and stalls (the "stuck on a wall edge" bug). See {@link cornerOk}.
  */
 
 /** A grid cell. */
@@ -45,9 +47,11 @@ function isWall(col: number, row: number, isBlocked: Blocked, dims: Dims): boole
 }
 
 /**
- * A diagonal step from `(col,row)` by `(dc,dr)` is legal only if it doesn't cut a wall
- * corner: reject when BOTH shared orthogonal cells are blocked. (Orthogonal steps always
- * pass this test since one delta is zero.)
+ * A diagonal step from `(col,row)` by `(dc,dr)` is legal only if BOTH shared orthogonal cells are
+ * clear — reject when EITHER is blocked. This is stricter than the classic no-corner-cut rule
+ * (which only bars squeezing between two blocked corners): it also forbids *grazing* a single wall
+ * corner, whose full-tile static body would otherwise deflect the center-to-center mover into the
+ * wall and stall it. (Orthogonal steps always pass since one delta is zero.)
  */
 function cornerOk(
   col: number,
@@ -60,7 +64,7 @@ function cornerOk(
   if (dc === 0 || dr === 0) return true;
   const sideA = isWall(col + dc, row, isBlocked, dims);
   const sideB = isWall(col, row + dr, isBlocked, dims);
-  return !(sideA && sideB);
+  return !(sideA || sideB);
 }
 
 /** Octile distance: cheap-diagonals-first estimate, admissible for 8-connectivity. */

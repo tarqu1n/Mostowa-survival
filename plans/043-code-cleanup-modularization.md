@@ -282,7 +282,18 @@ delegate lanes — just driven inline, not blind-delegated.
   - Docs: none inline.
   - Done when: editor builds, library panel + pickers render/behave as before, full gate green.
 
-- [ ] **Step 10: Split `ObjectEditorTab.tsx` + adopt shared helpers** `[delegate]` (parallel: C)
+- [x] **Step 10: Split `ObjectEditorTab.tsx` + adopt shared helpers** `[delegate]` (parallel: C)
+  - Outcome: `ObjectEditorTab.tsx` 1129 → **45 lines**, export unchanged (`EditorApp.tsx` untouched). New
+    `tabs/objectEditor/`: `ObjectEditorForm.tsx` (reclassify form + `filenameOf`), `RegionsEditor.tsx` (regions
+    canvas, rewired onto shared modules), `shared.tsx` (`ObjField`/`FormError`/`FormWarnings` + class strings).
+    Adopted `regionGeometry.ts` (deleted local `clampN`/`normRect`/`resizeBox`/`Handle`; kept UI-coupled
+    `HANDLES`/`HANDLE_POS`), `zoom.ts` (deleted `REGION_ZOOM_*`/`clampRegionZoom`), `pixelAlpha.ts` (inline
+    packing loop → `extractAlphaChannel`), `usePanZoom` (deleted local space/pan state + wheel/re-anchor
+    effects; `panTrigger = isPanTrigger(e) || (button 0 && panMode)`, `movePan` guarded at top of pointermove).
+    tsc/eslint clean; regionGeometry 27/27. **KNOWN REGRESSION fixed in the next integration commit:**
+    cursor-anchored wheel-zoom re-anchoring broke here (passed base fit-scale to `usePanZoom` whose re-anchor
+    effect needs effective scale) — Step 9 had worked around it, so the two lanes were inconsistent; the
+    follow-up commit reconciles the hook contract across both consumers.
   - Move `ObjectEditorForm` (`:128-427`) and `RegionsEditor` (`:505-end`) into
     `tabs/objectEditor/`. Rewire `RegionsEditor` to consume `usePanZoom`/`zoom.ts` (Step 5) and
     `regionGeometry.ts`/`pixelAlpha.ts` (Step 6), deleting the now-duplicated local copies.

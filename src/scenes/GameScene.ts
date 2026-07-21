@@ -302,6 +302,7 @@ export class GameScene extends Phaser.Scene {
     if (a.kind === 'build') return a.siteId;
     if (a.kind === 'deconstruct') return a.wallId;
     if (a.kind === 'rearm') return a.trapId;
+    if (a.kind === 'repair') return a.wallId; // companion-only order (never in the player queue) — keeps the union exhaustive
     return `(${a.col},${a.row})`;
   }
 
@@ -470,6 +471,16 @@ export class GameScene extends Phaser.Scene {
       chopNode: (tree, facing, onYield) => this.resourceNodeManager.chop(tree, facing, onYield),
       litHearthTile: () => this.litHearth()?.tile ?? null,
       supplyAdd: (item, n) => this.baseSupply.add(item, n),
+      // Repair day role (plan 042 Step 5) — the wall-facing deps. Call-time closures over the `wall`
+      // behavior getter (resolved lazily, so it's live even though StructureManager is constructed just
+      // below this) + the base-supply pool; kept narrow (a plain snapshot + ops), never the manager.
+      walls: () =>
+        this.wall
+          .all()
+          .map((w) => ({ id: w.id, col: w.col, row: w.row, hp: w.state.hp, maxHp: w.state.maxHp })),
+      repairWall: (id, amount) => this.wall.repair(id, amount),
+      supplyCount: (item) => this.baseSupply.count(item),
+      supplyTake: (item, n) => this.baseSupply.take(item, n),
     });
 
     // Build placement (plan 013 Step 6) — constructed fresh each (re)start; its constructor wires a
@@ -1038,6 +1049,9 @@ export class GameScene extends Phaser.Scene {
       if (!this.pathTo({ col: a.col, row: a.row })) this.completeCurrent();
       return;
     }
+    // `repair` is a companion-only order (driven on CompanionManager's own queue, plan 042 Step 5) —
+    // it never reaches the player's queue; drop it defensively so the kind union stays exhaustive.
+    if (a.kind === 'repair') return this.completeCurrent();
     if (a.kind === 'harvest') {
       const tree = this.resourceNodeManager.treeById(a.treeId);
       if (!tree || !tree.alive) return this.completeCurrent();

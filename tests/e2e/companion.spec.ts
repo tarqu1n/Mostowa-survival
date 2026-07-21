@@ -7,6 +7,8 @@ import {
   setNpcDayRole,
   setNpcNightPosture,
   step,
+  walls,
+  damageWall,
 } from './harness';
 
 // Tier-2 (plan 042 Step 2): the CompanionManager + scenario/DebugState scaffolding. Step 2 lands the
@@ -107,4 +109,70 @@ test('a gather-role companion chops a tree by day and deposits wood into base su
   expect(s.baseSupply.wood).toBe(3); // whole tree (maxHp 3 × 1 wood/hit) deposited
   expect(s.companion?.carry).toBe(0); // carry buffer emptied by the deposit (accrued, then reset)
   expect(s.baseSupply.rock).toBe(0); // gather only touched the wood node
+});
+
+// Tier-2 (plan 042 Step 5): the companion's `repair` day role through the REAL scene — the same slimmed
+// executor's second branch. A repair-role NPC by day scans the walls for a damaged one, paths adjacent,
+// and mends it on the NPC_REPAIR_MS cadence, consuming wood from base supply per tick. Wall placement +
+// its full-HP start come from the scenario; the damage is seeded via the __test.damageWall seam (the
+// path the night siege drives) and wall hp is read back via the standalone walls() seam (NOT DebugState,
+// so the refactor-tripwire golden is untouched). Driven deterministically with step().
+test('a repair-role companion mends a damaged wall by day, draining wood from base supply', async ({
+  page,
+}) => {
+  test.setTimeout(60_000); // a live scene + a few hundred driven frames — fill-rate-heavy under load
+  await startGame(page);
+
+  // Player at [3,3]; companion two tiles east of a lone wall, in repair role, by day; wood in the pool.
+  // Same proven-walkable row-3 band the gather/chop/wall specs use (wall at [6,3], companion at [8,3]).
+  await applyScenario(page, {
+    player: [3, 3],
+    companion: { at: [8, 3], dayRole: 'repair' },
+    walls: [[6, 3]],
+    startPhase: 'day',
+    baseSupply: { wood: 20 },
+  });
+  await step(page, 1000); // let the wall's build anim settle on the intact idle frame
+
+  // Knock the wall down (maxHp 12 → 4) via the mob-attack seam, so it now needs mending.
+  await damageWall(page, 0, 8);
+  const before = await walls(page);
+  expect(before[0].hp).toBe(before[0].maxHp - 8);
+  const woodBefore = (await state(page)).baseSupply.wood;
+
+  // Short walk to the wall (~1 tile) + several NPC_REPAIR_MS cadences — enough to mend it back to full
+  // (8 hp deficit / 2 hp-per-tick = 4 ticks ≈ 1.6s, plus the walk; kept lean to stay inside the budget).
+  await step(page, 3500);
+
+  const after = await walls(page);
+  const woodAfter = (await state(page)).baseSupply.wood;
+  expect(after[0].hp).toBeGreaterThan(before[0].hp); // wall hp climbed toward max
+  expect(after[0].hp).toBe(after[0].maxHp); // fully mended within the budget
+  expect(woodAfter).toBeLessThan(woodBefore); // repair drained wood from the shared pool
+  expect(woodAfter).toBe(woodBefore - 4); // 8 hp restored at NPC_REPAIR_HP_PER_TICK(2) = 4 ticks × 1 wood
+});
+
+// The other half of the economic tie: an empty base supply → no repair (goes idle, surfaces nothing).
+test('a repair-role companion with an empty base supply does not repair the wall', async ({
+  page,
+}) => {
+  test.setTimeout(60_000); // a live scene + a few hundred driven frames — fill-rate-heavy under load
+  await startGame(page);
+
+  await applyScenario(page, {
+    player: [3, 3],
+    companion: { at: [8, 3], dayRole: 'repair' },
+    walls: [[6, 3]],
+    startPhase: 'day',
+    baseSupply: { wood: 0 }, // empty pool — nothing to mend with
+  });
+  await step(page, 1000);
+
+  await damageWall(page, 0, 8);
+  const hpBefore = (await walls(page))[0].hp;
+
+  await step(page, 3500);
+
+  expect((await walls(page))[0].hp).toBe(hpBefore); // no wood → the wall is left untouched
+  expect((await state(page)).baseSupply.wood).toBe(0); // nothing withdrawn (idle, no error)
 });

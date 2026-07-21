@@ -1,5 +1,11 @@
 import Phaser from 'phaser';
-import { CHOP_INTERVAL_MS, NPC_CARRY_CAP } from '../../config';
+import {
+  CHOP_INTERVAL_MS,
+  NPC_CARRY_CAP,
+  NPC_REPAIR_MS,
+  NPC_REPAIR_WOOD_PER_TICK,
+  NPC_REPAIR_HP_PER_TICK,
+} from '../../config';
 import type { DayPhase } from '../../systems/daynight';
 import { tileToWorldCenter } from '../../systems/grid';
 import { findPath, reachableAdjacent, type Cell, type Dims } from '../../systems/pathfind';
@@ -43,6 +49,29 @@ export interface CompanionManagerDeps {
   litHearthTile(): Cell | null;
   /** Deposit `n` of a supply kind into the shared base-supply pool (`baseSupply.add`). */
   supplyAdd(item: SupplyItem, n: number): void;
+  /** Snapshot of every live wall (id + tile + hp/maxHp) — the `repair` day-role planner scans this for
+   *  damaged walls (`hp < maxHp`). A cheap plain snapshot, not the raw WallStructure (013/015 rule). */
+  walls(): WallRepairTarget[];
+  /** Restore `amount` hp to wall `id` (clamped to maxHp, updates its visual) via `WallBehavior.repair`;
+   *  returns whether it is now at full hp (so the planner moves to the next damaged wall). No-op on an
+   *  unknown or already-full wall. */
+  repairWall(id: string, amount: number): boolean;
+  /** Count currently pooled of a supply kind (`baseSupply.count`) — the repair planner checks wood > 0
+   *  before pathing so an empty base never thrashes the walk. */
+  supplyCount(item: SupplyItem): number;
+  /** Withdraw `n` of a supply kind from the base pool (`baseSupply.take`); false (and no-op) when short,
+   *  so the repair tick stops the moment wood runs out. */
+  supplyTake(item: SupplyItem, n: number): boolean;
+}
+
+/** The narrow per-wall snapshot the `repair` planner reads (via {@link CompanionManagerDeps.walls}) —
+ *  just the id + tile + hp fields it needs to find and path to the most-damaged wall. */
+export interface WallRepairTarget {
+  readonly id: string;
+  readonly col: number;
+  readonly row: number;
+  readonly hp: number;
+  readonly maxHp: number;
 }
 
 /** yieldItemId → base-supply kind. Gather only targets nodes that map to a supply kind — a node
@@ -69,9 +98,18 @@ const SUPPLY_KIND: Readonly<Record<string, SupplyItem>> = { wood: 'wood', stone:
  *   2. once the buffer is full (or no reachable node remains and it's carrying something) → path to a
  *      tile adjacent to the lit hearth and deposit the whole buffer into `baseSupply`, then repeat.
  * With no lit hearth to walk to, it deposits IN PLACE (the base-supply store is global — the hearth is
- * only the walk-to anchor, not a gate on the count), so a carry never wedges the loop. Any other day
- * role (`repair`, Step 5) or the night phase idles the loop for now (the sprite still advances any
- * residual path so a dev-spawned walk-to-player still plays).
+ * only the walk-to anchor, not a gate on the count), so a carry never wedges the loop.
+ *
+ * **Repair state machine (day role `repair`, day only, plan 042 Step 5).** The SAME slimmed executor,
+ * a second branch alongside gather: while idle it finds the MOST-DAMAGED reachable wall (lowest
+ * `hp/maxHp` ratio among `hp < maxHp`), paths adjacent (reusing gather's stand-adjacent lookup), and
+ * mends it on the {@link NPC_REPAIR_MS} cadence — each tick withdrawing {@link NPC_REPAIR_WOOD_PER_TICK}
+ * wood from `baseSupply` and restoring {@link NPC_REPAIR_HP_PER_TICK} hp. This ties the two day roles
+ * together economically (gather fills the pool, repair drains it). An empty pool → idle (surface
+ * nothing); a full wall is never targeted (no path-thrash), and reaching `maxHp` replans to the next.
+ *
+ * The night phase (or a `follow`-only future role) idles the loop for now (the sprite still advances
+ * any residual path so a dev-spawned walk-to-player still plays).
  *
  * **Occupancy.** The companion's pathfinder veto is the player's `isBlocked` composite PLUS the
  * player's current tile, so the two actors never route onto the same tile. Its own tile is never
@@ -101,6 +139,9 @@ export class CompanionManager {
   /** Harvest-cadence accumulator (ms), mirroring the player's `chopElapsed` — one chop per
    *  `CHOP_INTERVAL_MS` while standing at the node. */
   private chopElapsed = 0;
+  /** Repair-cadence accumulator (ms), the `repair`-role twin of {@link chopElapsed} — one mend per
+   *  `NPC_REPAIR_MS` while standing at the wall. */
+  private repairElapsed = 0;
   /** The current pathfinding goal (a node-adjacent or hearth-adjacent stand tile) — re-fed to
    *  `findPath` on a stuck-repath, like the player's `actionGoal`. */
   private goal: Cell | null = null;
@@ -152,8 +193,9 @@ export class CompanionManager {
       npc.updateAnim();
       return;
     }
-    const gathering = npc.dayRole === 'gather' && this.deps.dayPhase() === 'day';
-    if (gathering) this.driveGather(npc, delta);
+    const day = this.deps.dayPhase() === 'day';
+    if (day && npc.dayRole === 'gather') this.driveGather(npc, delta);
+    else if (day && npc.dayRole === 'repair') this.driveRepair(npc, delta);
     else npc.advancePath(); // idle role/phase — finish any residual path, issue no new orders
     npc.updateAnim();
   }
@@ -282,6 +324,83 @@ export class CompanionManager {
     this.finishOrder();
   }
 
+  // --- Repair executor (day role `repair`, plan 042 Step 5) ----------------------------------------
+
+  /** One frame of the repair loop, the twin of {@link driveGather}: refresh the occupancy veto, plan a
+   *  mend if idle, then run the current order — with the same stuck-guard/repath the gather loop uses. */
+  private driveRepair(npc: NpcCharacter, delta: number): void {
+    this.playerTileTick = this.deps.playerTile();
+
+    if (this.queue.current === null) this.planRepair(npc);
+
+    const action = this.queue.current;
+    if (!action) {
+      npc.advancePath(); // nothing to mend (no damaged wall, or empty supply) — settle in place
+      return;
+    }
+    if (action.kind === 'repair') this.runRepair(npc, action.wallId, delta);
+
+    if (npc.isStuck()) this.repath(npc);
+  }
+
+  /** Decide the next repair order when idle: with no wood pooled → idle (don't path — repair drains the
+   *  base supply the gather role fills). Else target the most-damaged reachable wall and path adjacent;
+   *  no damaged/reachable wall → idle until one takes a hit. */
+  private planRepair(npc: NpcCharacter): void {
+    if (this.deps.supplyCount('wood') <= 0) return; // base is out of wood — nothing to mend with
+    const wall = this.mostDamagedWall(npc);
+    if (!wall) return; // no damaged, reachable wall — idle
+    // Any adjacent tile (a wall is a single footprint tile with no stand-offset restriction) — the same
+    // stand-adjacent lookup gather uses for a node.
+    const stand = reachableAdjacent(
+      npc.tile(),
+      { col: wall.col, row: wall.row },
+      this.npcBlocked,
+      this.deps.dims(),
+    );
+    if (stand && this.pathTo(npc, stand)) {
+      this.queue.replace({ kind: 'repair', wallId: wall.id });
+      this.repairElapsed = 0;
+    }
+  }
+
+  /** The most-damaged wall with a reachable adjacent stand tile: sorted by LOWEST `hp/maxHp` ratio (the
+   *  relatively-most-damaged), tie-broken nearest-first. Full-HP walls are never candidates, so a mend
+   *  never thrashes pathing toward an intact wall. */
+  private mostDamagedWall(npc: NpcCharacter): WallRepairTarget | null {
+    const from = npc.tile();
+    const dims = this.deps.dims();
+    const candidates = this.deps
+      .walls()
+      .filter((w) => w.hp < w.maxHp)
+      .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || dist2(from, a) - dist2(from, b));
+    for (const wall of candidates) {
+      const stand = reachableAdjacent(
+        from,
+        { col: wall.col, row: wall.row },
+        this.npcBlocked,
+        dims,
+      );
+      if (stand) return wall;
+    }
+    return null;
+  }
+
+  /** Mend a chosen wall: walk to the stand tile, then on the {@link NPC_REPAIR_MS} cadence withdraw a
+   *  wood from base supply and restore hp. Mirrors {@link runHarvest}'s walk-then-act-in-place shape.
+   *  Completes (replans) when the wall reaches full hp, is gone, or the base runs out of wood. */
+  private runRepair(npc: NpcCharacter, wallId: string, delta: number): void {
+    const wall = this.deps.walls().find((w) => w.id === wallId);
+    if (!wall || wall.hp >= wall.maxHp) return this.finishOrder(); // gone or already intact — replan
+    if (!npc.advancePath()) return; // still walking to the stand tile
+    npc.faceTile(wall.col, wall.row); // face the wall while mending, whatever side we stood on
+    this.repairElapsed += delta;
+    if (this.repairElapsed < NPC_REPAIR_MS) return;
+    this.repairElapsed = 0;
+    if (!this.deps.supplyTake('wood', NPC_REPAIR_WOOD_PER_TICK)) return this.finishOrder(); // supply empty — stop, replan (idles)
+    if (this.deps.repairWall(wallId, NPC_REPAIR_HP_PER_TICK)) this.finishOrder(); // hit maxHp — mend the next damaged wall
+  }
+
   /** Path the companion toward `goal`, recording it for repath; false (leaving the path empty) if
    *  unreachable. Uses the SAME pure `findPath` + occupancy inputs the player's `pathTo` does, plus the
    *  player-tile veto. `[]` (already there) still counts as pathed — advancePath returns true at once. */
@@ -311,6 +430,7 @@ export class CompanionManager {
     this.queue.clear();
     this.goal = null;
     this.chopElapsed = 0;
+    this.repairElapsed = 0;
   }
 
   /** The companion's pathfinder veto: the player's walkability composite PLUS the player's current
@@ -327,6 +447,7 @@ export class CompanionManager {
     this.queue.clear();
     this.carryBuf = { wood: 0, rock: 0 };
     this.chopElapsed = 0;
+    this.repairElapsed = 0;
     this.goal = null;
   }
 

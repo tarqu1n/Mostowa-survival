@@ -194,6 +194,16 @@ export const NPC_STRENGTH = 1;
 export const NPC_CARRY_CAP = 5;
 export const NPC_ATTACK_WINDUP_MS = 300;
 export const NPC_REPAIR_MS = 400;
+/**
+ * Per-repair-tick economy for the `repair` day role (plan 042 Step 5). On each `NPC_REPAIR_MS` cadence
+ * the companion withdraws `NPC_REPAIR_WOOD_PER_TICK` wood from the shared base supply and restores
+ * `NPC_REPAIR_HP_PER_TICK` hp to the wall it's mending; an empty supply stops the repair (goes idle).
+ * This ties the two day roles together economically — gather fills the pool, repair drains it. A wall
+ * (maxHp 12) fully mends from rubble in ~6 ticks / 6 wood at these values. PLACEHOLDER tuning
+ * (un-playtested), flagged per plan 040's convention — retune vs wave DPS + wall maxHp once playable.
+ */
+export const NPC_REPAIR_WOOD_PER_TICK = 1;
+export const NPC_REPAIR_HP_PER_TICK = 2;
 export const NPC_REVIVE_HP = 3;
 /**
  * NPC body extent for combat targeting (see `Hurtbox`) — same ~1-wide, 2-tall silhouette as the

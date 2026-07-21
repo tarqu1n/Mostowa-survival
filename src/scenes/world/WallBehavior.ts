@@ -134,6 +134,21 @@ export class WallBehavior implements StructureBehavior {
     return false;
   }
 
+  /** Restore a wall's hp by `amount` and reflect it: clamp hp up to `maxHp`, then step the Destroy
+   *  sheet's frame back toward intact (the SAME `applyDamageStage` render {@link takeDamage} steps the
+   *  other way — frame 0 = intact at full hp). Mirrors {@link takeDamage}/{@link deconstruct}: an
+   *  unknown id is a no-op, and a wall already at full hp is a no-op (no visual thrash) — both report
+   *  "now at full hp" so the companion's repair planner (plan 042 Step 5) moves to the next damaged
+   *  wall. Returns whether the wall is now at `maxHp`. */
+  repair(id: string, amount: number): boolean {
+    const w = this.wallById(id);
+    if (!w) return true; // wall gone mid-order — nothing to mend (planner replans)
+    if (w.state.hp >= w.state.maxHp) return true; // already intact — no-op (don't re-render the frame)
+    w.state.hp = Math.min(w.state.maxHp, w.state.hp + amount);
+    this.applyDamageStage(w); // steps the Destroy sheet frame back toward intact (frame 0 at full hp)
+    return w.state.hp >= w.state.maxHp;
+  }
+
   /** Thorns (retaliation damage) a mob takes when it attacks this wall — the buildable's `thorns` (0 if
    *  none). Consumed by chunk 2c's enemy-attack path; undefined id → 0 (tolerates a wall gone mid-tick). */
   thornsOf(id: string): number {

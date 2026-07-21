@@ -32,7 +32,20 @@ BODY_H = 26      # target standing body height (px) — matches the idle rogue
 FRAME_W, FRAME_H = 56, 56
 BASELINE = 53    # feet y within the frame
 KEY_TOL = 130    # high enough to also key the anti-aliased pink ring around the figure
-COLOURS = 20     # shared palette size for the flat/chunky look
+# Output frame order (0-based indices into the generated left-to-right row). The raw
+# strip's poses aren't the animation order we want; this re-sequences them. Owner call
+# 2026-07-21: 3 2 4 5 1 (1-based) -> raised, wind-up, slash, follow-through, ready.
+REORDER = [2, 1, 3, 4, 0]
+
+# Cel-shade palette: outline-first, then flat fill by MATERIAL, shade chosen by
+# brightness. Materials are classified from the gen's hue/saturation so the cloak's
+# olive ramp and the (neutral) dagger greys never compete — the freckle bug came from
+# a single nearest-colour snap where bright highlights fell onto the metal tones.
+OUTLINE = (20, 20, 18)                    # black outline + face void (idle tone)
+OLIVE = [(37, 39, 22), (55, 58, 32), (95, 86, 37), (146, 130, 48), (178, 158, 72)]
+METAL = [(70, 72, 78), (140, 143, 148), (205, 207, 212)]
+ORANGE = [(181, 108, 48), (232, 150, 82)]  # belt / sash
+
 MAGENTA = np.array([255, 0, 255])
 NEIGHBOURS = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
 
@@ -44,18 +57,40 @@ def keyout(im):
     return a.astype(np.uint8)
 
 
-def grade(a):
-    """Gentle colour-grade of opaque pixels toward the idle's grottier olive: knock
-    back overall brightness and trim the green so it reads less bright/HD."""
-    out = a.copy()
-    op = out[:, :, 3] > 16
-    rgb = out[:, :, :3].astype(np.float32)
-    rgb[..., 0] *= 0.94      # R
-    rgb[..., 1] *= 0.88      # G (tame the bright green)
-    rgb[..., 2] *= 0.92      # B
-    rgb = np.clip(rgb, 0, 255)
-    out[:, :, :3] = np.where(op[..., None], rgb.astype(np.uint8), out[:, :, :3])
-    return out
+def _fill_by_brightness(out, mask, V, ramp, thresholds):
+    """Paint `mask` pixels with a ramp colour chosen by brightness V (ascending
+    thresholds; len == len(ramp) - 1)."""
+    idx = np.zeros(V.shape, int)
+    for t in thresholds:
+        idx += (V >= t)
+    for ci, colour in enumerate(ramp):
+        out[mask & (idx == ci)] = colour
+
+
+def posterize_cel(sheet):
+    """Outline-first cel shade: draw the silhouette edge + dark internal seams black,
+    then flat-fill interiors by material (olive cloak / grey blade / orange belt),
+    shade picked by brightness. Kills the gen's texture and the freckle bug at once."""
+    hsv = np.asarray(sheet.convert("RGB").convert("HSV")).astype(np.int16)
+    H, S, V = hsv[:, :, 0], hsv[:, :, 1], hsv[:, :, 2]  # 0..255 each
+    alpha = np.asarray(sheet.split()[3])
+    M = alpha > 16
+    out = np.zeros((*M.shape, 3), np.uint8)
+
+    metal = M & (S < 46)                                   # near-neutral -> blade
+    orange = M & ~metal & (H < 26) & (S >= 90)             # warm+low-hue -> belt
+    olive = M & ~metal & ~orange                           # everything else -> cloak
+    _fill_by_brightness(out, olive, V, OLIVE, [60, 100, 150, 190])
+    _fill_by_brightness(out, metal, V, METAL, [110, 185])
+    _fill_by_brightness(out, orange, V, ORANGE, [150])
+
+    out[M & (V < 38)] = OUTLINE                            # dark seams / face void
+    bnd = np.zeros(M.shape, bool)                          # silhouette edge
+    for dy, dx in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        bnd |= M & ~np.roll(np.roll(M, dy, 0), dx, 1)
+    out[bnd] = OUTLINE
+
+    return Image.fromarray(np.dstack([out, np.where(M, 255, 0).astype(np.uint8)]), "RGBA")
 
 
 def defringe(a, iters=4):
@@ -95,15 +130,6 @@ def split_columns(mask):
     return runs
 
 
-def quantise_sheet(sheet, colours):
-    """Reduce the whole sheet to one shared `colours`-entry palette (flat/chunky),
-    preserving alpha. Shared so colours don't flicker frame-to-frame."""
-    rgb = sheet.convert("RGB").quantize(colors=colours, method=Image.MEDIANCUT)
-    rgb = rgb.convert("RGB")
-    r, g, b = rgb.split()
-    return Image.merge("RGBA", (r, g, b, sheet.split()[3]))
-
-
 def build(variant):
     raw = Image.open(RAW / f"rogue_attack_{variant}.png")
     a = keyout(raw)
@@ -123,10 +149,14 @@ def build(variant):
     ref = heights[len(heights) // 2]              # median (the standing frames)
     scale = BODY_H / ref
 
+    # re-sequence to the desired animation order (guard against a differing count)
+    order = REORDER if len(figs) == len(REORDER) else list(range(len(figs)))
+    figs = [figs[i] for i in order]
+
     n = len(figs)
     sheet = Image.new("RGBA", (FRAME_W * n, FRAME_H), (0, 0, 0, 0))
     for i, fig in enumerate(figs):
-        fig = grade(defringe(fig))
+        fig = defringe(fig)
         img = Image.fromarray(fig, "RGBA").resize(
             (max(1, round(fig.shape[1] * scale)), max(1, round(fig.shape[0] * scale))),
             Image.LANCZOS)
@@ -138,7 +168,7 @@ def build(variant):
         ox = i * FRAME_W + (FRAME_W - fimg.width) // 2
         sheet.alpha_composite(fimg, (ox, max(0, oy)))
 
-    sheet = quantise_sheet(sheet, COLOURS)
+    sheet = posterize_cel(sheet)                  # black outline + flat material fills
     OUT.mkdir(parents=True, exist_ok=True)
     dst = OUT / "Slice_Side-Sheet.png"
     sheet.save(dst)

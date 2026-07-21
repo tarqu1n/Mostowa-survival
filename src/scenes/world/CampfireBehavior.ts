@@ -95,7 +95,12 @@ export class CampfireBehavior implements StructureBehavior {
   materialise(site: BuildSite): void {
     const def = BUILDABLES[site.buildableId];
     const x = tileToWorldCenter(site.col);
-    const y = tileToWorldCenter(site.row);
+    // Anchor the bottom-origin stack (base/flame/smoke all share `originY`) to the tile's BOTTOM edge,
+    // not its centre. `tileToWorldCenter` is the tile's middle, so a bottom-anchored sprite placed
+    // there floats half a tile above the tile it sits on; adding TILE_SIZE/2 drops the stone ring's
+    // lower edge onto the tile's lower edge (the flame + smoke ride their RISE offsets above it, so the
+    // whole campfire descends together as one stack).
+    const y = tileToWorldCenter(site.row) + TILE_SIZE / 2;
     const originY = def.originY ?? 1;
     const tilesTall = def.tilesTall ?? 1;
 

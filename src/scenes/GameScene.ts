@@ -44,7 +44,6 @@ import type { UIScene } from './UIScene';
 import type { GameTestApi } from '../entities/testTypes';
 import type { CharacterSprite } from '../entities/Character';
 import { PlayerCharacter } from '../entities/PlayerCharacter';
-import { NpcCharacter } from '../entities/NpcCharacter';
 import type { MonsterCharacter } from '../entities/MonsterCharacter';
 import { CombatFxManager } from './fx/CombatFxManager';
 import { NodeFxManager } from './fx/NodeFxManager';
@@ -55,6 +54,7 @@ import { TaskGlowRenderer } from './fx/TaskGlowRenderer';
 import { ResourceNodeManager } from './world/ResourceNodeManager';
 import { DecorManager } from './world/DecorManager';
 import { EnemyManager } from './world/EnemyManager';
+import { CompanionManager } from './world/CompanionManager';
 import { StructureManager } from './world/StructureManager';
 import { CampfireBehavior } from './world/CampfireBehavior';
 import { WallBehavior } from './world/WallBehavior';
@@ -80,10 +80,17 @@ export class GameScene extends Phaser.Scene {
   // anim + death collapse. Recreated every create() (a death-restart), so all its state starts fresh.
   private playerChar!: PlayerCharacter;
 
-  /** TEMPORARY (plan 042 Step 1): the dev-spawned companion NPC, driven by {@link tickDevNpc}. A
-   *  throwaway seam so the Rogue sprite + `advancePath` can be eyeballed before `CompanionManager`
-   *  (Step 2) owns spawning + the per-frame drive; this field + its seams are removed then. */
-  private devNpc?: NpcCharacter;
+  // The AI companion (plan 042) — spawn, per-frame drive, reset/teardown — see
+  // src/scenes/world/CompanionManager.ts. Owns the single NpcCharacter. Constructed fresh in
+  // buildWorld() each (re)start, AFTER the player (construction order is load-bearing — later steps'
+  // tick env reads player state); wires its own SHUTDOWN teardown. Replaces the Step-1 dev seam.
+  private companionManager!: CompanionManager;
+
+  /** SCAFFOLD (plan 042 Step 2): the shared base-supply pool the companion's gather/repair loop will
+   *  draw on — wood/rock counts only for now, surfaced in `debugState().baseSupply` + seeded by a
+   *  scenario's `baseSupply`. TODO(plan 042 Step 3): replace this placeholder holder with the dedicated
+   *  base-supply store module (which owns deposits/withdrawals); this Step only fixes the field SHAPE. */
+  private baseSupply = { wood: 0, rock: 0 };
 
   /** The player's sprite — camera/fog/pointer code addresses the display object this way. */
   private get player(): CharacterSprite {
@@ -318,6 +325,7 @@ export class GameScene extends Phaser.Scene {
     this.nodeFx.reset();
     this.mode = 'command';
     this.demolishMode = false; // a death-restart starts clear of demolish mode (UIScene resynced in buildWorld)
+    this.baseSupply = { wood: 0, rock: 0 }; // plan 042 Step 2 scaffold — reset the pool on a death-restart (TODO Step 3: store module)
   }
 
   /**
@@ -431,6 +439,11 @@ export class GameScene extends Phaser.Scene {
     // playerStats is the player's stat bag surfaced for the Wellbeing screen's stat rows.
     this.registry.set('playerStats', this.playerChar.stats);
     this.physics.world.setBounds(originPx.x, originPx.y, worldPx.w, worldPx.h);
+
+    // AI companion (plan 042 Step 2) — constructed AFTER the player (construction order is load-bearing:
+    // later steps' per-frame tick env reads player state). Side-effect-free like EnemyManager: it does
+    // NOT auto-spawn — a dev seam / scenario calls spawn() — and wires its own SHUTDOWN teardown.
+    this.companionManager = new CompanionManager(this);
 
     // Build placement (plan 013 Step 6) — constructed fresh each (re)start; its constructor wires a
     // physics collider against the player sprite just constructed above, and its own SHUTDOWN
@@ -650,7 +663,7 @@ export class GameScene extends Phaser.Scene {
     this.game.events.on('tasks:cancel', this.cancelAll, this);
     this.game.events.on('debug:randomise', this.randomiseWorld, this); // dev menu: scatter nodes + enemies
     this.game.events.on('debug:spawnEnemy', this.spawnEnemyNearPlayer, this); // dev menu: drop one enemy by the player to fight
-    this.game.events.on('debug:spawnNpc', this.spawnNpcNearPlayer, this); // TEMPORARY (plan 042 Step 1): drop the companion Rogue to eyeball
+    this.game.events.on('debug:spawnNpc', this.spawnNpcNearPlayer, this); // dev menu: drop the companion Rogue by the player (plan 042)
     this.game.events.on('debug:toggleTime', this.survivalClock.toggleDayNight, this.survivalClock); // dev menu: flip day/night
     this.game.events.on('debug:forceWave', this.onForceWave, this); // dev menu: jump to night + start a wave now
     this.game.events.on('time:changed', this.waveDirector.onTimeChanged, this.waveDirector); // start/stop the night wave on dusk/dawn
@@ -710,6 +723,7 @@ export class GameScene extends Phaser.Scene {
     const testApi = new TestApi(this, {
       buildManager: this.buildManager,
       structureManager: this.structureManager,
+      companionManager: this.companionManager,
       waveDirector: this.waveDirector,
       taskGlowRenderer: this.taskGlowRenderer,
       fx: this.fx,
@@ -773,6 +787,12 @@ export class GameScene extends Phaser.Scene {
       emitTasks: () => this.emitTasks(),
       inspectAt: (x, y) => this.scenePicker.inspectAt(x, y),
       isBlocked: (col, row) => this.isBlocked(col, row),
+      // Base-supply pool (plan 042 Step 2 scaffold) — read/seed the placeholder holder (TODO Step 3:
+      // the dedicated store module owns this). A copy in/out so a scenario reset can't alias the field.
+      getBaseSupply: () => ({ ...this.baseSupply }),
+      setBaseSupply: (v) => {
+        this.baseSupply = { wood: v.wood, rock: v.rock };
+      },
     });
     const api: GameTestApi = {
       applyScenario: (spec) => testApi.applyScenario(spec),
@@ -812,6 +832,21 @@ export class GameScene extends Phaser.Scene {
       zoneAt: (c, r) => this.zoneAt(c, r),
       moveEnemy: (i, c, r) => testApi.moveEnemy(i, c, r),
       setPlayerMelee: (id) => testApi.setPlayerMelee(id),
+      // Companion scaffold setters (plan 042 Step 2) — mirror rearmTrap: reach the single NPC through
+      // the manager + write a scaffold field (no-op if no companion is spawned). Behaviour that reads
+      // these lands in later steps; setNpcGuardPoint's tile isn't surfaced in debugState yet.
+      setNpcDayRole: (role) => {
+        const npc = this.companionManager.get();
+        if (npc) npc.dayRole = role;
+      },
+      setNpcNightPosture: (posture) => {
+        const npc = this.companionManager.get();
+        if (npc) npc.nightPosture = posture;
+      },
+      setNpcGuardPoint: (c, r) => {
+        const npc = this.companionManager.get();
+        if (npc) npc.guardPoint = { col: c, row: r };
+      },
     };
     (this.game as unknown as { __test?: GameTestApi }).__test = api;
   }
@@ -836,10 +871,9 @@ export class GameScene extends Phaser.Scene {
     // or not a worker task is active — mirrors the survival tick. See src/scenes/world/StructureManager.ts.
     this.structureManager.tick(delta);
 
-    // TEMPORARY (plan 042 Step 1): drive the dev-spawned companion each frame. Above the no-action
-    // early-return so it ticks whether or not a worker task is active. Removed when CompanionManager
-    // (Step 2) takes over spawning + the per-frame drive.
-    this.tickDevNpc();
+    // AI companion (plan 042) — drive it each frame (advance path + anim today; the gather/guard tick
+    // lands later). Above the no-action early-return so it ticks whether or not a worker task is active.
+    this.companionManager.update(delta);
 
     // Night wave scheduler (plan 038 Step 3) — meter out spawns during the night. Above the no-action
     // early-return (so it runs whether or not a task is active) but below the `playerChar.dying` freeze
@@ -1707,46 +1741,21 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * TEMPORARY dev seam (plan 042 Step 1) — spawn the companion Rogue near the player and hand it a path
-   * walking back toward the player, so the sprite (idle/walk/death anims) and `advancePath` can be
-   * eyeballed before `CompanionManager` (Step 2) owns spawning. Reachable from the console via
+   * Dev menu: spawn the companion Rogue near the player and hand it a path walking back toward the
+   * player, so the sprite (idle/walk/death anims) and the walk can be eyeballed on demand. Routes
+   * through {@link CompanionManager} (which owns the single companion); reachable from the console via
    * `window.game.events.emit('debug:spawnNpc')` (wired in wireBus, mirroring `debug:spawnEnemy`).
-   * Spawns at most one companion; both this and {@link spawnCompanion} are removed when Step 2 lands.
+   * No-ops if a companion is already present (one at a time) or the player is boxed in.
    */
   private spawnNpcNearPlayer(): void {
-    if (this.devNpc) return; // one dev companion at a time — no-op if already spawned
+    if (this.companionManager.get()) return; // one companion at a time — no-op if already spawned
     const t = this.firstSpawnableTileNearPlayer();
     if (!t) return;
+    const npc = this.companionManager.spawn(t.col, t.row);
     const path = findPath(t, this.playerChar.tile(), this.isBlocked, this.gridDims);
-    this.spawnCompanion(t.col, t.row, path ?? undefined);
-  }
-
-  /**
-   * TEMPORARY dev seam (plan 042 Step 1) — instantiate the companion at a tile (grid col/row, converted
-   * to the world centre like the enemy spawn) and optionally seed a hand-set path for it to walk.
-   * Stores it in {@link devNpc} for {@link tickDevNpc}. Superseded by `CompanionManager` in Step 2.
-   */
-  spawnCompanion(col: number, row: number, path?: Cell[]): NpcCharacter {
-    const npc = new NpcCharacter(this, {
-      x: tileToWorldCenter(col),
-      y: tileToWorldCenter(row),
-    });
     if (path) {
       npc.path = path;
       npc.pathIndex = 0;
     }
-    this.devNpc = npc;
-    return npc;
-  }
-
-  /**
-   * TEMPORARY (plan 042 Step 1): per-frame drive for the dev-spawned companion — advance its path and
-   * refresh its animation. Called from update() above the no-action early-return. Removed when
-   * `CompanionManager` (Step 2) takes over the per-frame drive.
-   */
-  private tickDevNpc(): void {
-    if (!this.devNpc) return;
-    this.devNpc.advancePath();
-    this.devNpc.updateAnim();
   }
 }

@@ -47,6 +47,16 @@ export interface DebugState {
   waveSpawns: number;
   enemyKinds: string[];
   traps: Array<{ col: number; row: number; armed: boolean }>;
+  companion: {
+    col: number;
+    row: number;
+    dayRole: 'gather' | 'repair';
+    nightPosture: 'guard' | 'follow' | 'refuel';
+    hp: number;
+    downed: boolean;
+    carry: number;
+  } | null;
+  baseSupply: { wood: number; rock: number };
 }
 
 /**
@@ -144,6 +154,33 @@ export function moveEnemy(page: Page, index: number, col: number, row: number): 
 /** Equip the player's melee weapon by `MELEE_WEAPONS` id, or clear to unarmed with `null` (plan 036). */
 export function setPlayerMelee(page: Page, id: string | null): Promise<void> {
   return page.evaluate((i) => (window as any).game.__test.setPlayerMelee(i), id);
+}
+
+/** The single companion's scaffold state (col/row/role/posture/hp/downed/carry), or null (plan 042) —
+ *  a shortcut over `state(page).companion`. */
+export function companion(page: Page): Promise<DebugState['companion']> {
+  return page.evaluate(() => (window as any).game.__test.state().companion);
+}
+
+/** Set the companion's day role (plan 042 Step 2); no-op if none spawned. */
+export function setNpcDayRole(page: Page, role: 'gather' | 'repair'): Promise<void> {
+  return page.evaluate((r) => (window as any).game.__test.setNpcDayRole(r), role);
+}
+
+/** Set the companion's night posture (plan 042 Step 2); no-op if none spawned. */
+export function setNpcNightPosture(
+  page: Page,
+  posture: 'guard' | 'follow' | 'refuel',
+): Promise<void> {
+  return page.evaluate((p) => (window as any).game.__test.setNpcNightPosture(p), posture);
+}
+
+/** Set the companion's night guard tile (plan 042 Step 2); no-op if none spawned. */
+export function setNpcGuardPoint(page: Page, col: number, row: number): Promise<void> {
+  return page.evaluate(({ col, row }) => (window as any).game.__test.setNpcGuardPoint(col, row), {
+    col,
+    row,
+  });
 }
 
 /** Inspect the entity at a tile (same panel path as an Inspect-mode tap). */

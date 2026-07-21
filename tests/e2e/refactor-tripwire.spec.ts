@@ -135,5 +135,7 @@ test('golden debugState() snapshot survives a scripted world + combat sequence',
     waveSpawns: 0, // no wave ran → nothing spawned
     enemyKinds: [], // the one scripted enemy is dead by snapshot time → no live enemies
     traps: [], // plan 040: appended to DebugState; this scenario places no spike traps
+    companion: null, // plan 042 Step 2: appended to DebugState; this scenario places no companion
+    baseSupply: { wood: 0, rock: 0 }, // plan 042 Step 2: appended to DebugState; no baseSupply seeded
   });
 });

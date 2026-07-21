@@ -16,6 +16,7 @@ import {
 } from '../data/tileset';
 import { MELEE_WEAPONS, type MeleeWeapon } from '../data/weapons';
 import { weaponTransform } from '../systems/attachment';
+import type { Cell } from '../systems/pathfind';
 import { Character, type CharacterSprite } from './Character';
 
 /** The companion's single assignable DAY job (plan 042): scavenge with the player (`gather`) or mend
@@ -47,6 +48,14 @@ export class NpcCharacter extends Character {
   /** True from collapse (0 HP) until the dawn revive (later step). While set, the Death strip owns the
    *  sprite and `updateAnim` yields. Doubles as the PlayerCharacter-style "don't re-trigger" guard. */
   downed = false;
+  /** Units currently ferried in the carry buffer (0..`NPC_CARRY_CAP`) — SCAFFOLD (plan 042 Step 2): the
+   *  gather loop that fills it + the base-supply drop that empties it land in later steps. Surfaced in
+   *  `debugState().companion.carry` so a spec can read it back. */
+  carry = 0;
+  /** The night guard tile the `'guard'` posture will hold — SCAFFOLD (plan 042 Step 2): seeded by a
+   *  scenario's `companion.guardAt` / the `setNpcGuardPoint` dev seam; the guard behaviour that reads it
+   *  lands in a later step. `null` until assigned. */
+  guardPoint: Cell | null = null;
 
   /** The equipped melee weapon (gameplay stats from `MELEE_WEAPONS`) — the eventual directed swing
    *  (Step 7) reads its `damage`/`attackShape`. Fixed at construction; no inventory/equip UI yet. */
@@ -159,6 +168,26 @@ export class NpcCharacter extends Character {
     this.sprite.setScale(deathRender.scale).setOrigin(deathRender.originX, deathRender.originY);
     this.sprite.setData('baseScale', deathRender.scale);
     this.sprite.anims.play(npcAnimKey('death'));
+  }
+
+  /**
+   * Fully tear down the companion's GameObjects — the held weapon, both mitts, and the sprite itself —
+   * and drop their references. Called at RUNTIME by {@link CompanionManager.reset} / a spawn-replace
+   * (the scene/physics world is alive, so `destroy()` is correct here). This is NOT the SHUTDOWN path,
+   * where Phaser's own scene teardown has already freed every GameObject — mirrors EnemyManager's
+   * clearAll-vs-destroy split (weapon/hands are private here, so the manager tears down through this).
+   */
+  dispose(): void {
+    if (this.weapon) {
+      this.weapon.sprite.destroy();
+      this.weapon = undefined;
+    }
+    if (this.hands) {
+      this.hands.main.destroy();
+      this.hands.off.destroy();
+      this.hands = undefined;
+    }
+    this.sprite.destroy();
   }
 
   /**

@@ -209,6 +209,54 @@
         }
       ]
     },
+    "Bushes/Bush_orange_bare1.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "14_14_35_34",
+          "x": 14,
+          "y": 14,
+          "w": 35,
+          "h": 34
+        }
+      ]
+    },
+    "Bushes/Bush_orange_bare2.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "3_2_26_26",
+          "x": 3,
+          "y": 2,
+          "w": 26,
+          "h": 26
+        }
+      ]
+    },
+    "Bushes/Bush_orange_bare3.png": {
+      "params": {
+        "alphaThresh": 8,
+        "gap": 1,
+        "minArea": 40
+      },
+      "regions": [
+        {
+          "key": "1_0_15_14",
+          "x": 1,
+          "y": 0,
+          "w": 15,
+          "h": 14
+        }
+      ]
+    },
     "Bushes/Bush_pink_flowers1.png": {
       "params": {
         "alphaThresh": 8,

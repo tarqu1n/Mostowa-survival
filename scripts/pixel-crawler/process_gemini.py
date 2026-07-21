@@ -63,6 +63,34 @@ def keyout(im):
     return a.astype(np.uint8)
 
 
+def _one_px_per_blob(mask):
+    """Reduce each connected blob in `mask` to a single pixel (nearest its centroid).
+    Used to pin the eyes to 1px each rather than the 2-3px blobs the downscale leaves."""
+    H, W = mask.shape
+    seen = np.zeros_like(mask)
+    out = np.zeros_like(mask)
+    for sy in range(H):
+        for sx in range(W):
+            if not mask[sy, sx] or seen[sy, sx]:
+                continue
+            comp, stack = [], [(sy, sx)]
+            seen[sy, sx] = True
+            while stack:
+                y, x = stack.pop()
+                comp.append((y, x))
+                for dy in (-1, 0, 1):
+                    for dx in (-1, 0, 1):
+                        ny, nx = y + dy, x + dx
+                        if 0 <= ny < H and 0 <= nx < W and mask[ny, nx] and not seen[ny, nx]:
+                            seen[ny, nx] = True
+                            stack.append((ny, nx))
+            cy = sum(p[0] for p in comp) / len(comp)
+            cx = sum(p[1] for p in comp) / len(comp)
+            by, bx = min(comp, key=lambda p: (p[0] - cy) ** 2 + (p[1] - cx) ** 2)
+            out[by, bx] = True
+    return out
+
+
 def _fill_by_brightness(out, mask, V, ramp, thresholds):
     """Paint `mask` pixels with a ramp colour chosen by brightness V (ascending
     thresholds; len == len(ramp) - 1)."""
@@ -101,7 +129,9 @@ def posterize_cel(sheet):
         bnd |= M & ~np.roll(np.roll(M, dy, 0), dx, 1)
     out[bnd] = OUTLINE
 
-    out[eyes & ~bnd] = EYE                                 # accents last, over the void
+    # accents last, over the void. Eyes: blank the blob to void, then pin 1px each.
+    out[eyes & ~bnd] = OUTLINE
+    out[_one_px_per_blob(eyes & ~bnd)] = EYE
     out[mouth & ~bnd] = MOUTH
 
     return Image.fromarray(np.dstack([out, np.where(M, 255, 0).astype(np.uint8)]), "RGBA")

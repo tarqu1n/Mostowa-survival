@@ -28,6 +28,9 @@ export abstract class Character {
   path: Cell[] = [];
   pathIndex = 0;
 
+  /** Total world-px shaved off the ~1-tile collision body (split both sides) so it slides past a flush
+   *  wall / through a 1-tile gap instead of catching on it. See {@link fitBody}. */
+  private static readonly BODY_TILE_INSET = 2;
   /** Frames of no measurable progress toward the current waypoint before {@link isStuck} trips
    *  (≈0.5s at 60fps) — long enough to ignore normal deceleration, short enough to feel responsive. */
   private static readonly STUCK_FRAMES = 30;
@@ -72,16 +75,31 @@ export abstract class Character {
   }
 
   /**
-   * Give the scaled sprite a roughly tile-sized physics body at its feet. Size/offset are in source-
-   * frame px (Arcade scales the body by the sprite's scale), so a padded 64px canvas gets a ~1-tile
-   * world body centred on the character's feet. Low-stakes: player↔wall collision is a pathfinding
-   * backstop and enemy contact damage is tile-based (col/row), not physics.
+   * Give the scaled sprite a physics body a hair under one tile, CENTRED on the sprite's logical
+   * point (`render.originX/Y`) — the SAME point {@link tile} reads via `worldToTile(sprite.x/y)` and
+   * that pathing snaps to tile centres (`body.reset` in {@link advancePath}). Size/offset are in
+   * source-frame px (Arcade scales the body by the sprite's scale).
+   *
+   * Why centred, not at the feet: the body used to be anchored at the canvas bottom (`frame - bodyPx`),
+   * which sat its centre ~6px BELOW the sprite's logical point — so a body standing logically in row R
+   * actually straddled down into row R+1 and collided with walls the pathfinder had legally routed
+   * around (the "hugs the tile edge / stuck walking into walls" bug: a path clear at the tile level,
+   * a body clipping the neighbouring row's wall). Centring on the pathing reference keeps collision and
+   * pathfinding in one coordinate frame. The {@link BODY_TILE_INSET}px of clearance per side lets the
+   * body slide past a flush wall / through a 1-tile gap instead of catching on it. Low-stakes either
+   * way: player↔wall collision is only a pathfinding backstop and enemy contact damage is tile-based.
    */
   protected fitBody(render: ActorRender): void {
     const frame = this.sprite.frame.width; // square source canvas (px)
-    const bodyPx = Math.min(frame, Math.round(TILE_SIZE / render.scale)); // → ≈ one tile in world
+    const bodyPx = Math.min(
+      frame,
+      Math.round((TILE_SIZE - Character.BODY_TILE_INSET) / render.scale),
+    );
     this.sprite.body.setSize(bodyPx, bodyPx);
-    this.sprite.body.setOffset((frame - bodyPx) / 2, frame - bodyPx); // centred horizontally, at the canvas bottom
+    this.sprite.body.setOffset(
+      render.originX * frame - bodyPx / 2,
+      render.originY * frame - bodyPx / 2,
+    );
   }
 
   /** Speed (px/s) to walk the current path at — the player factors in the attack-slow, a monster

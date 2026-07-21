@@ -349,8 +349,15 @@ export const DEATH_HOLD_MS = 300;
 export const DAY_MS = 660_000; // 11 min — long, breathing day (leave → scavenge → return → prep)
 export const NIGHT_MS = 240_000; // 4 min — shorter, denser night
 export const TWILIGHT_MS = 8_000;
-/** Darkest the night tint gets (alpha of COLORS.night overlay) — never fully opaque so play stays visible. */
-export const NIGHT_MAX_ALPHA = 0.55;
+/**
+ * Darkest the night tint gets (alpha of the COLORS.night light layer). Full opacity (1.0): away from
+ * any light the world is BLACK and darkness *conceals* — approaching enemies and their telegraphed
+ * attack tells are invisible until a fire's soft light reveals them (plan 039 Step 2, decision #1).
+ * The light layer (render/lightTexture.ts + SurvivalClock) erases a soft radial hole around each lit
+ * fire, so "fully dark" is playable: you see the firelit ground, not a black screen. `tintAlphaAt`
+ * still cross-fades to this plateau at dusk/dawn.
+ */
+export const NIGHT_MAX_ALPHA = 1.0;
 
 /**
  * Hunger (see systems/needs.ts). HUNGER_DRAIN_PER_SEC empties a full HUNGER_MAX in ~250s — ~0.28 of a
@@ -504,7 +511,7 @@ export const COLORS = {
   ghostInvalid: 0xb23b3b, // build ghost when blocked or unaffordable
   blueprint: 0x5a7a9a, // placed-but-unbuilt construction site (drawn translucent)
   queued: 0xffd500, // outline / marker for targets currently in the worker's task queue
-  night: 0x0a1020, // full-screen overlay tint during the day/night cycle's dark hours
+  night: 0x04060e, // near-black night light-layer tint (plan 039 Step 2: full dark that conceals; a faint blue, not clinical black)
   fireLight: 0xffb066, // warm campfire glow tint (later step: light/reveal radius rendering)
   bowTarget: 0xff5a4d, // stroked highlight round the bow's current auto-target (plan 035a Step 5)
   arrow: 0xf4e2b8, // coded arrow-tracer dash colour (plan 035a Step 5)

@@ -81,6 +81,34 @@ need no glow-specific code. Corollary: keep game **logic** (targeting, pathfindi
 off the tile (`col`/`row`), never the animated sprite transform — a sway or a mid-fall lean is purely
 visual and must not move the object's logical position.
 
+## Light layer: a baked gradient brush erased into a screen-space RenderTexture
+
+The night darkness (plan 039 Step 2) is a **full-opacity** dark overlay that lit fires *reveal* holes
+in — a soft radial gradient, not a hard ring. It is neither a bitmap/alpha mask (two full-screen
+framebuffer passes/frame) nor a fragment/PostFX shader (a full-viewport per-pixel pass every frame —
+the retired `OutlinePipeline` mistake above). Instead:
+
+- **A baked radial-gradient brush** ([src/render/lightTexture.ts](../src/render/lightTexture.ts)) —
+  white centre (alpha 1) → transparent rim (alpha 0), baked once into a cached canvas texture exactly
+  like `glowTexture.ts` (cache Map, survives `GameScene` death-restarts, `addCanvas`).
+- **A viewport-sized RenderTexture** ([SurvivalClock](../src/scenes/world/SurvivalClock.ts), depth 15)
+  re-centred on the camera each frame: `clear()` → `fill(COLORS.night, tintAlphaAt())` → for each lit
+  fire `rt.erase(brush, …)` with the brush scaled to that fire's radius. `erase` is a `destination-out`
+  blend, so it punches a **soft** hole (subtracting the brush's alpha) and overlapping fires brighten
+  in the seam. Zero mask passes; ~one textured-quad blit per fire. Works on WebGL and Canvas.
+
+Two rules this must obey (both learned the hard way, above):
+
+- **Never a world-sized RT.** The-moon is 245×280 tiles (~3920×4480px ≈ 70MB, cleared every frame) —
+  banned, and a map-tall baked texture is what caused the `mediump` texel seams (`GROUND_CHUNK_ROWS`
+  exists for the same reason). The layer is sized to the viewport (+ a couple of tiles' margin).
+- **Keep it world-space, not `setScrollFactor(0)` + a manual screen transform.** A scrollFactor(0)
+  object is *still zoomed* by the camera (Phaser applies zoom in the camera matrix regardless of scroll
+  factor), and the true world→screen transform carries a `(viewport/2)(1−zoom)` term the naive
+  `(x−scrollX)·zoom` drops — both mis-scale at zoom≠1. A **world-space** RT re-centred on `cam.midPoint`
+  lets the camera's own (proven) transform draw it 1:1 over the viewport at every zoom/scroll, so the
+  erase math is just `light.world − rtTopLeft.world` with no manual screen conversion.
+
 ## Custom PostFX pipelines (for genuinely per-frame effects)
 
 A PostFX pipeline runs a fragment shader over a sprite *after* it's drawn, into a padded

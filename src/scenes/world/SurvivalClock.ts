@@ -1,7 +1,10 @@
 import Phaser from 'phaser';
 import {
+  BASE_WIDTH,
+  BASE_HEIGHT,
   COLORS,
   DAY_MS,
+  TILE_SIZE,
   TWILIGHT_MS,
   HUNGER_MAX,
   HUNGER_DRAIN_PER_SEC,
@@ -9,6 +12,7 @@ import {
   STARVE_DAMAGE,
   STARVE_DAMAGE_INTERVAL_MS,
 } from '../../config';
+import { bakeLightBrush } from '../../render/lightTexture';
 import { ITEMS } from '../../data/items';
 import {
   cycleLengthMs,
@@ -53,25 +57,40 @@ export interface SurvivalClockDeps {
  * (drained every frame in the same tick; at zero the player starves, taking `STARVE_DAMAGE` every
  * `STARVE_DAMAGE_INTERVAL_MS` via `deps.damagePlayer`).
  *
- * **Sole writer of `nightOverlay`'s alpha, and owner of its campfire-light mask.** Per the plan's
- * ownership rule ("ownership follows the writer"), the map-sized dark rect that darkens the world at
- * night lives here, not on VisionController or any other manager — every alpha write (the per-frame
- * tick, a manual `toggleDayNight` jump, and the DEV-only test API's `nightOverlay` poke) funnels
- * through this class. Plan 012 added the overlay's inverted geometry mask + its `lightShape` source
- * here too (redrawn each tick from the scene-supplied `deps.lightSources()` — no manager↔manager
- * edge), so lit campfires punch readable holes in the darkness.
+ * **Sole writer of the night light-layer, and owner of the campfire-light reveal.** Per the plan's
+ * ownership rule ("ownership follows the writer"), the layer that darkens the world at night lives
+ * here, not on VisionController or any other manager — every write (the per-frame tick and a manual
+ * `toggleDayNight` jump) funnels through this class. Plan 039 Step 2 replaced the old map-sized dark
+ * `Rectangle` + inverted geometry mask with a **screen-covering RenderTexture** ({@link nightRT}):
+ * each frame it clears, fills with the night colour at `tintAlphaAt()` alpha, then for each lit fire
+ * (`deps.lightSources()`) **erases** a soft radial brush ({@link render/lightTexture}) — punching a
+ * SOFT reveal that fades to black at its rim (a gradient the old binary mask couldn't do). Night is
+ * now fully opaque (`NIGHT_MAX_ALPHA` 1.0), so darkness CONCEALS: away from a fire the world — and any
+ * approaching enemy + its attack tells — is invisible (the overlay sits at depth 15, above all
+ * gameplay actors/FX < 15). Overlapping fires brighten in the seam (each erase clears more).
+ *
+ * **Screen-space vs world-space (the flagged transform).** The RT is a **world-space** GameObject
+ * (default scrollFactor) sized to the viewport, re-centred each frame on the camera's `midPoint`. It
+ * is deliberately NOT `setScrollFactor(0)` + a manual world→screen transform: a scrollFactor(0) object
+ * is still ZOOMED by the camera (Phaser applies zoom in the camera matrix regardless of scroll
+ * factor), and the true screen transform carries a `(viewport/2)(1−zoom)` term the naive
+ * `(x−scrollX)·zoom` omits — both make the naive approach mis-scale at zoom≠1. Keeping the RT in world
+ * space lets the camera's own (proven) transform draw it 1:1 over the viewport at every zoom/scroll,
+ * so the erase math is just `light.world − rtTopLeft.world` with NO manual screen conversion. The RT
+ * is viewport-sized (never map-sized — see the mobile-texture ban in docs/RENDERING.md), oversized by
+ * a small margin to cover the one-frame camera-follow lag.
  *
  * Constructed fresh in `buildWorld()` each (re)start, at the exact point the old inline night-overlay
  * block used to run. Unlike `ResourceNodeManager`/`EnemyManager`, its constructor DOES have real
  * side effects (seeding the registry's `dayPhase`/`dayCount`/`hunger` keys) — this mirrors what the
  * old inline block did at the same point, and is safe since nothing here reaches for player state.
  *
- * **SHUTDOWN vs plain GameObjects — the trap for this manager.** `nightOverlay` is a plain
- * `Rectangle` with no Arcade physics body, but the SHUTDOWN rule from EnemyManager/BuildManager still
- * applies: Phaser's own scene teardown destroys every GameObject BEFORE this manager's SHUTDOWN
- * listener runs (a fresh SurvivalClock + overlay are constructed by the next `buildWorld()`). So
- * `destroy()` below may **only drop the stale `nightOverlay` reference** — it must **never** call
- * `.destroy()` on it (Phaser already has), or touch any other GameObject.
+ * **SHUTDOWN vs plain GameObjects — the trap for this manager.** `nightRT` (a RenderTexture) and the
+ * hidden erase `brush` (an Image) are plain GameObjects with no Arcade physics body, but the SHUTDOWN
+ * rule from EnemyManager/BuildManager still applies: Phaser's own scene teardown destroys every
+ * GameObject BEFORE this manager's SHUTDOWN listener runs (a fresh SurvivalClock + RT are constructed
+ * by the next `buildWorld()`). So `destroy()` below may **only drop the stale references** — it must
+ * **never** call `.destroy()` on them (Phaser already has), or touch any other GameObject.
  */
 export class SurvivalClock {
   clockMs = 0;
@@ -81,41 +100,44 @@ export class SurvivalClock {
   starveElapsed = 0;
 
   /**
-   * Night overlay — mirrors the fog rect's map size/centre but unmasked (a global dim, not a vision
-   * hole) and at a higher depth (15, above the player at 10) so it darkens actors too. Non-interactive
-   * (plain rects don't eat pointers) and below UIScene, so the HUD stays bright above it.
-   *
-   * Opacity is driven via the GameObject alpha (setAlpha) each frame from the day/night clock (see
-   * tick()/applyClock()). The fill alpha MUST stay 1: Phaser renders a shape's fill at
-   * fillAlpha × gameObjectAlpha, so a fillAlpha of 0 would pin the overlay invisible no matter what
-   * setAlpha does. We start it transparent with setAlpha(0) (full day) rather than a 0 fill alpha.
+   * Night light-layer — a world-space RenderTexture, depth 15 (above the player at 10, so it darkens
+   * actors too), re-centred each frame on the camera and composited from the clock + lit fires (see
+   * {@link composite}). Non-interactive (a RenderTexture doesn't eat pointers) and below UIScene, so
+   * the HUD stays bright above it. Sized to the viewport (+ a small follow-lag margin), NEVER the map
+   * (the mobile-texture ban — see docs/RENDERING.md); world-space so the camera draws it 1:1 at any
+   * zoom (see class doc). Starts transparent (composited at the current clock alpha in the ctor).
    */
-  readonly nightOverlay: Phaser.GameObjects.Rectangle;
+  private nightRT: Phaser.GameObjects.RenderTexture;
 
   /**
-   * Hidden Graphics whose filled circles (one per lit campfire) source the night overlay's INVERTED
-   * geometry mask — filled areas become holes, so a lit fire punches a readable gap in the darkness.
-   * Redrawn each {@link tick} (and after a manual clock jump — see {@link applyClock}) from
-   * `deps.lightSources()`; empty ⇒ no holes ⇒ full night. Mirrors VisionController's `fogShape` mask.
+   * Hidden Image carrying the baked radial light brush ({@link render/lightTexture}) — the erase stamp
+   * {@link composite} punches into {@link nightRT}, one scaled draw per lit fire. Invisible in the
+   * scene (never rendered by the display list), but `RenderTexture.erase` draws it into the RT
+   * directly regardless. Its scale is set per-fire from that fire's light radius.
    */
-  private readonly lightShape: Phaser.GameObjects.Graphics;
+  private brush: Phaser.GameObjects.Image;
+
+  /** Brush canvas edge length (px) — the scale divisor for a fire's world radius (see {@link composite}). */
+  private readonly brushSize: number;
 
   constructor(
     private readonly scene: GameScene,
     private readonly deps: SurvivalClockDeps,
   ) {
-    const { w, h } = deps.worldPx;
-    this.nightOverlay = scene.add
-      .rectangle(w / 2, h / 2, w, h, COLORS.night, 1)
-      .setAlpha(0)
+    // Viewport-sized (design space), oversized by a couple of tiles so the one-frame camera-follow lag
+    // never exposes an unlit edge; world-space, so the camera's own zoom/scroll draws it over the view.
+    const rtW = BASE_WIDTH + 2 * TILE_SIZE;
+    const rtH = BASE_HEIGHT + 2 * TILE_SIZE;
+    const cam = scene.cameras.main;
+    this.nightRT = scene.add
+      .renderTexture(cam.midPoint.x, cam.midPoint.y, rtW, rtH)
+      .setOrigin(0.5, 0.5)
       .setDepth(15);
-    // Campfire light: an inverted geometry mask over the overlay (filled circle ⇒ hole). Created once;
-    // its shape is redrawn each frame. With no lit fires the shape is empty, so the overlay is
-    // undimmed-nowhere — i.e. full night, exactly as before campfires existed.
-    this.lightShape = scene.add.graphics().setVisible(false);
-    const lightMask = this.lightShape.createGeometryMask();
-    lightMask.setInvertAlpha(true);
-    this.nightOverlay.setMask(lightMask);
+    const brush = bakeLightBrush(scene);
+    this.brushSize = brush.size;
+    this.brush = scene.add.image(0, 0, brush.key).setVisible(false);
+
+    this.composite(this.clockMs % cycleLengthMs()); // seed the layer at the boot clock (no emit)
     scene.registry.set('dayPhase', 'day');
     scene.registry.set('dayCount', 1);
     scene.registry.set('hunger', this.hunger); // seed so UIScene (Wellbeing screen) re-reads it on restart
@@ -139,8 +161,7 @@ export class SurvivalClock {
   tick(delta: number): void {
     this.clockMs += delta;
     const cycleMs = this.clockMs % cycleLengthMs();
-    this.nightOverlay.setAlpha(tintAlphaAt(cycleMs));
-    this.redrawLight(); // punch the lit-campfire holes into the darkness (empty ⇒ full night)
+    this.composite(cycleMs); // dark fill at the clock alpha + soft reveals around lit fires
     const phase = phaseAt(cycleMs);
     const dayCount = dayCountForTotal(this.clockMs);
     if (phase !== this.dayPhase || dayCount !== this.dayCount) {
@@ -200,8 +221,7 @@ export class SurvivalClock {
    */
   private applyClock(): void {
     const cycleMs = this.clockMs % cycleLengthMs();
-    this.nightOverlay.setAlpha(tintAlphaAt(cycleMs));
-    this.redrawLight();
+    this.composite(cycleMs);
     this.dayPhase = phaseAt(cycleMs);
     this.dayCount = dayCountForTotal(this.clockMs);
     this.scene.registry.set('dayPhase', this.dayPhase);
@@ -214,13 +234,36 @@ export class SurvivalClock {
     });
   }
 
-  /** Redraw the night-overlay mask shape from the current lit campfires — one filled circle per fire
-   *  becomes a hole in the darkness. Cleared + refilled each call so the holes track fuel/lit changes;
-   *  an empty shape (no lit fires) means no holes, i.e. full night. */
-  private redrawLight(): void {
-    this.lightShape.clear();
-    this.lightShape.fillStyle(0xffffff);
-    for (const l of this.deps.lightSources()) this.lightShape.fillCircle(l.x, l.y, l.radius);
+  /**
+   * Composite the night light-layer for a point in the cycle: re-centre the RT over the camera, clear
+   * it, fill the whole thing with `COLORS.night` at `tintAlphaAt(cycleMs)` alpha, then for each lit
+   * fire erase the soft brush (scaled to that fire's radius) — punching a SOFT reveal that fades to
+   * black at its rim. No lit fires ⇒ no erases ⇒ full dark. Overlapping fires brighten in the seam
+   * (each `erase` clears more of the already-reduced alpha). Cheap: one fill + ~one textured-quad
+   * erase per fire, no mask/framebuffer passes.
+   *
+   * World→texture transform: the RT is world-space, origin-centred on `cam.midPoint`, drawn 1:1 by the
+   * camera at any zoom, so a fire at world `(l.x,l.y)` erases at texture-local `(l.x−left, l.y−top)`
+   * where `(left,top)` is the RT's world top-left — NO manual screen/zoom conversion (see class doc).
+   * The brush stamp (origin 0.5, `brushSize` px) scales by `2·radius / brushSize` so it spans the
+   * fire's diameter.
+   */
+  private composite(cycleMs: number): void {
+    const rt = this.nightRT;
+    const cam = this.scene.cameras.main;
+    const cx = cam.midPoint.x;
+    const cy = cam.midPoint.y;
+    rt.setPosition(cx, cy);
+    rt.clear();
+    const alpha = tintAlphaAt(cycleMs);
+    rt.fill(COLORS.night, alpha);
+    if (alpha <= 0) return; // fully lit day — nothing to reveal, skip the erases
+    const left = cx - rt.width / 2;
+    const top = cy - rt.height / 2;
+    for (const l of this.deps.lightSources()) {
+      this.brush.setScale((2 * l.radius) / this.brushSize);
+      rt.erase(this.brush, l.x - left, l.y - top);
+    }
   }
 
   /**
@@ -246,13 +289,16 @@ export class SurvivalClock {
   // --- Reset / teardown --------------------------------------------------------------
 
   /**
-   * SHUTDOWN: this run's overlay is going away with the rest of this manager instance (a fresh
-   * SurvivalClock + overlay are constructed by the next `buildWorld()`) — Phaser's own scene teardown
-   * already destroys every GameObject on a death-restart, so this just drops the stale reference. See
-   * class doc's SHUTDOWN note: NEVER call `.destroy()` on `nightOverlay` here, Phaser already has.
+   * SHUTDOWN: this run's `nightRT` + `brush` are going away with the rest of this manager instance (a
+   * fresh SurvivalClock + RT are constructed by the next `buildWorld()`) — Phaser's own scene teardown
+   * already destroys every GameObject on a death-restart, so this just drops the stale references. See
+   * class doc's SHUTDOWN note: NEVER call `.destroy()` on them here, Phaser already has. A RenderTexture
+   * left dangling would throw on the next restart's teardown — this is the restart trap for this manager.
    */
   private destroy(): void {
-    // Drop the stale reference only — see class doc. `nightOverlay` isn't reassignable (readonly), so
-    // there's nothing else for this method to safely do; it exists to document/enforce the rule.
+    // Drop the stale references only — see class doc. Null them so a late tick can't touch a
+    // Phaser-destroyed GameObject; a fresh RT/brush are built by the next buildWorld().
+    this.nightRT = undefined as unknown as Phaser.GameObjects.RenderTexture;
+    this.brush = undefined as unknown as Phaser.GameObjects.Image;
   }
 }

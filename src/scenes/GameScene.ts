@@ -149,7 +149,7 @@ export class GameScene extends Phaser.Scene {
   private readonly nodeFx = new NodeFxManager(this);
 
   // Day/night clock + hunger/starvation (plan 015 Step 3) — see src/scenes/world/SurvivalClock.ts.
-  // Owns clockMs/dayPhase/dayCount/hunger/starveElapsed + the nightOverlay rect (sole alpha-writer).
+  // Owns clockMs/dayPhase/dayCount/hunger/starveElapsed + the night light-layer RenderTexture (sole writer).
   // Constructed fresh in buildWorld() each (re)start, at the same point the old inline night-overlay
   // block used to run; wires its own SHUTDOWN teardown directly.
   private survivalClock!: SurvivalClock;
@@ -238,7 +238,7 @@ export class GameScene extends Phaser.Scene {
   private taskGlowRenderer!: TaskGlowRenderer;
   // Fog of war (plan 015 Step 4) — see src/scenes/fx/VisionController.ts. Owns `fogShape` (the
   // vision-radius mask's shape source, redrawn each frame to track the character) and hides dynamic
-  // actors outside vision. Does NOT own `nightOverlay` (SurvivalClock does — see there). Constructed
+  // actors outside vision. Does NOT own the night light-layer (SurvivalClock does — see there). Constructed
   // fresh in buildWorld() each (re)start, at the same point the old inline fog-of-war block used to
   // run (after the player exists); wires its own SHUTDOWN teardown directly.
   private visionController!: VisionController;
@@ -705,7 +705,6 @@ export class GameScene extends Phaser.Scene {
       playerChar: this.playerChar,
       queue: this.queue,
       inv: this.inv,
-      nightOverlay: this.survivalClock.nightOverlay,
       gridDims: this.gridDims,
       getPlayerSprite: () => this.player,
       trees: () => this.resourceNodeManager.all(),

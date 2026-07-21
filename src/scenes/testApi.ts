@@ -1,4 +1,3 @@
-import type Phaser from 'phaser';
 import { DAY_MS, HUNGER_MAX } from '../config';
 import { NODES } from '../data/nodes';
 import { MELEE_WEAPONS } from '../data/weapons';
@@ -117,7 +116,6 @@ export interface TestApiDeps {
   readonly playerChar: PlayerCharacter;
   readonly queue: TaskQueue;
   readonly inv: Inventory;
-  readonly nightOverlay: Phaser.GameObjects.Rectangle;
   readonly gridDims: Dims;
 
   /** The live player sprite (playerChar.sprite) — read the same way every other manager does. */
@@ -349,8 +347,10 @@ export class TestApi {
     if (spec.rng) this.deps.setRng(spec.rng);
 
     // Seed survival state (plan 004). clockMs wins over startPhase; both drive the derived phase/day
-    // + the night-overlay alpha so a pre-step debugState() reflects the seed (update() reconciles the
-    // rest on the first driven step). hunger is clamped into [0, HUNGER_MAX].
+    // so a pre-step debugState() reflects the seed (update() reconciles the rest on the first driven
+    // step). The `nightAlpha` field is computed from the clock in debugState() (plan 039 Step 2 — the
+    // night light-layer is now a RenderTexture with no queryable alpha), so seeding the clock above is
+    // enough for the seed to show up; no GameObject poke needed. hunger is clamped into [0, HUNGER_MAX].
     if (spec.clockMs != null) this.deps.setClockMs(spec.clockMs);
     else if (spec.startPhase != null)
       this.deps.setClockMs(spec.startPhase === 'night' ? DAY_MS : 0);
@@ -358,7 +358,6 @@ export class TestApi {
       const cycleMs = this.deps.getClockMs() % cycleLengthMs();
       this.deps.setDayPhase(phaseAt(cycleMs));
       this.deps.setDayCount(dayCountForTotal(this.deps.getClockMs()));
-      this.deps.nightOverlay.setAlpha(tintAlphaAt(cycleMs));
       this.scene.registry.set('dayPhase', this.deps.getDayPhase());
       this.scene.registry.set('dayCount', this.deps.getDayCount());
     }
@@ -528,7 +527,10 @@ export class TestApi {
       dayPhase: this.deps.getDayPhase(),
       dayCount: this.deps.getDayCount(),
       clockMs: this.deps.getClockMs(),
-      nightAlpha: this.deps.nightOverlay.alpha,
+      // The night light-layer is a RenderTexture (plan 039 Step 2) with no queryable overlay alpha, so
+      // derive `nightAlpha` from the clock — byte-identical to the old `nightOverlay.alpha`, which was
+      // itself just `tintAlphaAt(cycleMs)` set each tick/seed. Keeps the DebugState contract unchanged.
+      nightAlpha: tintAlphaAt(this.deps.getClockMs() % cycleLengthMs()),
       outlinedTreeIds: this.deps.taskGlowRenderer.getOutlinedTreeIds(),
       pulsingTreeId: this.deps.taskGlowRenderer.headHarvestTreeId(),
       queuedTreeIds: this.deps.queue

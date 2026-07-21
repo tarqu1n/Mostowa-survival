@@ -136,7 +136,38 @@ the claim. The full-dark / light-only sightline is the natural companion to "fir
     core and is rejected just outside it; with no hearth, the bootstrap rect allows the first campfire;
     draining fuel shrinks the placeable area (assert a tile flips placeable→rejected as fuel drops).
 
-- [ ] **Step 2: Fully-dark night via an erase-composited, screen-space light layer** `[sub-agent]`
+- [x] **Step 2: Fully-dark night via an erase-composited, screen-space light layer** `[sub-agent]`
+  - Outcome: night is now fully dark, revealed only by a **soft radial-gradient disc** per lit fire.
+    Files: **`config.ts`** — `NIGHT_MAX_ALPHA` 0.55 → **1.0**, `COLORS.night` `0x0a1020` → `0x04060e`
+    (near-black); **`src/render/lightTexture.ts`** (NEW) — `bakeLightBrush()` bakes a cached 256px
+    radial-gradient brush (white core α1 → transparent rim α0) via 2D-canvas `createRadialGradient`,
+    mirroring `glowTexture.ts` (module cache, `addCanvas`, survives death-restarts); **`SurvivalClock.ts`**
+    — replaced the `Rectangle` + `lightShape` Graphics + inverted geometry mask + `redrawLight()` with a
+    **world-space viewport-sized `RenderTexture`** (`nightRT`, depth 15, re-centred on `cam.midPoint`
+    each frame) + a hidden erase-brush Image; new `composite(cycleMs)`: `clear()` → `fill(COLORS.night,
+    tintAlphaAt())` → per lit fire `erase(brush, l.x-left, l.y-top)` scaled `2·radius/brushSize` (early-
+    returns during the day when alpha ≤ 0); `destroy()` drops both refs (never `.destroy()` — the RT
+    restart trap); **`testApi.ts`/`GameScene.ts`** — dropped the now-invalid `nightOverlay` (Rectangle)
+    testApi dep; `nightAlpha` now computes `tintAlphaAt(getClockMs() % cycleLengthMs())` (byte-identical
+    to the old `.alpha` read); **`docs/RENDERING.md`** — new "Light layer" section.
+  - **Deviation (approved reasoning):** used a **world-space RT centred on `cam.midPoint`**, NOT the
+    plan's `setScrollFactor(0)` + `(x-scrollX)·zoom`. The naive screen-space formula omits the
+    `(viewport/2)(1-zoom)` term and mis-scales at zoom≠1; a world-space RT lets the camera's own
+    transform draw it 1:1 at every zoom, so the erase math is plain texture-local coords. Sized
+    `BASE_WIDTH+2·TILE × BASE_HEIGHT+2·TILE` (392×672) — the visible world extent at MIN_ZOOM equals
+    `BASE_WIDTH` regardless of `RENDER_SCALE`, so this always covers the viewport; **never map-sized**
+    (the banned 70MB case). Depth check: all gameplay sprites/FX are < 15 (enemy 9, player 10, combat FX
+    11-14), so the overlay conceals them for free — no tell needed lowering.
+  - **Verified (independently re-run):** typecheck clean; lint clean (only pre-existing GameScene
+    unbound-method warnings); 836/836 unit (daynight auto-tracked the `NIGHT_MAX_ALPHA` constant — no
+    edit); e2e **12/12 serial** (`survival-daynight` 2/2 with the new 1.0 plateau, `campfire` 9/9 incl.
+    the night `inLight` holes, `refactor-tripwire`); prod build clean; **boot canary: "game booted" ✓ +
+    "no console/page errors" ✓** (the RT-teardown-trap gates). The smoke scene-activation FAIL is
+    pre-existing (`smoke.mjs`'s single-tap boot race — confirmed identical with Step 2 stashed; the
+    retried-tap e2e specs render the night composite fine). **Deferred to human playtest:** the brush
+    falloff tuning (core brightness / shoulder softness vs `CLAIM_LIGHT_FRAC 0.7`) and an on-device look
+    at the gradient under NEAREST at 300% zoom. Two stale "nightOverlay" comments remain in
+    `VisionController.ts` (left untouched per "VisionController unchanged").
   - `config.ts`: `NIGHT_MAX_ALPHA` 0.55 → 1.0; `COLORS.night` → pure/near black. Confirm `tintAlphaAt`
     (`systems/daynight.ts`) still cross-fades to the new plateau (no math change); update the Tier-1
     `daynight` assertion for the 1.0 plateau.

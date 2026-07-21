@@ -246,10 +246,24 @@ export class ResourceNodeManager {
     });
   }
 
-  chop(tree: TreeNode, facing?: { dCol: number; dRow: number }): void {
+  /**
+   * Fell one hit off `tree`: decrement hp, credit the hit's yield, play the chop/fell fx, and (at
+   * hp<=0) deplete + schedule regrow — the single node-state bookkeeping path both actors share.
+   *
+   * `onYield` redirects WHERE the harvested item goes: omitted, the yield credits the player's shared
+   * inventory (the `deps.addYield` default — the player harvest path, unchanged). The AI companion's
+   * gather loop (plan 042 Step 4) passes its OWN sink so the yield accrues into its carry buffer /
+   * base-supply pool instead of the player's bag, while every other side effect (hp/deplete/regrow/fx)
+   * stays identical — so two actors chopping the same node keep one consistent node state.
+   */
+  chop(
+    tree: TreeNode,
+    facing?: { dCol: number; dRow: number },
+    onYield?: (itemId: string, n: number) => void,
+  ): void {
     breadcrumb('node', `chop ${tree.def.id} ${tree.id}`, { hp: tree.hp - 1, alive: tree.alive });
     tree.hp -= 1;
-    this.deps.addYield(tree.def.yieldItemId, tree.def.yieldPerHit);
+    (onYield ?? this.deps.addYield)(tree.def.yieldItemId, tree.def.yieldPerHit);
     // Per-hit chop feedback — routed to NodeFxManager (fx lives in scenes/fx, this stays a state
     // manager). It animates only the node sprite; the queued glow halo mirrors that motion each frame
     // via syncGlowTransforms(), so the outline follows for free. We pass plain data (skin resolution

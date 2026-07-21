@@ -11,6 +11,7 @@ import type { DayPhase } from '../systems/daynight';
 import type { MonsterMode } from '../systems/monsterAI';
 import type { Action } from '../systems/tasks';
 import type { DebugState } from '../scenes/testApi';
+import type { NpcDayRole, NpcNightPosture } from './NpcCharacter';
 import type { FacingSpec } from './types';
 
 /**
@@ -56,6 +57,20 @@ export interface ScenarioSpec {
   /** Spike traps placed built + ARMED, bypassing tilePlaceable (fixtures) — a spec drives one spent by
    *  scripting an enemy onto its tile (plan 040). See __test.applyScenario. */
   traps?: Array<[number, number]>;
+  /** Place the single AI companion (plan 042). `at` is its spawn tile; the rest seed its scaffold
+   *  state so a spec can read it back via `debugState().companion` (behaviour lands in later steps).
+   *  `guardAt` sets the night guard tile (not yet behavioural); `hp`/`downed` seed collapse-state e2e. */
+  companion?: {
+    at: [number, number];
+    dayRole?: NpcDayRole;
+    nightPosture?: NpcNightPosture;
+    guardAt?: [number, number];
+    hp?: number;
+    downed?: boolean;
+  };
+  /** Seed the shared base-supply pool's wood/rock counts (plan 042; the store module lands in Step 3,
+   *  so this seeds a placeholder holder for now). Surfaced in `debugState().baseSupply`. */
+  baseSupply?: { wood?: number; rock?: number };
   rng?: () => number;
   hunger?: number;
   clockMs?: number;
@@ -121,4 +136,13 @@ export interface GameTestApi {
   /** DEV/test-only: equip the player's melee weapon by `MELEE_WEAPONS` id, or clear to unarmed with
    *  `null` (an unknown id also clears) — lets a spec assert reach/arc deterministically (plan 036). */
   setPlayerMelee(id: string | null): void;
+  /** DEV/test-only: set the companion's day role — round-trips to `debugState().companion.dayRole`
+   *  (plan 042 Step 2). No-op if no companion is spawned; the behaviour it drives lands in later steps. */
+  setNpcDayRole(role: NpcDayRole): void;
+  /** DEV/test-only: set the companion's night posture — round-trips to
+   *  `debugState().companion.nightPosture` (plan 042 Step 2). No-op if no companion is spawned. */
+  setNpcNightPosture(posture: NpcNightPosture): void;
+  /** DEV/test-only: set the companion's night guard tile (plan 042 Step 2). No-op if no companion is
+   *  spawned; not surfaced in debugState yet (the guard behaviour that reads it lands in a later step). */
+  setNpcGuardPoint(col: number, row: number): void;
 }

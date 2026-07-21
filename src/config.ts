@@ -174,6 +174,72 @@ export const UNARMED_MELEE_SHAPE: AttackShape = { reach: 1, arc: 'single' };
 export const ATTACK_MOVE_SLOW = 0.2;
 
 /**
+ * NPC companion (the Rogue, plan 042) — a named constants block mirroring the player block above,
+ * NOT a data catalogue (the companion is one hand-built actor, like the player). `NpcCharacter`
+ * assembles its `CombatantStats` from these; the day/night role + posture behaviour that reads the
+ * timings lands in later steps.
+ *
+ * ALL NUMBERS ARE PLACEHOLDER TUNING (un-playtested), flagged per plan 040's convention — expect to
+ * retune once the companion's gather/repair/guard loop is actually playable:
+ *  - HP a notch below the player (a helper you must protect, not a second tank);
+ *  - SPEED a touch under the player so it trails rather than races ahead;
+ *  - VISION shorter than the player's day fog reach (it reacts to what's near, not the whole screen);
+ *  - CARRY_CAP deliberately LOW (it ferries a little, it isn't a warehouse);
+ *  - WINDUP/REPAIR in the low hundreds of ms; REVIVE_HP the HP it stands back up with at dawn.
+ */
+export const NPC_MAX_HP = 8;
+export const NPC_SPEED = 80;
+export const NPC_VISION = TILE_SIZE * 4;
+export const NPC_STRENGTH = 1;
+export const NPC_CARRY_CAP = 5;
+export const NPC_ATTACK_WINDUP_MS = 300;
+/**
+ * Companion night-combat cadence (plan 042 Step 7). Between directed strikes the companion waits
+ * `NPC_ATTACK_COOLDOWN_MS`; the strike itself is telegraphed by `NPC_ATTACK_WINDUP_MS` of wind-up
+ * first (the acquire→chase→telegraphed-contact shape reused from the monster, not its FSM). While
+ * chasing the nearest live enemy it refreshes its path to a stand-adjacent tile at most every
+ * `NPC_COMBAT_REPATH_MS` (the gather/repair loop's stuck-guard still applies). PLACEHOLDER tuning
+ * (un-playtested), flagged per plan 040's convention — retune vs wave DPS once the loop is playable.
+ */
+export const NPC_ATTACK_COOLDOWN_MS = 700;
+export const NPC_COMBAT_REPATH_MS = 300;
+export const NPC_REPAIR_MS = 400;
+/**
+ * Per-repair-tick economy for the `repair` day role (plan 042 Step 5). On each `NPC_REPAIR_MS` cadence
+ * the companion withdraws `NPC_REPAIR_WOOD_PER_TICK` wood from the shared base supply and restores
+ * `NPC_REPAIR_HP_PER_TICK` hp to the wall it's mending; an empty supply stops the repair (goes idle).
+ * This ties the two day roles together economically — gather fills the pool, repair drains it. A wall
+ * (maxHp 12) fully mends from rubble in ~6 ticks / 6 wood at these values. PLACEHOLDER tuning
+ * (un-playtested), flagged per plan 040's convention — retune vs wave DPS + wall maxHp once playable.
+ */
+export const NPC_REPAIR_WOOD_PER_TICK = 1;
+export const NPC_REPAIR_HP_PER_TICK = 2;
+export const NPC_REVIVE_HP = 3;
+/**
+ * Companion `follow` night posture (plan 042 Step 8). While following the player the companion holds
+ * station within this Chebyshev radius (tiles) and only (re)paths once the player steps beyond it — so
+ * a still player never makes it path-thrash. The `guard` posture leashes to its `guardPoint` and
+ * engages within the shared `NPC_VISION`; the `refuel` posture feeds the lit hearth one base-supply
+ * wood per `CAMPFIRE_FEED_INTERVAL_MS` (adding `CAMPFIRE_FUEL_PER_WOOD` fuel — the same wood→fuel
+ * exchange the player's refuel order uses), holding at the last-known hearth tile when no fire is lit.
+ * PLACEHOLDER tuning (un-playtested), flagged per plan 040's convention.
+ */
+export const NPC_FOLLOW_RADIUS_TILES = 3;
+/**
+ * NPC body extent for combat targeting (see `Hurtbox`) — same ~1-wide, 2-tall silhouette as the
+ * player (the Rogue is a humanoid of the same rough size). Occupancy stays the single feet tile.
+ */
+export const NPC_HURTBOX: Hurtbox = { width: 1, height: 2 };
+/**
+ * The melee weapon id the companion carries (plan 042) — keys BOTH its gameplay stats
+ * (`MELEE_WEAPONS[NPC_MELEE_WEAPON_ID]` in data/weapons.ts) AND its held-blade art
+ * (`ACTIVE_TILESET.actors.npc.weapons[...]`), exactly as a skeleton's weapon id joins the two
+ * catalogues. `cleaver` = a short reach:1 swing that suits a close-in rogue. Placeholder — the
+ * directed swing that consumes it is plan 042 Step 7.
+ */
+export const NPC_MELEE_WEAPON_ID = 'cleaver';
+
+/**
  * Bow-fire commitment (plan 035a Steps 2/5). Loosing an arrow locks the player into a brief
  * draw/release for `BOW_DRAW_MS`, during which move speed drops only to `BOW_MOVE_SLOW` of normal —
  * far lighter than the melee `ATTACK_MOVE_SLOW`, so you can keep kiting while you shoot. The

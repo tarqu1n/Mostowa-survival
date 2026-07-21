@@ -86,7 +86,7 @@ export class TaskGlowRenderer {
       } else if (a.kind === 'rearm') {
         const s = this.deps.structureById(a.trapId);
         if (s) this.outlineStructure(s);
-      } else {
+      } else if (a.kind === 'move') {
         this.queueMarkers.push(
           this.scene.add
             .rectangle(

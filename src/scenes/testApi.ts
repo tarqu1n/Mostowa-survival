@@ -20,8 +20,10 @@ import type { ScenarioSpec, ScenarioResult } from '../entities/testTypes';
 import type { CharacterSprite } from '../entities/Character';
 import type { PlayerCharacter } from '../entities/PlayerCharacter';
 import type { MonsterCharacter, MonsterSpawnOpts } from '../entities/MonsterCharacter';
+import type { NpcDayRole, NpcNightPosture } from '../entities/NpcCharacter';
 import type { BuildManager } from './build/BuildManager';
 import type { StructureManager } from './world/StructureManager';
+import type { CompanionManager } from './world/CompanionManager';
 import type { CampfireBehavior } from './world/CampfireBehavior';
 import type { WallBehavior } from './world/WallBehavior';
 import type { TrapBehavior } from './world/TrapBehavior';
@@ -92,6 +94,22 @@ export interface DebugState {
   // assert the trigger flips armed→false, the dawn/tap rearm flips it back, and placement/regression.
   // New DebugState fields go at the END + the refactor-tripwire golden is bumped in the same step.
   traps: { col: number; row: number; armed: boolean }[];
+  // Appended (plan 042 Step 2) — the single AI companion's scaffold state (tile + day role / night
+  // posture / hp / downed / carry), or null when no companion is present. Lets a Tier-2 spec place the
+  // NPC and read its state back; the gather/guard behaviour that mutates it lands in later steps.
+  companion: {
+    col: number;
+    row: number;
+    dayRole: NpcDayRole;
+    nightPosture: NpcNightPosture;
+    hp: number;
+    downed: boolean;
+    carry: number;
+  } | null;
+  // Appended (plan 042 Step 2) — the shared base-supply pool (wood/rock) the companion's gather/repair
+  // loop draws on. Backed by the dedicated `BaseSupply` store since Step 3 (see src/systems/baseSupply.ts);
+  // the `{wood, rock}` shape is frozen. New fields go at the END + golden bumped.
+  baseSupply: { wood: number; rock: number };
 }
 
 /**
@@ -109,6 +127,7 @@ export interface DebugState {
 export interface TestApiDeps {
   readonly buildManager: BuildManager;
   readonly structureManager: StructureManager;
+  readonly companionManager: CompanionManager;
   readonly waveDirector: WaveDirector;
   readonly taskGlowRenderer: TaskGlowRenderer;
   readonly fx: CombatFxManager;
@@ -173,6 +192,11 @@ export interface TestApiDeps {
   emitTasks(): void;
   inspectAt(x: number, y: number): void;
   isBlocked(col: number, row: number): boolean;
+
+  // Base-supply pool (plan 042 Step 3) — read for debugState, seeded/zeroed for a scenario. Backed by
+  // GameScene's `BaseSupply` store (snapshot in / set out); set() also drives the HUD via `supply:changed`.
+  getBaseSupply(): { wood: number; rock: number };
+  setBaseSupply(v: { wood: number; rock: number }): void;
 }
 
 /**
@@ -220,6 +244,7 @@ export class TestApi {
     this.deps.resetTreesAndEnemies();
     this.deps.buildManager.reset(); // sites/siteTiles/occupied/walls/nextSiteId/buildMode
     this.deps.structureManager.reset(); // destroy campfire + wall sprites, clear both collections (RUNTIME path)
+    this.deps.companionManager.reset(); // destroy the companion sprite + drop it (RUNTIME path, plan 042)
     this.deps.waveDirector.reset(); // clear any running wave + its first-tick reconcile flag (plan 038)
     this.deps.taskGlowRenderer.reset(); // queue markers + glow halos/pulse + outlinedTreeIds
 
@@ -246,6 +271,7 @@ export class TestApi {
     this.deps.setDayCount(1);
     this.deps.setHunger(HUNGER_MAX);
     this.deps.setStarveElapsed(0);
+    this.deps.setBaseSupply({ wood: 0, rock: 0 }); // plan 042 Step 3 — clear the pool so a scenario never inherits a prior one (re-seeded below via spec.baseSupply)
 
     // Zero the shared Inventory in place (keep the same instance so UIScene's 'change' binding holds).
     const snap = this.deps.inv.snapshot();
@@ -343,6 +369,29 @@ export class TestApi {
       this.deps.addEnemy(id, at[0], at[1], opts);
       enemyIds.push(this.deps.enemies()[this.deps.enemies().length - 1].id);
     }
+
+    // Companion (plan 042 Step 2) — place the single NPC via the manager (mirrors the enemies path) and
+    // seed its scaffold state from the spec so it round-trips to debugState().companion. Behaviour
+    // (gather/repair/guard/follow/refuel + the dawn revive) lands in later steps; this only positions +
+    // seeds the fields. `hp`/`downed` seed the state a later step's e2e drives; `guardAt` sets the (not-
+    // yet-behavioural) night guard tile.
+    if (spec.companion) {
+      const c = spec.companion;
+      const npc = this.deps.companionManager.spawn(c.at[0], c.at[1]);
+      if (c.dayRole != null) npc.dayRole = c.dayRole;
+      if (c.nightPosture != null) npc.nightPosture = c.nightPosture;
+      if (c.guardAt != null) npc.guardPoint = { col: c.guardAt[0], row: c.guardAt[1] };
+      if (c.hp != null) npc.hp = c.hp;
+      if (c.downed != null) npc.downed = c.downed;
+    }
+
+    // Base-supply pool (plan 042 Step 3) — seed the dedicated store (resetWorld cleared it above); the
+    // set() emits 'change', so the HUD readout reflects the seeded counts. The `{wood, rock}` shape is frozen.
+    if (spec.baseSupply)
+      this.deps.setBaseSupply({
+        wood: spec.baseSupply.wood ?? 0,
+        rock: spec.baseSupply.rock ?? 0,
+      });
 
     if (spec.rng) this.deps.setRng(spec.rng);
 
@@ -548,6 +597,26 @@ export class TestApi {
       waveSpawns: this.deps.waveDirector.spawnedCount(),
       enemyKinds: aliveEnemies.map((z) => z.def.id),
       traps: this.trap.all().map((t) => ({ col: t.col, row: t.row, armed: t.state.armed })),
+      companion: this.companionSnapshot(),
+      baseSupply: this.deps.getBaseSupply(),
+    };
+  }
+
+  /** The companion's scaffold state for {@link debugState}, or null when none is spawned (plan 042
+   *  Step 2). Tile is derived from its sprite (like the enemy tiles), matching `debugState`'s other
+   *  actor reads. */
+  private companionSnapshot(): DebugState['companion'] {
+    const npc = this.deps.companionManager.get();
+    if (!npc) return null;
+    const t = npc.tile();
+    return {
+      col: t.col,
+      row: t.row,
+      dayRole: npc.dayRole,
+      nightPosture: npc.nightPosture,
+      hp: npc.hp,
+      downed: npc.downed,
+      carry: npc.carry,
     };
   }
 }

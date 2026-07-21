@@ -24,12 +24,14 @@ import {
   INVENTORY_SLOTS,
   DEFAULT_MAX_STACK,
   PLAYER_LIGHT_RADIUS,
+  RENDER_SCALE,
 } from '../config';
 import { ITEMS } from '../data/items';
 import { NODES } from '../data/nodes';
 import { BUILDABLES } from '../data/buildables';
 import { Inventory } from '../systems/Inventory';
-import { tileKey, tileToWorldCenter } from '../systems/grid';
+import { BaseSupply } from '../systems/baseSupply';
+import { tileKey, tileToWorldCenter, worldToTile } from '../systems/grid';
 import { findPath, reachableAdjacent, type Cell } from '../systems/pathfind';
 import { originOf } from '../systems/mapRuntime';
 import { mapBlocks } from '../systems/mapWalkability';
@@ -38,7 +40,7 @@ import type { MapFile, DecorObject, NodeObject, PortalObject } from '../systems/
 import { breadcrumb, setCrashContext } from '../debug/crashReporter';
 import { TaskQueue, type Action } from '../systems/tasks';
 import { resolveMeleeAttack, resolveRangedAttack, objectAsDefender } from '../systems/combat';
-import { attackTiles } from '../systems/hurtbox';
+import { attackTiles, hurtboxTiles, DEFAULT_HURTBOX } from '../systems/hurtbox';
 import type { DayPhase } from '../systems/daynight';
 import type { UIScene } from './UIScene';
 import type { GameTestApi } from '../entities/testTypes';
@@ -54,6 +56,8 @@ import { TaskGlowRenderer } from './fx/TaskGlowRenderer';
 import { ResourceNodeManager } from './world/ResourceNodeManager';
 import { DecorManager } from './world/DecorManager';
 import { EnemyManager } from './world/EnemyManager';
+import { CompanionManager } from './world/CompanionManager';
+import type { NpcCharacter, NpcDayRole, NpcNightPosture } from '../entities/NpcCharacter';
 import { StructureManager } from './world/StructureManager';
 import { CampfireBehavior } from './world/CampfireBehavior';
 import { WallBehavior } from './world/WallBehavior';
@@ -79,6 +83,26 @@ export class GameScene extends Phaser.Scene {
   // anim + death collapse. Recreated every create() (a death-restart), so all its state starts fresh.
   private playerChar!: PlayerCharacter;
 
+  // The AI companion (plan 042) — spawn, per-frame drive, reset/teardown — see
+  // src/scenes/world/CompanionManager.ts. Owns the single NpcCharacter. Constructed fresh in
+  // buildWorld() each (re)start, AFTER the player (construction order is load-bearing — later steps'
+  // tick env reads player state); wires its own SHUTDOWN teardown. Replaces the Step-1 dev seam.
+  private companionManager!: CompanionManager;
+
+  /** The shared base-supply pool (plan 042 Step 3): a `wood`/`rock` stockpile SEPARATE from the player
+   *  {@link Inventory} (critique #3), the sink the companion gathers into (Step 4) + the source wall
+   *  repairs draw from (Step 5). Owned here, constructed fresh per `buildWorld()` (so a death-restart
+   *  starts empty), surfaced in `debugState().baseSupply`, seeded by a scenario's `baseSupply`, and
+   *  bridged to the HUD via `supply:changed` (see buildWorld). Exposed to CompanionManager via
+   *  {@link supply} when Steps 4/5 need it. See src/systems/baseSupply.ts. */
+  private baseSupply!: BaseSupply;
+
+  /** The shared base-supply stockpile — CompanionManager reaches it here once the gather/repair loop
+   *  lands (plan 042 Steps 4/5). Constructed in buildWorld, so only valid after (re)start. */
+  get supply(): BaseSupply {
+    return this.baseSupply;
+  }
+
   /** The player's sprite — camera/fog/pointer code addresses the display object this way. */
   private get player(): CharacterSprite {
     return this.playerChar.sprite;
@@ -100,6 +124,12 @@ export class GameScene extends Phaser.Scene {
   // mode — turning either on turns the other off. Non-destructive: toggling it never cancelAll()s the
   // queue (mirrors build mode). UIScene mirrors it via `demolish:modeChanged` for the DEMOLISH button.
   private demolishMode = false;
+
+  // Guard-point placement (plan 042 Step 9): armed by the companion assignment menu's "Guard here"
+  // option, it makes the NEXT command-mode world tap set the companion's guard tile (and its night
+  // posture to `guard`), then disarms — the arm→place→disarm shape build placement uses. A tap back
+  // on the NPC while armed cancels it (as does Escape). Layered on command mode like demolish mode.
+  private placingGuardPoint = false;
 
   // Auto-surface combat controls (plan 035a Step 3): recomputed every frame (updateCombatActive) —
   // true while a live enemy is within COMBAT_ACTIVE_RADIUS_TILES of the player OR it's night. Drives
@@ -280,6 +310,7 @@ export class GameScene extends Phaser.Scene {
     if (a.kind === 'build') return a.siteId;
     if (a.kind === 'deconstruct') return a.wallId;
     if (a.kind === 'rearm') return a.trapId;
+    if (a.kind === 'repair') return a.wallId; // companion-only order (never in the player queue) — keeps the union exhaustive
     return `(${a.col},${a.row})`;
   }
 
@@ -312,6 +343,9 @@ export class GameScene extends Phaser.Scene {
     this.nodeFx.reset();
     this.mode = 'command';
     this.demolishMode = false; // a death-restart starts clear of demolish mode (UIScene resynced in buildWorld)
+    this.placingGuardPoint = false; // …and clear of any half-armed guard-point placement (plan 042 Step 9)
+    // baseSupply is (re)constructed fresh in buildWorld (like the shared Inventory), so a death-restart
+    // starts with an empty pool without an explicit reset here — see plan 042 Step 3.
   }
 
   /**
@@ -346,6 +380,14 @@ export class GameScene extends Phaser.Scene {
       maxStackOf: (id) => ITEMS[id]?.maxStack ?? DEFAULT_MAX_STACK,
     });
     this.registry.set('inventory', this.inv);
+
+    // Shared base-supply pool (plan 042 Step 3) — fresh each (re)start (so a death-restart starts
+    // empty). Bridge its 'change' to a `supply:changed` game event so the HUD (UIScene) reflects
+    // deposits/withdrawals/seeding, mirroring how CampfireBehavior feeds the fire bar via `fire:changed`.
+    this.baseSupply = new BaseSupply();
+    this.baseSupply.on('change', (snap: { wood: number; rock: number }) =>
+      this.game.events.emit('supply:changed', snap),
+    );
 
     // Resource nodes (plan 015 Step 1) — constructed before the player (its constructor must not
     // touch player closures); loadNodes() is a separate call right after so construction itself
@@ -389,6 +431,21 @@ export class GameScene extends Phaser.Scene {
       rng: () => this.rng(),
       onPlayerHurt: () => this.onPlayerHurt(),
       damagePlayer: (amount) => this.damagePlayer(amount),
+      // Companion NPC as a threat (plan 042 Step 6) — a narrow snapshot assembled from CompanionManager
+      // (the scene mediates; no manager↔manager edge). Null when unspawned; EnemyManager omits a downed
+      // NPC from the threat list. `damageNpc`/`onNpcHurt` are the NPC twins of the player bite seams.
+      companion: () => {
+        const npc = this.companionManager.get();
+        if (!npc) return null;
+        return {
+          tile: npc.tile(),
+          pos: { x: npc.sprite.x, y: npc.sprite.y },
+          stats: npc.stats,
+          downed: npc.downed,
+        };
+      },
+      onNpcHurt: () => this.onNpcHurt(),
+      damageNpc: (amount) => this.damageNpc(amount),
       litHearth: () => this.litHearth(),
       attackFire: (id, amount) => this.campfire.damageFire(id, amount),
       // Structure-target seam (plan 037 2c) — the wall a walled-off mob bashes, plus its combat defender
@@ -425,6 +482,58 @@ export class GameScene extends Phaser.Scene {
     // playerStats is the player's stat bag surfaced for the Wellbeing screen's stat rows.
     this.registry.set('playerStats', this.playerChar.stats);
     this.physics.world.setBounds(originPx.x, originPx.y, worldPx.w, worldPx.h);
+
+    // AI companion (plan 042 Step 2) — constructed AFTER the player (construction order is load-bearing:
+    // later steps' per-frame tick env reads player state). Side-effect-free like EnemyManager: it does
+    // NOT auto-spawn — a dev seam / scenario calls spawn() — and wires its own SHUTDOWN teardown.
+    this.companionManager = new CompanionManager(this, {
+      dims: () => this.gridDims,
+      isBlocked: (col, row) => this.isBlocked(col, row),
+      playerTile: () => this.playerChar.tile(),
+      dayPhase: () => this.survivalClock.dayPhase,
+      nodes: () => this.resourceNodeManager.all(),
+      chopNode: (tree, facing, onYield) => this.resourceNodeManager.chop(tree, facing, onYield),
+      litHearthTile: () => this.litHearth()?.tile ?? null,
+      supplyAdd: (item, n) => this.baseSupply.add(item, n),
+      // Repair day role (plan 042 Step 5) — the wall-facing deps. Call-time closures over the `wall`
+      // behavior getter (resolved lazily, so it's live even though StructureManager is constructed just
+      // below this) + the base-supply pool; kept narrow (a plain snapshot + ops), never the manager.
+      walls: () =>
+        this.wall
+          .all()
+          .map((w) => ({ id: w.id, col: w.col, row: w.row, hp: w.state.hp, maxHp: w.state.maxHp })),
+      repairWall: (id, amount) => this.wall.repair(id, amount),
+      supplyCount: (item) => this.baseSupply.count(item),
+      supplyTake: (item, n) => this.baseSupply.take(item, n),
+      // Night combat (plan 042 Step 7) — the enemy-facing deps. A plain per-tick snapshot of the live
+      // mobs as combat targets (id + world pos + feet tile + body tiles + stats), and a damage op that
+      // routes back through EnemyManager.hurtEnemy BY ID — the SAME kill/flash/corpse path the player's
+      // attack + the trap use, so enemy-death bookkeeping isn't duplicated. `rng` mirrors EnemyManager's
+      // so the DEV test API's pinned rng reaches the companion's hit rolls too.
+      enemies: () =>
+        this.enemyManager
+          .all()
+          .filter((z) => z.alive)
+          .map((z) => ({
+            id: z.id,
+            pos: { x: z.sprite.x, y: z.sprite.y },
+            tile: { col: z.col, row: z.row },
+            bodyTiles: hurtboxTiles({ col: z.col, row: z.row }, z.def.hurtbox ?? DEFAULT_HURTBOX),
+            stats: z.def,
+          })),
+      damageEnemy: (id, amount) => {
+        const z = this.enemyManager.all().find((e) => e.id === id && e.alive);
+        if (z) this.enemyManager.hurtEnemy(z, amount);
+      },
+      rng: () => this.rng(),
+      // Refuel night posture (plan 042 Step 8) — feed the lit hearth `amount` fuel WITHOUT an Inventory
+      // spend (the companion sources wood from the base-supply pool via `supplyTake`, not the player's
+      // bag), routed to CampfireBehavior.refuel on the lit hearth. False (no-op) when no fire is lit.
+      refuelFire: (amount) => {
+        const h = this.litHearth();
+        return h ? this.campfire.refuel(h.id, amount) : false;
+      },
+    });
 
     // Build placement (plan 013 Step 6) — constructed fresh each (re)start; its constructor wires a
     // physics collider against the player sprite just constructed above, and its own SHUTDOWN
@@ -503,6 +612,7 @@ export class GameScene extends Phaser.Scene {
       allSites: () => this.buildManager.allSites(),
       structures: () => this.structureManager.all(),
       structureStats: (s) => this.structureManager.stats(s),
+      companion: () => this.companionManager.get(),
     });
 
     // Queue/glow presentation (plan 013 Step 6) — pure presentation over the queue, so it has no
@@ -535,6 +645,28 @@ export class GameScene extends Phaser.Scene {
       getMode: () => this.mode,
       isMovepadHeld: () => this.ui.isMovepadHeld(),
       onTap: (pointer) => {
+        // Guard-point placement (plan 042 Step 9): while armed by the assignment menu's "Guard here",
+        // the tap places the point — UNLESS it landed back on the NPC, which cancels (the menu's other
+        // documented escape hatch). Checked first so it fully owns the tap while armed, mirroring the
+        // build-placement arm→place→disarm shape (and demolish mode's own first-check below).
+        if (this.placingGuardPoint) {
+          if (this.scenePicker.companionAt(pointer.worldX, pointer.worldY)) {
+            this.cancelPlaceGuardPoint(); // tapped the NPC again — cancel, don't post here
+            return;
+          }
+          this.setNpcGuardPoint(worldToTile(pointer.worldX), worldToTile(pointer.worldY));
+          this.setNpcNightPosture('guard'); // posting a point also adopts the guard posture
+          this.placingGuardPoint = false;
+          return;
+        }
+        // A tap on the companion opens its assignment menu (day role / night posture) instead of
+        // issuing a world order — so tapping the NPC never also moves the player onto its tile. Checked
+        // before demolish/actionAt, the same priority a campfire's refuel gets in ScenePicker.actionAt.
+        const npc = this.scenePicker.companionAt(pointer.worldX, pointer.worldY);
+        if (npc) {
+          this.openNpcMenu(npc);
+          return;
+        }
         // Demolish mode (plan 037 2b): a tap on a finished wall enqueues its deconstruct order; a tap
         // on empty ground / a non-wall does nothing (no move/harvest). Checked before the normal tap
         // dispatch so it fully owns the tap while the mode is on.
@@ -630,6 +762,9 @@ export class GameScene extends Phaser.Scene {
     // Same resync for demolish mode — UIScene survives a death-restart, so re-emit the reset value
     // (false) so its DEMOLISH button/hint don't linger toggled from the prior run (plan 037 2b).
     this.game.events.emit('demolish:modeChanged', this.demolishMode);
+    // Seed the base-supply HUD readout with this (re)start's pool (fresh = 0/0). UIScene survives a
+    // death-restart, so re-emit the current counts so its readout reflects this run (plan 042 Step 3).
+    this.game.events.emit('supply:changed', this.baseSupply.snapshot());
   }
 
   /** Wire every `game.events` scene↔UIScene listener + its matching SHUTDOWN teardown (the same 12
@@ -644,10 +779,16 @@ export class GameScene extends Phaser.Scene {
     this.game.events.on('tasks:cancel', this.cancelAll, this);
     this.game.events.on('debug:randomise', this.randomiseWorld, this); // dev menu: scatter nodes + enemies
     this.game.events.on('debug:spawnEnemy', this.spawnEnemyNearPlayer, this); // dev menu: drop one enemy by the player to fight
+    this.game.events.on('debug:spawnNpc', this.spawnNpcNearPlayer, this); // dev menu: drop the companion Rogue by the player (plan 042)
     this.game.events.on('debug:toggleTime', this.survivalClock.toggleDayNight, this.survivalClock); // dev menu: flip day/night
     this.game.events.on('debug:forceWave', this.onForceWave, this); // dev menu: jump to night + start a wave now
     this.game.events.on('time:changed', this.waveDirector.onTimeChanged, this.waveDirector); // start/stop the night wave on dusk/dawn
     this.game.events.on('time:changed', this.rearmTrapsAtDawn, this); // dawn → auto-enqueue rearm for spent traps (plan 040)
+    this.game.events.on(
+      'time:changed',
+      this.companionManager.onPhaseChanged,
+      this.companionManager,
+    ); // night→adopt posture / day→resume role + revive (plan 042 Step 8)
     this.game.events.on('zoom:delta', this.pointerInput.adjustZoom, this.pointerInput);
     this.game.events.on('camera:center', this.pointerInput.centerOnPlayer, this.pointerInput);
     this.game.events.on('combat:attack', this.attack, this);
@@ -657,6 +798,12 @@ export class GameScene extends Phaser.Scene {
     this.game.events.on('needs:eat', this.survivalClock.onNeedsEat, this.survivalClock);
     this.game.events.on('combat:move', this.onCombatMove, this);
     this.game.events.on('combat:moveEnd', this.onCombatMoveEnd, this);
+    // Companion assignment menu (plan 042 Step 9) — UIScene's popover buttons route back here through
+    // the same shared setters the `__test` seams call; "Guard here" arms the place-point mode.
+    this.game.events.on('npc:assignDayRole', this.setNpcDayRole, this);
+    this.game.events.on('npc:assignNightPosture', this.setNpcNightPosture, this);
+    this.game.events.on('npc:beginPlaceGuard', this.beginPlaceGuardPoint, this);
+    this.game.events.on('npc:cancelPlaceGuard', this.cancelPlaceGuardPoint, this); // Escape while armed
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.game.events.off('build:toggle', this.buildManager.toggleBuild, this.buildManager);
@@ -667,6 +814,7 @@ export class GameScene extends Phaser.Scene {
       this.game.events.off('tasks:cancel', this.cancelAll, this);
       this.game.events.off('debug:randomise', this.randomiseWorld, this);
       this.game.events.off('debug:spawnEnemy', this.spawnEnemyNearPlayer, this);
+      this.game.events.off('debug:spawnNpc', this.spawnNpcNearPlayer, this);
       this.game.events.off(
         'debug:toggleTime',
         this.survivalClock.toggleDayNight,
@@ -675,6 +823,11 @@ export class GameScene extends Phaser.Scene {
       this.game.events.off('debug:forceWave', this.onForceWave, this);
       this.game.events.off('time:changed', this.waveDirector.onTimeChanged, this.waveDirector);
       this.game.events.off('time:changed', this.rearmTrapsAtDawn, this);
+      this.game.events.off(
+        'time:changed',
+        this.companionManager.onPhaseChanged,
+        this.companionManager,
+      );
       this.game.events.off('zoom:delta', this.pointerInput.adjustZoom, this.pointerInput);
       this.game.events.off('camera:center', this.pointerInput.centerOnPlayer, this.pointerInput);
       this.game.events.off('combat:attack', this.attack, this);
@@ -684,6 +837,10 @@ export class GameScene extends Phaser.Scene {
       this.game.events.off('needs:eat', this.survivalClock.onNeedsEat, this.survivalClock);
       this.game.events.off('combat:move', this.onCombatMove, this);
       this.game.events.off('combat:moveEnd', this.onCombatMoveEnd, this);
+      this.game.events.off('npc:assignDayRole', this.setNpcDayRole, this);
+      this.game.events.off('npc:assignNightPosture', this.setNpcNightPosture, this);
+      this.game.events.off('npc:beginPlaceGuard', this.beginPlaceGuardPoint, this);
+      this.game.events.off('npc:cancelPlaceGuard', this.cancelPlaceGuardPoint, this);
     });
 
     this.emitTasks();
@@ -702,6 +859,7 @@ export class GameScene extends Phaser.Scene {
     const testApi = new TestApi(this, {
       buildManager: this.buildManager,
       structureManager: this.structureManager,
+      companionManager: this.companionManager,
       waveDirector: this.waveDirector,
       taskGlowRenderer: this.taskGlowRenderer,
       fx: this.fx,
@@ -765,6 +923,10 @@ export class GameScene extends Phaser.Scene {
       emitTasks: () => this.emitTasks(),
       inspectAt: (x, y) => this.scenePicker.inspectAt(x, y),
       isBlocked: (col, row) => this.isBlocked(col, row),
+      // Base-supply pool (plan 042 Step 3) — read/seed the dedicated store. `snapshot()` hands out a
+      // copy; `set()` overwrites both counts (and emits 'change' → the HUD updates via `supply:changed`).
+      getBaseSupply: () => this.baseSupply.snapshot(),
+      setBaseSupply: (v) => this.baseSupply.set(v),
     });
     const api: GameTestApi = {
       applyScenario: (spec) => testApi.applyScenario(spec),
@@ -804,6 +966,12 @@ export class GameScene extends Phaser.Scene {
       zoneAt: (c, r) => this.zoneAt(c, r),
       moveEnemy: (i, c, r) => testApi.moveEnemy(i, c, r),
       setPlayerMelee: (id) => testApi.setPlayerMelee(id),
+      // Companion assignment setters (plan 042 Step 2) — route to the SHARED scene methods the
+      // assignment menu also calls (plan 042 Step 9), so the harness and the in-game menu drive exactly
+      // one code path. No-op if no companion is spawned; each writes a live-polled field.
+      setNpcDayRole: (role) => this.setNpcDayRole(role),
+      setNpcNightPosture: (posture) => this.setNpcNightPosture(posture),
+      setNpcGuardPoint: (c, r) => this.setNpcGuardPoint(c, r),
     };
     (this.game as unknown as { __test?: GameTestApi }).__test = api;
   }
@@ -827,6 +995,10 @@ export class GameScene extends Phaser.Scene {
     // Live structures tick every frame too (above the early-return), so a campfire burns down whether
     // or not a worker task is active — mirrors the survival tick. See src/scenes/world/StructureManager.ts.
     this.structureManager.tick(delta);
+
+    // AI companion (plan 042) — drive it each frame (advance path + anim today; the gather/guard tick
+    // lands later). Above the no-action early-return so it ticks whether or not a worker task is active.
+    this.companionManager.update(delta);
 
     // Night wave scheduler (plan 038 Step 3) — meter out spawns during the night. Above the no-action
     // early-return (so it runs whether or not a task is active) but below the `playerChar.dying` freeze
@@ -963,6 +1135,9 @@ export class GameScene extends Phaser.Scene {
       if (!this.pathTo({ col: a.col, row: a.row })) this.completeCurrent();
       return;
     }
+    // `repair` is a companion-only order (driven on CompanionManager's own queue, plan 042 Step 5) —
+    // it never reaches the player's queue; drop it defensively so the kind union stays exhaustive.
+    if (a.kind === 'repair') return this.completeCurrent();
     if (a.kind === 'harvest') {
       const tree = this.resourceNodeManager.treeById(a.treeId);
       if (!tree || !tree.alive) return this.completeCurrent();
@@ -1349,6 +1524,28 @@ export class GameScene extends Phaser.Scene {
     if (this.playerChar.hp <= 0) this.killPlayer();
   }
 
+  /** Apply a mob's bite to the companion NPC (plan 042 Step 6 — the NPC twin of {@link damagePlayer}).
+   *  A no-op once downed (mobs stop targeting it, but this also guards against an in-flight strike landing
+   *  the same tick it collapsed). On a lethal blow it collapses into the `downed` state via the
+   *  character-side die(); the dawn revive that stands it back up is plan 042 Step 7. FX are cleaned up
+   *  first, mirroring the enemy kill path, so no in-flight flash tween pokes the (surviving) sprite. */
+  private damageNpc(amount: number): void {
+    const npc = this.companionManager.get();
+    if (!npc || npc.downed || amount <= 0) return;
+    npc.takeDamage(amount);
+    if (npc.hp <= 0) {
+      this.fx.cleanupActorFx(npc.sprite); // stop any in-flight hit-flash before the collapse
+      npc.die(); // character-side collapse → downed; CompanionManager idles it on the Death strip
+    }
+  }
+
+  /** Landed-bite feedback on the companion — its sprite flash (the NPC twin of {@link onPlayerHurt},
+   *  without the player-only screen-edge damage vignette / camera kick). No-op if it's gone/downed. */
+  private onNpcHurt(): void {
+    const npc = this.companionManager.get();
+    if (npc && !npc.downed) this.fx.flashHit(npc.sprite);
+  }
+
   /** Attack the tiles the current melee swing covers: flat damage via the shared combat formula to
    * EVERY distinct alive enemy the swing's shape reaches (plan 036 — a cleave/line hits all of them,
    * each once; unarmed's single front tile reproduces the old one-target behaviour). Shape + base
@@ -1525,6 +1722,60 @@ export class GameScene extends Phaser.Scene {
     if (active && this.demolishMode) this.setDemolishMode(false);
   }
 
+  // --- Companion assignment (plan 042 Step 9) — the SHARED setter path the assignment menu AND the
+  // `__test` seams both call, so the in-game popover and the harness drive exactly one code path. Each
+  // is a no-op when no companion is spawned; the fields are polled live by CompanionManager.update, so
+  // a change takes effect on the next frame (no restart of an in-flight role/posture needed). ------
+
+  /** Set the companion's day job (Gather / Repair). Wired to the menu's `npc:assignDayRole` + the
+   *  `setNpcDayRole` `__test` seam. */
+  private setNpcDayRole(role: NpcDayRole): void {
+    const npc = this.companionManager.get();
+    if (npc) npc.dayRole = role;
+  }
+
+  /** Set the companion's night posture (Guard / Follow / Refuel). Wired to the menu's
+   *  `npc:assignNightPosture` (and "Guard here"'s place-then-adopt) + the `setNpcNightPosture` seam. */
+  private setNpcNightPosture(posture: NpcNightPosture): void {
+    const npc = this.companionManager.get();
+    if (npc) npc.nightPosture = posture;
+  }
+
+  /** Set the companion's night guard tile. Wired to the guard-placement tap (below) + the
+   *  `setNpcGuardPoint` seam; the `guard` posture holds this tile (see CompanionManager.driveGuard). */
+  private setNpcGuardPoint(col: number, row: number): void {
+    const npc = this.companionManager.get();
+    if (npc) npc.guardPoint = { col, row };
+  }
+
+  /** Menu "Guard here" (`npc:beginPlaceGuard`): arm the one-tap place-the-point mode — the next
+   *  command-mode world tap sets the guard tile + adopts the guard posture (see the onTap dep). No-op
+   *  with no companion, so a stray event can't strand the world in a placing state. */
+  private beginPlaceGuardPoint(): void {
+    if (this.companionManager.get()) this.placingGuardPoint = true;
+  }
+
+  /** Disarm guard-point placement without posting one — Escape, or a tap back on the NPC. */
+  private cancelPlaceGuardPoint(): void {
+    this.placingGuardPoint = false;
+  }
+
+  /** A tap on the companion opened its assignment menu: hand UIScene the NPC's current role/posture
+   *  (to highlight the live rows) plus its on-screen position in design space — the world sprite point
+   *  mapped through the main camera (`worldView` origin × zoom) and down by RENDER_SCALE, since the
+   *  HUD is authored in un-zoomed BASE_WIDTH×BASE_HEIGHT units. UIScene clamps it on screen. */
+  private openNpcMenu(npc: NpcCharacter): void {
+    const cam = this.cameras.main;
+    const x = ((npc.sprite.x - cam.worldView.x) * cam.zoom) / RENDER_SCALE;
+    const y = ((npc.sprite.y - cam.worldView.y) * cam.zoom) / RENDER_SCALE;
+    this.game.events.emit('npc:menuOpen', {
+      x,
+      y,
+      dayRole: npc.dayRole,
+      nightPosture: npc.nightPosture,
+    });
+  }
+
   /** True while the movepad is authoritative — manual Combat mode OR the combatActive auto-surface
    *  (plan 035a Step 3). The movepad drive (update()) and onCombatMove gate rebase onto THIS rather
    *  than raw `mode==='combat'`, which is what stops a "dead movepad" when controls auto-surface in
@@ -1658,6 +1909,19 @@ export class GameScene extends Phaser.Scene {
    * player is boxed in with no clear tile in range. Wired to the dev-menu Spawn Enemy button.
    */
   private spawnEnemyNearPlayer(): void {
+    // The boar is the default dev spawn (plan 035b Step 4) — fighting it exercises the full loop:
+    // 4-way facing, the Attack-anim telegraph, melee, bow, and the HP bar. The skeleton stays
+    // reachable via scenarios (the combat/monster e2e specs) as a regression anchor.
+    const t = this.firstSpawnableTileNearPlayer();
+    if (t) this.enemyManager.addEnemy('boar', t.col, t.row);
+  }
+
+  /**
+   * First empty, walkable, unoccupied tile near the player — scanned outward in Chebyshev rings from
+   * distance 2 (so it never lands on or directly touching the player) up to a small cap. Returns null
+   * if the player is boxed in with no clear tile in range. Shared by the dev spawn seams below.
+   */
+  private firstSpawnableTileNearPlayer(): Cell | null {
     const pt = this.playerChar.tile();
     const canSpawn = (col: number, row: number): boolean =>
       col >= 0 &&
@@ -1673,15 +1937,29 @@ export class GameScene extends Phaser.Scene {
       for (let col = pt.col - dist; col <= pt.col + dist; col++) {
         for (let row = pt.row - dist; row <= pt.row + dist; row++) {
           if (Math.max(Math.abs(col - pt.col), Math.abs(row - pt.row)) !== dist) continue; // ring edge only
-          if (canSpawn(col, row)) {
-            // The boar is the default dev spawn (plan 035b Step 4) — fighting it exercises the full
-            // loop: 4-way facing, the Attack-anim telegraph, melee, bow, and the HP bar. The skeleton
-            // stays reachable via scenarios (the combat/monster e2e specs) as a regression anchor.
-            this.enemyManager.addEnemy('boar', col, row);
-            return;
-          }
+          if (canSpawn(col, row)) return { col, row };
         }
       }
+    }
+    return null;
+  }
+
+  /**
+   * Dev menu: spawn the companion Rogue near the player and hand it a path walking back toward the
+   * player, so the sprite (idle/walk/death anims) and the walk can be eyeballed on demand. Routes
+   * through {@link CompanionManager} (which owns the single companion); reachable from the console via
+   * `window.game.events.emit('debug:spawnNpc')` (wired in wireBus, mirroring `debug:spawnEnemy`).
+   * No-ops if a companion is already present (one at a time) or the player is boxed in.
+   */
+  private spawnNpcNearPlayer(): void {
+    if (this.companionManager.get()) return; // one companion at a time — no-op if already spawned
+    const t = this.firstSpawnableTileNearPlayer();
+    if (!t) return;
+    const npc = this.companionManager.spawn(t.col, t.row);
+    const path = findPath(t, this.playerChar.tile(), this.isBlocked, this.gridDims);
+    if (path) {
+      npc.path = path;
+      npc.pathIndex = 0;
     }
   }
 }

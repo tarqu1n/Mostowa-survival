@@ -54,13 +54,19 @@ export interface PanZoom extends PanHandlers {
  *     can't `preventDefault` the viewport's own scroll;
  *   - hold-Space (gated on `hoveringRef`) or middle-mouse to pan by writing `scrollLeft/scrollTop`.
  *
- * `scale` (the consumer's base fit-scale × `zoom`) is passed IN rather than computed here: the two
- * call sites derive their fit basis differently (a fixed preview budget vs a measured viewport), but
- * the anchor math only needs the resulting effective scale. Everything else is identical, so it lives
- * here once. Pointer capture is left to the consumer since the two capture on different nodes.
+ * `baseScale` (the consumer's fit-scale, BEFORE zoom) is passed IN rather than computed here: the two
+ * call sites derive their fit basis differently (a fixed preview budget vs a measured viewport). The
+ * hook owns `zoom` and forms the effective `scale = baseScale × zoom` itself, so the anchor math and
+ * its `[scale]` effects re-fire on every zoom change — passing an already-effective scale would be a
+ * lexical cycle (the value would need the `zoom` the hook only returns afterwards). Consumers use the
+ * same `baseScale × zoom` for their own render sizing. Everything else is identical, so it lives here
+ * once. Pointer capture is left to the consumer since the two capture on different nodes.
  */
-export function usePanZoom(scale: number): PanZoom {
+export function usePanZoom(baseScale: number): PanZoom {
   const [zoom, setZoom] = useState(ZOOM_MIN);
+  // Effective scale — recomputed each render, so the wheel + re-anchor effects (keyed on `scale`)
+  // re-fire whenever `zoom` changes and the pointed-at content point stays put across the zoom.
+  const scale = baseScale * zoom;
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { DecorRegion } from '../../../systems/mapFormat';
 import { tilesetAssetUrl } from '../../textureLoading';
 import { regionKey, type CatalogAsset, type CatalogRegion } from '../../catalog';
@@ -53,12 +52,9 @@ export function AtlasSheetPicker({
   const previewMaxPx = isCompact ? ATLAS_PREVIEW_MAX_PX * 1.4 : ATLAS_PREVIEW_MAX_PX;
   const fitScale = Math.min(1, previewMaxPx / Math.max(asset.w, asset.h));
 
-  // `usePanZoom` owns the 1–8× zoom, but its cursor-anchored wheel-zoom + re-anchor need the EFFECTIVE
-  // scale (fitScale × zoom), which depends on the zoom the hook returns. Mirror that effective scale
-  // into state and feed it back: adjusting it during render (React's derived-state pattern) re-renders
-  // synchronously BEFORE paint, so the hook's `[scale]` layout effect always sees the current scale and
-  // no stale-sized frame is ever painted — matching the pre-refactor single-`scale` behaviour.
-  const [scale, setScale] = useState(fitScale);
+  // `usePanZoom` owns the 1–8× zoom and forms the effective scale (fitScale × zoom) internally for its
+  // cursor-anchored wheel-zoom + re-anchor; we pass the base fit-scale in and use the same product for
+  // our own render sizing below.
   const {
     zoom,
     setZoom,
@@ -69,9 +65,8 @@ export function AtlasSheetPicker({
     onCanvasPointerDown,
     onCanvasPointerMove,
     onCanvasPointerUp,
-  } = usePanZoom(scale);
-  const nextScale = fitScale * zoom;
-  if (nextScale !== scale) setScale(nextScale);
+  } = usePanZoom(fitScale);
+  const scale = fitScale * zoom;
 
   const dispW = Math.round(asset.w * scale);
   const dispH = Math.round(asset.h * scale);

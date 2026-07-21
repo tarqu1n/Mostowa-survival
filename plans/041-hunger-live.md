@@ -1,0 +1,135 @@
+# Hunger Live
+
+> Status: planned — run /execute-plan to begin.
+
+## Summary
+
+Roadmap **Step 4 — "Hunger live"**: turn the already-built hunger system from a cosmetic drain into a
+real day-long survival pressure. The whole system (drain math, starve→HP cascade, eating, HUD bar +
+starving vignette, death→restart flow) already exists and is wired; it is only **non-lethal and
+mis-tuned** because the start map (`the-moon`) historically had no food. This step is **tuning + one
+flag flip**, not new machinery: retune the hunger drain for the 15-min day/night cycle, keep the
+existing starve→HP cascade ratio, then (late, once food is on the map) flip `HUNGER_LETHAL` to `true`
+so hunger can actually kill. Done when ignoring food across a day meaningfully threatens you and eating
+relieves it.
+
+## Context & decisions
+
+**System map (all confirmed in-repo):**
+- Config: `src/config.ts` — hunger block lines 373–399. `HUNGER_MAX = 100`, `HUNGER_DRAIN_PER_SEC = 0.4`
+  (empties a full bar in ~250s — the value to retune), `STARVE_DAMAGE = 1`, `STARVE_DAMAGE_INTERVAL_MS = 2_000`
+  (1 HP / 2s), `HUNGER_LETHAL = false` (line 399 — the flag to flip). Day/night: `DAY_MS = 660_000` (11 min),
+  `NIGHT_MS = 240_000` (4 min); full cycle **900_000 ms (15 min)** via `systems/daynight.ts` `cycleLengthMs()`.
+- Pure math: `src/systems/needs.ts` — `drainHunger`/`feed`/`isStarving` (unchanged; Tier-1 tested in
+  `src/systems/__tests__/needs.test.ts`).
+- Owning manager: `src/scenes/world/SurvivalClock.ts` — `tick(delta)` drains hunger + emits `hunger:changed`,
+  accumulates `starveElapsed`, and at `hunger <= 0` calls `deps.damagePlayer(STARVE_DAMAGE)` **only when
+  `HUNGER_LETHAL`** (the single flag check, line ~193). `eat(itemId)` (line ~274) is already wired via the
+  `needs:eat` event. **No logic change needed here** — flipping the flag is the entire behavioural change;
+  starve damage already routes `damagePlayer → killPlayer → scene.restart` (GameScene lines 1344 / 1476),
+  and restart reconstructs `SurvivalClock` fresh (hunger back to full).
+- Food: `src/data/items.ts:11` `berries` (`nutrition: 25`); `src/data/maps/nodes.json` `berryBush` node
+  (`yieldItemId: berries`, `yieldPerHit: 2`, `regrowMs: 300000`). Eating in-scene is via the Wellbeing
+  (STATUS) panel → emits `needs:eat` (`UIScene.ts` ~1002); scenario tests trigger it with
+  `emit(page, 'needs:eat', { itemId: 'berries' })`.
+- HUD: `UIScene.ts` FOOD bar + Wellbeing meter + starving vignette, all driven by `updateHungerBar` off
+  `hunger:changed`. **No HUD work required** — the red/vignette starvation feedback already renders; the
+  flip just makes it mean something.
+
+**Owner decisions (this planning session):**
+1. **Drain pace = "one food run per day"** — a full bar should empty over roughly one **day** (~11 min /
+   660s). Target `HUNGER_DRAIN_PER_SEC ≈ 0.15` (100 / 660 ≈ 0.151 → ~667s to empty). Starting value to
+   confirm by feel; the config comment already says "retune by feel".
+2. **Starve cascade = keep the current ratio** — do **not** touch `STARVE_DAMAGE` / `STARVE_DAMAGE_INTERVAL_MS`.
+   Only the hunger *drain* is retuned. (Observation, not an action: player has ~10 HP — `death.spec` asserts
+   post-restart `playerHp === 10` — so at the unchanged 1 HP / 2s the run from empty→death is ~20s, i.e. once
+   the bar bottoms out death comes fast. Left as-is per this decision; flag it for a later feel pass, don't
+   change it now.)
+3. **`HUNGER_LETHAL` = dev toggle, defaulted true at the end** — keep it as the plain, easily-flippable
+   `config.ts` const (a one-line `false` for playtesting), reframe its comment from "TEMP stopgap" to a
+   dev toggle, and set the shipped default to `true` as the **final** step (flip lethal *late*).
+
+**Precondition owned by Matt (out of this plan's code scope):** berry bushes get placed on the `the-moon`
+start map via the Map Builder editor (which autocommits to `master`). Lethal hunger with no food on the
+loaded map = guaranteed starve-out, so **the flag-flip step (Step 3) is gated on food actually being present
+on `the-moon`** — the executor must verify this before/at the flip, not assume it. Note the branch split:
+map JSON lands on `master` via the editor while this plan's code/tuning lands on the feature branch; they
+converge at merge.
+
+**Known-red test that this step turns green:** `tests/e2e/survival-hunger.spec.ts` → "a starving player
+loses HP" currently **fails by design** while `HUNGER_LETHAL=false` (tracked in plans 014 & 018; e2e is
+**not** gated on deploy, so trunk stays shippable). Flipping the flag in Step 3 makes it pass — a built-in
+acceptance signal, not a new test to write.
+
+## Steps
+
+- [ ] **Step 1: Retune the hunger drain for the 15-min cycle** `[inline]`
+  - In `src/config.ts`, change `HUNGER_DRAIN_PER_SEC` from `0.4` to **`0.15`** (empties a full 100-point bar
+    in ~667s ≈ one 660s day — the "one food run per day" target). Leave `HUNGER_MAX`, `STARVE_DAMAGE`,
+    `STARVE_DAMAGE_INTERVAL_MS` untouched (owner decision 2).
+  - Update the stale block comment above (lines ~373–379): the "~250s" / "old ~210s cycle" text is now wrong.
+    Restate: at 0.15/s a full bar lasts ~667s ≈ one day, so a day of neglect leaves you starving by dusk;
+    note the value is feel-tunable. Keep the pointer that flipping `HUNGER_LETHAL` is the remaining Step-4 work.
+  - Fix the stale rate comment in `tests/e2e/survival-hunger.spec.ts:16` (`// 0.4/s × 3s ≈ 1.2 drained`) to
+    match the new rate; the assertion (`after.hunger < before.hunger`) still holds and needs no change.
+  - Side effects: `SurvivalClock.tick` reads the const directly — no other wiring. Confirm `needs.test.ts`
+    (Tier-1) doesn't hard-code `0.4` (it passes the rate in explicitly, so it shouldn't — verify).
+  - Docs: none beyond the config comment (STATUS.md is updated in Step 3 with the whole change).
+  - Done when: `HUNGER_DRAIN_PER_SEC === 0.15`; `npm run test` (unit) green; `npm run e2e -- survival-hunger`
+    "hunger drains over time" still passes.
+
+- [ ] **Step 2: Add a Tier-2 "full day of neglect empties the bar" test** `[inline]`
+  - In `tests/e2e/survival-hunger.spec.ts`, add a flag-independent test that validates the retune target:
+    seed `applyScenario(page, { hunger: HUNGER_MAX, clockMs: 0 /* day start */ })`, `step(page, DAY_MS)`,
+    then assert hunger has reached (or is at) 0 — i.e. `expect(after.hunger).toBeLessThanOrEqual(1)` (isStarving)
+    — proving a full bar no longer survives a whole day untouched. Do **not** assert HP loss here (the flag is
+    still false at this point; the HP-cascade assertion is the existing known-red test, un-redded in Step 3).
+    Import `HUNGER_MAX` and `DAY_MS` from `src/config`; mirror the `clockMs`/`step` pattern in
+    `tests/e2e/survival-daynight.spec.ts` and the seed/assert shape already in this file.
+  - Side effects: none — additive test only.
+  - Docs: none.
+  - Done when: the new test passes with the Step-1 drain; existing hunger/daynight/forage specs still green.
+
+- [ ] **Step 3: Flip `HUNGER_LETHAL` on (dev toggle), verify the cascade, update docs** `[inline]`
+  - **Gate first:** confirm the loaded start map (`START_MAP_ID = 'the-moon'`) actually carries `berryBush`
+    node(s) — inspect `src/data/maps/the-moon.map.json` for `kind: "node"` entries referencing `berryBush`
+    (Matt places these via the editor). If food is **not** yet present, stop and report — do not flip the flag
+    (lethal + no food = unwinnable start).
+  - In `src/config.ts`: set `HUNGER_LETHAL = true`. Reframe its comment (lines ~395–398) from "TEMP stopgap …
+    keep non-lethal until authored food lands" to a **dev toggle**: e.g. "Dev toggle — starvation reduces HP
+    only when true. Default on for the MVP survival loop; set `false` to disable starvation death during
+    playtesting." Keep it a plain top-level `export const` (owner decision 3 — it stays a one-line flip).
+  - Add the roadmap's acceptance test(s) to `tests/e2e/survival-hunger.spec.ts` now the flag is live — the
+    "day with/without eating" cascade:
+    - *Without eating:* seed `{ hunger: HUNGER_MAX, clockMs: 0 }`, step a full day **plus** a starve interval,
+      assert `playerHp` dropped below its start (cascade fired). (The existing "a starving player loses HP"
+      test already covers the empty-start case and now goes green — keep it.)
+    - *With eating:* mirror `tests/e2e/survival-forage.spec.ts` — forage a seeded bush for berries (or seed a
+      berry supply), let hunger fall, `emit(page, 'needs:eat', { itemId: 'berries' })`, assert hunger rises and
+      the player does **not** die across the same span. Proves "eating relieves it."
+  - Side effects: `damagePlayer → killPlayer → scene.restart` now reachable via starvation — the existing
+    `death.spec.ts` restart pattern covers the reset (hunger back to full on restart); no new death plumbing.
+    Sanity-check the boot canary (`scripts/smoke.mjs`) still boots (it doesn't run long enough to starve).
+  - Docs (terse, high-signal):
+    - `docs/STATUS.md:444` — change "hunger is non-lethal (`HUNGER_LETHAL=false`)…" to: hunger is **live** —
+      drain retuned to ~0.15/s (full bar ≈ one day), `HUNGER_LETHAL=true` (dev toggle), starve→HP cascade
+      unchanged. Note it under the survival slice as the roadmap Step-4 landing.
+    - `docs/ROADMAP.md` Step 4 — mark ✅ / add a "Progress — DELIVERED" note like the other steps (drain 0.4→0.15,
+      flag flipped as a dev toggle, cascade ratio unchanged, food on `the-moon` via editor); flip the Status/Next
+      line's `→ hunger →` marker to ✅ in `CLAUDE.md` **Status** block ("✅ trap → ✅ hunger → NPC").
+    - `src/scenes/GameScene.ts:360` — the inline "hunger stays non-lethal via HUNGER_LETHAL" comment is now
+      stale; update or drop it.
+  - Done when: `npm run test` + full `npm run e2e` green (the previously-red "a starving player loses HP" now
+    passes; new with/without-eating tests pass); `HUNGER_LETHAL === true`; docs above updated. Manually
+    verifiable in-game: boot, ignore food for a day → starving vignette → HP drain → death→restart; foraging
+    and eating berries recovers the bar.
+
+## Out of scope
+
+- **Placing berry bushes on `the-moon`** — Matt authors these in the Map Builder editor (autocommits to
+  `master`). This plan only *verifies* they exist before flipping lethal.
+- **Changing the starve→HP cascade** (`STARVE_DAMAGE` / interval) — explicitly kept at the current ratio;
+  the ~20s empty→death sharpness is noted for a possible later feel pass, not changed here.
+- **New eat UX** (hotbar/quick-eat keypress) — eating stays via the Wellbeing panel / `needs:eat` event.
+- **HUD/vignette work** — the starving feedback already renders.
+- **Any NPC work** — that's roadmap Step 5, the next plan.

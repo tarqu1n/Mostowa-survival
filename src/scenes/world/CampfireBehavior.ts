@@ -202,10 +202,20 @@ export class CampfireBehavior implements StructureBehavior {
     const level = this.flameLevelFor(c.state.fuel);
     if (level !== c.state.flameLevel) {
       c.state.flameLevel = level;
-      c.state.flame.play({
-        key: this.flameKeyFor(level),
-        startFrame: c.state.flame.anims.currentFrame?.index ?? 0,
-      });
+      // Keep the current frame across the sheet swap so the flicker doesn't visibly restart — but
+      // `AnimationFrame.index` is 1-based (1..N) while `play({startFrame})` is 0-based, and Phaser's
+      // guard is `startFrame > totalFrames` (not >=). So the raw 1-based index of the LAST frame slips
+      // through as an out-of-range startFrame → `anim.frames[n]` is undefined → a crash in getFirstTick
+      // (`reading 'duration'`) that fires only when the swap lands on the final frame (e.g. a mob
+      // draining the fire past the large↔small threshold). Convert to 0-based and clamp into range.
+      const key = this.flameKeyFor(level);
+      const frameCount = this.scene.anims.get(key)?.getTotalFrames() ?? 1;
+      const startFrame = Phaser.Math.Clamp(
+        (c.state.flame.anims.currentFrame?.index ?? 1) - 1,
+        0,
+        frameCount - 1,
+      );
+      c.state.flame.play({ key, startFrame });
     }
     const topBand = Phaser.Math.Clamp(
       (c.state.fuel / CAMPFIRE_FUEL_MAX - CAMPFIRE_FLAME_LARGE_MIN_FRAC) /

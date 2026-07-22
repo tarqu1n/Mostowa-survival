@@ -1,7 +1,9 @@
 # Code Cleanup & Modularization
 
-> Status: in progress — Phase 1–3 complete (Steps 1–13, all committed+pushed on `claude/plan-43-szlkkd`);
-> Phase 4–6 (Steps 14–19) remaining. Resume with /execute-plan. See "Execution handoff" at the foot.
+> Status: **all steps complete (1–19)** on `claude/plan-43-szlkkd`. Phase 4 (14–16), Phase 5 (17–18),
+> and Phase 6 (19: whole-branch gate) all landed and gated green (Steps 17–18 authored by a concurrent
+> session, commit 7d8f70e; Step 19 layered on top). **Pending before merge:** rebase onto advanced
+> `master` (in progress, user-approved), then a single PR — do NOT open a PR without an explicit ask.
 
 ## Summary
 
@@ -521,7 +523,7 @@ delegate lanes — just driven inline, not blind-delegated.
 
 ### Phase 6 — Final gate
 
-- [ ] **Step 19: Whole-branch verification** `[inline]`
+- [x] **Step 19: Whole-branch verification** `[inline]`
   - Full sweep on the branch: `npm run check` + `npm run e2e` + `npm run smoke` + `npm run build`
     (game) + editor build, all green. Confirm no public-API drift broke a consumer, the
     refactor-tripwire snapshot is unchanged, and `docs/cleanup/*.md` accurately separates applied
@@ -529,6 +531,23 @@ delegate lanes — just driven inline, not blind-delegated.
   - Side effects: none (verification).
   - Docs: none.
   - Done when: every gate green; branch ready for one PR.
+  - **Outcome:** `npm run check` green (925 unit tests; typecheck/lint/lint:md/format clean);
+    `npm run build` green (only the known out-of-scope Phaser vendor-chunk size warning); `npm run smoke`
+    boot canary passed (shaders compiled clean, zero console errors); editor typechecks via the shared
+    `tsc --noEmit` (dev-only, no separate build target). e2e (targeted, in this slow container): the
+    `refactor-tripwire` golden is **unchanged** — behavior preserved — and the order/structure cluster
+    (chop/queue/build/combat/wall/spike-trap/mode/inspect/glow, 37) + `campfire` (10, `--workers=1`) all
+    green. `--workers=2` timeouts (death/follow/monster/survival-daynight/wave) all recovered at
+    `--workers=1` → parallel-load flake in this container, not regressions. `menu-start` **and**
+    `campfire-feed` both fail **identically on `master`** here (verified by checking out master and
+    re-running) → pre-existing/environmental, not branch regressions. No public-API drift (all imports
+    resolve; `mapFormat/` + `store/` barrels preserve prior export surfaces; `orders` exports additive).
+    `docs/cleanup/*.md` applied-vs-logged accuracy fixed: the smells lens now carries a per-row applied
+    status (several `[log]` structural splits were decided in planning and executed in Phase 3, so
+    tag ≠ applied-state). **Branch reconciliation:** Steps 17–18 were also authored by a concurrent
+    session (commit 7d8f70e) — per user decision this branch keeps that session's 17–18 docs (equivalent
+    coverage, already pushed) and layers this session's Step-19 work on top. **Left for the user:** the
+    rebase-onto-`master` (chosen) is being applied next; a PR is **not** to be opened without an explicit ask.
 
 ## Parallelisation summary
 

@@ -115,7 +115,19 @@ CI-delegated e2e is still a bottleneck.
   - Done when: `git push` triggers typecheck+unit locally; `--no-verify` skips it; `npm run check:all`
     exists and runs the full gate.
 
-- [ ] **Step 3: Add a separate CI workflow — unit + e2e (sharded) + smoke + static gates, non-blocking, with failure notify** `[inline]`
+- [x] **Step 3: Add a separate CI workflow — unit + e2e (sharded) + smoke + static gates, non-blocking, with failure notify** `[inline]`
+  - Outcome: new `.github/workflows/ci.yml` — push-to-master + `workflow_dispatch`, parallel to (not
+    depended-on by) `deploy.yml`. Jobs: **static-unit** (npm ci → typecheck → lint → lint:md →
+    format:check → test); **e2e** (2-shard matrix, `playwright install --with-deps chromium`,
+    `playwright test --shard=i/2 --workers=2`, retries:0, uploads report+traces on failure);
+    **smoke** (build with NODE_ENV=production → `npm run preview &` → dependency-free curl poll →
+    `npm run smoke`). **Notify** (Finding 3): `notify` job (`if: always()`, `issues: write`) uses
+    `actions/github-script` to open/update a single "🔴 CI failing on master" tracking issue on any
+    failure and close it when green — no secrets, built-in GITHUB_TOKEN. CI is a signal, not a deploy
+    gate (comment notes `needs: [ci]` as the later hard-gate option). Verified all static+unit gates
+    pass locally via `npm run check` (exit 0); YAML validates. **Real master-push run + forced-failure
+    notification can't be exercised from this feature branch (trigger is master-only) — deferred to
+    Step 6 / post-merge.**
   - Create `.github/workflows/ci.yml`, triggered on `push` to `master` and `workflow_dispatch`,
     independent of and parallel to `deploy.yml` (do NOT make deploy depend on it — non-blocking signal).
   - Jobs: (1) **static+unit** — `npm ci` → `typecheck` → `lint` → `lint:md` → `format:check` → `test`.

@@ -1,0 +1,128 @@
+name: CI
+
+# Full quality gate on push to master, run IN PARALLEL with (and independent of) deploy.yml.
+# This is a SIGNAL, not a deploy gate: deploy.yml still ships on its own green unit test. A red CI
+# here does NOT block a deploy — instead the `notify` job opens/updates a single tracking issue so a
+# failure is actually seen on a solo repo (rather than rotting into ignored email). To hard-gate the
+# deploy on CI later, add `needs: [ci]` to deploy.yml's build job.
+on:
+  push:
+    branches: [master]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+# A newer push supersedes an in-flight CI run for the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # (1) Static analysis + Tier-1 unit tests — fast, no browser.
+  static-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run lint:md
+      - run: npm run format:check
+      - run: npm run test
+
+  # (2) Tier-2 Playwright scenarios, matrix-sharded so the ~10-min suite fans across runners.
+  # Start at 2 shards / 2 workers each and benchmark (plan 044 Step 5). retries:0 (flakes must surface).
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # CI env is auto-set by Actions → playwright.config reuseExistingServer:false, so it boots its
+      # own vite dev server (port 5174) for the __test API. No SMOKE_CHROMIUM_PATH → managed Chromium.
+      - run: npx playwright test --shard=${{ matrix.shard }}/2 --workers=2
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-shard-${{ matrix.shard }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  # (3) Tier-3 boot canary against the real production preview bundle.
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+        env:
+          NODE_ENV: production
+      # Serve the built bundle (base /mostowo-survival/, port 4173) and wait for it before the canary.
+      # SMOKE_URL default already matches; no SMOKE_CHROMIUM_PATH → managed Chromium.
+      - name: Boot canary against preview
+        run: |
+          npm run preview &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4173/mostowo-survival/ >/dev/null && break
+            sleep 1
+          done
+          npm run smoke
+
+  # (4) Failure signal (plan 044 Finding 3): keep CI non-blocking but visible. Opens/updates a single
+  # "CI failing on master" tracking issue when any job fails, and closes it once a run is fully green.
+  # No secrets — uses the built-in GITHUB_TOKEN via github-script.
+  notify:
+    needs: [static-unit, e2e, smoke]
+    if: always() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          RUN_FAILED: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        with:
+          script: |
+            const TITLE = '🔴 CI failing on master';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const failed = process.env.RUN_FAILED === 'true';
+            const { data: found } = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open in:title "${TITLE}"`,
+            });
+            const existing = found.items.find((i) => i.title === TITLE);
+            if (failed) {
+              const body = `CI failed on \`master\` — [run #${context.runId}](${runUrl}) (commit ${context.sha.slice(0, 7)}).`;
+              if (existing) {
+                await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body });
+              } else {
+                await github.rest.issues.create({ ...context.repo, title: TITLE, body });
+              }
+            } else if (existing) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: existing.number,
+                body: `✅ CI green again — [run #${context.runId}](${runUrl}). Closing.`,
+              });
+              await github.rest.issues.update({ ...context.repo, issue_number: existing.number, state: 'closed' });
+            }

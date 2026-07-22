@@ -98,7 +98,12 @@ CI-delegated e2e is still a bottleneck.
   - Done when: `npm test` is green and materially faster (target: overhead roughly halved); the config
     comment explains the pool/isolate choice and any editor-store carve-out.
 
-- [ ] **Step 2: Add a fast pre-push hook + `check:all` script** `[delegate]` (parallel: A)
+- [x] **Step 2: Add a fast pre-push hook + `check:all` script** `[delegate]` (parallel: A)
+  - Outcome: new `.husky/pre-push` (executable, husky-v9 plain script) runs `npm run typecheck && npm test`
+    with a comment noting `--no-verify` skips it for phone/WIP pushes. `package.json` gains
+    `check:all` (`npm run check && npm run e2e && npm run smoke`) + `test:related`
+    (`vitest related --run`); `check` unchanged. Verified: typecheck exit 0, `npm test` green
+    (925/66, ~1.5s), hook executable, package.json valid.
   - Create `.husky/pre-push` running `npm run typecheck && npm test` (mirror `.husky/pre-commit` style;
     husky v9 — a plain script). Make it executable. Add a one-line comment that it is skippable via
     `--no-verify` and why (cross-device: phone/WIP pushes).

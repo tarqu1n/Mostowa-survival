@@ -18,6 +18,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "npm run typecheck && npm run lint && npm run lint:md && npm run format:check && npm run test",
+    "check:all": "npm run check && npm run e2e && npm run smoke",
+    "test:related": "vitest related --run",
     "e2e": "playwright test",
     "smoke": "node scripts/smoke.mjs",
     "assets:catalog": "node scripts/asset-catalog.mjs",

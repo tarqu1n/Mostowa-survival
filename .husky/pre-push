@@ -1,0 +1,2 @@
+# Fast pre-push gate; skip with `git push --no-verify` for phone/WIP pushes (cross-device rule).
+npm run typecheck && npm test

@@ -139,7 +139,18 @@ crispness proven at the Step 1 gate before any component is built on top.
   - Done when: game boots with the React root over the canvas, badge visible,
     build+smoke+e2e green, canvas visually unchanged.
 
-- [ ] **Step 2: Canvas-rect coordinate mapping + safe-area design-space layer** `[inline]`
+- [x] **Step 2: Canvas-rect coordinate mapping + safe-area design-space layer** `[inline]`
+  - Outcome: `src/hud/hooks/useCanvasRect.ts` reads `window.game.scale.canvas` rect → `{left,top,
+    width,height,scale=width/BASE_WIDTH}`, resubscribes on `Phaser.Scale.Events.RESIZE` + window
+    resize/orientationchange + `visualViewport` resize/scroll, and rAF-polls through the boot window
+    until the canvas exists (guards absent `window.game`). `GameHud` now positions a `.hud-design`
+    layer at the canvas rect (`transform: scale()`, origin top-left) so children author in 360×640
+    units, with an inner `.hud-safe` sublayer carrying `env(safe-area-inset-*)` padding for
+    interactive controls. Temp corner markers + a scale readout on the badge. No game code touched.
+    Verified via a one-off headless check (three viewports: portrait-tight 360×640 no-letterbox,
+    portrait-phone 390×693 top-offset 113, wide-letterbox 338×600 left-offset 497) — all four
+    design-corner markers align to the canvas rect within 1.5px. Safe-area insets wired via env()
+    (resolve to 0 headless / no-notch; visible only on a notched device). typecheck + lint clean.
   - `src/hud/hooks/useCanvasRect.ts`: read `window.game.scale.canvas` rect, compute
     `scale = rect.width / BASE_WIDTH` + letterbox offsets, resubscribe on
     `Phaser.Scale.Events.RESIZE`; guard when `window.game` is absent. In `GameHud`, position

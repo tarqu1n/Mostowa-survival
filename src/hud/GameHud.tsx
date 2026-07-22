@@ -1,17 +1,63 @@
+import { BASE_WIDTH, BASE_HEIGHT } from '@/config';
+import { useCanvasRect } from './hooks/useCanvasRect';
+
 /**
  * Root of the DOM/React HUD overlay (plan 046, Field Kit). Lives at the page level over the Phaser
  * canvas (mounted into #hud-root by main.tsx), NOT inside any Phaser scene — it persists across
  * GameScene death→restart. The root itself is click-through (pointer-events:none, set on #hud-root
  * in index.html); interactive controls opt back in as they are added in later steps.
  *
- * Step 1 skeleton: an empty root plus a temporary debug badge to prove the overlay mounts and paints
- * above the canvas. Real clusters (meters, hotbar, command bar, drawers) land from Step 5 on.
+ * Layering (Step 2):
+ *  - `.hud-design` — positioned exactly over the live canvas rect and CSS-scaled so children author
+ *    in fixed 360×640 design units (same space Phaser draws in). World-aligned markers go here.
+ *  - `.hud-safe` — an inset sublayer carrying `env(safe-area-inset-*)`, so interactive controls
+ *    stay clear of notches / home indicators. Interactive clusters mount inside this from Step 5 on.
  */
 export function GameHud() {
+  const rect = useCanvasRect();
+
+  // Until the canvas is measured, render nothing positioned — avoids a flash at the wrong place.
+  if (!rect) return null;
+
   return (
-    <div className="hud-root" style={{ width: '100%', height: '100%' }}>
-      {/* TEMP (Step 1): removed once real components mount. pointer-events:none — purely visual. */}
+    <div className="hud-root" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       <div
+        className="hud-design"
+        style={{
+          position: 'absolute',
+          left: rect.left,
+          top: rect.top,
+          width: BASE_WIDTH,
+          height: BASE_HEIGHT,
+          transform: `scale(${rect.scale})`,
+          transformOrigin: 'top left',
+          pointerEvents: 'none',
+        }}
+      >
+        {/* Interactive-safe sublayer: everything tappable lives inside these safe-area insets. */}
+        <div
+          className="hud-safe"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            paddingTop: 'env(safe-area-inset-top)',
+            paddingRight: 'env(safe-area-inset-right)',
+            paddingBottom: 'env(safe-area-inset-bottom)',
+            paddingLeft: 'env(safe-area-inset-left)',
+          }}
+        >
+          {/* TEMP (Step 2): four design-space corner markers to prove alignment to the canvas rect.
+              Removed once real clusters land. Inside .hud-safe so they also show the inset. */}
+          <CornerMarker corner="tl" />
+          <CornerMarker corner="tr" />
+          <CornerMarker corner="bl" />
+          <CornerMarker corner="br" />
+        </div>
+      </div>
+
+      {/* TEMP (Step 1→2): overlay-mounted badge, now also reporting the measured scale. */}
+      <div
+        data-testid="hud-badge"
         style={{
           position: 'absolute',
           top: 8,
@@ -24,8 +70,20 @@ export function GameHud() {
           pointerEvents: 'none',
         }}
       >
-        HUD ✓
+        HUD ✓ ×{rect.scale.toFixed(2)}
       </div>
     </div>
+  );
+}
+
+/** TEMP debug marker (Step 2). An 8×8 design-unit square hugging one corner of the design layer. */
+function CornerMarker({ corner }: { corner: 'tl' | 'tr' | 'bl' | 'br' }) {
+  const v = corner[0] === 't' ? { top: 0 } : { bottom: 0 };
+  const h = corner[1] === 'l' ? { left: 0 } : { right: 0 };
+  return (
+    <div
+      data-testid={`hud-corner-${corner}`}
+      style={{ position: 'absolute', width: 8, height: 8, background: '#5fd0ff', ...v, ...h }}
+    />
   );
 }

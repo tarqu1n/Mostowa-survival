@@ -2,38 +2,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
   :root {
-    /* light theme (default) — warm parchment, ember accent */
-    --ground: #efe7d6;
-    --surface: #fbf7ee;
-    --surface-2: #f3ecdd;
-    --line: #d9cdb5;
-    --line-soft: #e6dcc7;
-    --ink: #2a2019;
-    --ink-soft: #5f5343;
-    --muted: #8a7c66;
-    --ember: #c46a12;
-    --ember-bright: #e8842a;
-    --blood: #a8342f;
-    --moss: #55703f;
-    --amber: #b98600;
+    --ground: #efe7d6; --surface: #fbf7ee; --surface-2: #f3ecdd; --line: #d9cdb5; --line-soft: #e6dcc7;
+    --ink: #2a2019; --ink-soft: #5f5343; --muted: #8a7c66; --ember: #c46a12; --ember-bright: #e8842a;
+    --blood: #a8342f; --moss: #55703f; --amber: #b98600;
     --shadow: 0 1px 2px rgba(40,28,18,.06), 0 8px 28px -12px rgba(40,28,18,.22);
-    --game-glow: rgba(240,144,47,.0);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --ground: #14100f;
-      --surface: #1c1815;
-      --surface-2: #241f1b;
-      --line: #362f28;
-      --line-soft: #29231e;
-      --ink: #e8dcc0;
-      --ink-soft: #c3b699;
-      --muted: #93856c;
-      --ember: #f0902f;
-      --ember-bright: #ffb15a;
-      --blood: #d24b44;
-      --moss: #8aa46b;
-      --amber: #ffd500;
+      --ground: #14100f; --surface: #1c1815; --surface-2: #241f1b; --line: #362f28; --line-soft: #29231e;
+      --ink: #e8dcc0; --ink-soft: #c3b699; --muted: #93856c; --ember: #f0902f; --ember-bright: #ffb15a;
+      --blood: #d24b44; --moss: #8aa46b; --amber: #ffd500;
       --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 34px -14px rgba(0,0,0,.7);
     }
   }
@@ -53,23 +31,14 @@
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
   body {
-    margin: 0;
-    background: var(--ground);
-    color: var(--ink);
+    margin: 0; background: var(--ground); color: var(--ink);
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    font-size: 17px;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
+    font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased;
   }
   .wrap { max-width: 1080px; margin: 0 auto; padding: 0 22px; }
-  .col { max-width: 660px; }
 
   h1, h2, h3 { font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; font-weight: 700; text-wrap: balance; line-height: 1.12; }
-  .eyebrow {
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size: 12px; letter-spacing: .22em; text-transform: uppercase;
-    color: var(--ember); margin: 0 0 14px;
-  }
+  .eyebrow { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--ember); margin: 0 0 14px; }
   p { margin: 0 0 16px; }
   a { color: var(--ember); }
   strong { color: var(--ink); font-weight: 650; }
@@ -77,47 +46,31 @@
   .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   .small { font-size: 14.5px; color: var(--ink-soft); }
 
-  /* ---- Hero ---- */
-  .hero {
-    position: relative; overflow: hidden;
-    border-bottom: 1px solid var(--line);
-    background:
-      radial-gradient(120% 90% at 78% -10%, rgba(240,144,47,.20), transparent 55%),
-      radial-gradient(90% 70% at 12% 8%, rgba(138,164,107,.10), transparent 60%);
-  }
+  .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line);
+    background: radial-gradient(120% 90% at 78% -10%, rgba(240,144,47,.20), transparent 55%), radial-gradient(90% 70% at 12% 8%, rgba(138,164,107,.10), transparent 60%); }
   .hero-inner { padding: 74px 0 62px; }
   .kicker-row { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; flex-wrap: wrap; }
-  .badge {
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase;
-    border: 1px solid var(--line); border-radius: 100px; padding: 5px 12px; color: var(--muted);
-    background: var(--surface);
-  }
+  .badge { font-family: ui-monospace, monospace; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; border: 1px solid var(--line); border-radius: 100px; padding: 5px 12px; color: var(--muted); background: var(--surface); }
   .hero h1 { font-size: clamp(40px, 8vw, 74px); margin: 0 0 20px; letter-spacing: -.01em; }
   .hero h1 .fire { color: var(--ember); font-style: italic; }
-  .hero .lead { max-width: 620px; }
+  .hero .lead { max-width: 640px; }
   .ember-rule { height: 3px; width: 74px; margin: 30px 0 0; background: linear-gradient(90deg, var(--ember), transparent); border-radius: 3px; }
+  .toc { display:flex; flex-wrap:wrap; gap:8px; margin-top:24px; }
+  .toc a { font-family:ui-monospace,monospace; font-size:12px; text-transform:uppercase; letter-spacing:.06em; text-decoration:none; color:var(--ink-soft); border:1px solid var(--line); border-radius:100px; padding:6px 12px; }
+  .toc a:hover { border-color:var(--ember); color:var(--ember); }
 
-  /* ---- Sections ---- */
   section { padding: 58px 0; border-bottom: 1px solid var(--line-soft); }
   section h2 { font-size: clamp(27px, 4.4vw, 38px); margin: 0 0 8px; }
-  .section-intro { color: var(--ink-soft); max-width: 640px; margin-bottom: 34px; }
+  .section-intro { color: var(--ink-soft); max-width: 660px; margin-bottom: 34px; }
 
-  /* card grids */
   .grid { display: grid; gap: 16px; }
   @media (min-width: 700px) { .g2 { grid-template-columns: 1fr 1fr; } .g3 { grid-template-columns: repeat(3,1fr); } }
-  .card {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 20px 18px;
-    box-shadow: var(--shadow);
-  }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 20px 18px; box-shadow: var(--shadow); }
   .card h3 { font-size: 18px; margin: 0 0 7px; }
   .card p { margin: 0; font-size: 15px; color: var(--ink-soft); line-height: 1.5; }
   .card .tag { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display:block; margin-bottom: 10px; }
-
   .pain .card { border-left: 3px solid var(--blood); }
-  .win .card { border-left: 3px solid var(--moss); }
 
-  /* principle list */
   .principles { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; }
   .principles li { display: grid; grid-template-columns: 42px 1fr; gap: 4px 14px; padding: 15px 4px; border-bottom: 1px solid var(--line-soft); align-items: baseline; }
   .principles li:last-child { border-bottom: 0; }
@@ -125,26 +78,18 @@
   .principles .t { font-weight: 600; color: var(--ink); }
   .principles .d { grid-column: 2; font-size: 15px; color: var(--ink-soft); margin-top: 3px; }
 
-  /* flow steps */
   .flow { margin: 0 0 26px; }
   .flow-name { display:flex; align-items:baseline; gap:10px; margin-bottom: 12px; flex-wrap: wrap; }
   .flow-name h3 { font-size: 18px; margin: 0; }
   .flow-name .ctx { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); }
   .steps { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
-  .step {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
-    padding: 9px 13px; font-size: 14px; display: flex; align-items: center; gap: 9px; max-width: 100%;
-  }
+  .step { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 13px; font-size: 14px; display: flex; align-items: center; gap: 9px; max-width: 100%; }
   .step .si { font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); }
   .arrow { align-self: center; color: var(--muted); font-size: 14px; }
   .step.act { border-color: var(--ember); box-shadow: inset 0 0 0 1px rgba(240,144,47,.25); }
   .step.warn { border-color: var(--blood); }
 
-  /* recommendation split */
-  .verdict {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
-    box-shadow: var(--shadow); margin-bottom: 28px;
-  }
+  .verdict { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); margin-bottom: 28px; }
   .verdict-head { padding: 22px 24px; background: linear-gradient(100deg, rgba(240,144,47,.14), transparent); border-bottom: 1px solid var(--line); }
   .verdict-head .eyebrow { margin-bottom: 8px; }
   .verdict-head h3 { font-size: 22px; margin: 0; }
@@ -157,19 +102,15 @@
   .split .keep h4 { color: var(--moss); }
   .split .cost h4 { color: var(--blood); }
 
-  /* ---- Concepts / phones ---- */
-  .concepts-head { margin-bottom: 10px; }
   .concept { padding-top: 40px; border-top: 1px dashed var(--line); margin-top: 40px; }
   .concept:first-of-type { border-top: 0; margin-top: 8px; padding-top: 0; }
   .concept-top { display: grid; gap: 26px; align-items: start; }
-  @media (min-width: 860px){ .concept-top { grid-template-columns: 300px 1fr; gap: 40px; } }
-
+  @media (min-width: 900px){ .concept-top { grid-template-columns: 320px 1fr; gap: 40px; } }
   .concept-label { font-family: ui-monospace, monospace; font-size: 12px; letter-spacing:.18em; text-transform: uppercase; color: var(--ember); margin-bottom: 8px; }
   .concept h3 { font-size: 30px; margin: 0 0 4px; }
   .concept .tagline { font-family: Georgia, serif; font-style: italic; color: var(--ink-soft); font-size: 17px; margin: 0 0 16px; }
   .concept .desc { font-size: 15.5px; color: var(--ink-soft); }
   .lineage { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); margin-top: 14px; }
-
   .procon { display: grid; gap: 14px; margin-top: 18px; }
   @media (min-width:560px){ .procon { grid-template-columns: 1fr 1fr; } }
   .procon div { font-size: 14px; }
@@ -179,7 +120,6 @@
   .procon ul { margin: 0; padding-left: 16px; color: var(--ink-soft); }
   .procon li { margin-bottom: 5px; }
 
-  /* map table */
   .maps { margin-top: 22px; }
   .maps summary { cursor: pointer; font-family: ui-monospace, monospace; font-size: 12.5px; letter-spacing:.08em; text-transform: uppercase; color: var(--ember); padding: 8px 0; }
   .maps table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 6px; }
@@ -190,96 +130,78 @@
   /* ============ PHONE MOCKUP (always dark = it's the game) ============ */
   .phone-stage { display: flex; justify-content: center; }
   .phone {
-    --hud-bone: #e8dcc0; --hud-bg: #14100f; --hud-panel: #1c1815; --hud-line: #4a4136;
-    --hud-ember: #f0902f; --hud-blood: #d24b44; --hud-moss: #8aa46b; --hud-amber: #ffd500; --hud-blue:#6f9ad2;
+    --hud-bone: #e8dcc0; --hud-panel: #1c1815; --hud-line: #4a4136; --hud-ember: #f0902f;
+    --hud-blood: #d24b44; --hud-moss: #8aa46b; --hud-amber: #ffd500; --hud-blue:#6f9ad2; --hud-arc:#b98bd0;
     width: 300px; max-width: 88vw; aspect-ratio: 9 / 17.5; position: relative;
-    border-radius: 34px; padding: 9px; background: #0b0908;
-    border: 1px solid #2b2521; box-shadow: 0 2px 4px rgba(0,0,0,.5), 0 26px 60px -22px rgba(0,0,0,.85), inset 0 0 0 2px #1a1613;
-    flex: none;
+    border-radius: 34px; padding: 9px; background: #0b0908; border: 1px solid #2b2521;
+    box-shadow: 0 2px 4px rgba(0,0,0,.5), 0 26px 60px -22px rgba(0,0,0,.85), inset 0 0 0 2px #1a1613; flex: none;
   }
-  .screen {
-    position: absolute; inset: 9px; border-radius: 27px; overflow: hidden;
-    background:
-      radial-gradient(120% 60% at 50% 120%, rgba(240,144,47,.16), transparent 60%),
-      linear-gradient(180deg, #1a2230 0%, #202320 44%, #14100f 100%);
-    color: var(--hud-bone);
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  }
-  .screen.night {
-    background:
-      radial-gradient(70% 32% at 50% 82%, rgba(240,144,47,.34), transparent 62%),
-      linear-gradient(180deg, #0a0d16 0%, #0d1017 60%, #0b0f0c 100%);
-  }
+  .screen { position: absolute; inset: 9px; border-radius: 27px; overflow: hidden; color: var(--hud-bone);
+    background: radial-gradient(120% 60% at 50% 120%, rgba(240,144,47,.16), transparent 60%), linear-gradient(180deg, #1a2230 0%, #202320 44%, #14100f 100%);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .screen.night { background: radial-gradient(70% 32% at 50% 82%, rgba(240,144,47,.34), transparent 62%), linear-gradient(180deg, #0a0d16 0%, #0d1017 60%, #0b0f0c 100%); }
   .notch { position: absolute; top: 7px; left: 50%; transform: translateX(-50%); width: 78px; height: 15px; background: #0b0908; border-radius: 100px; z-index: 40; }
-  /* faux terrain tiles */
-  .terrain { position:absolute; inset:0; background-image:
-      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
-    background-size: 26px 26px; opacity:.5; }
-  .fire-dot { position:absolute; left:50%; top:58%; transform:translate(-50%,-50%); width:20px; height:20px; border-radius:50%;
-    background: radial-gradient(circle, #ffd27a, #f0902f 55%, transparent 72%); box-shadow: 0 0 26px 10px rgba(240,144,47,.4); }
-  .tree { position:absolute; width:16px; height:22px; background:#3c5238; border-radius:50% 50% 40% 40%; box-shadow: inset 0 -4px 0 rgba(0,0,0,.3); }
+  .terrain { position:absolute; inset:0; background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px); background-size: 26px 26px; opacity:.5; }
+  .fire-dot { position:absolute; left:50%; top:40%; transform:translate(-50%,-50%); width:18px; height:18px; border-radius:50%; background: radial-gradient(circle, #ffd27a, #f0902f 55%, transparent 72%); box-shadow: 0 0 24px 9px rgba(240,144,47,.4); }
+  .tree { position:absolute; width:15px; height:20px; background:#3c5238; border-radius:50% 50% 40% 40%; box-shadow: inset 0 -4px 0 rgba(0,0,0,.3); }
   .mob { position:absolute; width:13px; height:15px; background:#7d5b8a; border-radius:46% 46% 40% 40%; box-shadow:0 0 0 1.5px rgba(210,75,68,.7); }
   .mob.tgt { box-shadow:0 0 0 2px var(--hud-blood), 0 0 10px 2px rgba(210,75,68,.6); }
   .worker { position:absolute; width:12px; height:15px; background:#c9b98f; border-radius:46% 46% 40% 40%; }
 
   .hud { position:absolute; inset:0; z-index: 20; }
   .hud > * { position:absolute; }
-  .safe-top { top: 26px; } .safe-bot { bottom: 16px; }
-
-  /* generic hud atoms */
-  .pill { background: rgba(28,24,21,.9); border:1px solid var(--hud-line); border-radius: 8px; padding: 5px 8px; font-size: 9.5px; line-height:1; letter-spacing:.02em; }
+  .safe-top { top: 26px; } .safe-bot { bottom: 12px; }
+  .pill { background: rgba(28,24,21,.9); border:1px solid var(--hud-line); border-radius: 8px; padding: 5px 8px; font-size: 9.5px; line-height:1; }
   .btn { background:#3a3730; border:1px solid rgba(232,220,192,.5); color:var(--hud-bone); border-radius:9px; font-size:10px; letter-spacing:.05em; text-transform:uppercase; display:flex; align-items:center; justify-content:center; gap:5px; font-family:inherit; }
-  .btn.lg { min-width:52px; min-height:44px; }
-  .btn.round { border-radius:50%; width:44px; height:44px; padding:0; }
+  .btn.round { border-radius:50%; padding:0; }
   .btn.primary { background: linear-gradient(180deg,#f0902f,#c46a12); border-color:#ffb15a; color:#1a0f04; font-weight:700; }
   .btn.danger { background:#3a2a2a; border-color:var(--hud-blood); color:#f0c9c6; }
-  .btn.moss { background:#2f3b26; border-color:var(--hud-moss); color:#d3e2bd; }
-  .btn.ghost { background: rgba(28,24,21,.6); }
   .btn.on { background:#5a5140; }
-  .ring { width:38px; height:38px; border-radius:50%; display:grid; place-items:center; font-size:8.5px; text-align:center; line-height:1.05; }
+  .ring { border-radius:50%; display:grid; place-items:center; font-size:8.5px; text-align:center; line-height:1.05; }
   .lbl { font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:#93856c; }
 
-  .dial { width:44px; height:44px; }
-  .metric-row { display:flex; gap:7px; }
-  .tray { display:flex; gap:6px; }
-  .sheet { position:absolute; left:8px; right:8px; bottom:8px; background:rgba(20,16,15,.97); border:1px solid var(--hud-line); border-radius:14px; padding:10px; }
-  .sheet-grip { width:34px; height:4px; border-radius:4px; background:#4a4136; margin:0 auto 9px; }
-  .sheet h6 { margin:0 0 8px; font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:#93856c; font-family:inherit; font-weight:400;}
-  .slotrow { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; }
-  .slot { aspect-ratio:1; background:#241f1b; border:1px solid var(--hud-line); border-radius:7px; position:relative; }
-  .slot b { position:absolute; right:2px; bottom:1px; font-size:8px; color:#c3b699; }
-  .slot .ic { position:absolute; inset:5px; border-radius:4px; }
-  .buildrow { display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; }
-  .buildchip { flex:none; background:#241f1b; border:1px solid var(--hud-line); border-radius:9px; padding:6px 9px; min-width:60px; text-align:center; font-size:9px; }
-  .buildchip .c { color:var(--hud-amber); font-size:8.5px; margin-top:3px; display:block; }
-  .buildchip.sel { border-color:var(--hud-ember); background:#2a2118; }
-  .toast { background:rgba(11,9,8,.85); border-radius:7px; padding:3px 8px; font-size:9px; color:var(--hud-moss); }
+  .banner { background:rgba(60,20,20,.7); border:1px solid var(--hud-blood); border-radius:7px; padding:4px 9px; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:#f0c9c6; }
+  .toast { background:rgba(11,9,8,.8); border-radius:7px; padding:3px 8px; font-size:8.5px; color:#c3b699; }
   .floaty { color:var(--hud-moss); font-size:10px; font-weight:700; text-shadow:0 1px 2px #000; }
   .ghost-tile { width:24px; height:24px; border:2px solid var(--hud-moss); background:rgba(138,164,107,.22); border-radius:3px; }
   .ghost-tile.bad { border-color:var(--hud-blood); background:rgba(210,75,68,.22); }
-  .banner { background:rgba(60,20,20,.7); border:1px solid var(--hud-blood); border-radius:7px; padding:4px 9px; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:#f0c9c6; }
+
+  /* hotbar */
+  .hotbar { display:flex; gap:5px; padding:5px 6px; background:rgba(11,9,8,.55); border:1px solid var(--hud-line); border-radius:12px; }
+  .hslot { width:32px; height:32px; border-radius:8px; background:rgba(28,24,21,.95); border:1px solid var(--hud-line); display:grid; place-items:center; font-size:15px; position:relative; }
+  .hslot.eq { border-color:var(--hud-ember); box-shadow:0 0 0 1px var(--hud-ember), 0 0 9px rgba(240,144,47,.45); }
+  .hslot b { position:absolute; right:2px; bottom:0; font-size:8px; color:#c3b699; font-weight:400; }
+  .hslot.empty { opacity:.4; }
+
+  /* catalog sheet */
+  .catalog { position:absolute; left:8px; right:8px; border:1px solid var(--hud-line); border-radius:14px; padding:9px; background:rgba(18,14,13,.98); display:flex; flex-direction:column; }
+  .sheet-grip { width:34px; height:4px; border-radius:4px; background:#4a4136; margin:0 auto 8px; flex:none; }
+  .cat-tabs { display:flex; gap:5px; margin-bottom:8px; flex:none; flex-wrap:wrap; }
+  .cat-tabs span { font-size:8px; letter-spacing:.06em; text-transform:uppercase; color:#93856c; padding:3px 7px; border-radius:6px; border:1px solid var(--hud-line); }
+  .cat-tabs span.on { color:#1a0f04; background:var(--hud-ember); border-color:var(--hud-ember); }
+  .cat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; overflow:hidden; align-content:start; }
+  .cgitem { background:#241f1b; border:1px solid var(--hud-line); border-radius:8px; padding:6px 2px 5px; text-align:center; position:relative; }
+  .cgitem .em { font-size:15px; display:block; margin-bottom:2px; }
+  .cgitem .nm { font-size:7.5px; color:#c3b699; display:block; line-height:1.15; }
+  .cgitem .cost { color:var(--hud-amber); font-size:7px; display:block; margin-top:2px; }
+  .cgitem.sel { border-color:var(--hud-ember); background:#2a2118; }
+  .cgitem.eq::after { content:'●'; position:absolute; top:2px; right:3px; font-size:7px; color:var(--hud-moss); }
+  .cat-foot { font-size:8px; color:#93856c; margin-top:7px; text-align:center; flex:none; }
+
+  /* joystick + wheel */
   .joystick { width:74px; height:74px; border-radius:50%; border:1.5px solid rgba(232,220,192,.35); background:rgba(28,24,21,.35); position:relative; }
   .joystick .knob { position:absolute; width:30px; height:30px; border-radius:50%; background:rgba(232,220,192,.5); left:50%; top:50%; transform:translate(-58%,-42%); }
-  .radial { width:96px; height:96px; border-radius:50%; position:relative; }
-  .radial .center { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:40px;height:40px;border-radius:50%; background:#3a2a2a; border:1px solid var(--hud-blood); display:grid; place-items:center; font-size:9px; color:#f0c9c6; }
-  .radial .petal { position:absolute; width:32px; height:32px; border-radius:50%; background:rgba(28,24,21,.92); border:1px solid var(--hud-line); display:grid; place-items:center; font-size:8.5px; }
+  .wheel { position:relative; }
+  .petal { position:absolute; width:30px; height:30px; border-radius:50%; background:rgba(20,16,15,.95); border:1px solid var(--hud-line); display:grid; place-items:center; font-size:14px; }
+  .petal.sel { border-color:var(--hud-ember); box-shadow:0 0 0 1px var(--hud-ember); }
+  .wheel .center { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); border-radius:50%; display:grid; place-items:center; }
 
-  /* mode switch chips under phone */
   .modebar { display:flex; gap:7px; justify-content:center; flex-wrap:wrap; margin-top:18px; }
-  .modebar button {
-    font-family: ui-monospace, monospace; font-size:12px; letter-spacing:.06em; text-transform:uppercase;
-    background: var(--surface); color: var(--ink-soft); border:1px solid var(--line); border-radius:100px; padding:7px 14px; cursor:pointer;
-    transition: all .12s ease;
-  }
+  .modebar button { font-family: ui-monospace, monospace; font-size:12px; letter-spacing:.06em; text-transform:uppercase; background: var(--surface); color: var(--ink-soft); border:1px solid var(--line); border-radius:100px; padding:7px 14px; cursor:pointer; transition: all .12s ease; }
   .modebar button:hover { border-color: var(--ember); }
   .modebar button[aria-pressed="true"] { background: var(--ember); border-color: var(--ember); color:#1a0f04; font-weight:600; }
   .modebar button:focus-visible { outline:2px solid var(--ember); outline-offset:2px; }
-  .scene-note { text-align:center; font-size:13px; color:var(--muted); margin-top:12px; min-height:20px; font-family: ui-monospace, monospace; }
-
-  /* hide scenes not active */
-  .scene { display:none; }
-  .scene.active { display:block; }
+  .scene-note { text-align:center; font-size:13px; color:var(--muted); margin-top:12px; min-height:34px; font-family: ui-monospace, monospace; line-height:1.4; }
 
   footer { padding: 50px 0 70px; }
   footer .cta { background: var(--surface); border:1px solid var(--line); border-radius:16px; padding:26px; box-shadow:var(--shadow); }
@@ -287,13 +209,9 @@
   .qlist div { display:flex; gap:12px; align-items:baseline; font-size:15px; color:var(--ink-soft); }
   .qlist .qn { font-family:ui-monospace,monospace; color:var(--ember); font-size:13px; }
 
-  .toc { display:flex; flex-wrap:wrap; gap:8px; margin-top:24px; }
-  .toc a { font-family:ui-monospace,monospace; font-size:12px; text-transform:uppercase; letter-spacing:.06em; text-decoration:none; color:var(--ink-soft); border:1px solid var(--line); border-radius:100px; padding:6px 12px; }
-  .toc a:hover { border-color:var(--ember); color:var(--ember); }
-
   @media (prefers-reduced-motion: no-preference) {
     .pulse { animation: pulse 2.4s ease-in-out infinite; }
-    @keyframes pulse { 0%,100%{opacity:.85;} 50%{opacity:.35;} }
+    @keyframes pulse { 0%,100%{opacity:.9;} 50%{opacity:.4;} }
   }
 </style>
 
@@ -302,14 +220,15 @@
     <div class="kicker-row">
       <span class="badge">Mostowo Survival</span>
       <span class="badge">UI / UX Overhaul</span>
-      <span class="badge">Design pitch · v1</span>
+      <span class="badge">Design pitch · v2</span>
     </div>
     <h1>The camp is legible, or the <span class="fire">night wins</span>.</h1>
-    <p class="lead">The current HUD is hand-placed Phaser text — clever, but clunky and hard to read on the phone it's meant for. This is the research, the flows, a build-stack call, and <strong>three complete directions</strong> you can tap through on your device.</p>
+    <p class="lead">The current HUD is hand-placed Phaser text — clever, but clunky and hard to read on the phone it's meant for. This pass adds what a deep game actually needs: an always-there <strong>gamepad</strong>, a quick-swap <strong>hotbar</strong>, and menus that scale to <strong>dozens</strong> of buildings, spells and weapons.</p>
     <div class="ember-rule"></div>
     <nav class="toc">
       <a href="#problem">The problem</a>
       <a href="#research">What works</a>
+      <a href="#scale">Loadout &amp; scale</a>
       <a href="#flows">UX flows</a>
       <a href="#stack">HTML or Phaser</a>
       <a href="#designs">Three designs</a>
@@ -324,14 +243,14 @@
   <section id="problem">
     <p class="eyebrow">01 · Where it hurts</p>
     <h2>What the current UI gets wrong</h2>
-    <p class="section-intro">Pulled from an audit of <span class="mono">src/scenes/hud/*</span> and <span class="mono">src/ui/*</span>. None of this is a knock on the code — it's a HUD that grew widget-by-widget and never got a layout system. Six things stand out.</p>
+    <p class="section-intro">From an audit of <span class="mono">src/scenes/hud/*</span> and <span class="mono">src/ui/*</span> — a HUD that grew widget-by-widget and never got a layout system. Six things stand out.</p>
     <div class="grid g3 pain">
-      <div class="card"><span class="tag">Readability</span><h3>8–11px monospace, everywhere</h3><p>HP/food bars at 8px, hints at 8–9px, zoom buttons 24×24. Well below the ~44px / 16px-on-screen a phone needs. All text, no icons.</p></div>
-      <div class="card"><span class="tag">Layout</span><h3>Hard-coded pixels, no reflow</h3><p>Every widget computes x/y off fixed 360×640 constants. No safe-area insets for notches, no landscape, no adapting to aspect ratio beyond letterboxing.</p></div>
-      <div class="card"><span class="tag">Clutter</span><h3>Corners stack by magic numbers</h3><p>BUILD→CANCEL→ITEMS→DEMOLISH are manually offset; adding a button means re-tuning its neighbours. A dead, dimmed SPELL slot already sits on screen.</p></div>
-      <div class="card"><span class="tag">System</span><h3>No design tokens</h3><p>One font size, a colour set, and every gap/pad/size is a local literal. "Retune the whole look" isn't really possible today.</p></div>
-      <div class="card"><span class="tag">Reach</span><h3>Controls scattered top-to-bottom</h3><p>Primary actions live in the top-right red zone; the thumb-friendly bottom band is mostly unused outside combat. Modal panels open dead-centre over the action.</p></div>
-      <div class="card"><span class="tag">Interaction</span><h3>Inventory is look-only</h3><p>The slot grid can't select, drag, or equip (deferred). Panels each reinvent open/close, and none has a consistent close affordance.</p></div>
+      <div class="card"><span class="tag">Readability</span><h3>8–11px monospace, everywhere</h3><p>HP/food bars at 8px, hints at 8–9px, zoom buttons 24×24 — well below the ~44px / 16px-on-screen a phone needs. All text, no icons.</p></div>
+      <div class="card"><span class="tag">Layout</span><h3>Hard-coded pixels, no reflow</h3><p>Every widget computes x/y off fixed 360×640 constants. No safe-area insets, no landscape, no adapting beyond letterboxing.</p></div>
+      <div class="card"><span class="tag">Clutter</span><h3>Corners stack by magic numbers</h3><p>BUILD→CANCEL→ITEMS→DEMOLISH are manually offset; adding a button re-tunes its neighbours. A dead SPELL slot already sits on screen.</p></div>
+      <div class="card"><span class="tag">System</span><h3>No design tokens</h3><p>One font size, a colour set, every gap/pad/size a local literal. "Retune the whole look" isn't really possible today.</p></div>
+      <div class="card"><span class="tag">Scale</span><h3>Nowhere to put depth</h3><p>Today there are 3 buildables and no spells. With dozens of buildings/spells/weapons coming, there's no menu structure that holds them.</p></div>
+      <div class="card"><span class="tag">Interaction</span><h3>Inventory is look-only</h3><p>The slot grid can't select, drag, or equip (deferred). No hotbar for quick-swapping a weapon or downing a potion mid-fight.</p></div>
     </div>
   </section>
 
@@ -339,193 +258,171 @@
   <section id="research">
     <p class="eyebrow">02 · The field</p>
     <h2>What good phone survival UIs do</h2>
-    <p class="section-intro">Distilled from Don't Starve: Pocket Edition, Kingdom Two Crowns, Last Day on Earth, The Long Dark, Whiteout Survival, and the mobile-UX literature. Ten principles that shaped every design below.</p>
+    <p class="section-intro">Distilled from Don't Starve: Pocket Edition, Kingdom Two Crowns, Last Day on Earth, The Long Dark and Whiteout Survival, plus the mobile-UX literature. Ten principles behind the designs.</p>
     <ol class="principles">
       <li><span class="n">01</span><span class="t">Two layouts, not one rotation.</span><span class="d">Portrait = one thumb from a bottom corner. Landscape = move-left / act-right like a gamepad. Offer a left/right-hand mirror.</span></li>
-      <li><span class="n">02</span><span class="t">Interactive lives in the bottom 30–40%.</span><span class="d">On a modern 6.5″ phone only the bottom half is comfortably one-hand reachable. Passive info (time, meters) goes up top.</span></li>
-      <li><span class="n">03</span><span class="t">≥44–48px hit targets, decoupled from art.</span><span class="d">A 24px pixel-art icon carries an invisible 44px hit rectangle. This is the single biggest lever for a pixel game.</span></li>
-      <li><span class="n">04</span><span class="t">World and UI are separate layers.</span><span class="d">World at integer nearest-neighbour zoom; UI baked crisp at a device scale so buttons stay tap-sized whatever the world zoom.</span></li>
-      <li><span class="n">05</span><span class="t">Respect the notch.</span><span class="d">Full-bleed world behind the Dynamic Island; inset all controls to the safe rectangle. This is free in CSS, painful in hand-placed Phaser.</span></li>
-      <li><span class="n">06</span><span class="t">Meters show state + trend, not numbers.</span><span class="d">Circular icon-meters. Persist only health, hunger, day/night. Fade everything else in on change.</span></li>
-      <li><span class="n">07</span><span class="t">The day/night dial is the spine.</span><span class="d">Calm by day; at dusk surface "night is coming"; at night promote wave number + enemies-left to prominent overlay.</span></li>
-      <li><span class="n">08</span><span class="t">Build = ghost + snap + confirm.</span><span class="d">Never place on raw touch-up (the finger hides the cell). Ghost snaps green/red → nudge → ✔/⟳/cancel → "place again" for wall runs.</span></li>
-      <li><span class="n">09</span><span class="t">Combat = auto-target + context action.</span><span class="d">An "attack nearest" button with the target outlined beats tap-the-enemy. Surface weapon-swap only when you carry more than one.</span></li>
-      <li><span class="n">10</span><span class="t">Acknowledge every tap; reserve red.</span><span class="d">Micro-scale/flash on press, juice the key moments (floaty "+5 wood", shake, particles), keep red exclusively for danger.</span></li>
+      <li><span class="n">02</span><span class="t">Interactive lives in the bottom 30–40%.</span><span class="d">On a modern 6.5″ phone only the bottom half is comfortably one-hand reachable. Passive info up top.</span></li>
+      <li><span class="n">03</span><span class="t">≥44–48px hit targets, decoupled from art.</span><span class="d">A 24px pixel icon carries an invisible 44px hit rectangle. Biggest single lever for a pixel game.</span></li>
+      <li><span class="n">04</span><span class="t">World and UI are separate layers.</span><span class="d">World at integer nearest-neighbour zoom; UI baked crisp at a device scale so buttons stay tap-sized.</span></li>
+      <li><span class="n">05</span><span class="t">Respect the notch.</span><span class="d">Full-bleed world behind the Dynamic Island; inset controls to the safe rectangle. Free in CSS, painful in Phaser.</span></li>
+      <li><span class="n">06</span><span class="t">Meters show state + trend, not numbers.</span><span class="d">Circular icon-meters. Persist only health, hunger, day/night; fade the rest in on change.</span></li>
+      <li><span class="n">07</span><span class="t">The day/night dial is the spine.</span><span class="d">Calm by day; surface "night is coming" at dusk; promote wave number + enemies-left at night.</span></li>
+      <li><span class="n">08</span><span class="t">Build = ghost + snap + confirm.</span><span class="d">Never place on raw touch-up. Ghost snaps green/red → nudge → ✔/⟳/cancel → "place again" for wall runs.</span></li>
+      <li><span class="n">09</span><span class="t">Loadout on the quick surface, catalog behind it.</span><span class="d">Assign a few favourites to a hotbar/wheel for one-tap use; browse the full set in a categorised grid. (See §03.)</span></li>
+      <li><span class="n">10</span><span class="t">Acknowledge every tap; reserve red.</span><span class="d">Micro-scale/flash on press, juice key moments (floaty "+5 wood", shake, particles), keep red for danger only.</span></li>
     </ol>
+  </section>
+
+  <!-- SCALE -->
+  <section id="scale">
+    <p class="eyebrow">03 · Depth without clutter</p>
+    <h2>Loadout vs. catalog — the two-tier model</h2>
+    <p class="section-intro">You flagged the real constraint: there'll be a lot of buildings, and lots of spells/attacks available at once. A radial wheel or a single tray tops out around 6–8 items — so every design here uses <strong>two tiers</strong>, and this is where the hotbar earns its place.</p>
+    <div class="split" style="gap:20px;">
+      <div class="keep card" style="border-left:3px solid var(--moss);">
+        <h4 style="color:var(--moss); margin-top:0;">Tier 1 — Loadout (fast, few)</h4>
+        <p class="small" style="margin-bottom:10px;">Always one thumb away, one tap to fire. This is your <strong>hotbar</strong> and, in Twin Grip, the <strong>action-wheel petals</strong>. Holds a handful of assigned go-tos — the axe, the bow, a Firebolt, a bandage, the wall you're spamming.</p>
+        <p class="small" style="margin:0; color:var(--muted);">Mixed content: weapons, consumables, and spells share the same slots. Long-press a slot to reassign from the catalog.</p>
+      </div>
+      <div class="keep card" style="border-left:3px solid var(--ember);">
+        <h4 style="color:var(--ember); margin-top:0;">Tier 2 — Catalog (deep, browsable)</h4>
+        <p class="small" style="margin-bottom:10px;">Everything you own, in a <strong>categorised, scrollable grid</strong> — the build list (Defense / Survival / Production), the spellbook, the full pack. Opened only when you're choosing, not while you're acting.</p>
+        <p class="small" style="margin:0; color:var(--muted);">Pick to place/equip now; <em>pin</em> to send it to the loadout for next time. The catalog scales to hundreds; the loadout never grows past a thumb's reach.</p>
+      </div>
+    </div>
+    <p class="small" style="margin-top:22px; color:var(--muted);">The mockups below are populated with placeholder content — ~19 buildings across three categories, 8 spells, 6 weapons/consumables on the hotbar — so you can judge how each direction handles the volume, not just the happy-path of three buttons.</p>
   </section>
 
   <!-- FLOWS -->
   <section id="flows">
-    <p class="eyebrow">03 · The verbs</p>
+    <p class="eyebrow">04 · The verbs</p>
     <h2>UX flows for every element</h2>
-    <p class="section-intro">Before pixels, the sequences. These are the interaction contracts each design has to satisfy — the same flow, whichever visual direction wins. <span class="mono">act</span> = the primary tap, <span class="mono" style="color:var(--blood)">warn</span> = destructive/committing.</p>
+    <p class="section-intro">The interaction contracts each design must satisfy — the same flow, whichever look wins. <span class="mono">act</span> = the primary tap, <span class="mono" style="color:var(--blood)">warn</span> = destructive/committing.</p>
 
     <div class="flow">
-      <div class="flow-name"><h3>Build a wall run</h3><span class="ctx">Scavenge → Build mode</span></div>
+      <div class="flow-name"><h3>Build from a deep catalog</h3><span class="ctx">Scavenge → Build</span></div>
       <div class="steps">
-        <span class="step">Tap <b>Build</b></span><span class="arrow">→</span>
-        <span class="step">Pick <b>Wall</b> from tray <span class="si">cost shown</span></span><span class="arrow">→</span>
-        <span class="step act">Ghost snaps to grid <span class="si">green/red</span></span><span class="arrow">→</span>
-        <span class="step">Drag to nudge</span><span class="arrow">→</span>
-        <span class="step act">✔ Confirm</span><span class="arrow">→</span>
-        <span class="step">⟳ Rotate / <b>Place again</b></span><span class="arrow">→</span>
-        <span class="step">Worker queues the order</span>
+        <span class="step">Open <b>Build</b></span><span class="arrow">→</span>
+        <span class="step">Pick a category tab <span class="si">Defense/Survival/Production</span></span><span class="arrow">→</span>
+        <span class="step">Scroll, tap a building <span class="si">cost shown</span></span><span class="arrow">→</span>
+        <span class="step act">Ghost snaps green/red → ✔</span><span class="arrow">→</span>
+        <span class="step"><b>Place again</b> for a run</span><span class="arrow">·</span>
+        <span class="step">Long-press → <b>pin to hotbar</b></span>
       </div>
     </div>
 
     <div class="flow">
-      <div class="flow-name"><h3>Hold the line at night</h3><span class="ctx">Dusk → Night wave</span></div>
+      <div class="flow-name"><h3>Quick-swap &amp; cast in a fight</h3><span class="ctx">Fight / Night</span></div>
       <div class="steps">
-        <span class="step">Enemy enters radius <span class="si">or night falls</span></span><span class="arrow">→</span>
-        <span class="step act">Combat cluster fades in</span><span class="arrow">→</span>
-        <span class="step">Move (thumb) + <b>Attack</b> <span class="si">auto-targets nearest, outlined</span></span><span class="arrow">→</span>
-        <span class="step">Swap weapon <span class="si">only if &gt;1 carried</span></span><span class="arrow">→</span>
-        <span class="step warn">Companion downed → auto-revive at dawn</span>
+        <span class="step">Move (thumb)</span><span class="arrow">+</span>
+        <span class="step act">Tap a <b>hotbar</b> slot → equip/use <span class="si">axe → bow</span></span><span class="arrow">→</span>
+        <span class="step act">Fire from the <b>wheel</b>/button <span class="si">auto-target</span></span><span class="arrow">→</span>
+        <span class="step">Tap <b>Firebolt</b> slot → cast <span class="si">mana/cooldown</span></span><span class="arrow">→</span>
+        <span class="step">Open <b>Spells</b> for the rest</span>
       </div>
     </div>
 
     <div class="flow">
-      <div class="flow-name"><h3>Eat before you starve</h3><span class="ctx">Any mode</span></div>
+      <div class="flow-name"><h3>Assign your loadout</h3><span class="ctx">Any catalog</span></div>
       <div class="steps">
-        <span class="step warn">Hunger ring dips to amber, pulses</span><span class="arrow">→</span>
-        <span class="step">Tap the ring <span class="si">or open Pack</span></span><span class="arrow">→</span>
-        <span class="step">Eat list, dimmed if empty</span><span class="arrow">→</span>
-        <span class="step act">Tap a food</span><span class="arrow">→</span>
-        <span class="step">Ring refills · "+n" floats</span>
-      </div>
-    </div>
-
-    <div class="flow">
-      <div class="flow-name"><h3>Assign the companion</h3><span class="ctx">Tap the NPC</span></div>
-      <div class="steps">
-        <span class="step act">Tap NPC → sheet + dim scrim</span><span class="arrow">→</span>
-        <span class="step"><b>Day:</b> Gather / Repair</span><span class="arrow">→</span>
-        <span class="step"><b>Night:</b> Guard-here / Follow / Refuel</span><span class="arrow">→</span>
-        <span class="step act">Guard-here → one-tap place point</span>
+        <span class="step">Open Spellbook / Pack / Build</span><span class="arrow">→</span>
+        <span class="step">Find the item in the grid</span><span class="arrow">→</span>
+        <span class="step act">Long-press → <b>Pin</b> (or drag to a slot)</span><span class="arrow">→</span>
+        <span class="step">It's now one tap away on the hotbar</span>
       </div>
     </div>
 
     <div class="flow" style="margin-bottom:0;">
-      <div class="flow-name"><h3>Inspect &amp; command</h3><span class="ctx">World taps</span></div>
+      <div class="flow-name"><h3>Eat · assign NPC · inspect · command</h3><span class="ctx">World &amp; meters</span></div>
       <div class="steps">
-        <span class="step">Tap ground → <b>move / order</b></span><span class="arrow">·</span>
-        <span class="step">Long-press + drag → <b>paint a queue</b></span><span class="arrow">·</span>
-        <span class="step">Long-press entity → <b>inspect card</b></span><span class="arrow">·</span>
-        <span class="step">Two-finger → <b>pinch zoom</b></span><span class="arrow">·</span>
-        <span class="step">Drag → <b>pan</b> (breaks follow)</span>
+        <span class="step warn">Hunger ring pulses → tap → eat</span><span class="arrow">·</span>
+        <span class="step">Tap NPC → Day/Night postures</span><span class="arrow">·</span>
+        <span class="step">Long-press entity → inspect card</span><span class="arrow">·</span>
+        <span class="step">Tap ground → move/order</span><span class="arrow">·</span>
+        <span class="step">Two-finger → pinch zoom</span>
       </div>
     </div>
   </section>
 
   <!-- STACK -->
   <section id="stack">
-    <p class="eyebrow">04 · The build call</p>
+    <p class="eyebrow">05 · The build call</p>
     <h2>Author the menus in HTML, not Phaser</h2>
-    <p class="section-intro">Your instinct is right, and there's a strong precedent: the Map Builder already runs React + Tailwind v4 + shadcn/ui, deliberately kept out of the game bundle. The recommendation is a <strong>DOM overlay for the HUD and menus, with the world and in-world markers staying in Phaser</strong>.</p>
-
+    <p class="section-intro">Your instinct is right, and there's precedent: the Map Builder already runs React + Tailwind v4 + shadcn/ui, deliberately kept out of the game bundle. Recommendation — a <strong>DOM overlay for the HUD and menus, with the world and in-world markers staying in Phaser</strong>. This matters more now: scrollable catalog grids, drag-to-pin, and safe-area layout are things the browser gives for free.</p>
     <div class="verdict">
-      <div class="verdict-head">
-        <p class="eyebrow" style="margin-bottom:6px;">Recommendation</p>
-        <h3>Hybrid: a DOM/React HUD layer over the Phaser canvas</h3>
-      </div>
+      <div class="verdict-head"><p class="eyebrow" style="margin-bottom:6px;">Recommendation</p><h3>Hybrid: a DOM/React HUD layer over the Phaser canvas</h3></div>
       <div class="verdict-body">
-        <p class="small" style="margin-top:14px;">Nearly every pain point in §01 is something the browser solves for free and Phaser makes you hand-roll. Safe-area insets, responsive reflow, a real token system, crisp accessible text, portrait/landscape layouts — all native to CSS. And the HUD hit-test hack (<span class="mono">hudHitTest</span> gating world taps) largely disappears: DOM elements capture their own events; the canvas only sees what falls through.</p>
         <div class="split">
           <div class="keep">
             <h4>DOM / React owns</h4>
             <ul>
               <li>HUD bars, meters, day/night dial, resource counts</li>
-              <li>Build tray, Pack &amp; Craft sheets, inspect card, companion menu, main/pause menus</li>
-              <li>All buttons, drawers, modals — reusing the editor's shadcn primitives &amp; Tailwind <span class="mono">@theme</span> tokens</li>
+              <li>Hotbar, build catalog, spellbook, pack, inspect card, companion &amp; pause menus</li>
+              <li>Scrollable grids, drag-to-pin, tabs — reusing the editor's shadcn primitives &amp; Tailwind <span class="mono">@theme</span> tokens</li>
               <li>Safe-area insets, responsive layout, focus/accessibility</li>
             </ul>
           </div>
           <div class="keep">
             <h4 style="color:var(--ember);">Phaser keeps</h4>
             <ul>
-              <li>The world, camera, entities, lighting — untouched</li>
-              <li><em>In-world</em> markers that must live in world space: build ghost + grid snap, target outline, floating combat/gather text, monster HP bars, queue markers</li>
-              <li>Gesture mechanics on the canvas (tap / long-press paint / pan / pinch)</li>
+              <li>World, camera, entities, lighting — untouched</li>
+              <li><em>In-world</em> markers: build ghost + grid snap, target outline, floating combat/gather text, monster HP bars, queue markers</li>
+              <li>Gesture mechanics on the canvas (tap / long-press paint / pan / pinch), and the twin-thumb move/aim input</li>
             </ul>
           </div>
         </div>
-        <div class="split cost" style="margin-top:6px;">
-          <div class="cost">
-            <h4>Costs to plan for</h4>
-            <ul>
-              <li>A thin event bridge: today's <span class="mono">game.events</span> bus fans out to React state (and back for intents). This is small and testable.</li>
-              <li>Coordinate mapping for the few DOM→world actions (place point, tap-to-eat targeting a world entity).</li>
-              <li>Tailwind now loads on the game page — scoped, and the editor proves the pipeline.</li>
-            </ul>
-          </div>
-          <div class="cost">
-            <h4>Why not stay in Phaser</h4>
-            <ul>
-              <li>You'd re-implement flexbox, safe-areas, and a token system by hand — the exact debt §01 is made of.</li>
-              <li>You'd maintain two UI idioms (editor DOM vs game Phaser) forever instead of one.</li>
-            </ul>
-          </div>
-        </div>
-        <p class="small" style="margin:18px 0 0; color:var(--muted);">The three designs below are drawn as HTML for exactly this reason — what you tap through <em>is</em> the target stack. All three are achievable in either engine; the layout systems they need (reflow, insets, drawers) are what make DOM the easier author.</p>
+        <p class="small" style="margin:18px 0 0; color:var(--muted);">Costs: a thin event bridge (<span class="mono">game.events</span> ↔ React state), coordinate mapping for the few DOM→world actions, and Tailwind loading on the game page (scoped; the editor proves it). The alternative — hand-rolling flexbox, safe-areas, scrollable grids and a token system in Phaser — is the exact debt §01 is made of.</p>
       </div>
     </div>
   </section>
 
   <!-- DESIGNS -->
   <section id="designs">
-    <p class="eyebrow">05 · The pitch</p>
+    <p class="eyebrow">06 · The pitch</p>
     <h2>Three directions to choose from</h2>
-    <p class="section-intro">Same game, same control set, three philosophies — from most minimal to most gestural. Each phone below is live: tap the chips under it to move through <span class="mono">Scavenge · Build · Fight · Night</span> and open the menus. Every control from the audit checklist has a home in all three.</p>
+    <p class="section-intro">Same game, same control set, three philosophies. Every phone is live: tap the chips to move through <span class="mono">Scavenge · Build · Fight · Spells · Night</span> — the <strong>hotbar</strong> is present in play, and <strong>Build</strong> &amp; <strong>Spells</strong> open the populated catalogs so you can see the volume. Ordered with your favourite first.</p>
 
-    <!-- CONCEPT A -->
-    <article class="concept" id="concept-a">
+    <!-- CONCEPT C first (favourite) -->
+    <article class="concept" id="concept-c">
       <div class="concept-top">
         <div>
-          <div class="concept-label">Direction A</div>
-          <h3>Emberlight</h3>
-          <p class="tagline">"Trust the world. Show almost nothing."</p>
-          <p class="desc">Diegetic-first. The screen is nearly all game. Meters are small glanceable rings that fade when calm; the day/night dial is the one permanent fixture. Build and menus rise as bottom sheets, then get out of the way. The firelight itself is the HUD — it dims as fuel drops.</p>
-          <p class="lineage">Lineage: Kingdom Two Crowns · The Long Dark</p>
+          <div class="concept-label">Direction C · your front-runner</div>
+          <h3>Twin Grip</h3>
+          <p class="tagline">"Two thumbs, always on the sticks."</p>
+          <p class="desc">The gamepad never leaves: left corner is the move ring, right corner is a live action wheel whose petals <em>are</em> your loadout — equipped attacks and spells, one flick each. A slim <strong>hotbar</strong> rides the bottom edge between the thumbs for weapons/items/spells. The wheel's centre opens the deep catalog (spellbook, build list) as a grid above the still-visible gamepad. Console-feel, landscape-native, most screen for the world.</p>
+          <p class="lineage">Lineage: console twin-stick · radial action games · Diablo Immortal loadout</p>
           <div class="procon">
-            <div class="pro"><h5>Strengths</h5><ul><li>Most immersive, least clutter</li><li>Gorgeous on a small screen</li><li>Fewest tap targets to size</li></ul></div>
-            <div class="con"><h5>Risks</h5><ul><li>Can hide decision info (K2C's known flaw)</li><li>Discoverability leans on the player</li><li>Needs strong diegetic feedback to work</li></ul></div>
+            <div class="pro"><h5>Strengths</h5><ul><li>Gamepad always ready — fastest in a fight</li><li>Loadout + catalog scales cleanly</li><li>Landscape-native; maximises world</li></ul></div>
+            <div class="con"><h5>Risks</h5><ul><li>Highest learning curve</li><li>Wheel petals hide labels until learned</li><li>Most to build &amp; tune (radial + catalog)</li></ul></div>
           </div>
         </div>
         <div>
-          <div class="phone-stage">
-            <div class="phone" data-concept="a">
-              <div class="notch"></div>
-              <div class="screen" data-screen>
-                <div class="terrain"></div>
-                <div class="tree" style="left:24px;top:120px;"></div>
-                <div class="tree" style="right:30px;top:150px;"></div>
-                <div class="fire-dot"></div>
-                <div class="worker" style="left:44%;top:52%;"></div>
-                <div class="hud" data-hud></div>
-              </div>
-            </div>
-          </div>
-          <div class="modebar" data-modebar="a">
+          <div class="phone-stage"><div class="phone" data-concept="c"><div class="notch"></div>
+            <div class="screen" data-screen><div class="terrain"></div>
+              <div class="tree" style="left:20px;top:96px;"></div><div class="tree" style="right:24px;top:120px;"></div>
+              <div class="fire-dot"></div><div class="worker" style="left:47%;top:47%;"></div>
+              <div class="hud" data-hud></div>
+            </div></div></div>
+          <div class="modebar" data-modebar="c">
             <button data-mode="scavenge" aria-pressed="true">Scavenge</button>
             <button data-mode="build" aria-pressed="false">Build</button>
             <button data-mode="fight" aria-pressed="false">Fight</button>
+            <button data-mode="spells" aria-pressed="false">Spells</button>
             <button data-mode="night" aria-pressed="false">Night</button>
-            <button data-mode="menu" aria-pressed="false">Pack</button>
           </div>
-          <p class="scene-note" data-note="a"></p>
+          <p class="scene-note" data-note="c"></p>
         </div>
       </div>
       <details class="maps">
-        <summary>Where every control lives in Emberlight</summary>
+        <summary>Where every control lives in Twin Grip</summary>
         <table><tbody>
-          <tr><td>Health / hunger</td><td>Two small rings, top-left, fade to 30% when full &amp; calm; pulse red/amber at threshold. Tap hunger ring → eat list.</td></tr>
-          <tr><td>Day / night · wave</td><td>Sun-moon dial, top-centre, always on. At dusk it reddens; at night a slim wave/enemies-left strip unfurls beneath it.</td></tr>
-          <tr><td>Resources</td><td>Diegetic — wood/rock counts appear only in Build mode, inside the sheet. Fire fuel = campfire brightness in-world.</td></tr>
-          <tr><td>Build</td><td>Single ember Build FAB, bottom-right. Opens a bottom sheet of buildables → ghost+snap → floating ✔ ⟳ ✕ near the thumb.</td></tr>
-          <tr><td>Combat</td><td>Nothing until threat. Then invisible move-anywhere joystick (left) + one Attack orb (right, auto-target). Bow/weapon orb appears only if carried.</td></tr>
-          <tr><td>Pack / Craft</td><td>Swipe up from bottom edge → tabbed sheet (Pack · Craft · Status). No permanent buttons.</td></tr>
-          <tr><td>Inspect / command</td><td>Long-press any entity → info card slides from bottom. Tap ground to move/order as today.</td></tr>
-          <tr><td>Companion</td><td>Tap NPC → same bottom sheet, Day/Night posture rows.</td></tr>
+          <tr><td>Move / aim</td><td>Left-corner ring, appears where the thumb lands; drives movement + facing.</td></tr>
+          <tr><td>Action wheel (right)</td><td>Always open. Petals = current loadout (equipped attacks + spells), one flick each. Centre <b>▦</b> opens the catalog. Context-swaps: Scavenge shows gather/build/interact, Fight shows your weapons/spells + dodge.</td></tr>
+          <tr><td>Hotbar</td><td>6-slot strip along the bottom edge between the thumbs — weapons, consumables, spells. Tap = equip/use; equipped slot glows. Long-press = reassign.</td></tr>
+          <tr><td>Build (catalog)</td><td>Build petal → grid sheet above the gamepad, tabbed Defense/Survival/Production, scrollable (~19 items). Pick → ghost place; pin → hotbar/wheel.</td></tr>
+          <tr><td>Spells (catalog)</td><td>Centre ▦ → spellbook grid (8+), mana/cooldown per tile, equipped ones marked. Drag to a petal or hotbar slot.</td></tr>
+          <tr><td>Meters · time</td><td>Health/hunger arc gauges hug the move ring; day/night dial top-centre; wave count promotes to the top strip at night.</td></tr>
+          <tr><td>Inspect · NPC</td><td>Long-press entity → inspect. Tap NPC → command petals bloom on the companion.</td></tr>
         </tbody></table>
       </details>
     </article>
@@ -534,36 +431,29 @@
     <article class="concept" id="concept-b">
       <div class="concept-top">
         <div>
-          <div class="concept-label">Direction B · recommended starting point</div>
+          <div class="concept-label">Direction B · safe / legible</div>
           <h3>Field Kit</h3>
           <p class="tagline">"One bar that becomes whatever the moment needs."</p>
-          <p class="desc">A persistent bottom command bar that <em>morphs by mode</em> — Scavenge shows gather/build/pack; Build swaps to the buildable tray + confirm cluster; Fight swaps to move + attack. Meters sit top-left, the day/night dial top-centre. Pack and Craft are tabbed drawers. The pragmatic, legible, discoverable middle — closest to Don't Starve Pocket.</p>
+          <p class="desc">A persistent bottom command bar that <em>morphs by mode</em>, with the <strong>hotbar</strong> riding just above it at all times. Scavenge shows Build/Pack/Craft/Status; Build swaps to the catalog + confirm cluster; Fight swaps to a move pad + attack/bow/cast pulled from your hotbar. Deep menus are tabbed bottom-sheet drawers. The most discoverable, most labelled — everything has a word on it.</p>
           <p class="lineage">Lineage: Don't Starve: Pocket Edition · Last Day on Earth</p>
           <div class="procon">
-            <div class="pro"><h5>Strengths</h5><ul><li>Everything discoverable &amp; labelled</li><li>One consistent thumb zone</li><li>Scales cleanly to new tools/verbs</li></ul></div>
-            <div class="con"><h5>Risks</h5><ul><li>Bottom bar costs ~15% of screen</li><li>Least "novel"-feeling of the three</li><li>Mode morph needs clear transitions</li></ul></div>
+            <div class="pro"><h5>Strengths</h5><ul><li>Everything discoverable &amp; labelled</li><li>One consistent thumb zone + hotbar</li><li>Gentlest learning curve</li></ul></div>
+            <div class="con"><h5>Risks</h5><ul><li>Bar + hotbar cost ~22% of screen</li><li>Least "novel"-feeling</li><li>Slower than a live wheel in a fight</li></ul></div>
           </div>
         </div>
         <div>
-          <div class="phone-stage">
-            <div class="phone" data-concept="b">
-              <div class="notch"></div>
-              <div class="screen" data-screen>
-                <div class="terrain"></div>
-                <div class="tree" style="left:22px;top:110px;"></div>
-                <div class="tree" style="right:26px;top:138px;"></div>
-                <div class="fire-dot"></div>
-                <div class="worker" style="left:46%;top:50%;"></div>
-                <div class="hud" data-hud></div>
-              </div>
-            </div>
-          </div>
+          <div class="phone-stage"><div class="phone" data-concept="b"><div class="notch"></div>
+            <div class="screen" data-screen><div class="terrain"></div>
+              <div class="tree" style="left:22px;top:100px;"></div><div class="tree" style="right:26px;top:126px;"></div>
+              <div class="fire-dot"></div><div class="worker" style="left:46%;top:46%;"></div>
+              <div class="hud" data-hud></div>
+            </div></div></div>
           <div class="modebar" data-modebar="b">
             <button data-mode="scavenge" aria-pressed="true">Scavenge</button>
             <button data-mode="build" aria-pressed="false">Build</button>
             <button data-mode="fight" aria-pressed="false">Fight</button>
+            <button data-mode="spells" aria-pressed="false">Spells</button>
             <button data-mode="night" aria-pressed="false">Night</button>
-            <button data-mode="menu" aria-pressed="false">Pack</button>
           </div>
           <p class="scene-note" data-note="b"></p>
         </div>
@@ -571,67 +461,58 @@
       <details class="maps">
         <summary>Where every control lives in Field Kit</summary>
         <table><tbody>
-          <tr><td>Health / hunger</td><td>Labelled rings top-left, always visible with a small trend tick. Fire ring joins them when a hearth exists.</td></tr>
-          <tr><td>Day / night · wave</td><td>Dial top-centre + "Day N" label; NIGHT WAVE banner drops in under it at night with enemies-left count.</td></tr>
-          <tr><td>Resources</td><td>Wood/rock chips top-right, compact; expand in Build mode.</td></tr>
-          <tr><td>Command bar (bottom)</td><td><b>Scavenge:</b> Build · Pack · Craft · Status + Cancel-when-busy. <b>Build:</b> buildable tray + Rotate/Confirm/Cancel. <b>Fight:</b> move pad + Attack/Bow.</td></tr>
-          <tr><td>Build</td><td>Bar becomes a horizontal buildable tray (cost + affordability dim) → ghost+snap → Rotate/✔/✕ on the bar → "place again" toggle.</td></tr>
-          <tr><td>Combat</td><td>Bar becomes move joystick (left) + Attack/Bow cluster (right). Auto-surfaces at threat; manual COMBAT toggle still available.</td></tr>
-          <tr><td>Pack / Craft / Status</td><td>Bottom-sheet drawer with tabs; slots are real (tap to select/eat/equip). Swipe down to dismiss.</td></tr>
-          <tr><td>Inspect / companion</td><td>Inspect toggle in an overflow "···"; long-press also works. Tap NPC → companion drawer (Day/Night).</td></tr>
+          <tr><td>Command bar (bottom)</td><td>Morphs by mode. Scavenge: Build · Pack · Craft · Status. Build: catalog tray + Rotate/Place/Cancel. Fight: move pad + Attack/Bow/Cast.</td></tr>
+          <tr><td>Hotbar</td><td>6-slot strip directly above the bar, always visible — weapons, consumables, spells. Tap = equip/use.</td></tr>
+          <tr><td>Build (catalog)</td><td>Bar area expands to a tabbed, scrollable grid (Defense/Survival/Production, ~19 items) with cost + affordability dim; "place again" toggle.</td></tr>
+          <tr><td>Spells (catalog)</td><td>Bottom-sheet drawer grid (8+), mana/cooldown, equipped marked; drag/long-press to pin to hotbar.</td></tr>
+          <tr><td>Meters · time</td><td>Labelled rings top-left with trend tick; dial top-centre + "Day N"; NIGHT WAVE banner drops in at night.</td></tr>
+          <tr><td>Resources</td><td>Wood/rock chips top-right; expand in Build mode.</td></tr>
+          <tr><td>Inspect · NPC</td><td>Inspect in an overflow "···" + long-press. Tap NPC → companion drawer (Day/Night).</td></tr>
         </tbody></table>
       </details>
     </article>
 
-    <!-- CONCEPT C -->
-    <article class="concept" id="concept-c">
+    <!-- CONCEPT A -->
+    <article class="concept" id="concept-a">
       <div class="concept-top">
         <div>
-          <div class="concept-label">Direction C</div>
-          <h3>Twin Grip</h3>
-          <p class="tagline">"Two thumbs, two wheels, whole screen."</p>
-          <p class="desc">Console-style, anchored to both bottom corners and built portrait <em>and</em> landscape from day one. Left corner = movement ring; right corner = a radial action wheel that pops under the thumb — its petals change by context (gather/build/attack). Build uses a radial category wheel too. The boldest, most gestural, most screen-forward — and the most to learn.</p>
-          <p class="lineage">Lineage: console twin-stick · radial-menu action games</p>
+          <div class="concept-label">Direction A · minimal</div>
+          <h3>Emberlight</h3>
+          <p class="tagline">"Trust the world. Show almost nothing."</p>
+          <p class="desc">Diegetic-first — the screen is nearly all game. Meters are small rings that fade when calm; the day/night dial is the one permanent fixture. A slim auto-hiding <strong>hotbar</strong> sits low-centre for quick-swap, and everything deep (build catalog, spellbook, pack) rises as a full bottom sheet then gets out of the way. Gorgeous, but leans hardest on the player to remember what's where.</p>
+          <p class="lineage">Lineage: Kingdom Two Crowns · The Long Dark</p>
           <div class="procon">
-            <div class="pro"><h5>Strengths</h5><ul><li>Maximises world visibility</li><li>Landscape-native, fast in the hand</li><li>Feels premium / distinctive</li></ul></div>
-            <div class="con"><h5>Risks</h5><ul><li>Highest learning curve</li><li>Radials hide labels until opened</li><li>Hardest to build &amp; tune</li></ul></div>
+            <div class="pro"><h5>Strengths</h5><ul><li>Most immersive, least clutter</li><li>Best-looking on a small screen</li><li>Hotbar keeps quick actions without chrome</li></ul></div>
+            <div class="con"><h5>Risks</h5><ul><li>Can hide decision info (K2C's known flaw)</li><li>No always-on gamepad — slower to act</li><li>Deep menus feel like a context switch</li></ul></div>
           </div>
         </div>
         <div>
-          <div class="phone-stage">
-            <div class="phone" data-concept="c">
-              <div class="notch"></div>
-              <div class="screen" data-screen>
-                <div class="terrain"></div>
-                <div class="tree" style="left:20px;top:104px;"></div>
-                <div class="tree" style="right:24px;top:132px;"></div>
-                <div class="fire-dot"></div>
-                <div class="worker" style="left:47%;top:49%;"></div>
-                <div class="hud" data-hud></div>
-              </div>
-            </div>
-          </div>
-          <div class="modebar" data-modebar="c">
+          <div class="phone-stage"><div class="phone" data-concept="a"><div class="notch"></div>
+            <div class="screen" data-screen><div class="terrain"></div>
+              <div class="tree" style="left:24px;top:104px;"></div><div class="tree" style="right:30px;top:132px;"></div>
+              <div class="fire-dot"></div><div class="worker" style="left:44%;top:49%;"></div>
+              <div class="hud" data-hud></div>
+            </div></div></div>
+          <div class="modebar" data-modebar="a">
             <button data-mode="scavenge" aria-pressed="true">Scavenge</button>
             <button data-mode="build" aria-pressed="false">Build</button>
             <button data-mode="fight" aria-pressed="false">Fight</button>
+            <button data-mode="spells" aria-pressed="false">Spells</button>
             <button data-mode="night" aria-pressed="false">Night</button>
-            <button data-mode="menu" aria-pressed="false">Pack</button>
           </div>
-          <p class="scene-note" data-note="c"></p>
+          <p class="scene-note" data-note="a"></p>
         </div>
       </div>
       <details class="maps">
-        <summary>Where every control lives in Twin Grip</summary>
+        <summary>Where every control lives in Emberlight</summary>
         <table><tbody>
-          <tr><td>Health / hunger</td><td>Thin arc gauges hugging the bottom-left movement ring, so status sits where the thumb already is.</td></tr>
-          <tr><td>Day / night · wave</td><td>Dial top-centre; wave count promotes into the top strip at night. Top strip is the only always-on overlay.</td></tr>
-          <tr><td>Resources</td><td>Tiny counts top-right; full ledger via the Pack radial.</td></tr>
-          <tr><td>Movement</td><td>Left-corner ring, invisible until the thumb lands (appears where you press).</td></tr>
-          <tr><td>Action wheel (right)</td><td>Hold to bloom a radial of context petals — Scavenge: Gather/Build/Pack; Fight: Attack/Bow/Dodge. Tap-and-release on a petal fires it.</td></tr>
-          <tr><td>Build</td><td>Build petal → radial category wheel (Wall/Fire/Trap) → ghost+snap → confirm ring gesture; rotate by dragging the ghost.</td></tr>
-          <tr><td>Pack / Craft</td><td>Pack petal → full-screen radial-anchored sheet with tabs; real selectable slots.</td></tr>
-          <tr><td>Inspect / companion</td><td>Long-press entity → inspect. Tap NPC → command petals bloom on the companion directly.</td></tr>
+          <tr><td>Hotbar</td><td>Slim 5-slot strip low-centre, auto-hides when idle; the only persistent action chrome. Tap = equip/use.</td></tr>
+          <tr><td>Meters · time</td><td>Two small rings top-left, fade to ~40% when calm; sun-moon dial top-centre always on; slim wave strip unfurls at night.</td></tr>
+          <tr><td>Build (catalog)</td><td>Ember Build FAB bottom-right → full tabbed bottom sheet (~19 items) → ghost+snap → floating ✔ ⟳ ✕.</td></tr>
+          <tr><td>Spells (catalog)</td><td>Swipe-up sheet, tab to Spellbook (8+); pin to hotbar. No permanent spell chrome.</td></tr>
+          <tr><td>Combat</td><td>Nothing until threat; then invisible move-anywhere joystick (left) + one Attack orb (right, auto-target); extra orbs only if carried. Hotbar stays for swaps.</td></tr>
+          <tr><td>Resources</td><td>Diegetic — counts appear only inside the Build sheet; fire fuel = campfire brightness.</td></tr>
+          <tr><td>Inspect · NPC</td><td>Long-press entity → info card from bottom. Tap NPC → same bottom sheet (Day/Night).</td></tr>
         </tbody></table>
       </details>
     </article>
@@ -640,178 +521,219 @@
   <!-- NEXT -->
   <footer id="next">
     <div class="cta">
-      <p class="eyebrow">06 · Deciding</p>
+      <p class="eyebrow">07 · Deciding</p>
       <h2 style="margin-top:0;">How I'd take this forward</h2>
-      <p class="small">My recommendation: <strong>build Field Kit (B)</strong> as the base — it's the most legible and discoverable, and it's the safest first overhaul — but steal Emberlight's <em>contextual fade</em> and diegetic fire-meter, and keep Twin Grip's <em>corner anchoring</em> in mind so a landscape mode is a layout swap later, not a rewrite. All three sit on the same DOM-overlay stack (§04), so the engine decision is independent of which look wins.</p>
-      <p class="small" style="margin-bottom:0;">Once you pick a direction, the natural next step is a <span class="mono">plan-feature</span> pass: turn the chosen design into a staged implementation plan (event bridge → token system → HUD layer → per-mode surfaces), critique it, then execute. A few open questions worth settling first:</p>
+      <p class="small">Given your steer, I'd build <strong>Twin Grip (C)</strong>: the always-open gamepad is the thing you liked, and the loadout-wheel + catalog split is the cleanest answer to "lots of buildings and spells". Borrow <strong>Field Kit</strong>'s labelled catalog grids wholesale (they're the same DOM component), and keep a <strong>Field Kit fallback layout</strong> in your pocket as the accessible/low-dexterity option — same data, calmer surface. The <strong>hotbar</strong> is common to all three, so it's worth building first whichever way you lean.</p>
+      <p class="small" style="margin-bottom:0;">Next step once you pick: a <span class="mono">plan-feature</span> pass — event bridge → token system → hotbar + catalog components → the wheel/bar surface → per-mode wiring. A few things to settle first:</p>
       <div class="qlist">
-        <div><span class="qn">Q1</span><span><strong>Which direction</strong> — A, B, C, or a specific blend?</span></div>
-        <div><span class="qn">Q2</span><span><strong>Portrait-only</strong> for the first pass, or portrait + landscape from the start?</span></div>
-        <div><span class="qn">Q3</span><span><strong>DOM overlay confirmed?</strong> It's the recommendation, but it's a real architectural commitment worth your explicit yes.</span></div>
-        <div><span class="qn">Q4</span><span><strong>Pixel font or clean font</strong> for HUD text — full pixel identity, or pixel headers + clean readable body/numbers?</span></div>
+        <div><span class="qn">Q1</span><span><strong>Confirm Twin Grip</strong> as the base (with Field Kit catalogs + fallback), or a different blend?</span></div>
+        <div><span class="qn">Q2</span><span><strong>Wheel size</strong> — how many petals before the catalog takes over? (I'd cap at 6 + centre.)</span></div>
+        <div><span class="qn">Q3</span><span><strong>Hotbar length &amp; assignment</strong> — 5 or 6 slots? Manual pin only, or auto-populate recent?</span></div>
+        <div><span class="qn">Q4</span><span><strong>Real building/spell lists</strong> — the mockups use placeholders; what's the actual planned roster so the catalog categories are right?</span></div>
+        <div><span class="qn">Q5</span><span><strong>Portrait-only first</strong>, or portrait + landscape from the start (Twin Grip is built for both)?</span></div>
       </div>
     </div>
-    <p class="small" style="text-align:center; margin-top:28px; color:var(--muted);">Mostowo Survival · UI overhaul pitch · tap the mockups above to explore each direction.</p>
+    <p class="small" style="text-align:center; margin-top:28px; color:var(--muted);">Mostowo Survival · UI overhaul pitch v2 · tap through Scavenge / Build / Fight / Spells / Night on each phone.</p>
   </footer>
 
 </main>
 
 <script>
 (function () {
-  // -------- HUD scene builders per concept --------
-  // Each returns an HTML string for the .hud overlay given a mode.
-  // Coordinates are within a 282x548-ish screen; use % where possible.
-
-  var common = {
-    ringHealth: function (cls) { return '<div class="ring '+(cls||'')+'" style="border:2px solid var(--hud-moss);">♥<br>82</div>'; },
-    ringHunger: function (pulse) { return '<div class="ring '+(pulse?'pulse':'')+'" style="border:2px solid var(--hud-amber);">🍖<br>28%</div>'; },
-    dial: function (night) {
-      var c = night ? 'var(--hud-blue)' : 'var(--hud-amber)';
-      var lbl = night ? 'NIGHT' : 'DAY 4';
-      return '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">'
-        + '<svg class="dial" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="rgba(232,220,192,.25)" stroke-width="3"/>'
-        + '<path d="M22 4 A18 18 0 0 1 '+(night?'8 30':'40 22')+'" fill="none" stroke="'+c+'" stroke-width="3" stroke-linecap="round"/>'
-        + '<circle cx="'+(night?'8':'40')+'" cy="'+(night?'30':'22')+'" r="3.2" fill="'+c+'"/></svg>'
-        + '<span class="lbl" style="color:'+c+'">'+lbl+'</span></div>';
-    }
+  // -------- placeholder content (stand-in icons; real game uses pixel sprites) --------
+  var BUILD = {
+    Defense: [['🪵','Palisade','4w'],['🧱','Reinf. Wall','6w·2i'],['🚪','Gate','8w'],['⚙️','Spike Trap','3r'],['🗼','Watchtower','12w'],['🎯','Ballista','8w·4i'],['🚧','Barricade','2w'],['🔻','Caltrops','2i']],
+    Survival: [['🔥','Campfire','4w'],['🏕️','Bonfire','10w'],['🛏️','Bedroll','3c'],['💧','Water Still','6r'],['🌿','Herb Bed','4w'],['🕳️','Cellar','8r']],
+    Craft:    [['🔨','Workbench','6w'],['⚒️','Forge','10r·4i'],['🪚','Sawpit','8w'],['🥩','Drying Rack','4w'],['🧵','Loom','6w·2c']]
   };
+  var SPELLS = [['🔥','Firebolt','12'],['🛡️','Ember Ward','20'],['✚','Mend','15'],['❄️','Frost Nova','25'],['🏮','Wisp Lantern','8'],['🌿','Rootsnare','14'],['🩸','Blood Rite','30'],['⭕','Ward Circle','22']];
+  // hotbar loadout: [icon, count]  (equipped index passed in)
+  var HOTBAR = [['🪓',''],['🏹',''],['🔥',''],['🩹','3'],['💣','2'],['🍖','5']];
 
-  var builders = {
-    a: function (mode) {
-      var h = '';
-      // dial always
-      h += '<div class="safe-top" style="left:50%;transform:translateX(-50%);">'+common.dial(mode==='night')+'</div>';
-      // faded rings unless threshold
-      var calm = (mode==='scavenge');
-      h += '<div class="safe-top" style="left:12px;display:flex;gap:6px;'+(calm?'opacity:.5;':'')+'">'
-         + common.ringHealth() + common.ringHunger(mode!=='night') + '</div>';
-
-      if (mode==='night') {
-        h += '<div style="top:74px;left:50%;transform:translateX(-50%);"><div class="banner pulse">Wave 2 · 6 left</div></div>';
-      }
-      if (mode==='scavenge') {
-        h += '<div class="safe-bot" style="right:12px;"><div class="btn primary round">🔨</div></div>';
-        h += '<div style="bottom:70px;left:50%;transform:translateX(-50%);"><div class="toast">swipe up for pack</div></div>';
-      }
-      if (mode==='build') {
-        h += '<div class="ghost-tile" style="left:46%;top:44%;transform:translate(-50%,-50%);"></div>';
-        h += '<div class="sheet" style="bottom:64px;"><div class="sheet-grip"></div>'
-           + '<div class="buildrow"><div class="buildchip sel">Wall<span class="c">2 wood</span></div><div class="buildchip">Fire<span class="c">4 wood</span></div><div class="buildchip">Trap<span class="c">3 rock</span></div></div></div>';
-        h += '<div class="safe-bot" style="right:12px;display:flex;gap:8px;">'
-           + '<div class="btn round ghost">⟳</div><div class="btn round primary">✔</div></div>';
-        h += '<div class="safe-bot" style="left:12px;"><div class="btn round danger">✕</div></div>';
-      }
-      if (mode==='fight') {
-        h += '<div class="safe-bot" style="left:12px;"><div class="joystick"><div class="knob"></div></div></div>';
-        h += '<div class="safe-bot" style="right:12px;"><div class="btn round danger" style="width:60px;height:60px;">⚔</div></div>';
-        h += '<div class="mob tgt" style="left:52%;top:40%;"></div><div class="mob" style="left:64%;top:34%;"></div>';
-        h += '<div class="floaty" style="left:50%;top:36%;">-6</div>';
-      }
-      if (mode==='menu') {
-        h += '<div class="sheet" style="bottom:8px;top:44%;"><div class="sheet-grip"></div>'
-           + '<div style="display:flex;gap:14px;margin-bottom:10px;"><b style="font-size:10px;color:var(--hud-ember)">PACK</b><span style="font-size:10px;color:#93856c">CRAFT</span><span style="font-size:10px;color:#93856c">STATUS</span></div>'
-           + slots() + '</div>';
-      }
-      return h;
-    },
-
-    b: function (mode) {
-      var h = '';
-      h += '<div class="safe-top" style="left:12px;display:flex;gap:6px;">'+common.ringHealth()+common.ringHunger(mode==='night'||mode==='scavenge')+'</div>';
-      h += '<div class="safe-top" style="left:50%;transform:translateX(-50%);">'+common.dial(mode==='night')+'</div>';
-      h += '<div class="safe-top" style="right:12px;display:flex;flex-direction:column;gap:4px;align-items:flex-end;">'
-         + '<div class="pill">🪵 24</div><div class="pill">🪨 11</div></div>';
-      if (mode==='night') h += '<div style="top:78px;left:50%;transform:translateX(-50%);"><div class="banner pulse">Night · Wave 2 · 6 left</div></div>';
-
-      // bottom command bar
-      var bar = '<div class="sheet" style="bottom:8px;padding:9px 8px;">';
-      if (mode==='scavenge' || mode==='menu') {
-        bar += '<div class="tray" style="justify-content:space-between;">'
-          + '<div class="btn lg primary" style="flex:1;">🔨 Build</div>'
-          + '<div class="btn lg '+(mode==='menu'?'on':'')+'" style="flex:1;">🎒 Pack</div>'
-          + '<div class="btn lg" style="flex:1;">⚒ Craft</div>'
-          + '<div class="btn lg" style="flex:1;">❤ Status</div></div>';
-      } else if (mode==='build') {
-        h += '<div class="ghost-tile" style="left:48%;top:42%;transform:translate(-50%,-50%);"></div>';
-        h += '<div class="ghost-tile bad" style="left:60%;top:50%;transform:translate(-50%,-50%);"></div>';
-        bar += '<div class="buildrow" style="margin-bottom:9px;"><div class="buildchip sel">Wall<span class="c">2 wood</span></div><div class="buildchip">Fire<span class="c">4 wood</span></div><div class="buildchip">Trap<span class="c">3 rock</span></div></div>'
-          + '<div class="tray"><div class="btn lg" style="flex:1;">⟳ Rotate</div><div class="btn lg primary" style="flex:1;">✔ Place</div><div class="btn lg danger" style="flex:1;">✕ Done</div></div>';
-      } else if (mode==='fight') {
-        bar += '<div style="display:flex;justify-content:space-between;align-items:center;">'
-          + '<div class="joystick"><div class="knob"></div></div>'
-          + '<div style="display:flex;gap:8px;"><div class="btn round" style="width:50px;height:50px;">🏹</div><div class="btn round danger" style="width:58px;height:58px;">⚔</div></div></div>';
-      }
-      bar += '</div>';
-
-      if (mode==='menu') {
-        // drawer over the bar
-        h += '<div class="sheet" style="bottom:70px;top:42%;"><div class="sheet-grip"></div>'
-          + '<div style="display:flex;gap:14px;margin-bottom:10px;"><b style="font-size:10px;color:var(--hud-ember)">PACK</b><span style="font-size:10px;color:#93856c">CRAFT</span><span style="font-size:10px;color:#93856c">STATUS</span></div>'
-          + slots() + '</div>';
-      }
-      if (mode==='fight') { h += '<div class="mob tgt" style="left:52%;top:38%;"></div><div class="mob" style="left:66%;top:44%;"></div>'; }
-      h += bar;
-      return h;
-    },
-
-    c: function (mode) {
-      var h = '';
-      // top strip only always-on overlay
-      h += '<div class="safe-top" style="left:50%;transform:translateX(-50%);">'+common.dial(mode==='night')+'</div>';
-      h += '<div class="safe-top" style="right:12px;display:flex;flex-direction:column;gap:4px;align-items:flex-end;"><div class="pill">🪵24 · 🪨11</div>'
-         + (mode==='night'?'<div class="banner pulse">Wave 2 · 6</div>':'') + '</div>';
-
-      // bottom-left movement ring + status arcs
-      h += '<div class="safe-bot" style="left:10px;position:absolute;">'
-         + '<div style="position:relative;"><div class="joystick" style="width:80px;height:80px;"><div class="knob"></div></div>'
-         + '<div class="ring" style="position:absolute;left:-6px;top:-6px;width:22px;height:22px;border:2px solid var(--hud-moss);font-size:0;">·</div></div></div>';
-
-      if (mode==='fight' || mode==='night') {
-        h += '<div class="mob tgt" style="left:50%;top:38%;"></div><div class="mob" style="left:64%;top:32%;"></div><div class="mob" style="left:40%;top:30%;"></div>';
-        h += '<div class="safe-bot" style="right:8px;"><div class="radial">'
-          + '<div class="petal" style="left:50%;top:2px;transform:translateX(-50%);">⚔</div>'
-          + '<div class="petal" style="right:2px;top:50%;transform:translateY(-50%);">🏹</div>'
-          + '<div class="petal" style="left:2px;top:50%;transform:translateY(-50%);">💨</div>'
-          + '<div class="center">HOLD</div></div></div>';
-      } else if (mode==='build') {
-        h += '<div class="ghost-tile" style="left:48%;top:42%;transform:translate(-50%,-50%);"></div>';
-        h += '<div class="safe-bot" style="right:8px;"><div class="radial">'
-          + '<div class="petal sel" style="left:50%;top:2px;transform:translateX(-50%);border-color:var(--hud-ember);">▦</div>'
-          + '<div class="petal" style="right:2px;top:50%;transform:translateY(-50%);">🔥</div>'
-          + '<div class="petal" style="left:2px;top:50%;transform:translateY(-50%);">▲</div>'
-          + '<div class="center" style="background:#2f3b26;border-color:var(--hud-moss);color:#d3e2bd;">✔</div></div></div>';
-      } else if (mode==='menu') {
-        h += '<div class="sheet" style="bottom:8px;top:42%;"><div class="sheet-grip"></div>'
-          + '<div style="display:flex;gap:14px;margin-bottom:10px;"><b style="font-size:10px;color:var(--hud-ember)">PACK</b><span style="font-size:10px;color:#93856c">CRAFT</span></div>'
-          + slots() + '</div>';
-      } else { // scavenge
-        h += '<div class="safe-bot" style="right:8px;"><div class="radial" style="opacity:.96;">'
-          + '<div class="petal" style="left:50%;top:2px;transform:translateX(-50%);">✋</div>'
-          + '<div class="petal" style="right:2px;top:50%;transform:translateY(-50%);">🔨</div>'
-          + '<div class="petal" style="left:2px;top:50%;transform:translateY(-50%);">🎒</div>'
-          + '<div class="center" style="background:#3a3730;border-color:rgba(232,220,192,.5);color:var(--hud-bone);">HOLD</div></div></div>';
-        h += '<div style="bottom:96px;right:14px;position:absolute;"><div class="toast">hold &amp; flick a petal</div></div>';
-      }
-      return h;
-    }
-  };
-
-  function slots() {
-    var items = [['#8aa46b','5'],['#c9b98f','12'],['#d24b44','2'],['#6f9ad2',''],['','']];
-    var row = '<div class="slotrow">';
-    for (var i=0;i<5;i++){ var it=items[i]; row += '<div class="slot">'+(it[0]?'<div class="ic" style="background:'+it[0]+'"></div>':'')+(it[1]?'<b>'+it[1]+'</b>':'')+'</div>'; }
-    row += '</div><div class="slotrow" style="margin-top:5px;opacity:.55;">';
-    for (var j=0;j<5;j++){ row += '<div class="slot"></div>'; }
-    row += '</div>';
-    return row;
+  function hotbar(eq, n) {
+    n = n || 6;
+    var h = '<div class="hotbar">';
+    for (var i=0;i<n;i++){ var it = HOTBAR[i] || ['',''];
+      h += '<div class="hslot'+(i===eq?' eq':'')+(it[0]?'':' empty')+'">'+(it[0]||'')+(it[1]?'<b>'+it[1]+'</b>':'')+'</div>'; }
+    return h + '</div>';
   }
 
+  function catGrid(kind) {
+    var tabs, items, foot;
+    if (kind==='build') {
+      tabs = ['Defense','Survival','Craft'];
+      items = BUILD.Defense; // active tab
+      foot = 'tap to place · long-press to pin to hotbar';
+    } else {
+      tabs = ['Spellbook','Attacks','Runes'];
+      items = SPELLS;
+      foot = 'drag to a wheel petal or hotbar slot';
+    }
+    var h = '<div class="sheet-grip"></div><div class="cat-tabs">';
+    tabs.forEach(function(t,i){ h += '<span class="'+(i===0?'on':'')+'">'+t+'</span>'; });
+    h += '</div><div class="cat-grid">';
+    items.forEach(function(it,i){
+      var eq = (kind==='spells' && (i===0)) || (kind==='build' && i===0);
+      var mana = kind==='spells' ? '<span class="cost">◈'+it[2]+'</span>' : '<span class="cost">'+it[2]+'</span>';
+      h += '<div class="cgitem'+(i===0&&kind==='build'?' sel':'')+(eq?' eq':'')+'"><span class="em">'+it[0]+'</span><span class="nm">'+it[1]+'</span>'+mana+'</div>';
+    });
+    h += '</div><div class="cat-foot">'+foot+'</div>';
+    return h;
+  }
+
+  function wheel(petals, center, size) {
+    size = size || 108; var R = size/2 - 16, C = size/2;
+    var h = '<div class="wheel" style="width:'+size+'px;height:'+size+'px;">';
+    var n = petals.length;
+    for (var i=0;i<n;i++){
+      var a = (-90 + i*360/n) * Math.PI/180;
+      var x = C + R*Math.cos(a), y = C + R*Math.sin(a);
+      h += '<div class="petal'+(petals[i].sel?' sel':'')+'" style="left:'+x+'px;top:'+y+'px;transform:translate(-50%,-50%);">'+petals[i].ic+'</div>';
+    }
+    h += '<div class="center" style="width:40px;height:40px;'+center.style+'">'+center.label+'</div></div>';
+    return h;
+  }
+
+  function moveRing() { return '<div class="joystick"><div class="knob"></div></div>'; }
+  function statArc() { return '<div style="display:flex;gap:5px;margin-bottom:6px;">'
+    + '<div class="ring" style="width:30px;height:30px;border:2px solid var(--hud-moss);">♥82</div>'
+    + '<div class="ring pulse" style="width:30px;height:30px;border:2px solid var(--hud-amber);">🍖28</div></div>'; }
+  function dial(night) {
+    var c = night ? 'var(--hud-blue)' : 'var(--hud-amber)', lbl = night ? 'NIGHT' : 'DAY 4';
+    var end = night ? '8 30' : '40 22', ex = night?'8':'40', ey = night?'30':'22';
+    return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">'
+      + '<svg width="42" height="42" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="rgba(232,220,192,.25)" stroke-width="3"/>'
+      + '<path d="M22 4 A18 18 0 0 1 '+end+'" fill="none" stroke="'+c+'" stroke-width="3" stroke-linecap="round"/>'
+      + '<circle cx="'+ex+'" cy="'+ey+'" r="3.2" fill="'+c+'"/></svg><span class="lbl" style="color:'+c+'">'+lbl+'</span></div>';
+  }
+  function res() { return '<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;"><div class="pill">🪵 24</div><div class="pill">🪨 11</div></div>'; }
+
+  var builders = {
+    // ---------------- TWIN GRIP ----------------
+    c: function (mode) {
+      var h = '';
+      h += '<div class="safe-top" style="left:50%;transform:translateX(-50%);">'+dial(mode==='night')+'</div>';
+      h += '<div class="safe-top" style="right:10px;">'+ (mode==='night' ? '<div class="banner pulse">Wave 2 · 6 left</div>' : res()) +'</div>';
+
+      var catOpen = (mode==='build' || mode==='spells');
+      // always-open gamepad (peeks even under a catalog)
+      h += '<div class="safe-bot" style="left:8px;"><div style="position:relative;">'+statArc()+moveRing()+'</div></div>';
+
+      // right action wheel — petals swap by context
+      var petals, center;
+      if (mode==='fight' || mode==='night') {
+        petals = [{ic:'🪓',sel:true},{ic:'🏹'},{ic:'🔥'},{ic:'❄️'},{ic:'💨'},{ic:'🛡️'}];
+        center = {label:'▦', style:'background:#241f1b;border:1px solid var(--hud-line);font-size:15px;'};
+      } else if (mode==='build') {
+        petals = [{ic:'🪵',sel:true},{ic:'🔥'},{ic:'⚙️'},{ic:'🚪'}];
+        center = {label:'✔', style:'background:#2f3b26;border:1px solid var(--hud-moss);color:#d3e2bd;font-size:15px;'};
+      } else if (mode==='spells') {
+        petals = [{ic:'🔥',sel:true},{ic:'❄️'},{ic:'✚'},{ic:'🛡️'},{ic:'🌿'}];
+        center = {label:'▦', style:'background:#241f1b;border:1px solid var(--hud-line);font-size:15px;'};
+      } else { // scavenge
+        petals = [{ic:'✋',sel:true},{ic:'🔨'},{ic:'🎒'},{ic:'🔍'}];
+        center = {label:'▦', style:'background:#3a3730;border:1px solid rgba(232,220,192,.5);font-size:15px;'};
+      }
+      h += '<div class="safe-bot" style="right:6px;">'+wheel(petals, center)+'</div>';
+
+      // hotbar strip along bottom edge, centred, raised above the thumbs
+      h += '<div style="bottom:120px;left:50%;transform:translateX(-50%);position:absolute;">'+hotbar(0)+'</div>';
+
+      // catalog sheet above the gamepad
+      if (catOpen) {
+        h += '<div class="catalog" style="top:30%;bottom:118px;">'+catGrid(mode)+'</div>';
+      }
+      if (mode==='build') h += '<div class="ghost-tile" style="left:48%;top:24%;transform:translate(-50%,-50%);"></div>';
+      if (mode==='fight' || mode==='night') h += '<div class="mob tgt" style="left:50%;top:34%;"></div><div class="mob" style="left:64%;top:28%;"></div><div class="mob" style="left:38%;top:30%;"></div>';
+      if (mode==='scavenge') h += '<div style="bottom:164px;left:50%;transform:translateX(-50%);position:absolute;"><div class="toast">hotbar: tap to swap · wheel centre ▦ = catalog</div></div>';
+      return h;
+    },
+
+    // ---------------- FIELD KIT ----------------
+    b: function (mode) {
+      var h = '';
+      h += '<div class="safe-top" style="left:12px;display:flex;gap:6px;">'
+         + '<div class="ring" style="width:34px;height:34px;border:2px solid var(--hud-moss);">♥<br>82</div>'
+         + '<div class="ring pulse" style="width:34px;height:34px;border:2px solid var(--hud-amber);">🍖<br>28</div></div>';
+      h += '<div class="safe-top" style="left:50%;transform:translateX(-50%);">'+dial(mode==='night')+'</div>';
+      h += '<div class="safe-top" style="right:12px;">'+res()+'</div>';
+      if (mode==='night') h += '<div style="top:80px;left:50%;transform:translateX(-50%);"><div class="banner pulse">Night · Wave 2 · 6 left</div></div>';
+
+      var catOpen = (mode==='build' || mode==='spells');
+      // catalog drawer (build expands the bar area; spells is a sheet)
+      if (mode==='build') {
+        h += '<div class="ghost-tile" style="left:48%;top:34%;transform:translate(-50%,-50%);"></div>';
+        h += '<div class="ghost-tile bad" style="left:60%;top:42%;transform:translate(-50%,-50%);"></div>';
+        h += '<div class="catalog" style="top:34%;bottom:96px;">'+catGrid('build')+'</div>';
+        h += '<div style="bottom:12px;left:8px;right:8px;position:absolute;"><div class="hotbar" style="justify-content:center;"><div style="display:flex;gap:6px;width:100%;">'
+          + '<div class="btn" style="flex:1;height:34px;">⟳ Rotate</div><div class="btn primary" style="flex:1;height:34px;">✔ Place</div><div class="btn danger" style="flex:1;height:34px;">✕ Done</div></div></div></div>';
+        return h;
+      }
+      if (mode==='spells') {
+        h += '<div class="catalog" style="top:34%;bottom:52px;">'+catGrid('spells')+'</div>';
+      }
+
+      // hotbar just above the command bar (bar is taller in fight)
+      var hbBottom = (mode==='fight' || mode==='night') ? 96 : 70;
+      h += '<div style="bottom:'+hbBottom+'px;left:50%;transform:translateX(-50%);position:absolute;">'+hotbar(0)+'</div>';
+
+      // morphing command bar
+      var bar = '<div class="catalog" style="bottom:8px;top:auto;padding:8px;">';
+      if (mode==='fight' || mode==='night') {
+        bar += '<div style="display:flex;justify-content:space-between;align-items:center;">'
+          + moveRing().replace('joystick','joystick').replace('74px','60px').replace('74px','60px')
+          + '<div style="display:flex;gap:7px;"><div class="btn round" style="width:44px;height:44px;">🏹</div><div class="btn round" style="width:44px;height:44px;font-size:15px;">🔥</div><div class="btn round danger" style="width:52px;height:52px;font-size:16px;">⚔️</div></div></div>';
+      } else { // scavenge
+        bar += '<div style="display:flex;gap:6px;"><div class="btn primary" style="flex:1;height:40px;">🔨 Build</div><div class="btn" style="flex:1;height:40px;">🎒 Pack</div><div class="btn" style="flex:1;height:40px;">⚒️ Craft</div><div class="btn" style="flex:1;height:40px;">❤ Status</div></div>';
+      }
+      bar += '</div>';
+      h += bar;
+      if (mode==='fight' || mode==='night') h += '<div class="mob tgt" style="left:52%;top:34%;"></div><div class="mob" style="left:66%;top:40%;"></div>';
+      return h;
+    },
+
+    // ---------------- EMBERLIGHT ----------------
+    a: function (mode) {
+      var h = '';
+      h += '<div class="safe-top" style="left:50%;transform:translateX(-50%);">'+dial(mode==='night')+'</div>';
+      var calm = (mode==='scavenge');
+      h += '<div class="safe-top" style="left:12px;display:flex;gap:6px;'+(calm?'opacity:.45;':'')+'">'
+         + '<div class="ring" style="width:30px;height:30px;border:2px solid var(--hud-moss);">82</div>'
+         + '<div class="ring '+(calm?'':'pulse')+'" style="width:30px;height:30px;border:2px solid var(--hud-amber);">28</div></div>';
+      if (mode==='night') h += '<div style="top:76px;left:50%;transform:translateX(-50%);"><div class="banner pulse">Wave 2 · 6 left</div></div>';
+
+      var catOpen = (mode==='build' || mode==='spells');
+      if (catOpen) {
+        h += '<div class="catalog" style="top:32%;bottom:8px;">'+catGrid(mode)+'</div>';
+        if (mode==='build') {
+          h += '<div class="ghost-tile" style="left:46%;top:24%;transform:translate(-50%,-50%);"></div>';
+          h += '<div style="top:22%;right:14px;position:absolute;display:flex;gap:7px;"><div class="btn round" style="width:38px;height:38px;">⟳</div><div class="btn round primary" style="width:38px;height:38px;">✔</div></div>';
+        }
+        return h;
+      }
+
+      // slim auto-hiding hotbar low-centre (5 slots)
+      h += '<div style="bottom:14px;left:50%;transform:translateX(-50%);position:absolute;'+(calm?'opacity:.8;':'')+'">'+hotbar(0,5)+'</div>';
+
+      if (mode==='scavenge') {
+        h += '<div class="safe-bot" style="right:12px;bottom:56px;"><div class="btn primary round" style="width:44px;height:44px;font-size:16px;">🔨</div></div>';
+      }
+      if (mode==='fight' || mode==='night') {
+        h += '<div class="safe-bot" style="left:12px;bottom:56px;">'+moveRing()+'</div>';
+        h += '<div class="safe-bot" style="right:12px;bottom:56px;"><div class="btn round danger" style="width:56px;height:56px;font-size:18px;">⚔️</div></div>';
+        h += '<div class="mob tgt" style="left:52%;top:36%;"></div><div class="mob" style="left:64%;top:30%;"></div>';
+        h += '<div class="floaty" style="left:50%;top:32%;">-6</div>';
+      }
+      return h;
+    }
+  };
+
   var notes = {
-    scavenge: 'Daytime scavenging — the calm state. Gather, build, manage the pack.',
-    build:    'Build mode — buildable tray, ghost preview snapping green/red, confirm cluster.',
-    fight:    'Threat nearby — combat controls surface; target outlined; move + attack.',
-    night:    'Night wave — day/night dial reddens, wave count promotes, defend the fire.',
-    menu:     'Pack open — a tabbed drawer/sheet; slots are real (select, eat, equip).'
+    scavenge: 'Daytime — hotbar ready, gamepad open. Gather, then dip into the catalogs.',
+    build:    'Build catalog — categorised & scrollable (~19 buildings). Pin favourites to the hotbar.',
+    fight:    'Combat — equipped attacks & spells on the wheel/bar, quick-swap on the hotbar, target outlined.',
+    spells:   'Spellbook — the full list (mana/cooldown shown); equipped are marked. Drag any to a petal or slot.',
+    night:    'Night wave — dial reddens, wave count promotes; defend with the loadout you set by day.'
   };
 
   function render(concept, mode) {

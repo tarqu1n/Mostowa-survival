@@ -90,6 +90,10 @@ export type InboundEvent =
   | { type: 'combat:moveEnd' }
   | { type: 'mode:combatToggle' }
   | { type: 'mode:inspectToggle' }
+  // `inspect:hide` is dual-direction: the world emits it (outbound, cleared into the store above), and
+  // the DOM inspect card also emits it to dismiss itself — the bridge's own outbound listener then
+  // zeroes `inspectTarget`, so the card's open state stays a pure mirror of the store (plan 046 Step 8).
+  | { type: 'inspect:hide' }
   | { type: 'needs:eat'; payload: { itemId: string } }
   | { type: 'npc:assignDayRole'; payload: NpcDayRole }
   | { type: 'npc:assignNightPosture'; payload: NpcNightPosture }

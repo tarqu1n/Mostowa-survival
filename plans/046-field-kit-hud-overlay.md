@@ -238,7 +238,18 @@ crispness proven at the Step 1 gate before any component is built on top.
   - Done when: primitives typecheck and a sample `<Button>`/`<Tabs>` renders styled inside
     `GameHud`; `BUILDABLES` entries carry a category; typecheck + lint clean.
 
-- [ ] **Step 5: Top-cluster components** `[delegate]` (parallel: A)
+- [x] **Step 5: Top-cluster components** `[delegate]` (parallel: A)
+  - Outcome: `src/hud/components/{MeterBars,DayNightDial,ResourceChips}.tsx`. MeterBars = SVG
+    stroke-dasharray rings (HP/food/fire/supply); HP/food go danger only below threshold (HP ≤0.3
+    per legacy UIScene, food ≤`HUNGER_LOW_FRACTION` from config), fire ring hidden when `fire===null`;
+    **trend omitted** (store carries no history — documented). DayNightDial = sun/moon arc driven by
+    `time` (0..1), "Day N" + NIGHT WAVE banner when `waveInfo.active`. ResourceChips = wood/rock chips
+    - zoom `[−] % [+]` emitting `zoom:delta` ±`ZOOM_STEP` (=1, the real control's step, imported from
+    config — not the ±0.25 the brief guessed) with [−]/[+] dimmed at MIN/MAX_ZOOM, + follow toggle →
+    `camera:center`. Reads hp/maxHp/hunger/maxHunger/fire/supply/time/dayCount/dayPhase/waveInfo/zoom/
+    following. Interactive rows get `pointer-events:auto`. typecheck + lint clean (own files). Render
+    verified for real at Step 9. (Note: supply appears in both MeterBars and ResourceChips per the
+    plan's dual listing — overlap reconciled at Step 9 integration.)
   - Create three self-contained presentational components under `src/hud/components/`, each
     reading `useHudStore` and emitting via `bridge.emit`, styled with `src/hud/ui` +
     tokens, authored in design units, portrait-first: `MeterBars.tsx` (HP/food/fire/supply
@@ -250,7 +261,20 @@ crispness proven at the Step 1 gate before any component is built on top.
   - Done when: each typechecks/lints and renders correctly when temporarily mounted; matches
     the mockup (`docs/ui-overhaul/pitch.html`, Field Kit). Full behaviour verified at Step 9.
 
-- [ ] **Step 6: Action components — hotbar + morphing command bar** `[delegate]` (parallel: A)
+- [x] **Step 6: Action components — hotbar + morphing command bar** `[delegate]` (parallel: A)
+  - Outcome: `src/hud/components/{Hotbar,CommandBar,Movepad}.tsx`. Hotbar = `HUD_HOTBAR_SLOTS` (6)
+    slots from `store.hotbar`, empty dimmed; tap → buildable `build:select`, edible item
+    (`ITEMS[id].nutrition != null`) `needs:eat`, weapon/other = no-op (equipment deferred); item icons
+    resolve from `${BASE_URL}assets/icons/…`, **buildables fall back to a text label** (`BuildableDef`
+    has no `icon` field — confirmed) with a TODO; long-press is a tap-suppressing placeholder (real
+    pin lives on catalog/pack). CommandBar morphs by a `mode` PROP ('scavenge'|'build'|'fight'), reads
+    `selection`/`orientable`/`demolishMode` for chip highlight/Rotate-gate/Demolish-toggle; emits
+    `build:toggle`/`build:select`/`build:rotate`/`demolish:toggle`/`combat:attack`/`combat:bow`, Place
+    is a confirm/no-op (world-tap places at Step 10), exposes `onBuild`/`onPack`/`onCraft`/`onStatus`
+    - `onMoveHeldChange` callback props for the drawer opens. Movepad = draggable thumb, pure
+    `normalize(dx,dy,radius)` clamps magnitude ≤1 (scale-independent), emits `combat:move`/`moveEnd` +
+    `onHeldChange`. No store writes (pin deferred to Step 7/11). typecheck + lint clean. Behaviour
+    verified at Step 10.
   - `src/hud/components/Hotbar.tsx` (6 slots from `HUD_HOTBAR_SLOTS`, renders the store
     loadout, tap → use/equip/select, long-press → pin intent via a store action, empty slots
     dimmed, icons from `ITEMS`/`BUILDABLES`), `src/hud/components/CommandBar.tsx`
@@ -262,7 +286,18 @@ crispness proven at the Step 1 gate before any component is built on top.
   - Done when: components typecheck/lint and render each mode layout matching the mockup;
     movepad emits normalized vectors. Behaviour verified at Step 10.
 
-- [ ] **Step 7: Drawer components — build catalog, pack, status** `[delegate]` (parallel: A)
+- [x] **Step 7: Drawer components — build catalog, pack, status** `[delegate]` (parallel: A)
+  - Outcome: `src/hud/components/{BuildCatalog,PackDrawer,StatusDrawer}.tsx`, each a bottom `sheet`
+    with an `open`/`onOpenChange` prop (command-bar wiring lands Step 11). BuildCatalog derives tabs
+    from the DISTINCT `category` values present in `BUILDABLES` (first-appearance order) — today
+    Defense (wall, spike_trap) + Survival (campfire), no Craft tab; grid tiles show cost + dim when
+    unaffordable (vs `store.inventory`); select → `build:select` (+ closes), long-press →
+    `pinToHotbar({kind:'buildable',id})`. PackDrawer = `store.inventory` grid; edible tap (data-driven
+    `ITEMS[id].nutrition != null`, guarded stock>0) → `needs:eat`, long-press →
+    `pinToHotbar({kind:'item',id})`. StatusDrawer renders store-backed meters (hp/hunger/fire/supply)
+    - edible eat-list; **playerStats stat rows deferred** with a `TODO(Step 11/integration)` since the
+    HUD store doesn't expose `playerStats` (did NOT add a store field or read the registry). A compact
+    `useLongPress` (450ms) inlined per file. typecheck + lint clean. Behaviour verified at Step 11.
   - `src/hud/components/BuildCatalog.tsx` (tabs derived from the categories actually present
     in `BUILDABLES` — today Defense/Survival, no empty Craft tab; a category grid appears
     only when it has ≥1 entry, so tabs grow automatically as content lands — scrollable grid
@@ -275,7 +310,20 @@ crispness proven at the Step 1 gate before any component is built on top.
   - Done when: each typechecks/lints and renders the populated grid/drawer matching the
     mockup. Behaviour verified at Step 11.
 
-- [ ] **Step 8: Overlay components — inspect, companion, dev** `[delegate]` (parallel: A)
+- [x] **Step 8: Overlay components — inspect, companion, dev** `[delegate]` (parallel: A)
+  - Outcome: `src/hud/components/{InspectCard,CompanionMenu,DevMenu}.tsx`. InspectCard = bottom `sheet`
+    mirroring `store.inspectTarget` (open iff non-null); name + HP bar (danger ≤33%) or Max-HP row +
+    `extra[]` rows; close → emits `inspect:hide`. **Bridge fix applied here (parent):** `inspect:hide`
+    was absent from the `InboundEvent` union (Step 3 gap — it was outbound-only); added `| { type:
+    'inspect:hide' }` to bridge.ts and dropped the agent's `as unknown` cast (the bridge's own
+    `inspect:hide` listener clears the store, so the card's open state stays a pure store mirror).
+    CompanionMenu = iterates the pure `NPC_MENU_SECTIONS` (read-only from `@/scenes/npcMenu`) into
+    Day/Night `Button` sections; `dayRole` opt → `npc:assignDayRole`, `nightPosture` opt →
+    `npc:assignNightPosture`, guard-here opt → `npc:beginPlaceGuard`; active option via
+    `isNpcMenuOptionActive`; open/dayRole/nightPosture/onClose are PROPS (`npc:menuOpen` wiring at
+    Step 12). DevMenu = whole render gated on `import.meta.env.DEV` (returns null in prod), four
+    buttons emit `debug:spawnEnemy`/`spawnNpc`/`toggleTime`/`forceWave` (toggle label tracks
+    `dayPhase`). typecheck + lint clean. Behaviour verified at Step 12.
   - `src/hud/components/InspectCard.tsx` (entity stats bottom sheet from
     `store.inspectTarget`, close → `inspect:hide`), `src/hud/components/CompanionMenu.tsx`
     (Day/Night posture sections reusing the pure `NPC_MENU_SECTIONS` model from

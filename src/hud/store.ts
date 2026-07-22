@@ -102,6 +102,10 @@ export interface HudActions {
   setInspect(target: InspectableStats | null): void;
   setInventory(inventory: Record<string, number>): void;
   setHotbar(hotbar: HotbarSlot[]): void;
+  /** Pin an item/buildable into the loadout — used by the long-press "pin" affordance on catalog/pack
+   *  entries (plan 046). In-memory only for now: fills the first empty slot, no-op if already pinned or
+   *  the bar is full. `localStorage` persistence + per-save keying land at Step 11. */
+  pinToHotbar(entry: NonNullable<HotbarSlot>): void;
   setFollowing(on: boolean): void;
   setZoom(zoom: number): void;
 }
@@ -158,6 +162,15 @@ export const useHudStore = create<HudState & HudActions>()(
     setInspect: (inspectTarget) => set({ inspectTarget }),
     setInventory: (inventory) => set({ inventory }),
     setHotbar: (hotbar) => set({ hotbar }),
+    pinToHotbar: (entry) =>
+      set((s) => {
+        if (s.hotbar.some((slot) => slot?.kind === entry.kind && slot.id === entry.id)) return s;
+        const at = s.hotbar.indexOf(null);
+        if (at === -1) return s; // bar full — no-op for now (Step 11 may add eviction)
+        const hotbar = s.hotbar.slice();
+        hotbar[at] = entry;
+        return { hotbar };
+      }),
     setFollowing: (following) => set({ following }),
     setZoom: (zoom) => set({ zoom }),
   })),

@@ -72,20 +72,26 @@ npm run lint:fix  # ESLint --fix
 npm run lint:md   # markdownlint-cli2 (docs are LLM context — token-lean lint posture)
 npm run format    # Prettier --write (not .md — markdownlint owns that)
 npm run format:check
-npm run check     # typecheck && lint && lint:md && format:check && test — the full local gate
+npm run check     # typecheck && lint && lint:md && format:check && test — the fast full local gate (unit only)
+npm run check:all # check + e2e + smoke — the full sweep incl. the browser tiers
 
-# Tests (see testing.md for the two-speed loop)
-npm test          # Tier-1 unit tests (Vitest, plain Node, fast)
+# Tests (see testing.md for the when-to-run-what matrix)
+npm test          # Tier-1 unit tests (Vitest, plain Node, ~1.3s)
 npm run test:watch# Tier-1 watch mode — reruns only the tests affected by the file you just saved
-npm run e2e       # Tier-2 deterministic Playwright scenarios (starts its own `vite dev`)
-npm run smoke     # Tier-3 boot canary (needs `npm run preview` running)
+npm run test:related # Tier-1 for just your working-tree changes (`vitest related --run`)
+npm run e2e       # Tier-2 deterministic Playwright scenarios (starts its own `vite dev`) — normally CI's job
+npm run smoke     # Tier-3 boot canary (needs `npm run preview` running) — normally CI's job
 ```
 
-**Pre-commit hook** (husky + lint-staged, installed automatically by `npm install` via the `prepare`
-script): `.husky/pre-commit` runs `npx lint-staged` — lints/formats **staged files only**, so it's
-fast even mid-refactor on a phone. It does **not** run the full typecheck/test suite — that's
-`npm run check`'s job (and CI's). Skip it with `git commit --no-verify` when you need to (e.g. a WIP
-commit you'll clean up before pushing).
+**Git hooks** (husky, installed automatically by `npm install` via the `prepare` script):
+`.husky/pre-commit` runs `npx lint-staged` (lints/formats **staged files only** — fast even
+mid-refactor on a phone). `.husky/pre-push` runs `npm run typecheck && npm test` (**fast: typecheck +
+unit only**; e2e/smoke are CI's job). Skip either with `--no-verify` (`git commit`/`git push`) for WIP
+or phone pushes — `ci.yml` + `deploy.yml` still gate the real thing.
+
+**CI signal** (`.github/workflows/ci.yml`): every push to `master` runs the full gate — typecheck +
+lint + lint:md + format:check + unit + **sharded e2e** + smoke — **in parallel with** deploy (it does
+not gate it). Non-blocking, but a failure opens/updates a single tracking issue so a red run is seen.
 
 Verified working on Node 22 (Phaser 3.90, Vite 6, TypeScript 5.9). `npm run build` typechecks then
 bundles; the ~1.4 MB JS chunk is Phaser itself (~341 KB gzipped) — expected, not worth splitting.

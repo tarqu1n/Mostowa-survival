@@ -398,14 +398,18 @@ deps); `CampfireUnit`/`PlacedWall` collapsed into `PlacedStructure<CampfireState
 (`refactor-tripwire` golden unchanged); the `game.__test` signatures re-point internally. See
 [DECISIONS.md](DECISIONS.md) (2026-07-13 [DONE] note).
 
-## Test harness (plan 007)
+## Test harness (plan 007; overhauled plan 044)
 
-Three tiers: **Tier 1** Vitest unit tests over pure systems + data (`npm test`, plain Node); **Tier 2**
-deterministic Playwright scenarios (`npm run e2e`) driven by a DEV-only `window.game.__test`
-scenario/fixed-step API on `GameScene` (`applyScenario` builds a known world from a declarative spec;
-`step(ms)` advances gameplay with zero wall-clock); **Tier 3** a thin boot canary (`npm run smoke`;
-its real-WebGL run compiles the shaders as a free check). Two-speed dev loop (`npm run test:watch`
-inner, full sweep at wrap-up) — see [WORKFLOW.md](WORKFLOW.md).
+Three tiers: **Tier 1** Vitest unit tests over pure systems + data (`npm test`, plain Node, ~1.3s /
+925 tests); **Tier 2** deterministic Playwright scenarios (`npm run e2e`, 106 tests, ~9.3 min) driven
+by a DEV-only `window.game.__test` scenario/fixed-step API on `GameScene` (`applyScenario` builds a
+known world from a declarative spec; `step(ms)` advances gameplay with zero wall-clock); **Tier 3** a
+thin boot canary (`npm run smoke`; its real-WebGL run compiles the shaders as a free check).
+**Plan 044 Phase 1:** cut Vitest overhead (threads + isolate:false), added a fast pre-push hook
+(typecheck + unit) + `check:all`, moved the browser tiers off the local critical path into a separate
+non-blocking `ci.yml` (unit + sharded e2e + smoke, tracking-issue on failure) parallel to deploy, and
+made the suite reliably green (flakes fixed in-place, `workers: '50%'`). Phase 2 (re-tier / render-free
+`stepLogic`) deferred to plan 045. See [testing.md](testing.md) for the when-to-run-what matrix.
 
 ## Map Builder — dev-only editor (plans 014, 017)
 

@@ -16,6 +16,12 @@ Shards: [rendering](decisions/rendering.md) · [architecture](decisions/architec
 
 ---
 
+## 2026-07-22 — [DECIDED] Test-setup overhaul Phase 1 (plan 044): fast local loop, CI owns the browser tier
+
+Vitest overhead cut (threads + isolate:false → unit 7.9s→~1.3s); fast pre-push (typecheck+unit) + `check:all`; separate non-blocking `ci.yml` (unit + sharded e2e + smoke) that opens a tracking issue on failure, parallel to deploy; 5 flakes fixed in-place + a real campfire crash; e2e green on two consecutive cold runs; Phase 2 (re-tier/`stepLogic`) deferred to plan 045.
+
+→ [testing.md](decisions/testing.md#2026-07-22--decided-test-setup-overhaul-phase-1-plan-044-fast-local-loop-ci-owns-the-browser-tier)
+
 ## 2026-07-21 — [DECIDED] NPC companion (plan 042): separate baseSupply, repair-consumes-supply, mobs-aggro-NPC downed then auto-revive-at-dawn, Rogue sprite, dev-spawn-only, full scope
 
 Separate `baseSupply` stockpile (not the player `Inventory`), repair consumes supply, mobs aggro the NPC → downed → auto-revive at dawn, Rogue sprite, dev-/scenario-spawn only (recruit quest post-MVP), full Step-5 scope retained. Closes the MVP path.

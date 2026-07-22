@@ -198,14 +198,31 @@ CI-delegated e2e is still a bottleneck.
   - Side effects: config only; re-run to confirm green.
   - Done when: worker count is benchmarked, suite is green, before/after e2e wall-time recorded.
 
-- [ ] **Step 6: Verify end-to-end and capture final numbers** `[inline]`
+- [x] **Step 6: Verify end-to-end and capture final numbers** `[inline]`
+  - Outcome: all local tiers green. **Final numbers** — `npm run check` (typecheck + lint + lint:md +
+    format:check + unit) exit 0; **unit: 925 tests / 66 files in ~1.3–1.5s** (was 7.9s wall, Step 1);
+    **e2e: 106 tests, green on two consecutive cold runs at ~9.2 / ~9.4 min, 0 fail/flake** (was ~10.5 min
+    with 5 fails); **smoke: BOOT CANARY PASSED** (prod build boots Boot→Preload→MainMenu→Game→UI, zero
+    console/page errors). **Limitation:** `ci.yml` triggers on push-to-master only, and branch discipline
+    forbids pushing to master from this feature branch, so the real push-triggered CI run + the
+    forced-failure notification can't be exercised here — validated instead by YAML parse, `playwright
+    --list`, and every gate passing locally. Verify on first merge to master (see Step 3 outcome).
   - Run the full local gate: `npm run typecheck`, `npm run lint`, `npm test` (record wall time),
     `npm run e2e` twice cold (record wall time; expect 0 fail/flake), `npm run smoke`. Confirm `ci.yml`
     is green on a real push and that a forced failure fires the notification.
   - Done when: all tiers green; before/after numbers (Tier-1 wall, Tier-2 wall, flake count) captured
     for the docs and the decision entry.
 
-- [ ] **Step 7: Rewrite the testing docs + decision log (Phase-1 scope)** `[inline]`
+- [x] **Step 7: Rewrite the testing docs + decision log (Phase-1 scope)** `[inline]`
+  - Outcome: `docs/testing.md` — replaced the two-speed loop with the **when-to-run-what matrix**
+    (inner loop / pre-commit / pre-push / CI / manual / deploy), tier-table "When" column updated
+    (unit = inner loop + pre-push, e2e/smoke = CI), + a Phase-2 pointer. `docs/STANDARDS.md` — tooling
+    table gains pre-push + `ci.yml` rows, `check` vs `check:all`, corrected deploy scope, dual
+    `--no-verify` note. `docs/WORKFLOW.md` — commands (`check:all`/`test:related`), git-hooks para
+    (pre-commit + pre-push), CI-signal para. `docs/decisions/testing.md` — dated `[DECIDED]` Phase-1
+    entry (+ index line in `docs/DECISIONS.md`). `docs/STATUS.md` — test-harness section refreshed with
+    final numbers + the plan-044 summary. Root `CLAUDE.md` unchanged (only "three-tier harness", still
+    accurate, no commands). markdownlint + format:check green.
   - `docs/testing.md`: rewrite the tier table + two-speed loop to match reality — the when-to-run-what
     matrix (Context above), e2e now a **CI** gate (off the local critical path) with `check:all` as the
     manual full sweep, and the new pre-push hook. Add a short "Phase 2 (planned)" pointer to the

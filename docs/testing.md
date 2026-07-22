@@ -10,22 +10,38 @@ on its one linear path changed. Now:
 
 |Tier|What|Command|When|
 |---|---|---|---|
-|**1 — unit**|Pure systems (`pathfind`/`tasks`/`combat`/`grid`/`stats`/`Inventory`) + data invariants, in plain Node|`npm test`|most iteration|
-|**2 — scenario**|Browser-real integration/render/input, one behaviour per spec, driven deterministically|`npm run e2e`|when a change needs browser fidelity|
-|**3 — boot canary**|Production bundle boots, reaches Game+UI, renders (compiles shaders), zero console errors|`npm run smoke`|before shipping|
+|**1 — unit**|Pure systems (`pathfind`/`tasks`/`combat`/`grid`/`stats`/`Inventory`) + data invariants, in plain Node|`npm test`|inner loop + pre-push (most iteration)|
+|**2 — scenario**|Browser-real integration/render/input, one behaviour per spec, driven deterministically|`npm run e2e`|CI (or one spec locally for browser fidelity)|
+|**3 — boot canary**|Production bundle boots, reaches Game+UI, renders (compiles shaders), zero console errors|`npm run smoke`|CI (before shipping)|
 
-### Two-speed loop — run only what you touch
+### When to run what (plan 044)
+
+The heavy browser tier is **off the local critical path** — CI runs it, so the human loop stays fast.
+
+|Moment|Runs|Speed|
+|---|---|---|
+|On save (inner loop)|`npm run test:watch` — only affected unit tests|<1s|
+|Pre-commit hook|`lint-staged` (staged files)|sub-second|
+|Pre-push hook (skippable)|`npm run typecheck && npm test`|a few s|
+|CI on push (`ci.yml`, parallel to deploy)|typecheck + lint + lint:md + format:check + unit + e2e (sharded) + smoke|CI-time|
+|Manual full local gate|`npm run check` (unit) · `npm run check:all` (+ e2e + smoke)|on demand|
+|Deploy (`deploy.yml`)|`npm ci` + `npm test` + `npm run build`|fast|
 
 - **Inner loop (sub-second, on save):** `npm run test:watch` reruns *only* the unit tests whose module
-  graph touches the file you changed (edit `combat.ts` → only combat tests run). Targeted forms work
-  out of the box: `npx vitest run <name>` (one file) and `npx vitest related $(git diff --name-only)`
-  (exactly what your working-tree changes affect). No browser — this covers the bulk of iteration.
-- **Feature-level check (seconds):** when a change needs browser fidelity, run *just the one scenario*,
-  not the suite: `npx playwright test chop`, or by test name `npx playwright test -g "routes around"`.
-- **Wrap-up gate (before finishing a feature):** the full sweep — `npm test` + `npm run e2e` +
-  `npm run smoke`. Fast enough to run often because the heavy work moved to Tier 1 and Tier 2 is a
-  handful of adjacent-entity scenarios, not a playthrough. (CI additionally runs `npm test` before a
-  deploy — see `.github/workflows/deploy.yml`.)
+  graph touches the file you changed. Targeted forms: `npx vitest run <name>` (one file),
+  `npm run test:related` (`vitest related --run` — what your working-tree changes affect).
+- **Feature-level check (seconds):** when a change needs browser fidelity, run *just the one scenario*:
+  `npx playwright test chop`, or by name `npx playwright test -g "routes around"`.
+- **Pre-push (skippable):** `.husky/pre-push` runs typecheck + unit only — fast, and `git push
+  --no-verify` skips it (phone/WIP pushes, the cross-device rule). e2e/smoke live in CI, not here.
+- **CI (`ci.yml`):** on push to master, parallel to (not gating) `deploy.yml`, runs the full gate incl.
+  **sharded e2e + smoke**; non-blocking but opens a tracking issue on failure so a red run is seen.
+  `deploy.yml` still ships on its own green `npm test`.
+- **Manual full sweep:** `npm run check:all` (= `check` + `e2e` + `smoke`) when you want everything locally.
+
+> **Phase 2 (planned, plan 045):** re-tier the scenario suite — migrate logic-only specs to Node,
+> add a render-free `stepLogic`, delete redundant specs — to cut the e2e wall. Deferred until the
+> CI-delegated e2e is re-measured as a bottleneck; the annotated long timeouts stay until then.
 
 ### The scenario API (Tier 2)
 

@@ -6,6 +6,35 @@ Part of the [decision log index](../DECISIONS.md). Newest first.
 
 ---
 
+## 2026-07-22 — [DECIDED] Test-setup overhaul Phase 1 (plan 044): fast local loop, CI owns the browser tier
+
+The suite was run constantly and felt slow + intermittently red. Phase 1 took the low-risk, high-ROI
+levers without touching coverage:
+
+- **Vitest overhead:** `pool: 'threads'` + `isolate: false` (all unit tests are pure Node, no
+  cross-file side effects). `npm test` wall **7.9s → ~1.3s** (925 tests) — the cost was the per-file
+  fork-and-re-transform, not test execution (~0.5s).
+- **Pre-push hook + `check:all`:** `.husky/pre-push` runs **typecheck + unit only** (fast; `--no-verify`
+  skips it for phone/WIP — cross-device rule). e2e/smoke moved **off the local critical path**.
+  `check:all` = `check` + e2e + smoke for a manual full sweep.
+- **CI (`ci.yml`):** a separate, non-deploy workflow on push to master (+ dispatch), **parallel to**
+  `deploy.yml` (not gating it): typecheck + lint + lint:md + format:check + unit + **sharded e2e** +
+  smoke. Non-blocking but **opens/updates a single tracking issue on failure** (github-script, no
+  secrets) so a red run is seen on a solo repo — chosen over silent-email or exposing guppi's
+  tailnet-only notifier. `needs: [ci]` on deploy is the noted later hard-gate option.
+- **Flakes fixed in-place (retries stay 0), e2e green on two consecutive cold runs (106 tests, ~9.3
+  min):** real-time `waitForTimeout` gameplay → deterministic `step`; real pointers raced on the live
+  RAF loop → interleaved `step()`; a stale yield assertion (berryBush yields 3, not 2); a moved map
+  spawn (read dynamically now) + the boot-race dropped press (await-ready gate). Also fixed a real
+  **game crash** found en route: a mob draining the campfire crashed `applyFlame` (Phaser's 1-based
+  `AnimationFrame.index` passed as a 0-based `startFrame`, slipping the `>` guard on the last frame).
+- **Playwright workers:** pinned `workers: '50%'` — the suite is fill-rate-bound on headless
+  SwiftShader, so half the cores is the sweet spot (more regresses). e2e wall ~10.5 min red → ~9.3 green.
+
+**Phase 2 deferred (plan 045, only if re-measurement shows CI e2e is still a bottleneck):** re-tier the
+scenario suite — migrate logic-only specs to Node, add a render-free `stepLogic`, delete redundant
+specs — which is what actually cuts the e2e wall. The annotated long timeouts stay until then.
+
 ## 2026-07-12 — [DECIDED] Toward isolated test setups, not one live-game end-to-end smoke
 
 The headless smoke drives the whole running game start-to-finish. That's already fragile and won't

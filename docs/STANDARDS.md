@@ -10,11 +10,13 @@ shaped and checked*, that one's about *how the system is structured*.
 |---|---|---|
 |Editor|ESLint + Prettier (flat config `eslint.config.js`, `.prettierrc`)|whatever you're editing|
 |Pre-commit hook (`.husky/pre-commit`)|`npx lint-staged`|**staged files only** — fast on any device, incl. phone/short sessions|
-|`npm run check`|`typecheck && lint && lint:md && format:check && test`|whole repo|
-|CI (`.github/workflows/deploy.yml`)|`npm ci && npm test && npm run build`|whole repo, gates deploy|
+|Pre-push hook (`.husky/pre-push`)|`npm run typecheck && npm test`|whole repo, fast (typecheck + unit only; e2e/smoke are CI's job)|
+|`npm run check` / `check:all`|`check` = typecheck + lint + lint:md + format:check + unit · `check:all` = `check` + e2e + smoke|whole repo, on demand|
+|CI (`.github/workflows/ci.yml`)|typecheck + lint + lint:md + format:check + unit + **e2e (sharded)** + smoke|whole repo; non-blocking signal, opens a tracking issue on failure|
+|Deploy (`.github/workflows/deploy.yml`)|`npm ci && npm test && npm run build`|whole repo, gates the GitHub Pages deploy on unit tests|
 
-- **Escape hatch:** `git commit --no-verify` skips the hook (e.g. mid-refactor WIP on a phone).
-  `npm run check` and CI still gate the real thing before it ships.
+- **Escape hatch:** `--no-verify` skips either hook (e.g. mid-refactor WIP on a phone) — `git commit
+  --no-verify` / `git push --no-verify`. `ci.yml` + `deploy.yml` still gate the real thing before it ships.
 - The hook is deliberately staged-file-only — no whole-project `tsc` in it. A full typecheck lives in
   `npm run check` and CI, not on every WIP commit.
 - Scripts: `lint` / `lint:fix` (ESLint), `lint:md` (markdownlint-cli2), `format` / `format:check`

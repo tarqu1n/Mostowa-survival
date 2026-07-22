@@ -1,9 +1,10 @@
 # Code Cleanup & Modularization
 
-> Status: **all steps complete (1–19)** on `claude/plan-43-szlkkd`. Phase 4 (14–16), Phase 5 (17–18),
-> and Phase 6 (19: whole-branch gate) all landed and gated green (Steps 17–18 authored by a concurrent
-> session, commit 7d8f70e; Step 19 layered on top). **Pending before merge:** rebase onto advanced
-> `master` (in progress, user-approved), then a single PR — do NOT open a PR without an explicit ask.
+> Status: **all steps complete (1–19)** on `claude/plan-43-szlkkd`, **rebased onto latest `master`**
+> (user-approved) and re-gated green. Phase 4 (14–16), Phase 5 (17–18, from concurrent commit 7d8f70e),
+> Phase 6 (19: whole-branch gate) all landed. The rebase merged master's berry-bush/NPC content; the one
+> code conflict (UIScene split vs master's SPAWN-NPC dev button) was resolved by porting the button into
+> the refactored `scenes/hud/DevMenu.ts`. **Pending:** a single PR — do NOT open one without an explicit ask.
 
 ## Summary
 

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { step, state } from './harness';
+import { step, state, blocked, tileToClient } from './harness';
 
 // Tier-2 regression: starting the game from the title screen must NOT leak its click onto the map.
 //
@@ -26,14 +26,17 @@ test('tapping the title screen to start does not issue a move order on the map',
 
   const box = await page.locator('canvas').boundingBox();
   if (!box) throw new Error('game canvas not found');
-  // Off-centre, near spawn: far enough from the player's tile that a leaked release would path
-  // somewhere, close enough to stay on open ground (validated by the deliberate tap below).
+  // Off-centre, below the player: far enough that a leaked release would path somewhere off the
+  // player's own tile (the camera centres on spawn, so this maps to open ground below the player).
   const p = { x: box.x + box.width / 2, y: box.y + box.height * 0.72 };
 
   await page.mouse.move(p.x, p.y);
   await page.mouse.down(); // MainMenu → scene.start('Game') fires here
   // Let the real rAF loop boot GameScene: create() installs __test and registers the pointer gate.
   await page.waitForFunction(() => (window as any).game?.__test != null, null, { timeout: 15_000 });
+  // Capture the actual spawn from the live world (the authored map owns it — don't hardcode a tile
+  // that a map edit can silently move); no order has been issued yet, so this is the resting spawn.
+  const spawn = await state(page);
   await page.mouse.up(); // the paired release now lands on the live world — the exact bug condition
   await step(page, 32); // switch to manual stepping and process the release
 
@@ -41,16 +44,34 @@ test('tapping the title screen to start does not issue a move order on the map',
   expect(afterStart.currentKind).toBeNull(); // no order was issued
   expect(afterStart.pending).toBe(0);
   expect(afterStart.pathLen).toBe(0);
-  expect({ col: afterStart.pcol, row: afterStart.prow }).toEqual({ col: 22, row: 40 }); // still at spawn
+  expect({ col: afterStart.pcol, row: afterStart.prow }).toEqual({
+    col: spawn.pcol,
+    row: spawn.prow,
+  }); // unmoved
 
-  // Self-validation: the SAME point, tapped once the world is running, DOES issue a move — proving
-  // the silence above was the guard, not a click that happened to land on an unwalkable/own tile.
-  await page.mouse.move(p.x, p.y);
+  // Self-validation: a deliberate tap on an open tile near spawn, once the world is running, DOES issue
+  // a move — proving the silence above was the guard dropping the leaked release, not a dead click onto
+  // the player's own/unwalkable tile. Pick the first walkable candidate near spawn (map-agnostic).
+  let tcol = spawn.pcol;
+  let trow = spawn.prow;
+  for (const [dc, dr] of [
+    [0, 3],
+    [0, -3],
+    [3, 0],
+    [-3, 0],
+  ] as const) {
+    if (!(await blocked(page, spawn.pcol + dc, spawn.prow + dr))) {
+      tcol = spawn.pcol + dc;
+      trow = spawn.prow + dr;
+      break;
+    }
+  }
+  const target = await tileToClient(page, tcol, trow);
+  await page.mouse.move(target.x, target.y);
   await page.mouse.down();
   await step(page, 16);
   await page.mouse.up();
   await step(page, 16);
 
-  const afterTap = await state(page);
-  expect(afterTap.currentKind).toBe('move');
+  expect((await state(page)).currentKind).toBe('move');
 });

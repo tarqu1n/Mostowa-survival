@@ -1,6 +1,6 @@
 # Test Setup Review & Overhaul (Phase 1)
 
-> Status: planned — run /execute-plan to begin.
+> Status: in review
 
 ## Summary
 

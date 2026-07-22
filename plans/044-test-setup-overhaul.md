@@ -148,7 +148,26 @@ CI-delegated e2e is still a bottleneck.
   - Done when: pushing to master runs `ci.yml` green (unit + all shards + smoke) alongside deploy;
     e2e is sharded, reports artifacts on failure, and a failing run produces a visible notification.
 
-- [ ] **Step 4: Fix the live flakes (make the suite reliably green), no migration** `[inline]`
+- [x] **Step 4: Fix the live flakes (make the suite reliably green), no migration** `[inline]`
+  - Outcome: **e2e green on two consecutive cold runs (106 tests, ~9.3 min each, 0 fail/flake)**; no
+    `waitForTimeout`-driven gameplay remains anywhere (retries stay 0). Root-caused each named flake
+    against the headless renderer (SwiftShader) — several were NOT what the plan assumed:
+    - **campfire-feed** — was real: `waitForTimeout(3000)` real-time 4-tile walk didn't finish under
+      load (wood unconsumed). Rebuilt deterministic: player seeded adjacent, follow-cam settled with a
+      driven frame, self-healing confirmed-queued flame tap, walk+tend via `step`.
+    - **follow** — real drag raced the live RAF loop → converted to interleaved `step()` processing.
+    - **survival-forage** — NOT a timing flake: a **stale assertion** (berryBush `yieldPerHit` is 3,
+      not 2 — data drifted). Fixed the expected counts (3, then 2 after eating).
+    - **menu-start** — NOT a leak: two stale issues — the boot-race dropped press (fixed with an
+      await-ready gate on MainMenu active) and a **moved map spawn** (hardcoded 22,40 → now 118,140).
+      Now reads the spawn dynamically + picks a walkable self-validation tile via `blocked()` (map-agnostic).
+    - **monster (patrol)** — deterministic already; kept as-is + added `test.setTimeout(60s)` (it renders
+      ~576 driven frames; an earlier iteration bump had blown the 30s default).
+    - **Bonus game-bug (beyond the 5):** a cold run surfaced a real **crash** — a mob draining the
+      campfire (`damageFire → applyFlame`) crashed intermittently because Phaser's 1-based
+      `AnimationFrame.index` was passed as a 0-based `startFrame` and slipped through Phaser's `>` guard
+      on the last frame (`frames[n]` undefined → `getFirstTick` reads `.duration`). Fixed in
+      `CampfireBehavior.applyFlame` (0-based + clamp). Files: the 5 specs + `src/scenes/world/CampfireBehavior.ts`.
   - Root-cause and fix determinism in-place (retries stay 0; do NOT defer any of these to Phase 2):
     - **campfire-feed** — remove the last `waitForTimeout`-driven gameplay (real-time walking + a raw
       pointer tap): rebuild with `applyScenario` adjacency + `step`, and stabilise the flame tap the way

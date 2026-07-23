@@ -1,6 +1,6 @@
 # Field Kit — DOM/React HUD Overlay
 
-> Status: in review
+> Status: deployed
 
 ## Summary
 

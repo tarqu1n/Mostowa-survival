@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ITEMS } from '../../data/items';
+import type { LootDrop, LootTable } from '../../systems/loot';
 import { parseNodeDefs, type AuthoredNodeDef, type NodeSkinDef } from '../../systems/nodeDefs';
 import { putNodes } from '../api';
 import type { AssetCatalog } from '../catalog';
@@ -263,12 +264,22 @@ interface StatsDraft {
    *  draft⇄def seam so the input reads in a human unit while the data model stays milliseconds. */
   regrowMinText: string;
   blocksPath: boolean;
+  /** One-time harvest: the node never regrows and its depleted husk keeps blocking its tile until a
+   *  `clear` order removes it (plan 047). Stored as `AuthoredNodeDef.oneShot`; omitted (not `false`)
+   *  when unchecked, so an ordinary node's JSON stays clean. */
+  oneShot: boolean;
   harvestAnim: HarvestAnimOption;
   colorHex: string;
   stumpColorHex: string;
   scaleText: string;
   originXText: string;
   originYText: string;
+  /** Optional loot table rolled per harvest (the salvage set) instead of the fixed `yieldItemId`;
+   *  `undefined` ⇒ no table (uses the fixed yield). Edited live via {@link LootTableEditor}. */
+  loot: LootTable | undefined;
+  /** Optional loot table rolled once when a one-shot husk is cleared (plan 047); `undefined` ⇒ clears
+   *  silently. */
+  clearLoot: LootTable | undefined;
 }
 
 function draftOf(def: AuthoredNodeDef): StatsDraft {
@@ -279,12 +290,17 @@ function draftOf(def: AuthoredNodeDef): StatsDraft {
     yieldPerHitText: String(def.yieldPerHit),
     regrowMinText: String(def.regrowMs / 60000),
     blocksPath: def.blocksPath,
+    oneShot: def.oneShot ?? false,
     harvestAnim: def.harvestAnim ?? '',
     colorHex: colorToHex(def.color),
     stumpColorHex: colorToHex(def.stumpColor),
     scaleText: String(def.scale ?? 1),
     originXText: String(def.originX),
     originYText: String(def.originY),
+    // Never mutated in place — the editor always replaces the table with a fresh object (see
+    // LootTableEditor), so aliasing the def's table into the initial draft is safe.
+    loot: def.loot,
+    clearLoot: def.clearLoot,
   };
 }
 
@@ -302,12 +318,18 @@ function draftToPatch(d: StatsDraft): Partial<Omit<AuthoredNodeDef, 'id' | 'skin
     // straight to `validateNodeDefPatch` as a normal inline error, same as the other numeric fields.
     regrowMs: Math.round(Number(d.regrowMinText) * 60000),
     blocksPath: d.blocksPath,
+    // Omit when unchecked (not `false`) so an ordinary node's serialized JSON stays clean — mirrors
+    // parseNodeDefs' `...(oneShot === undefined ? {} : { oneShot })` round-trip.
+    oneShot: d.oneShot ? true : undefined,
     harvestAnim: d.harvestAnim === '' ? undefined : d.harvestAnim,
     color: hexToColor(d.colorHex),
     stumpColor: hexToColor(d.stumpColorHex),
     scale: Number(d.scaleText),
     originX: Number(d.originXText),
     originY: Number(d.originYText),
+    // `undefined` ⇒ no table (the merge clears any existing one, and parseNodeDefs omits it on save).
+    loot: d.loot,
+    clearLoot: d.clearLoot,
   };
 }
 
@@ -319,13 +341,30 @@ function statsEqual(a: StatsDraft, b: StatsDraft): boolean {
     a.yieldPerHitText === b.yieldPerHitText &&
     a.regrowMinText === b.regrowMinText &&
     a.blocksPath === b.blocksPath &&
+    a.oneShot === b.oneShot &&
     a.harvestAnim === b.harvestAnim &&
     a.colorHex === b.colorHex &&
     a.stumpColorHex === b.stumpColorHex &&
     a.scaleText === b.scaleText &&
     a.originXText === b.originXText &&
-    a.originYText === b.originYText
+    a.originYText === b.originYText &&
+    lootEqual(a.loot, b.loot) &&
+    lootEqual(a.clearLoot, b.clearLoot)
   );
+}
+
+/** Structural equality for a loot table (or its absence) — used for the stats form's dirty check. A
+ *  JSON compare is enough: both sides are built by `draftOf` (stable field/drop order), and the loot
+ *  editor only ever replaces the table with fresh objects. */
+function lootEqual(a: LootTable | undefined, b: LootTable | undefined): boolean {
+  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+}
+
+const FIRST_ITEM_ID = Object.keys(ITEMS)[0];
+
+/** A fresh loot drop for the "+ Add drop" / "+ Add table" actions — one unit of the first item. */
+function newLootDrop(): LootDrop {
+  return { itemId: FIRST_ITEM_ID, min: 1, max: 1, weight: 1 };
 }
 
 /** The def's stats form — a BATCHED draft (not per-field auto-commit like the Inspector's
@@ -431,6 +470,22 @@ function NodeStatsForm({ def, allDefs }: { def: AuthoredNodeDef; allDefs: Author
           />
           Blocks path
         </label>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <label className="flex items-center gap-1.5 text-[0.8rem] text-fg-muted">
+              <input
+                type="checkbox"
+                checked={draft.oneShot}
+                onChange={(e) => set('oneShot', e.target.checked)}
+              />
+              One-time harvest
+            </label>
+          </TooltipTrigger>
+          <TooltipContent>
+            Never regrows; the depleted husk keeps blocking its tile until a `clear` order removes
+            it (plan 047). `regrowMs` is ignored but still required.
+          </TooltipContent>
+        </Tooltip>
         <div className={fieldClass}>
           <Label htmlFor={harvestId} className={fieldLabelClass}>
             Harvest anim
@@ -509,7 +564,164 @@ function NodeStatsForm({ def, allDefs }: { def: AuthoredNodeDef; allDefs: Author
         </div>
       </div>
 
+      <LootTableEditor
+        label="Loot table (per harvest)"
+        hint="Rolled each harvest instead of the fixed yield item — the salvage set."
+        value={draft.loot}
+        onChange={(v) => set('loot', v)}
+      />
+      <LootTableEditor
+        label="Clear loot (one-time harvest)"
+        hint="Rolled once when a one-time-harvest husk is cleared; leave empty to clear silently."
+        value={draft.clearLoot}
+        onChange={(v) => set('clearLoot', v)}
+      />
+
       {error && <p className="text-[0.78rem] text-danger">{error}</p>}
+    </div>
+  );
+}
+
+/** Editor for an optional {@link LootTable} (`loot` / `clearLoot`). Fully controlled off the parent's
+ *  batched draft (like the stats fields) so edits re-validate live and only commit on "Save changes";
+ *  every mutation replaces the table with a fresh object (never mutates in place). Absent table ⇒ an
+ *  "+ Add table" button; present ⇒ a `rolls` count + weighted drop rows (item / min / max / weight)
+ *  with add/remove, and a "Remove table" that sets it back to `undefined`. Numeric fields parse
+ *  whatever is typed straight through, so a bad value surfaces as the same inline `parseNodeDefs`
+ *  error the rest of the form uses (single validation source of truth). */
+function LootTableEditor({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: LootTable | undefined;
+  onChange: (v: LootTable | undefined) => void;
+}) {
+  if (!value) {
+    return (
+      <div className="flex items-center justify-between rounded-md border border-dashed border-border bg-inset px-2 py-1.5">
+        <div className="flex flex-col">
+          <span className={fieldLabelClass}>{label}</span>
+          <span className="text-[0.68rem] text-muted-2">{hint}</span>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => onChange({ rolls: 1, drops: [newLootDrop()] })}
+        >
+          + Add table
+        </Button>
+      </div>
+    );
+  }
+
+  const setDrop = (index: number, patch: Partial<LootDrop>): void =>
+    onChange({
+      ...value,
+      drops: value.drops.map((d, i) => (i === index ? { ...d, ...patch } : d)),
+    });
+
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-surface bg-raised p-2">
+      <div className="flex items-center gap-2">
+        <span className={fieldLabelClass}>{label}</span>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ml-auto h-6 px-1.5 text-[0.68rem]"
+          onClick={() => onChange(undefined)}
+        >
+          Remove table
+        </Button>
+      </div>
+      <div className={cn(fieldClass, 'w-28')}>
+        <Label className={cn(fieldLabelClass, 'text-[0.7rem]')}>Rolls / harvest</Label>
+        <Input
+          type="number"
+          className={fieldInputClass}
+          value={value.rolls}
+          onChange={(e) => onChange({ ...value, rolls: Number(e.target.value) })}
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {value.drops.map((drop, i) => (
+          <div key={i} className="flex items-end gap-1.5">
+            <div className={cn(fieldClass, 'min-w-0 flex-1')}>
+              <Label className={cn(fieldLabelClass, 'text-[0.7rem]')}>Item</Label>
+              <Select value={drop.itemId} onValueChange={(v) => setDrop(i, { itemId: v })}>
+                <SelectTrigger size="sm" className={cn(fieldInputClass, 'w-full')}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ITEMS).map(([id, item]) => (
+                    <SelectItem key={id} value={id}>
+                      {item.name} ({id})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className={cn(fieldClass, 'w-14')}>
+              <Label className={cn(fieldLabelClass, 'text-[0.7rem]')}>Min</Label>
+              <Input
+                type="number"
+                className={fieldInputClass}
+                value={drop.min}
+                onChange={(e) => setDrop(i, { min: Number(e.target.value) })}
+              />
+            </div>
+            <div className={cn(fieldClass, 'w-14')}>
+              <Label className={cn(fieldLabelClass, 'text-[0.7rem]')}>Max</Label>
+              <Input
+                type="number"
+                className={fieldInputClass}
+                value={drop.max}
+                onChange={(e) => setDrop(i, { max: Number(e.target.value) })}
+              />
+            </div>
+            <div className={cn(fieldClass, 'w-16')}>
+              <Label className={cn(fieldLabelClass, 'text-[0.7rem]')}>Weight</Label>
+              <Input
+                type="number"
+                className={fieldInputClass}
+                value={drop.weight}
+                onChange={(e) => setDrop(i, { weight: Number(e.target.value) })}
+              />
+            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    disabled={value.drops.length <= 1}
+                    onClick={() =>
+                      onChange({ ...value, drops: value.drops.filter((_, j) => j !== i) })
+                    }
+                  >
+                    ✕
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {value.drops.length <= 1 ? 'A table needs at least one drop' : 'Remove drop'}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        ))}
+      </div>
+      <Button
+        size="sm"
+        variant="outline"
+        className="self-start"
+        onClick={() => onChange({ ...value, drops: [...value.drops, newLootDrop()] })}
+      >
+        + Add drop
+      </Button>
     </div>
   );
 }

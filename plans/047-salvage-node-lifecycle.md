@@ -252,6 +252,24 @@ Key files/patterns to mirror (from research):
     run `npm run assets:catalog` only if any asset path changed (it shouldn't).
   - Done when: `npm run check` + e2e + boot canary all green; docs updated.
 
+- [x] **Step 9: editor authoring for `oneShot` + loot/clearLoot (follow-up)** `[inline]`
+  - Outcome: post-plan follow-up (owner request) — the Map Builder's **Node Types** tab
+    (`src/editor/tabs/NodeTypesTab.tsx`) previously could not author the plan-047 fields, so
+    `oneShot`/`loot`/`clearLoot` were hand-edited in `nodes.json`. Added: a **"One-time harvest"**
+    checkbox next to "Blocks path" (patches `oneShot`, omitted-not-`false` when unchecked, with a
+    tooltip explaining no-regrow + husk-blocks-till-cleared), and a reusable **`LootTableEditor`**
+    rendered twice — "Loot table (per harvest)" (`loot`) and "Clear loot (one-time harvest)"
+    (`clearLoot`). Each: an "+ Add table" affordance when absent, and when present a `rolls` count +
+    weighted drop rows (item Select from `ITEMS` / min / max / weight) with add/remove-drop and a
+    "Remove table" (→ `undefined`). Wired through the SAME batched-draft → `validateNodeDefPatch` →
+    `updateNodeDef` (`parseNodeDefs`) choke point the rest of the stats form uses — no second
+    validation path; `statsEqual` gains a `lootEqual` (JSON) compare + `oneShot` for the dirty gate.
+    **Verified in the running editor** (headless Chromium against `editor.html`): the `salvagedTent`
+    def reads back correctly — One-time harvest checked, salvage anim, the 4-drop loot table (rolls 2)
+    - 2-drop clearLoot (rolls 1), and the SKINS (17) row. Gates: typecheck clean, eslint 0 errors,
+    prettier clean, 962 unit tests green. NB: the node + all 17 skins (+ ruined depleted swaps + 34 art
+    PNGs + asset-catalog entries) already existed from the pre-047 tent-art work — nothing to rebuild.
+
 ## Out of scope
 
 - NPC-companion savaging/clearing (player-only for now; companion `repair`-style wiring deferred).

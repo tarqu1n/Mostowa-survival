@@ -33,6 +33,12 @@ export interface TreeNode {
    *  recoil/tremble around it and settle back to it (rather than snapping the sprite to 0 and losing
    *  the placement rotation permanently, incl. after regrow); the fell clone topples from it too. */
   rotation: number;
+  /** Accumulated real-time (ms) of the current timed action on THIS node — the persistent
+   *  progress-accumulator for the savage/clear lifecycle (plan 047). Unlike the per-order
+   *  `chopElapsed`, it lives on the node so it survives cancel/re-queue (resuming continues where it
+   *  left off); it resets only when a stage completes (savage→ruin resets it for the clear stage,
+   *  clear removes the node). `0` for non-timed nodes (trees/rocks/bushes never touch it). */
+  progressMs: number;
 }
 
 /**

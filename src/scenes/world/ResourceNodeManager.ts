@@ -154,6 +154,7 @@ export class ResourceNodeManager {
       row,
       skin: skin.id,
       rotation, // the true rest angle — chop fx recoils/topples around it (see NodeFxManager)
+      progressMs: 0, // persistent timed-action accumulator (savage/clear, plan 047); unused by hit-based nodes
     });
   }
 
@@ -234,10 +235,14 @@ export class ResourceNodeManager {
     return this.trees.find((t) => t.id === id);
   }
 
-  /** True if a live *blocking* node (tree/rock) occupies (col,row) — the pathfinding/placement veto;
-   *  a non-blocking bush (`def.blocksPath === false`) never blocks. */
+  /** True if a *blocking* node (tree/rock) occupies (col,row) — the pathfinding/placement veto;
+   *  a non-blocking bush (`def.blocksPath === false`) never blocks. A regrowing dead stump frees its
+   *  tile as before (`alive` gate), but a permanent `oneShot` ruin (a savaged tent husk, plan 047)
+   *  keeps blocking even while dead — you must `clear` it to reclaim the ground. */
   hasBlockingNode(col: number, row: number): boolean {
-    return this.trees.some((t) => t.alive && t.def.blocksPath && t.col === col && t.row === row);
+    return this.trees.some(
+      (t) => t.def.blocksPath && (t.alive || t.def.oneShot) && t.col === col && t.row === row,
+    );
   }
 
   // --- Harvesting ------------------------------------------------------------------
@@ -327,19 +332,43 @@ export class ResourceNodeManager {
           });
         }
       }
-      this.scene.time.delayedCall(tree.def.regrowMs, () => {
-        // A delayedCall scheduled here survives clearAll() (which destroys sprites but leaves the
-        // scene clock running), so guard against a sprite destroyed during the regrow window — the
-        // breadcrumb'd `spriteAlive:false` case is exactly the shape of a use-after-destroy crash.
-        breadcrumb('node', `regrow ${tree.def.id} ${tree.id}`, { spriteAlive: tree.sprite.active });
-        tree.hp = tree.maxHp;
-        tree.alive = true;
-        // Restore the live sprite (undoes either the depleted-texture swap or the stumpColor tint).
-        this.applySkinAppearance(tree.sprite, tree.def, skin, 'live');
-        tree.sprite.clearTint();
-        this.deps.repath(); // regrown tree may now block the active route
-      });
+      // A `oneShot` node never regrows — it stays `alive === false` in its depleted (ruined) sprite
+      // permanently, keeping its tile blocked (see hasBlockingNode) until the player `clear`s it
+      // (plan 047). Only regrowing nodes schedule the reset below.
+      if (!tree.def.oneShot) {
+        this.scene.time.delayedCall(tree.def.regrowMs, () => {
+          // A delayedCall scheduled here survives clearAll() (which destroys sprites but leaves the
+          // scene clock running), so guard against a sprite destroyed during the regrow window — the
+          // breadcrumb'd `spriteAlive:false` case is exactly the shape of a use-after-destroy crash.
+          breadcrumb('node', `regrow ${tree.def.id} ${tree.id}`, {
+            spriteAlive: tree.sprite.active,
+          });
+          tree.hp = tree.maxHp;
+          tree.alive = true;
+          // Restore the live sprite (undoes either the depleted-texture swap or the stumpColor tint).
+          this.applySkinAppearance(tree.sprite, tree.def, skin, 'live');
+          tree.sprite.clearTint();
+          this.deps.repath(); // regrown tree may now block the active route
+        });
+      }
     }
+  }
+
+  /**
+   * Permanently remove a node from the world — the `clear` order's effect (plan 047), mirroring
+   * `WallBehavior.retireWall` + `deconstruct`'s clean sprite teardown. Destroys the sprite, drops the
+   * node from the backing array, and repaths so the freshly-freed tile opens for pathing/building
+   * immediately (a `oneShot` ruin blocked its tile while it stood — see {@link hasBlockingNode}).
+   * Called at RUNTIME (scene alive), so `sprite.destroy()` is correct here — not the SHUTDOWN path.
+   * No-op if `id` is unknown (already removed / cleared mid-order — tolerated, like `deconstruct`).
+   */
+  removeNode(id: string): void {
+    const tree = this.trees.find((t) => t.id === id);
+    if (!tree) return; // guard double-remove: gone already (cleared mid-order, scenario reset, …)
+    breadcrumb('node', `removeNode ${tree.def.id} ${tree.id}`, { col: tree.col, row: tree.row });
+    if (tree.sprite.active) tree.sprite.destroy();
+    this.trees = this.trees.filter((t) => t !== tree);
+    this.deps.repath(); // the freed tile may unblock the active route
   }
 
   // --- Reset / teardown --------------------------------------------------------------

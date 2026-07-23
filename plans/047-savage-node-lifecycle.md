@@ -112,7 +112,8 @@ Key files/patterns to mirror (from research):
   - Docs: none this step.
   - Done when: `npm run check` green (full typecheck, not just systems); `orders.test.ts` green.
 
-- [ ] **Step 3: no-regrow + ruin stays blocking + node removal (`ResourceNodeManager`)** `[inline]`
+- [x] **Step 3: no-regrow + ruin stays blocking + node removal (`ResourceNodeManager`)** `[inline]`
+  - Outcome: `src/scenes/world/ResourceNodeManager.ts` — regrow `delayedCall` now guarded by `if (!tree.def.oneShot)`; `hasBlockingNode` counts dead one-shot ruins as blocking (`blocksPath && (alive || oneShot)`); added `removeNode(id)` (guarded sprite.destroy + splice + repath, mirrors `retireWall`). `src/entities/types.ts` — added persistent `progressMs: number` to `TreeNode`, initialised `0` in `addNode`. Typecheck clean, 962 unit tests green. Note: the `menu-start` boot canary already fails **identically on origin/master** (a tap near spawn lands `harvest`, not `move`) — pre-existing, unrelated to this change (verified in a clean master worktree); the boot itself succeeds.
   - `src/scenes/world/ResourceNodeManager.ts`:
     - Guard the regrow at L330: `if (!tree.def.oneShot) this.scene.time.delayedCall(regrowMs, …)`.
       When `oneShot`, the node stays `alive=false` in its depleted (ruined) sprite permanently.

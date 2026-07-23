@@ -334,7 +334,25 @@ crispness proven at the Step 1 gate before any component is built on top.
   - Done when: each typechecks/lints and renders matching the current Phaser equivalents.
     Behaviour verified at Step 12.
 
-- [ ] **Step 9: Integrate the top cluster + retire HudBars/TopCenterControls** `[inline]`
+- [x] **Step 9: Integrate the top cluster + retire HudBars/TopCenterControls** `[inline]`
+  - Outcome: `GameHud` now composes `MeterBars`+`DayNightDial`+`ResourceChips` inside `.hud-safe`
+    (they self-position TL/TC/TR) and drops the temp Step 1–3 badge/readout/corner-markers. Damage +
+    starving vignettes moved to a DOM `Vignettes` layer over the canvas rect: the red damage flash
+    pulses via the Web Animations API on the store's `hitNonce` (instant-rise → Cubic-ease-out fade,
+    mirroring the old tween), the yellow starving tint is a steady radial-gradient whose opacity ramps
+    from `HUNGER_LOW_FRACTION` down (reusing the shared `*_VIGNETTE_*` config, converted `0xRRGGBB`→CSS).
+    `UIScene` retirements: removed `HudBars` + `TopCenterControls` construction/fields/imports, the
+    `zoom:changed`/`camera:followChanged`/`fire:changed`/`supply:changed`/`player:hit` subs + teardown,
+    the Phaser vignette bakes (+ `bakeVignetteTexture` import, now unused there), `onPlayerHit`, and the
+    `hudBars.*`/`hungerVignette`/`topCenter.setTime` lines from `updateHealthBar`/`updateHungerBar`/
+    `onTimeChanged` — those methods now feed ONLY the WellbeingPanel (retired Step 11) + the DEV
+    phase label. No double-render (the always-on bars are DOM-only now). **e2e adaptation:** the
+    `zoom`/`follow` specs were already event-driven (`emit` + camera/registry/`captured`), NOT Phaser-HUD
+    queries, so they pass UNCHANGED — verified all 4 green. Left `src/scenes/hud/{HudBars,
+    TopCenterControls}.ts` + `render/vignetteTexture.ts` on disk for the Step 13 dead-code sweep.
+    typecheck + lint (0 errors) + 932 unit + build + smoke green; a headless in-game check confirmed
+    live meters, DOM zoom raising the camera + `%` readout, Follow emitting `camera:center`, and both
+    vignettes firing.
   - Compose `MeterBars` + `DayNightDial` + `ResourceChips` into `GameHud`; subscribe them to
     the store. Remove `HudBars` and `TopCenterControls` construction/wiring from
     `src/scenes/UIScene.ts`. Move the damage + hunger vignettes to a DOM overlay layer in

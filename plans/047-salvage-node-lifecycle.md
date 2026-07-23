@@ -223,7 +223,8 @@ Key files/patterns to mirror (from research):
     over the duration (and reflects persisted progress on resume); both vanish on finish/cancel; boot
     canary clean.
 
-- [ ] **Step 7: queue-glow highlight for `clear` targets** `[delegate]`
+- [x] **Step 7: queue-glow highlight for `clear` targets** `[delegate]`
+  - Outcome: `src/scenes/fx/TaskGlowRenderer.ts` — the `'tree'` case in `refreshQueueHighlights()` now branches on `a.kind`: `harvest` keeps the live-only gate (`tree?.alive`), `clear` uses `tree?.alive || tree?.def.oneShot` so a dead one-shot ruin glows the same silhouette halo (reuses the existing `bakeGlowTexture` path unchanged). Optional-chaining safety preserved; `if (tree && glows)` narrows `tree` for `addTreeGlow`. Note: the head-of-queue breathing *pulse* (`headHarvestTreeId`) stays `harvest`-only by design — a queued `clear` gets the static glow, not the pulse (pulse wasn't in scope for clear). Typecheck clean, 962 unit tests green. Committed `02aff7f`.
   - `src/scenes/fx/TaskGlowRenderer.ts`: the `'tree'` highlight branch (L77-81) only glows
     `tree?.alive` nodes; allow a `clear` order's target (a dead one-shot ruin) to glow too — gate on
     `tree.alive || tree.def.oneShot` for the `clear` kind (keep live-only for `harvest`). Reuse the

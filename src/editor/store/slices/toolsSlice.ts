@@ -1,4 +1,5 @@
 import { paletteSlotRotationKey } from '../shared';
+import { getTilingBarCollapsed, putTilingBarCollapsed } from '../../uiPrefsStore';
 import type { EditorSlice, EditorState, EditorTool, LibraryRoleFilter } from '../types';
 
 /** Tool → auto-synced `libraryRoleFilter` (plan 032 step 3, critique #3's settled mapping), applied by
@@ -53,6 +54,8 @@ export const toolsSlice: EditorSlice<
     | 'altHeld'
     | 'shiftHeld'
     | 'overlays'
+    | 'tilingBarCollapsed'
+    | 'setTilingBarCollapsed'
     | 'setActiveTool'
     | 'setLibraryRoleFilter'
     | 'setBrushAsset'
@@ -91,6 +94,12 @@ export const toolsSlice: EditorSlice<
   altHeld: false,
   shiftHeld: false,
   overlays: { grid: true, walkability: false, zones: false, ghosts: false },
+  // Hydrated from disk at store creation so a collapsed strip stays collapsed across a reload.
+  tilingBarCollapsed: getTilingBarCollapsed(),
+  setTilingBarCollapsed: (collapsed) => {
+    putTilingBarCollapsed(collapsed);
+    set({ tilingBarCollapsed: collapsed });
+  },
   setActiveTool: (activeTool) =>
     set((s): Partial<EditorState> => {
       const mapped = TOOL_LIBRARY_FILTER[activeTool];

@@ -60,8 +60,22 @@ function iconUrl(file: string): string {
   return encodeURI(`${import.meta.env.BASE_URL}assets/icons/${file}`);
 }
 
-/** One hotbar slot. Empty → a dimmed, inert cell; filled → tap-to-use with a long-press guard. */
+/** Live stack count for an item slot (from the mirrored inventory), or `null` when a count shouldn't
+ *  show — buildables (no stock count) and non-stackable items (`maxStack <= 1`, e.g. a future weapon),
+ *  so singletons stay clean while consumables like berries surface how many remain. */
+function useSlotCount(slot: HotbarSlot): number | null {
+  return useHudStore((s) => {
+    if (!slot || slot.kind !== 'item') return null;
+    if ((ITEMS[slot.id]?.maxStack ?? 1) <= 1) return null;
+    return s.inventory[slot.id] ?? 0;
+  });
+}
+
+/** One hotbar slot. Empty → a dimmed, inert cell; filled → tap-to-use with a long-press guard. A
+ *  stackable item also shows its live count (bottom-right) and dims when the stack is depleted. */
 function SlotButton({ slot }: { slot: HotbarSlot }) {
+  const count = useSlotCount(slot);
+  const depleted = count === 0; // stackable item with none left (null count → not a counted slot)
   const timer = useRef<number | null>(null);
   const longPressed = useRef(false);
 
@@ -101,10 +115,20 @@ function SlotButton({ slot }: { slot: HotbarSlot }) {
       className={cn(
         'relative grid size-8 place-items-center overflow-hidden rounded-lg border border-border bg-surface-subtle/95',
         !slot && 'opacity-40',
+        depleted && 'opacity-50', // out of stock — dim but keep it pinned (refills on next forage)
       )}
-      aria-label={slot ? slotLabel(slot) : 'empty slot'}
+      aria-label={slot ? `${slotLabel(slot)}${count !== null ? ` (${count})` : ''}` : 'empty slot'}
     >
       {slot && <SlotContent slot={slot} />}
+      {count !== null && (
+        <span
+          data-testid="hud-hotbar-count"
+          className="absolute right-0 bottom-0 rounded-tl bg-inset/90 px-0.5 font-mono leading-none text-fg-bright"
+          style={{ fontSize: 7 }}
+        >
+          {count}
+        </span>
+      )}
     </button>
   );
 }

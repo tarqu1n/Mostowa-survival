@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { startGame, applyScenario, captured } from './harness';
+import { startGame, applyScenario, captured, held } from './harness';
 
 // Plan 046 Step 14 — DOM/React HUD (action layer: command bar → bottom-sheet drawers + hotbar). These
 // drive the REAL DOM controls (open a drawer from the command bar, tap/long-press a tile) and assert
@@ -75,6 +75,9 @@ test('long-pressing a pack item pins it to the hotbar, and the pin survives a re
   const slot = page.getByRole('dialog').getByRole('button', { name: 'Wood' });
 
   // Long-press: hold past LONGPRESS_MS (350) so the pin fires and the trailing tap is suppressed.
+  // hover() first so the raw-coordinate press below lands after the sheet's slide-in settles (the
+  // bottom sheet animates up over ~0.5s; a boundingBox captured mid-slide would be stale).
+  await slot.hover();
   const box = (await slot.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
@@ -89,4 +92,34 @@ test('long-pressing a pack item pins it to the hotbar, and the pin survives a re
   // the slot renders from the loadout, not from stock — so no scenario re-seed is needed here.
   await startGame(page);
   await expect(page.getByTestId('hud-hotbar').getByRole('button', { name: 'Wood' })).toHaveCount(1);
+});
+
+test('a stackable hotbar item shows its live count and a tap eats one, decrementing it', async ({
+  page,
+}) => {
+  await startGame(page);
+  await applyScenario(page, { player: [10, 10], inventory: { berries: 3 }, hunger: 20 });
+
+  // Pin berries to the bar via the Pack-drawer long-press (same gesture as the pin test above).
+  await page.getByRole('button', { name: 'Pack', exact: true }).click();
+  const entry = page.getByRole('dialog').getByRole('button', { name: 'Berries' });
+  await entry.hover(); // wait out the sheet's slide-in so the raw-coordinate press lands (see above)
+  const box = (await entry.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(600); // past LONGPRESS_MS
+  await page.mouse.up();
+  await page.keyboard.press('Escape'); // close the drawer
+
+  const hotbar = page.getByTestId('hud-hotbar');
+  const berries = hotbar.getByRole('button', { name: /Berries/ });
+  await expect(berries).toHaveCount(1);
+  // The slot shows the live stack count (3 held).
+  await expect(hotbar.getByTestId('hud-hotbar-count')).toHaveText('3');
+
+  // A tap eats one: eat() spends synchronously and the inventory 'change' flows straight to the store,
+  // so the count drops to 2 with no game step — proving both "shows a count" and "eaten when tapped".
+  await berries.click();
+  await expect(hotbar.getByTestId('hud-hotbar-count')).toHaveText('2');
+  expect(await held(page, 'berries')).toBe(2);
 });

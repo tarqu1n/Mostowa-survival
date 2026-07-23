@@ -5,7 +5,7 @@ import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
 import { GameScene } from './scenes/GameScene';
-import { UIScene } from './scenes/UIScene';
+import { mountHud } from './hud/main';
 
 // Install FIRST, before the game boots, so it catches boot/preload errors too. On-device overlay for
 // uncaught errors — this game is usually tested on a phone with no reachable console (see the module).
@@ -36,8 +36,12 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, PreloadScene, MainMenuScene, GameScene, UIScene],
+  scene: [BootScene, PreloadScene, MainMenuScene, GameScene],
 };
 
 // Expose the game instance for debugging + headless smoke tests (harmless in a solo browser game).
 (window as unknown as { game: Phaser.Game }).game = new Phaser.Game(config);
+
+// Mount the DOM/React HUD overlay (plan 046) after the game exists, so the bridge can find
+// `window.game`. The overlay is page-level and persists across scene restarts.
+mountHud();

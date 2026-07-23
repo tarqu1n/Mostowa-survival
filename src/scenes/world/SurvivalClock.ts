@@ -11,6 +11,7 @@ import {
   HUNGER_LETHAL,
   STARVE_DAMAGE,
   STARVE_DAMAGE_INTERVAL_MS,
+  TIME_PROGRESS_EMIT_MS,
 } from '../../config';
 import { bakeLightBrush } from '../../render/lightTexture';
 import { ITEMS } from '../../data/items';
@@ -99,6 +100,10 @@ export class SurvivalClock {
   hunger = HUNGER_MAX;
   starveElapsed = 0;
 
+  /** Accumulator for the throttled `time:progress` HUD tick (see {@link tick}). Emits at most every
+   *  `TIME_PROGRESS_EMIT_MS` of game time so the day/night dial sweeps without a per-frame event. */
+  private progressElapsed = 0;
+
   /**
    * Night light-layer — a world-space RenderTexture, depth 15 (above the player at 10, so it darkens
    * actors too), re-centred each frame on the camera and composited from the clock + lit fires (see
@@ -175,6 +180,15 @@ export class SurvivalClock {
         cycleMs,
         tNorm: cycleMs / cycleLengthMs(),
       });
+    }
+
+    // Continuous dial sweep: `time:changed` above fires only on a transition (its game consumers must
+    // not run every frame), so the HUD dial's marker/progress ring would sit frozen for the whole day.
+    // Push a throttled HUD-only `time:progress` with the live cycle position instead. See config note.
+    this.progressElapsed += delta;
+    if (this.progressElapsed >= TIME_PROGRESS_EMIT_MS) {
+      this.progressElapsed = 0;
+      this.scene.game.events.emit('time:progress', { tNorm: cycleMs / cycleLengthMs() });
     }
 
     const hungerBefore = Math.round(this.hunger);

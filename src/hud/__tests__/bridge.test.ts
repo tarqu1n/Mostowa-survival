@@ -92,6 +92,14 @@ describe('outbound event → store mapping', () => {
     bus.emit('time:changed', { phase: 'day', dayCount: 3, cycleMs: 1, tNorm: 0.1 });
     expect(s().waveInfo.active).toBe(false);
 
+    // `time:progress` moves only the cycle position (the dial's continuous sweep) — phase/day/wave,
+    // owned by the sparse `time:changed`, must be left untouched.
+    bus.emit('time:progress', { tNorm: 0.42 });
+    expect(s().time).toBe(0.42);
+    expect(s().dayPhase).toBe('day'); // unchanged from the last time:changed
+    expect(s().dayCount).toBe(3);
+    expect(s().waveInfo.active).toBe(false);
+
     bus.emit('tasks:changed', { current: 'harvest', pending: 2 });
     expect(s().tasks).toEqual({ current: 'harvest', pending: 2 });
 

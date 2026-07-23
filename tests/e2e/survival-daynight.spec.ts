@@ -25,6 +25,33 @@ test('day flips to night and the night overlay darkens', async ({ page }) => {
   expect(after.nightAlpha).toBeCloseTo(NIGHT_MAX_ALPHA, 2); // deep night plateau
 });
 
+// Regression (hunger/day-counter bug): the dial's sun/moon marker + progress ring sweep with the
+// cycle position, which advances every frame — but `time:changed` fires ONLY on a phase/day
+// transition, so before the `time:progress` tick the dial sat frozen for the whole 11-min day and
+// read as "broken". Prove the REAL clock now moves the rendered marker mid-phase (no transition).
+test('the day/night dial marker sweeps as time passes within a phase', async ({ page }) => {
+  await startGame(page);
+  // Seed early-day, well clear of dusk so the whole step stays in the day phase (no transition).
+  await applyScenario(page, { clockMs: 1_000 });
+
+  const marker = () =>
+    page.evaluate(() => {
+      const svg = document.querySelector('[data-testid="hud-daynight"] svg')!;
+      const circles = svg.querySelectorAll('circle');
+      const m = circles[circles.length - 1]; // the sweeping marker is the last <circle>
+      return { cx: m.getAttribute('cx'), cy: m.getAttribute('cy') };
+    });
+
+  await step(page, 300); // let a first time:progress land after the seed
+  const before = await marker();
+
+  await step(page, 3_000); // advance within the day (no transition); inside the step budget
+  const after = await marker();
+
+  expect(await state(page)).toMatchObject({ dayPhase: 'day', dayCount: 1 }); // still same phase
+  expect(after).not.toEqual(before); // the marker actually moved (dial is live, not frozen)
+});
+
 test('the day count increments after a full cycle', async ({ page }) => {
   await startGame(page);
   // Seed the tail of day 1's cycle (still night), just before it wraps to day 2's dawn.

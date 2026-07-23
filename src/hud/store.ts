@@ -111,6 +111,9 @@ export interface HudActions {
   setFire(fire: FireState | null): void;
   setSupply(supply: SupplyState): void;
   setTime(phase: 'day' | 'night', dayCount: number, time: number): void;
+  /** Update only the cycle position (`time`, 0..1) from the throttled `time:progress` tick — the
+   *  day/night dial's continuous sweep between the sparse `setTime` transition updates. */
+  setTimeProgress(time: number): void;
   setTasks(tasks: TaskSummary): void;
   setMode(mode: HudMode): void;
   setBuildMode(on: boolean): void;
@@ -177,6 +180,7 @@ export const useHudStore = create<HudState & HudActions>()(
     // A wave runs the whole night, so the banner keys off phase (no dedicated wave event exists).
     setTime: (dayPhase, dayCount, time) =>
       set({ dayPhase, dayCount, time, waveInfo: { active: dayPhase === 'night' } }),
+    setTimeProgress: (time) => set({ time }),
     setTasks: (tasks) => set({ tasks }),
     setMode: (mode) => set({ mode }),
     setBuildMode: (buildMode) => set({ buildMode }),

@@ -142,6 +142,8 @@ export function initBridge(bus: EventBus, registry: Registry): Bridge {
   );
   on<SupplyPayload>('supply:changed', (p) => store.setSupply({ wood: p.wood, rock: p.rock }));
   on<TimePayload>('time:changed', (p) => store.setTime(p.phase, p.dayCount, p.tNorm));
+  // Continuous dial sweep between the sparse transition-only `time:changed` updates (see SurvivalClock).
+  on<{ tNorm: number }>('time:progress', (p) => store.setTimeProgress(p.tNorm));
   on<TasksPayload>('tasks:changed', (p) =>
     store.setTasks({ current: p.current, pending: p.pending }),
   );

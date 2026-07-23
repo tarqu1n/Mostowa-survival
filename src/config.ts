@@ -435,6 +435,15 @@ export const DAY_MS = 660_000; // 11 min — long, breathing day (leave → scav
 export const NIGHT_MS = 240_000; // 4 min — shorter, denser night
 export const TWILIGHT_MS = 8_000;
 /**
+ * How often SurvivalClock pushes the HUD a `time:progress` tick (ms of game time between emits). The
+ * day/night dial's sweeping sun/moon marker + progress ring are driven by the cycle position (`tNorm`
+ * 0..1), which advances every frame — but `time:changed` fires ONLY on a phase/day *transition* (its
+ * consumers — WaveDirector, CompanionManager, trap re-arm — must not run every frame), so the dial
+ * needs its own lightweight per-tick signal or it sits frozen for the whole 11-min day. Throttled to
+ * a few emits/sec: the ring completes over a 15-min cycle, so 200ms steps are visually continuous at a
+ * trivial re-render cost. (HUD-only; no game system consumes it.) */
+export const TIME_PROGRESS_EMIT_MS = 200;
+/**
  * Darkest the night tint gets (alpha of the COLORS.night light layer). Full opacity (1.0): away from
  * any light the world is BLACK and darkness *conceals* — approaching enemies and their telegraphed
  * attack tells are invisible until a fire's soft light reveals them (plan 039 Step 2, decision #1).

@@ -140,7 +140,7 @@ function SlotButton({ slot }: { slot: HotbarSlot }) {
       onPointerLeave={clearTimer}
       onPointerCancel={clearTimer}
       className={cn(
-        'relative grid size-8 place-items-center overflow-hidden rounded-lg border border-border bg-surface-subtle/95',
+        'relative grid size-11 place-items-center overflow-hidden rounded-lg border border-border bg-surface-subtle/95',
         !slot && 'opacity-40',
         depleted && 'opacity-50', // out of stock — dim but keep it pinned (refills on next forage)
       )}
@@ -151,7 +151,7 @@ function SlotButton({ slot }: { slot: HotbarSlot }) {
         <span
           data-testid="hud-hotbar-count"
           className="absolute right-0 bottom-0 rounded-tl bg-inset/90 px-0.5 font-mono leading-none text-fg-bright"
-          style={{ fontSize: 7 }}
+          style={{ fontSize: 8 }}
         >
           {count}
         </span>
@@ -179,7 +179,7 @@ function SlotContent({ slot }: { slot: NonNullable<HotbarSlot> }) {
         <img
           src={iconUrl(def.icon)}
           alt={def.name}
-          className="size-5 [image-rendering:pixelated]"
+          className="size-9 [image-rendering:pixelated]"
           draggable={false}
         />
       );
@@ -193,7 +193,7 @@ function SlotContent({ slot }: { slot: NonNullable<HotbarSlot> }) {
 
 function SlotText({ children }: { children: string }) {
   return (
-    <span className="px-0.5 text-center text-[7px] leading-tight text-fg-muted">{children}</span>
+    <span className="px-0.5 text-center text-[8px] leading-tight text-fg-muted">{children}</span>
   );
 }
 

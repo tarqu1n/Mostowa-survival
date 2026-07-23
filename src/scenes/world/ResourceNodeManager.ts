@@ -10,11 +10,12 @@ import {
   type NormalizedNodeSkinDef,
 } from '../../systems/nodeDefs';
 import { tileToWorldCenter } from '../../systems/grid';
+import { iconKey } from '../../data/tileset';
 import { parseAssetId } from '../../render/assetPaths';
 import { resolveDecorDraw } from '../../render/decorSprites';
 import type { TreeNode } from '../../entities/types';
 import { rowDepthOffset, type NodeObject } from '../../systems/mapFormat';
-import type { ChopFxInput, FellFxInput } from '../fx/NodeFxManager';
+import type { ChopFxInput, FellFxInput, YieldFloatInput } from '../fx/NodeFxManager';
 import type { GameScene } from '../GameScene';
 
 /**
@@ -37,6 +38,10 @@ export interface ResourceNodeManagerDeps {
   /** Play the per-kind depletion payoff (tree topple / rock crumble / bush rustle) on a transient
    *  clone — the scene routes this to NodeFxManager.playFell. */
   playFellFx(input: FellFxInput): void;
+  /** Float the "resource acquired" icon(s) above a just-harvested node — the scene routes this to
+   *  NodeFxManager.playYieldFloat. One icon per resource the hit yielded; a multi-drop salvage floats
+   *  them side by side. Fire-and-forget feedback: never gates the harvest, just visualises the yield. */
+  playYieldFx(input: YieldFloatInput): void;
 }
 
 /**
@@ -274,13 +279,27 @@ export class ResourceNodeManager {
     breadcrumb('node', `chop ${tree.def.id} ${tree.id}`, { hp: tree.hp - 1, alive: tree.alive });
     tree.hp -= 1;
     const yieldTo = onYield ?? this.deps.addYield;
+    // Collect the item ids this hit granted, in credit order, so the float pop can show one icon per
+    // resource (a single wood off a tree; the whole rolled set off a tent salvage — see playYieldFx).
+    const yielded: string[] = [];
     if (tree.def.loot) {
       // "Salvage" a wreck: this hit rolls the def's loot table (a predefined item set) instead of the
       // fixed single yield. Each rolled stack is credited through the SAME sink, so the player bag vs
       // companion-carry redirect (see `onYield` doc) works identically.
-      for (const drop of rollLoot(tree.def.loot)) yieldTo(drop.itemId, drop.qty);
+      for (const drop of rollLoot(tree.def.loot)) {
+        yieldTo(drop.itemId, drop.qty);
+        yielded.push(drop.itemId);
+      }
     } else {
       yieldTo(tree.def.yieldItemId, tree.def.yieldPerHit);
+      yielded.push(tree.def.yieldItemId);
+    }
+    // Float a small "+resource" icon above the node — one per resource granted, fanned out side by
+    // side for a multi-drop salvage so they never overlap. Read the sprite transform BEFORE the
+    // deplete-swap below (it's still the live node here), and route through the fx dep (fx lives in
+    // scenes/fx, not this state manager). Purely cosmetic — never gates the yield above.
+    if (yielded.length > 0) {
+      this.deps.playYieldFx({ sprite: tree.sprite, iconKeys: yielded.map((id) => iconKey(id)) });
     }
     // Per-hit chop feedback — routed to NodeFxManager (fx lives in scenes/fx, this stays a state
     // manager). It animates only the node sprite; the queued glow halo mirrors that motion each frame

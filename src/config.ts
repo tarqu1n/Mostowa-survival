@@ -116,6 +116,22 @@ export const NODE_PROGRESS_BAR_W = 20;
 export const NODE_PROGRESS_BAR_H = 3;
 export const NODE_PROGRESS_BAR_Y_OFFSET = 4;
 
+/**
+ * Floating "resource acquired" pop (plan-less spike — harvest yield feedback). Each harvest hit that
+ * credits a yield spawns a small item icon just above the node that rises `YIELD_FLOAT_RISE_PX` while
+ * fading out over `YIELD_FLOAT_MS`, with a brief `YIELD_POP_MS` scale-pop as it appears.
+ * `YIELD_ICON_SIZE` is the displayed square size (item icons are 32px native). When ONE hit grants
+ * several resources at once — a tent salvage rolls its whole loot table in a single act — the icons
+ * are laid out side by side `YIELD_ICON_SPACING_PX` apart, centred over the node, so they float up
+ * together without overlapping. `YIELD_ICON_START_OFFSET` lifts the spawn point above the art's top.
+ */
+export const YIELD_ICON_SIZE = 14;
+export const YIELD_ICON_SPACING_PX = 17;
+export const YIELD_ICON_START_OFFSET = 6;
+export const YIELD_FLOAT_RISE_PX = 26;
+export const YIELD_FLOAT_MS = 750;
+export const YIELD_POP_MS = 160;
+
 /** Hold time (ms) that turns a tap into a queued order rather than an act-now order. */
 export const LONGPRESS_MS = 350;
 

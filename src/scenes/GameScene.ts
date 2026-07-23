@@ -19,6 +19,7 @@ import {
 } from '../config';
 import { ITEMS } from '../data/items';
 import { BUILDABLES } from '../data/buildables';
+import { iconKey } from '../data/tileset';
 import { Inventory } from '../systems/Inventory';
 import { BaseSupply } from '../systems/baseSupply';
 import { tileToWorldCenter, worldToTile } from '../systems/grid';
@@ -391,6 +392,7 @@ export class GameScene extends Phaser.Scene {
       addYield: (itemId, n) => this.inv.add(itemId, n),
       playChopFx: (input) => this.nodeFx.playChop(input),
       playFellFx: (input) => this.nodeFx.playFell(input),
+      playYieldFx: (input) => this.nodeFx.playYieldFloat(input),
     });
     // Hydrate resource nodes from authored `node` objects (plan 018 A6).
     this.resourceNodeManager.loadNodes(
@@ -1503,8 +1505,20 @@ export class GameScene extends Phaser.Scene {
         this.nodeFx.stopShake(tree.sprite);
         this.nodeFx.hideActionProgress(tree.sprite);
         // A little scrap for the effort (cloth/wood) — a one-shot node with no clearLoot clears silently.
+        const cleared: string[] = [];
         if (tree.def.clearLoot)
-          for (const drop of rollLoot(tree.def.clearLoot)) this.inv.add(drop.itemId, drop.qty);
+          for (const drop of rollLoot(tree.def.clearLoot)) {
+            this.inv.add(drop.itemId, drop.qty);
+            cleared.push(drop.itemId);
+          }
+        // Float the scrap icons above the husk (same "resource acquired" pop as a harvest hit) BEFORE
+        // removeNode destroys the node sprite — the float spawns its own independent icon sprites, so
+        // they keep rising after the husk is gone.
+        if (cleared.length > 0)
+          this.nodeFx.playYieldFloat({
+            sprite: tree.sprite,
+            iconKeys: cleared.map((id) => iconKey(id)),
+          });
         this.resourceNodeManager.removeNode(a.treeId); // destroy + free the tile + repath
         this.completeCurrent(); // condition-terminate: the ruin is gone
       }

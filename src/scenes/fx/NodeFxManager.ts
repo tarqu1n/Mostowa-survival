@@ -16,6 +16,12 @@ import {
   NODE_PROGRESS_BAR_W,
   NODE_PROGRESS_BAR_H,
   NODE_PROGRESS_BAR_Y_OFFSET,
+  YIELD_ICON_SIZE,
+  YIELD_ICON_SPACING_PX,
+  YIELD_ICON_START_OFFSET,
+  YIELD_FLOAT_RISE_PX,
+  YIELD_FLOAT_MS,
+  YIELD_POP_MS,
   COLORS,
 } from '../../config';
 import type { GameScene } from '../GameScene';
@@ -67,6 +73,19 @@ export interface FellFxInput {
   facing: { dCol: number; dRow: number };
   /** The persistent node sprite — only so `playFell` can stop its recoil tween (never animated here). */
   nodeSprite: Phaser.GameObjects.Image;
+}
+
+/**
+ * Floating "resource acquired" pop input. `ResourceNodeManager` owns item→icon resolution, so it
+ * hands {@link NodeFxManager} plain data: the harvested node sprite (the float anchors above its
+ * visual top) and one already-resolved icon texture key per resource this hit yielded — order is the
+ * left→right layout order. A single-yield chop passes one key; a tent salvage rolls its whole loot
+ * table in one act and passes several, which fan out side by side so they never overlap.
+ */
+export interface YieldFloatInput {
+  sprite: Phaser.GameObjects.Image;
+  /** One icon texture key (`icon:<id>`) per resource the hit granted; laid out left→right. */
+  iconKeys: string[];
 }
 
 /** A tracked transient effect sprite + the tweens poking it, so teardown can stop then drop/destroy. */
@@ -291,6 +310,56 @@ export class NodeFxManager {
         }),
       );
     }
+  }
+
+  /**
+   * Floating "resource acquired" pop: for each resource this harvest hit credited, spawn a small item
+   * icon just above the node that pops in, rises, and fades out — quick, unmissable feedback that the
+   * swing paid off. When one hit grants several resources at once (a tent salvage rolls its whole loot
+   * table in a single act), the icons are laid out side by side, centred over the node, so they float
+   * up together without ever overlapping. Each icon is an unmanaged transient clone like the fell
+   * clone: `.active`-guarded, tracked so a DEV world reset / SHUTDOWN stops+frees any still in flight,
+   * and self-destroying via {@link endTransient} once its rise completes.
+   */
+  playYieldFloat(input: YieldFloatInput): void {
+    const { sprite, iconKeys } = input;
+    if (!sprite.active || iconKeys.length === 0) return;
+    // Anchor above the node art's visual top (nodes are tall + base-anchored, so `sprite.y` sits near
+    // the foot — `getBounds().top` is the canopy/roof), then lift a touch more so the pop clears it.
+    const topY = sprite.getBounds().top - YIELD_ICON_START_OFFSET;
+    // Centre the row on the node: N icons span (N-1)·spacing, so the first starts half a span left.
+    const startX = sprite.x - ((iconKeys.length - 1) * YIELD_ICON_SPACING_PX) / 2;
+    iconKeys.forEach((key, i) => {
+      // Defensive: PreloadScene bakes a colour-rect fallback into every `icon:<id>` key, so a missing
+      // texture never happens in practice — but skip rather than spawn a broken green `__WHITE` box.
+      if (!this.scene.textures.exists(key)) return;
+      const icon = this.scene.add
+        .image(startX + i * YIELD_ICON_SPACING_PX, topY, key)
+        .setDisplaySize(YIELD_ICON_SIZE, YIELD_ICON_SIZE)
+        .setDepth(15); // above world/actors (≤9) + node bands + the salvage progress bar (12): a transient celebration
+      const restScale = icon.scale; // setDisplaySize fixed scaleX===scaleY; the pop eases up to this
+      const entry = this.track(icon);
+      // Rise-and-fade: drift straight up while fading to nothing, then free the clone.
+      entry.tweens.push(
+        this.scene.tweens.add({
+          targets: icon,
+          y: topY - YIELD_FLOAT_RISE_PX,
+          alpha: { from: 1, to: 0 },
+          duration: YIELD_FLOAT_MS,
+          ease: 'Quad.easeOut',
+          onComplete: () => this.endTransient(entry),
+        }),
+      );
+      // Brief scale-pop as it appears, so the icon reads as popping OFF the node before it rises.
+      entry.tweens.push(
+        this.scene.tweens.add({
+          targets: icon,
+          scale: { from: restScale * 0.6, to: restScale },
+          duration: YIELD_POP_MS,
+          ease: 'Back.easeOut',
+        }),
+      );
+    });
   }
 
   /** Register a transient clone so teardown can find it; its tweens are pushed by the caller and it

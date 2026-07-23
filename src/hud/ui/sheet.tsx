@@ -61,15 +61,26 @@ function SheetContent({
             'inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm',
           side === 'top' &&
             'inset-x-0 top-0 h-auto border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top',
+          // Field Kit `.catalog` (docs/ui-overhaul/pitch.html): the bottom drawers are a floating,
+          // fully-rounded card inset from the screen edges with a grip handle — NOT a full-width sheet
+          // butting the bottom edge. Inset by 8px (`inset-x-2 bottom-2` — env() safe-area respected),
+          // bordered + rounded all round, centred/capped so it reads as a card on wider viewports.
           side === 'bottom' &&
-            'inset-x-0 bottom-0 h-auto border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
+            'inset-x-2 bottom-[calc(0.5rem+env(safe-area-inset-bottom))] mx-auto h-auto max-w-md rounded-2xl border data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
           className,
         )}
         {...props}
       >
+        {/* Grip handle — the Field Kit `.sheet-grip`; signals "swipe/tap to dismiss" on the bottom drawers. */}
+        {side === 'bottom' && (
+          <div
+            aria-hidden
+            className="mx-auto mt-3 -mb-1 h-1.5 w-10 shrink-0 rounded-full bg-muted-foreground/40"
+          />
+        )}
         {children}
         {showCloseButton && (
-          <SheetPrimitive.Close className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
+          <SheetPrimitive.Close className="absolute top-3 right-3 rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none">
             <XIcon className="size-4" />
             <span className="sr-only">Close</span>
           </SheetPrimitive.Close>
@@ -103,7 +114,7 @@ function SheetTitle({ className, ...props }: React.ComponentProps<typeof SheetPr
   return (
     <SheetPrimitive.Title
       data-slot="sheet-title"
-      className={cn('font-semibold text-foreground', className)}
+      className={cn('text-lg font-semibold text-foreground', className)}
       {...props}
     />
   );

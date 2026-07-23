@@ -60,6 +60,52 @@
     background: none;
     cursor: pointer;
   }
+
+  /* Radix portals the bottom-sheet drawers (Build/Pack/Status + inspect/companion) to <body>, OUTSIDE
+   * #hud-root — so the scoped reset above never reaches them and UA defaults leak in: a serif body
+   * font, native <h2> heading sizing on the drawer title, and the native <button> chrome on the close
+   * "×". Re-apply the same minimal reset + font to the portaled sheet subtree so the drawers inherit
+   * the HUD's look. Kept in @layer base (below utilities) so component utilities still win — the tiles'
+   * `bg-secondary`/`border-border` and the sheet's own `rounded-2xl`/`border` override these defaults. */
+  [data-slot='sheet-overlay'],
+  [data-slot='sheet-content'],
+  [data-slot='sheet-content'] *,
+  [data-slot='sheet-content'] *::before,
+  [data-slot='sheet-content'] *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid transparent;
+  }
+
+  [data-slot='sheet-content'] {
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      Helvetica,
+      Arial,
+      sans-serif;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Neutralise UA heading sizing inside the drawers (preflight is omitted, so <h2> keeps its 1.5em);
+   * the SheetTitle sets its own size via a utility class. */
+  [data-slot='sheet-content'] :is(h1, h2, h3, h4, h5, h6) {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+
+  [data-slot='sheet-content'] button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    cursor: pointer;
+  }
 }
 
 /* shadcn/Radix enter–exit animations for the portaled sheets + overlays (the Build/Pack/Status bottom

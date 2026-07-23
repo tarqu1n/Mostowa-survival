@@ -278,6 +278,11 @@ export interface EditorState {
   shiftHeld: boolean;
   activeZoneId: number | null;
   overlays: EditorOverlays;
+  /** Whether the Map-tab palette/skin strip is collapsed to a thin re-open handle — GLOBAL editor
+   *  chrome state (not per-map), persisted in `localStorage` (`uiPrefsStore`), NEVER in `MapFile`.
+   *  Phone feedback: the strip wastes vertical space when you're selecting/placing rather than tiling,
+   *  so it can be folded away and re-opened on demand. Hydrated from disk at store creation. */
+  tilingBarCollapsed: boolean;
   /** Editor VIEW state, not map data — which layer ids are hidden in the viewport. Never touches
    *  `MapFile`/`TileLayer` (those have no visibility field; see module doc on `overhead` vs this). */
   hiddenLayerIds: string[];
@@ -396,6 +401,9 @@ export interface EditorState {
   setShiftHeld(held: boolean): void;
   setActiveZoneId(id: number | null): void;
   toggleOverlay(key: keyof EditorOverlays): void;
+  /** Collapse/expand the Map-tab palette/skin strip. Writes through to `uiPrefsStore` (localStorage)
+   *  so the choice persists across maps and reloads. */
+  setTilingBarCollapsed(collapsed: boolean): void;
   toggleLayerVisibility(layerId: string): void;
 
   // ---- Library view-state (plan 030) — recents + browse, editor view-state persisted per-map in

@@ -18,8 +18,7 @@ import { ObjectEditorTab } from './tabs/ObjectEditorTab';
 import { WorldViewTab } from './tabs/WorldViewTab';
 import { NodeTypesTab } from './tabs/NodeTypesTab';
 import { LibraryPanel, PalettePickControls } from './panels/LibraryPanel';
-import { PaletteStrip } from './panels/PaletteStrip';
-import { QuickLayerSelect } from './ui/QuickLayerSelect';
+import { TilingBar } from './panels/TilingBar';
 import { LayersPanel } from './panels/LayersPanel';
 import { ZonesPanel } from './panels/ZonesPanel';
 import { InspectorPanel } from './panels/InspectorPanel';
@@ -543,11 +542,7 @@ export function EditorApp() {
                   ContextBar, so one-tap tile switching never requires opening the Library drawer. It
                   sits OUTSIDE the canvas region (a flex-none row, not overlaying it) and stacks cleanly
                   with SelectionBar (which self-hides when nothing is selected). Map-tab gated. */}
-              {showTilingBar && (
-                <div className="flex flex-none items-center overflow-x-auto border-t border-surface bg-raised px-2 py-1.5">
-                  <PaletteStrip />
-                </div>
-              )}
+              {showTilingBar && <TilingBar />}
 
               {/* Selection-operations bar: a second bottom bar stacked above the ContextBar, shown only
                   while something is selected (it self-hides otherwise). */}
@@ -583,14 +578,7 @@ export function EditorApp() {
                     <div className="relative min-h-0 flex-1">
                       <CenterPane />
                     </div>
-                    {showTilingBar && (
-                      <div className="flex flex-none items-center gap-2 border-t border-surface bg-raised px-2 py-1.5">
-                        <QuickLayerSelect />
-                        <div className="min-w-0 flex-1 overflow-x-auto">
-                          <PaletteStrip />
-                        </div>
-                      </div>
-                    )}
+                    {showTilingBar && <TilingBar withLayerSelect />}
                   </div>
                 </ResizablePanel>
               </ResizablePanelGroup>

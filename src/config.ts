@@ -126,7 +126,7 @@ export const NODE_PROGRESS_BAR_Y_OFFSET = 4;
  * together without overlapping. `YIELD_ICON_START_OFFSET` lifts the spawn point above the art's top.
  */
 export const YIELD_ICON_SIZE = 14;
-export const YIELD_ICON_SPACING_PX = 17;
+export const YIELD_ICON_SPACING_PX = 20;
 export const YIELD_ICON_START_OFFSET = 6;
 export const YIELD_FLOAT_RISE_PX = 26;
 export const YIELD_FLOAT_MS = 750;

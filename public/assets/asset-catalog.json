@@ -46469,7 +46469,7 @@
         "path": "Environment/Props/Static/tent_front_3_searched.png"
       },
       "w": 64,
-      "h": 55,
+      "h": 48,
       "category": "Environment/Props/Static",
       "tags": [
         "3",
@@ -46492,7 +46492,7 @@
         "path": "Environment/Props/Static/tent_front_3.png"
       },
       "w": 64,
-      "h": 55,
+      "h": 48,
       "category": "Environment/Props/Static",
       "tags": [
         "3",
@@ -46514,7 +46514,7 @@
         "path": "Environment/Props/Static/tent_side_1_searched.png"
       },
       "w": 64,
-      "h": 45,
+      "h": 39,
       "category": "Environment/Props/Static",
       "tags": [
         "1",
@@ -46537,7 +46537,7 @@
         "path": "Environment/Props/Static/tent_side_1.png"
       },
       "w": 64,
-      "h": 45,
+      "h": 39,
       "category": "Environment/Props/Static",
       "tags": [
         "1",
@@ -46559,7 +46559,7 @@
         "path": "Environment/Props/Static/tent_side_2_searched.png"
       },
       "w": 64,
-      "h": 39,
+      "h": 28,
       "category": "Environment/Props/Static",
       "tags": [
         "2",
@@ -46582,7 +46582,7 @@
         "path": "Environment/Props/Static/tent_side_2.png"
       },
       "w": 64,
-      "h": 39,
+      "h": 28,
       "category": "Environment/Props/Static",
       "tags": [
         "2",
@@ -46604,7 +46604,7 @@
         "path": "Environment/Props/Static/tent_side_3_searched.png"
       },
       "w": 64,
-      "h": 42,
+      "h": 27,
       "category": "Environment/Props/Static",
       "tags": [
         "3",
@@ -46627,7 +46627,7 @@
         "path": "Environment/Props/Static/tent_side_3.png"
       },
       "w": 64,
-      "h": 42,
+      "h": 27,
       "category": "Environment/Props/Static",
       "tags": [
         "3",

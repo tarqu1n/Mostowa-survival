@@ -262,13 +262,16 @@ scavenging a collapsed tent for items from a predefined set instead of a single 
   game is TOP-DOWN so all use the pack's high top-down oblique angle):
   `tent_wreck_{1,2,3}` (diagonal), `tent_front_{1,2,3}` (front / entrance-to-camera),
   `tent_side_{1,2,3}` (broadside / ridge horizontal), each `+ _searched` (the depleted/ransacked swap,
-  derived from the live art by desaturate+darken). The technique (docs/AI-SPRITE-PIPELINE.md — the
-  reference holds it on-model): an isolated pack **roof chevron** from `Buildings/Roofs.png` anchors
-  the top-down camera + flat pixel-art style; `side` additionally gets a plain grey **broadside
-  silhouette** as a pose-guide, because the diagonal roof + the model's diagonal tent prior otherwise
-  snap every `side` prompt back to 3/4. Regenerate: export `GEMINI_API_KEY` (guppi, over Tailscale —
-  see below), `python3 scripts/gen-tents.py` (`--dry-run` / `--reprocess` / `--only ID` available),
-  then `npm run assets:catalog`. The two salvage **item icons** (`icons/cloth.png`,
+  derived from the live art by desaturate+darken). Model: **`gemini-3-pro-image` ("Nano Banana Pro")**
+  by default (`--model` overrides; `gemini-3.1-flash-image` / `gemini-2.5-flash-image` also work —
+  Imagen 4 is text-only so it can't take our references). The technique (docs/AI-SPRITE-PIPELINE.md —
+  a real reference holds orientation + style on-model): **diagonal + front** use an isolated pack
+  **roof chevron** from pixel-crawler `Buildings/Roofs.png`; **side** uses a real pack **broadside
+  roof** (the back building's horizontal-ridge roof in fantasy-tileset `House_Hay_2.png`) — that one
+  fought the hardest, because the chevron reads front/diagonal and the model's tent prior is diagonal,
+  so text + a hand-drawn silhouette weren't enough; a genuine broadside roof reference was. Regenerate:
+  export `GEMINI_API_KEY` (guppi, over Tailscale — see below), `python3 scripts/gen-tents.py`
+  (`--model` / `--dry-run` / `--reprocess` / `--only ID`), then `npm run assets:catalog`. The two salvage **item icons** (`icons/cloth.png`,
   `icons/canned_food.png`) are still the hand-baked placeholders from `scripts/tent-art.mjs`.
   > **Getting the Gemini key from a cloud session:** guppi is Matt's **non-prod home server** and the
   > key lives in `guppi/house-helper/.env`, reachable over Tailscale with the session's own

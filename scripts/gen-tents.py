@@ -36,10 +36,13 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageEnhance
 
-ENDPOINT = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    "gemini-2.5-flash-image:generateContent"
-)
+ENDPOINT_TMPL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+# Image-to-image capable models on the key (verified via the models list endpoint):
+#   gemini-2.5-flash-image (older/fast), gemini-3.1-flash-image (newer/fast),
+#   gemini-3-pro-image ("Nano Banana Pro", best quality/adherence — the default).
+# Imagen 4 (imagen-4.0-*) is text-to-image only (predict method), so it can't take our
+# reference images and isn't wired here.
+DEFAULT_MODEL = "gemini-3-pro-image"
 ROOT = Path(__file__).resolve().parents[1]
 PACK = ROOT / "public/assets/tilesets/mostowo-custom/Environment/Props/Static"
 RAW = ROOT / "scripts/.gen-icons/raw"
@@ -48,6 +51,12 @@ RAW = ROOT / "scripts/.gen-icons/raw"
 # bbox found via alpha connected-components on Roofs.png (see docs/wired-art.md savage section).
 ROOFS = ROOT / "public/assets/tilesets/pixel-crawler/Environment/Structures/Buildings/Roofs.png"
 ROOF_BBOX = (272, 87, 368, 187)
+# SIDE orientation anchor: a real pack BROADSIDE roof (horizontal ridge, one long slope seen from
+# above) — replaces the hand-drawn silhouette (weak/unverified) and the red roof (which was actually
+# front-on). This is the back building's roof in the fantasy-tileset hay house, the one genuine
+# side-on/top-down roof in the pack set (owner-identified).
+SIDE_ROOF = ROOT / "public/assets/tilesets/fantasy-tileset/Buildings/House_Hay_2.png"
+SIDE_ROOF_BBOX = (3, 2, 82, 52)
 
 TARGET_W = 64  # live sprite width in px (a ~6-person tent ≈ 4 tiles); height follows aspect
 QUANTISE_COLOURS = 24
@@ -85,10 +94,15 @@ ORIENT = {
         "frame (about 45 degrees), so you see two roof-slopes and a front corner."
     ),
     "side": (
-        "Orientation: the tent is turned SIDE-ON / broadside — its long ridge line runs "
-        "HORIZONTALLY left-to-right across the frame; you look down onto the long near roof-slope "
-        "(a wide low shape) with the ridge as a near-horizontal line, and the triangular gable ends "
-        "sit at the far left and right. Wider than it is tall."
+        "Orientation: BROADSIDE, seen from the game's HIGH TOP-DOWN angle (you still look DOWN onto "
+        "the roof from above — NOT a flat eye-level side photo). The long ridge is a HORIZONTAL line "
+        "across the upper third; below it the long near roof-slope faces down toward the camera as one "
+        "wide panel; a sliver of the far roof-slope shows ABOVE the ridge (because you're looking "
+        "down onto it); a small gable END sits at BOTH the far left AND far right, symmetric "
+        "left-to-right. Clearly WIDER than tall (about 2:1), a long low tent. CRITICAL: do NOT rotate "
+        "it to a 3/4 corner, and do NOT flatten it to a low eye-level side elevation — it is a "
+        "top-down view of a tent lying broadside. Keep it a proper full tent, not squashed or "
+        "deformed."
     ),
     "front": (
         "Orientation: the tent faces the viewer FRONT-ON / end-on — the ridge runs straight "
@@ -128,26 +142,18 @@ def roof_ref_png() -> bytes:
     return out.read_bytes()
 
 
-def side_guide_png() -> bytes:
-    """A flat grey SIDE-ON tent silhouette on magenta — the ORIENTATION guide (pose-guider trick,
-    docs/AI-SPRITE-PIPELINE.md). The roof chevron reads diagonal and the model's tent prior is
-    also diagonal, so text alone won't hold a broadside; this shape pins ridge-horizontal +
-    wider-than-tall. Deliberately plain (no texture) so only the orientation transfers, not looks."""
-    W, H = 360, 190
-    im = Image.new("RGB", (W, H), (255, 0, 255))
-    d = ImageDraw.Draw(im)
-    grey, dark, edge = (150, 150, 150), (95, 95, 95), (20, 20, 20)
-    # far slope (thin band above the ridge), near slope (big trapezoid, wider at the eave)
-    d.polygon([(110, 52), (250, 52), (265, 70), (95, 70)], fill=dark)
-    d.polygon([(95, 70), (265, 70), (300, 150), (60, 150)], fill=grey, outline=edge)
-    d.line([(95, 70), (265, 70)], fill=edge, width=3)          # horizontal ridge
-    d.line([(60, 150), (300, 150)], fill=edge, width=2)        # eave
-    d.polygon([(170, 150), (180, 112), (192, 150)], fill=edge)  # dark entrance on the near slope
-    for x in (140, 210):                                        # a couple of seam lines
-        d.line([(x, 71), (x - 12, 149)], fill=dark, width=1)
-    out = RAW / "_side_guide.png"
+def side_ref_png() -> bytes:
+    """The SIDE orientation+style anchor: a real pack BROADSIDE roof (horizontal ridge, both slopes
+    seen from above), cropped + upscaled x2 on magenta. Replaces the earlier hand-drawn silhouette
+    (removed — it was weak and unverified). A genuine broadside roof both fixes the orientation and
+    carries the pack's pixel-art style, so `side` needs only this one reference."""
+    im = Image.open(SIDE_ROOF).convert("RGBA").crop(SIDE_ROOF_BBOX)
+    up = im.resize((im.width * 2, im.height * 2), Image.NEAREST)
+    canvas = Image.new("RGBA", up.size, (255, 0, 255, 255))
+    canvas.alpha_composite(up)
+    out = RAW / "_side_ref.png"
     out.parent.mkdir(parents=True, exist_ok=True)
-    im.save(out)
+    canvas.convert("RGB").save(out)
     return out.read_bytes()
 
 
@@ -155,12 +161,11 @@ def compose(orient: str, colour: str) -> str:
     subject = f"a large 6-person ridge camping tent in {colour}"
     if orient == "side":
         return (
-            f"TWO reference images are attached. IMAGE 1 is a SHAPE + ORIENTATION guide (a plain "
-            f"grey silhouette): draw the tent in EXACTLY this orientation and proportions — a "
-            f"broadside SIDE-ON ridge tent, long ridge HORIZONTAL, clearly WIDER than tall. Copy "
-            f"ONLY the orientation/shape from image 1, none of its flat colour. IMAGE 2 is the "
-            f"STYLE + camera reference: match its flat chunky pixel-art look and high top-down "
-            f"angle. Draw {subject}. {ORIENT[orient]} {TOPDOWN} {DESTROYED} {STYLE} {BG}"
+            f"The attached image is a REFERENCE: a building's roof drawn from the game's angle — a "
+            f"BROADSIDE roof with a HORIZONTAL ridge, both slopes seen from a high top-down angle. "
+            f"Copy that SAME camera angle, that broadside horizontal-ridge orientation, and that flat "
+            f"pixel-art style — but draw a wrecked fabric TENT, NOT a house and NOT roof tiles. "
+            f"Draw {subject}. {ORIENT[orient]} {DESTROYED} {STYLE} {BG}"
         )
     return (
         f"The attached image is a REFERENCE for the exact camera angle and pixel-art style of the "
@@ -170,19 +175,19 @@ def compose(orient: str, colour: str) -> str:
 
 
 def images_for(orient: str) -> list[bytes]:
-    """Reference image(s) per orientation: side gets [orientation-guide, style]; the rest just the
-    style/angle roof (text holds their orientation fine — only 'side' fought the diagonal prior)."""
-    return [side_guide_png(), roof_ref_png()] if orient == "side" else [roof_ref_png()]
+    """Reference image per orientation: side uses a real BROADSIDE roof (horizontal ridge); diagonal
+    and front use the diagonal roof chevron. Both are real pack art — no hand-drawn guide."""
+    return [side_ref_png()] if orient == "side" else [roof_ref_png()]
 
 
-def gemini_image(prompt: str, images: list[bytes], api_key: str) -> bytes:
+def gemini_image(prompt: str, images: list[bytes], api_key: str, model: str) -> bytes:
     parts: list[dict] = [{"text": prompt}]
     for img in images:
         parts.append({"inline_data": {"mime_type": "image/png",
                                       "data": base64.b64encode(img).decode()}})
     body = json.dumps({"contents": [{"parts": parts}]}).encode("utf-8")
     req = urllib.request.Request(
-        ENDPOINT, data=body, method="POST",
+        ENDPOINT_TMPL.format(model=model), data=body, method="POST",
         headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
     )
     try:
@@ -258,6 +263,9 @@ def main() -> None:
     ap.add_argument("--raw-only", action="store_true", help="keep raw PNGs, skip post-process")
     ap.add_argument("--reprocess", action="store_true",
                     help="re-run post-processing on the saved raw PNGs only (no API call, no spend)")
+    ap.add_argument("--model", default=DEFAULT_MODEL,
+                    help=f"Gemini image model (default {DEFAULT_MODEL}; image-to-image capable ids: "
+                         "gemini-3-pro-image, gemini-3.1-flash-image, gemini-2.5-flash-image)")
     args = ap.parse_args()
 
     ids = [args.only] if args.only else list(VARIANTS)
@@ -267,7 +275,7 @@ def main() -> None:
 
     if args.dry_run:
         roof_ref_png()
-        side_guide_png()
+        side_ref_png()
         for tid in ids:
             orient, colour = VARIANTS[tid]
             print(f"\n=== {tid} ({orient}) ===\n{compose(orient, colour)}")
@@ -293,7 +301,7 @@ def main() -> None:
     for tid in ids:
         orient, colour = VARIANTS[tid]
         print(f"\n=== {tid} ({orient}) ===")
-        raw = gemini_image(compose(orient, colour), images_for(orient), key)
+        raw = gemini_image(compose(orient, colour), images_for(orient), key, args.model)
         raw_png = RAW / f"{tid}.png"
         raw_png.parent.mkdir(parents=True, exist_ok=True)
         raw_png.write_bytes(raw)

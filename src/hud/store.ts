@@ -101,6 +101,11 @@ export interface HudState {
   /** Monotonic counter bumped on every `player:hit`. `player:hit` is a transient event with no
    *  payload; a counter lets the damage-vignette layer (Step 9) react to each hit via a store read. */
   hitNonce: number;
+  /** Whether the Game scene is live. The page-level HUD outlives every scene, so without this it would
+   *  also paint over Boot/Preload/MainMenu (the loading + title screens). GameScene sets the registry
+   *  `sceneActive` flag true in create()/false on SHUTDOWN; the bridge mirrors it here and `GameHud`
+   *  renders nothing while it's false. */
+  sceneActive: boolean;
 }
 
 /** Imperative setters the bridge calls; grouped so components never mutate state directly. */
@@ -136,6 +141,9 @@ export interface HudActions {
   pinToHotbar(entry: NonNullable<HotbarSlot>): void;
   setFollowing(on: boolean): void;
   setZoom(zoom: number): void;
+  /** Mirror the Game scene's live/gone state (from the registry `sceneActive` flag) — gates the whole
+   *  overlay so it never paints over the loading/title screens. */
+  setSceneActive(active: boolean): void;
 }
 
 /** Initial state — sane defaults so the HUD renders before the first event lands. HP seeds to the
@@ -167,6 +175,7 @@ const initialState: HudState = {
   following: true,
   zoom: 1,
   hitNonce: 0,
+  sceneActive: false, // hidden until GameScene.create() flips the registry flag (see bridge)
 };
 
 export const useHudStore = create<HudState & HudActions>()(
@@ -209,5 +218,6 @@ export const useHudStore = create<HudState & HudActions>()(
       }),
     setFollowing: (following) => set({ following }),
     setZoom: (zoom) => set({ zoom }),
+    setSceneActive: (sceneActive) => set({ sceneActive }),
   })),
 );

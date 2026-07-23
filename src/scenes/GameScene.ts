@@ -291,6 +291,10 @@ export class GameScene extends Phaser.Scene {
         portals: this.portals.length, // parse-and-hold count (plan 018); wired for transitions in 019
       };
     });
+    // Reveal the page-level DOM HUD: it outlives every scene and is hidden while Boot/Preload/MainMenu
+    // run (the loading + title screens), so flip the registry flag the bridge mirrors now that the
+    // world is live. Cleared on SHUTDOWN (see wireBus) so a death-restart re-hides until the next create.
+    this.registry.set('sceneActive', true);
     breadcrumb('scene', 'GameScene create done');
   }
 
@@ -834,6 +838,8 @@ export class GameScene extends Phaser.Scene {
     for (const [event, handler, ctx] of subs) bus.on(event, handler, ctx);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       for (const [event, handler, ctx] of subs) bus.off(event, handler, ctx);
+      // Hide the page-level HUD while no Game scene is live (a death-restart re-shows it in create()).
+      this.registry.set('sceneActive', false);
     });
 
     this.emitTasks();

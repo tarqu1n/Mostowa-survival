@@ -49,9 +49,12 @@ const cssHex = (n: number): string => `#${n.toString(16).padStart(6, '0')}`;
 export function GameHud() {
   useBridge();
   const rect = useCanvasRect();
+  const sceneActive = useHudStore((s) => s.sceneActive);
 
-  // Until the canvas is measured, render nothing positioned — avoids a flash at the wrong place.
-  if (!rect) return null;
+  // Render nothing until the Game scene is live (so the overlay never paints over the loading/title
+  // screens) and until the canvas is measured (avoids a flash at the wrong place). Hooks above always
+  // run — the bridge stays wired across scenes so it catches `sceneActive` flipping true.
+  if (!sceneActive || !rect) return null;
 
   return (
     <div className="hud-root" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>

@@ -1,5 +1,23 @@
 import { test, expect } from '@playwright/test';
-import { step, state, blocked, tileToClient } from './harness';
+import { startGame, step, state, blocked, tileToClient } from './harness';
+
+// Regression: the page-level DOM HUD outlives every scene, so it must stay hidden over the loading +
+// title screens (Boot/Preload/MainMenu) and only appear once GameScene is live. GameScene toggles the
+// registry `sceneActive` flag the bridge mirrors; GameHud renders nothing while it's false.
+test('the HUD is hidden on the title screen and appears once the game starts', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'load' });
+  await page.waitForFunction(() => (window as any).game?.scene?.isActive('MainMenu'), null, {
+    timeout: 15_000,
+  });
+  // On the title screen the HUD clusters must not be mounted.
+  await expect(page.getByTestId('hud-meterbars')).toHaveCount(0);
+  await expect(page.getByTestId('hud-command-bar')).toHaveCount(0);
+
+  // Start the world (startGame taps in + waits for __test) → the HUD appears.
+  await startGame(page);
+  await expect(page.getByTestId('hud-meterbars')).toBeVisible();
+  await expect(page.getByTestId('hud-command-bar')).toBeVisible();
+});
 
 // Tier-2 regression: starting the game from the title screen must NOT leak its click onto the map.
 //

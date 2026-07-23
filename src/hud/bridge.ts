@@ -193,23 +193,35 @@ export function initBridge(bus: EventBus, registry: Registry): Bridge {
     store.setPlayerStats((value as CombatantStats | undefined) ?? null);
   syncPlayerStats(registry.get('playerStats'));
 
+  // --- Registry `sceneActive`: gate the overlay to the Game scene ---------------
+  // The HUD is page-level and outlives every scene, so without a gate it paints over Boot/Preload/
+  // MainMenu too. GameScene sets `sceneActive` true in create() / false on SHUTDOWN; mirror it here (and
+  // read it once at init so a HUD (re)mount after the scene is already live still resolves correct —
+  // same self-re-sync as inventory/playerStats above).
+  const syncSceneActive = (value: unknown): void => store.setSceneActive(value === true);
+  syncSceneActive(registry.get('sceneActive'));
+
   // `setdata` fires on the first-ever set of a key; `changedata-<key>` on every later set (restart).
   const onSetData = (_parent: unknown, key: string, value: unknown): void => {
     if (key === 'inventory') bindInventory((value as InventoryLike | null) ?? null);
     else if (key === 'playerStats') syncPlayerStats(value);
+    else if (key === 'sceneActive') syncSceneActive(value);
   };
   const onInventoryData = (_parent: unknown, value: unknown): void =>
     bindInventory((value as InventoryLike | null) ?? null);
   const onPlayerStatsData = (_parent: unknown, value: unknown): void => syncPlayerStats(value);
+  const onSceneActiveData = (_parent: unknown, value: unknown): void => syncSceneActive(value);
   registry.events.on('setdata', onSetData);
   registry.events.on('changedata-inventory', onInventoryData);
   registry.events.on('changedata-playerStats', onPlayerStatsData);
+  registry.events.on('changedata-sceneActive', onSceneActiveData);
   unsubs.push(() => {
     if (boundInv) boundInv.off('change', onInvChange);
     boundInv = null;
     registry.events.off('setdata', onSetData);
     registry.events.off('changedata-inventory', onInventoryData);
     registry.events.off('changedata-playerStats', onPlayerStatsData);
+    registry.events.off('changedata-sceneActive', onSceneActiveData);
   });
 
   let disposed = false;

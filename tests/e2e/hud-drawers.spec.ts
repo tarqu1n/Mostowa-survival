@@ -29,6 +29,16 @@ test('the build catalog opens from the command bar and select emits build:select
   // The catalog is a bottom sheet with data-driven tabs — today Defense + Survival (no empty Craft).
   const sheet = page.getByRole('dialog');
   await expect(sheet.getByText('Build')).toBeVisible();
+
+  // It slides up from the bottom: the sheet runs the `hud-enter` keyframe (the tailwindcss-animate
+  // contract hand-provided in hud.css) rather than popping in with animationName: none.
+  await expect
+    .poll(() =>
+      page
+        .locator('[data-slot="sheet-content"]')
+        .evaluate((el) => getComputedStyle(el).animationName),
+    )
+    .toBe('hud-enter');
   await expect(page.getByRole('tab', { name: 'Defense' })).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Survival' })).toBeVisible();
 

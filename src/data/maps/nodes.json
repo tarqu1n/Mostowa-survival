@@ -243,12 +243,21 @@
       "skins": [
         {
           "id": "default",
-          "asset": "craftpix-nature/Bushes/Bush_orange_bare3.png",
+          "asset": "craftpix-nature/Bushes/Bush_orange_flowers3.png",
           "region": {
             "x": 1,
             "y": 0,
             "w": 15,
             "h": 14
+          },
+          "depleted": {
+            "asset": "craftpix-nature/Bushes/Bush_orange_bare3.png",
+            "region": {
+              "x": 1,
+              "y": 0,
+              "w": 15,
+              "h": 14
+            }
           }
         }
       ]
@@ -269,12 +278,21 @@
       "skins": [
         {
           "id": "default",
-          "asset": "craftpix-nature/Bushes/Bush_orange_bare2.png",
+          "asset": "craftpix-nature/Bushes/Bush_orange_flowers2.png",
           "region": {
             "x": 3,
             "y": 2,
             "w": 26,
             "h": 26
+          },
+          "depleted": {
+            "asset": "craftpix-nature/Bushes/Bush_orange_bare2.png",
+            "region": {
+              "x": 3,
+              "y": 2,
+              "w": 26,
+              "h": 26
+            }
           }
         }
       ]
@@ -295,12 +313,21 @@
       "skins": [
         {
           "id": "default",
-          "asset": "craftpix-nature/Bushes/Bush_orange_bare1.png",
+          "asset": "craftpix-nature/Bushes/Bush_orange_flowers1.png",
           "region": {
             "x": 14,
             "y": 14,
             "w": 35,
             "h": 34
+          },
+          "depleted": {
+            "asset": "craftpix-nature/Bushes/Bush_orange_bare1.png",
+            "region": {
+              "x": 14,
+              "y": 14,
+              "w": 35,
+              "h": 34
+            }
           }
         }
       ]

@@ -4238,7 +4238,7 @@
       "id": "node_tent_1",
       "kind": "node",
       "ref": "salvagedTent",
-      "col": 117,
+      "col": 114,
       "row": 139,
       "skin": "default"
     },
@@ -4246,41 +4246,56 @@
       "id": "node_tent_2",
       "kind": "node",
       "ref": "salvagedTent",
-      "col": 121,
-      "row": 139,
-      "skin": "front_blue"
+      "col": 119,
+      "row": 136,
+      "skin": "front_grey2"
     },
     {
       "id": "node_tent_3",
       "kind": "node",
       "ref": "salvagedTent",
-      "col": 125,
-      "row": 139,
+      "col": 115,
+      "row": 125,
       "skin": "side_cream"
     },
     {
       "id": "node_tent_4",
       "kind": "node",
       "ref": "salvagedTent",
-      "col": 117,
-      "row": 144,
-      "skin": "diag_grey"
+      "col": 124,
+      "row": 134,
+      "skin": "diag_cream"
     },
     {
       "id": "node_tent_5",
       "kind": "node",
       "ref": "salvagedTent",
-      "col": 122,
-      "row": 144,
+      "col": 124,
+      "row": 159,
       "skin": "front_cream"
     },
     {
       "id": "node_tent_6",
       "kind": "node",
       "ref": "salvagedTent",
-      "col": 127,
-      "row": 144,
-      "skin": "side_green"
+      "col": 114,
+      "row": 127,
+      "skin": "side_khaki"
+    },
+    {
+      "id": "node_0042",
+      "kind": "node",
+      "ref": "salvagedTent",
+      "col": 114,
+      "row": 132
+    },
+    {
+      "id": "node_0043",
+      "kind": "node",
+      "ref": "salvagedTent",
+      "col": 128,
+      "row": 138,
+      "skin": "diag_grey"
     }
   ]
 }

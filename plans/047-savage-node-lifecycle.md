@@ -9,8 +9,9 @@ Turn the destroyed-tent (`savagedTent`) node into a full two-stage lifecycle: **
 husk** that still blocks its tile; then optionally **clear** the husk (an even longer ~40s action)
 to remove it, yield a little scrap, and free the tile for building/pathing. Adds a `oneShot`
 no-regrow node option, a new generic `clear` order kind (works on any depleted one-shot node), a
-timed progress-accumulator harvest model with **progress that persists across cancel**, and a
-continuous shake FX on the node while either action is in progress. Player-only.
+timed progress-accumulator harvest model with **progress that persists across cancel**, and
+in-progress feedback (a continuous shake + a **progress bar** above the node) while either action
+runs. Player-only.
 
 The art (17 live + 17 `_ruined` depleted sprites) and the loot table are already done and committed;
 this feature is purely the mechanic + fx wiring on top.
@@ -167,24 +168,37 @@ Key files/patterns to mirror (from research):
   - Done when: savaging takes ~20s (progress persists across cancel) then leaves a ruin; clearing
     takes ~40s, yields the scrap, removes the node, frees the tile; trees/rocks/bushes unchanged.
 
-- [ ] **Step 6: continuous shake FX during savage/clear** `[inline]`
-  - `src/scenes/fx/NodeFxManager.ts`: add `startShake(sprite, restX, restY, baseAngle, baseScale)`
-    and `stopShake(sprite)`. `startShake` runs a `repeat:-1` tween writing a small constant-amplitude
-    `sin`-based position+angle jitter each `onUpdate` (reuse the tremble math at L149-152 but with a
-    fixed amplitude, no `depletion·decay`); guard `if (!sprite.active) return`; store in its own
-    keyed Map (like `recoilTweens`). `stopShake` `.stop()`s it and snaps the sprite back to
-    `restX/restY/baseAngle/baseScale`. Add new `config.ts` tunables (`NODE_SHAKE_PX`,
-    `NODE_SHAKE_DEG`, `NODE_SHAKE_HZ`). Extend `reset()`/`destroy()`/`armShutdown()` to clear the new
-    Map (teardown discipline — never `sprite.destroy()` on shutdown path).
-  - Wire from GameScene (Step 5): `startShake` when a savage/clear action begins accumulating (on
-    arrival), `stopShake` on `completeCurrent`/cancel and at each stage completion. Route through a
-    narrow dep like the existing `playChopFx` (fx lives in `scenes/fx`, GameScene mediates).
-  - Side effects: the queued-order glow halo mirrors the sprite transform for free (no extra wiring).
-    Ensure a cancelled action stops the shake (no orphan looping tween) — stop on every exit path.
-  - Docs: RENDERING.md — one terse line that the node shake is a looping tween (not a per-frame
-    shader), consistent with the "bake/loop, no frame-loop shaders" stance.
-  - Done when: node visibly shakes for the whole savage/clear and snaps to rest on
-    finish/cancel; boot canary clean (no console errors, sprite active-guards hold).
+- [ ] **Step 6: in-progress feedback — continuous shake + progress bar** `[inline]`
+  - **Shake** — `src/scenes/fx/NodeFxManager.ts`: add `startShake(sprite, restX, restY, baseAngle,
+    baseScale)` and `stopShake(sprite)`. `startShake` runs a `repeat:-1` tween writing a small
+    constant-amplitude `sin`-based position+angle jitter each `onUpdate` (reuse the tremble math at
+    L149-152 but with a fixed amplitude, no `depletion·decay`); guard `if (!sprite.active) return`;
+    store in its own keyed Map (like `recoilTweens`). `stopShake` `.stop()`s it and snaps the sprite
+    back to rest. New `config.ts` tunables (`NODE_SHAKE_PX`, `NODE_SHAKE_DEG`, `NODE_SHAKE_HZ`).
+  - **Progress bar** — a world-space bar above the node that fills 0→1 over the action, since savage
+    (20s) / clear (40s) are long and need a readable countdown. **Mirror the enemy HP bar**
+    (`src/scenes/fx/CombatFxManager.ts` `syncEnemyHealthBars`, ~L370-420: a lazily-created `{bg, fg}`
+    rectangle pair, positioned/sized each frame above the sprite, destroyed when no longer shown).
+    Add `showActionProgress(sprite, frac)` (create-or-update the `{bg, fg}` pair keyed by sprite,
+    `fg.width = barW * frac`, placed just above the node's top using its display bounds) and
+    `hideActionProgress(sprite)` (destroy the pair) to `NodeFxManager`. New `config.ts` tunables
+    (`NODE_PROGRESS_BAR_W`, `_H`, `_Y_OFFSET`, bg/fg colours — reuse the HP-bar palette for
+    consistency).
+  - **Teardown:** extend `NodeFxManager.reset()`/`destroy()`/`armShutdown()` to stop/destroy both new
+    Maps (shake tweens + progress-bar pairs) — never `sprite.destroy()` on the shutdown path.
+  - **Wiring (Step 5 runners):** on arrival, `startShake`; each frame while accumulating, call
+    `showActionProgress(sprite, tree.progressMs / duration)`; on `completeCurrent`/cancel and at
+    stage completion, `stopShake` + `hideActionProgress`. Route through narrow deps like the existing
+    `playChopFx` (GameScene mediates; fx stays in `scenes/fx`).
+  - Side effects: the queued-order glow halo mirrors the sprite transform for free. Ensure EVERY exit
+    path (finish, cancel, walk-away, node removed) stops the shake and hides the bar — no orphan
+    looping tween or floating bar. The bar must sit above the (tall) node art — position from the
+    sprite's display top, not a fixed offset.
+  - Docs: RENDERING.md — one terse line that the node shake is a looping tween + the action progress
+    bar mirrors the enemy HP-bar renderer (no frame-loop shader).
+  - Done when: during savage/clear the node shakes and a progress bar above it fills smoothly to full
+    over the duration (and reflects persisted progress on resume); both vanish on finish/cancel; boot
+    canary clean.
 
 - [ ] **Step 7: queue-glow highlight for `clear` targets** `[delegate]`
   - `src/scenes/fx/TaskGlowRenderer.ts`: the `'tree'` highlight branch (L77-81) only glows
@@ -220,6 +234,4 @@ Key files/patterns to mirror (from research):
 - Per-def override of `SAVAGE_MS`/`CLEAR_MS` (global config constants for now).
 - Applying `oneShot`/`clear` to any node other than `savagedTent` in shipped data (the mechanic is
   generic, but only the tent uses it this pass).
-- A visible numeric progress bar/UI for the action (the shake + player swing convey progress; a
-  build-style alpha ramp is optional polish, not required).
 - Changing the loot economy/balance beyond adding the small `clearLoot`.

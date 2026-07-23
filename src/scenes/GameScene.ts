@@ -716,6 +716,7 @@ export class GameScene extends Phaser.Scene {
           action.kind === 'harvest' ||
           action.kind === 'refuel' ||
           action.kind === 'rearm' ||
+          action.kind === 'clear' ||
           pointer.getDuration() >= LONGPRESS_MS
         )
           this.enqueue(action);

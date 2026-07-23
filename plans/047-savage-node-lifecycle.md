@@ -132,7 +132,8 @@ Key files/patterns to mirror (from research):
   - Done when: unit/boot green; savaging a `oneShot` node leaves a permanent ruin that still blocks
     (verify via `isBlocked`); `removeNode` frees the tile + repaths.
 
-- [ ] **Step 4: picker — savage vs clear on the same tile** `[inline]`
+- [x] **Step 4: picker — savage vs clear on the same tile** `[inline]`
+  - Outcome: `src/scenes/input/ScenePicker.ts` — `pickSpriteAt` now lets dead `oneShot` ruins through (`if (!t.alive && !t.def.oneShot) continue;`); `actionAt` branches the `tree` pick live→`harvest` vs ruin→`clear` on `t.alive`. `src/scenes/GameScene.ts` — `onTap` adds `clear` to the enqueue kinds (falls in behind current work like harvest/rearm). Inspect spot-check (critique #6): `treeStats` on a ruin returns `Tree 0/1` — sane, consistent with a live savagedTent already inspecting as "Tree". Typecheck clean, 962 unit tests green; tap→clear asserted via scenario in Step 8.
   - `src/scenes/ScenePicker.ts`: in `pickSpriteAt` (L161-212) stop skipping dead **one-shot** nodes —
     change the `if (!t.alive) continue;` (L185) to also allow `t.def.oneShot` ruins through (still
     skip regrowing dead stumps). In `actionAt` (L76-94), branch by node state, mirroring the

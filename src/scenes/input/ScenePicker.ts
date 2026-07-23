@@ -75,7 +75,13 @@ export class ScenePicker {
    * refuel here, tapping the fire can never fall through to a move onto its blocking tile. */
   actionAt(x: number, y: number): Action {
     const pick = this.pickSpriteAt(x, y);
-    if (pick?.kind === 'tree') return { kind: 'harvest', treeId: pick.tree.id };
+    // A live node → harvest (savaging the tent is just its loot-harvest); a dead node here can only be
+    // a permanent `oneShot` ruin (pickSpriteAt skips every other dead node), so it → clear the husk
+    // (plan 047 — mirrors the armed/spent-trap state branch below).
+    if (pick?.kind === 'tree')
+      return pick.tree.alive
+        ? { kind: 'harvest', treeId: pick.tree.id }
+        : { kind: 'clear', treeId: pick.tree.id };
     if (pick?.kind === 'structure' && pick.structure.behavior === 'campfire')
       return { kind: 'refuel', campfireId: pick.structure.id };
     // A SPENT spike trap resolves to a rearm worker order (walk over + re-prime it, plan 040); an ARMED
@@ -182,7 +188,10 @@ export class ScenePicker {
         consider(z.sprite, { kind: 'enemy', enemy: z });
     }
     for (const t of this.deps.trees()) {
-      if (!t.alive) continue;
+      // A regrowing dead stump is unclickable (skipped so it can't be re-harvested mid-regrow); a
+      // permanent `oneShot` ruin (a savaged tent husk, plan 047) stays a tappable obstacle so it can
+      // be `clear`ed — let it through. `actionAt` branches live→harvest vs ruin→clear on `t.alive`.
+      if (!t.alive && !t.def.oneShot) continue;
       if ((t.col === col && t.row === row) || this.alphaHit(t.sprite, x, y))
         consider(t.sprite, { kind: 'tree', tree: t });
     }

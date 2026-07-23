@@ -11,11 +11,14 @@ import {
 } from '@/config';
 import { useCanvasRect } from './hooks/useCanvasRect';
 import type { CanvasRect } from './hooks/useCanvasRect';
-import { useBridge } from './hooks/useBridge';
+import { useBridge, hudBridge } from './hooks/useBridge';
 import { useHudStore } from './store';
 import { MeterBars } from './components/MeterBars';
 import { DayNightDial } from './components/DayNightDial';
 import { ResourceChips } from './components/ResourceChips';
+import { Hotbar } from './components/Hotbar';
+import { CommandBar } from './components/CommandBar';
+import type { CommandBarMode } from './components/CommandBar';
 
 /** `0xRRGGBB` (config colour) → a CSS hex string. The vignette configs are shared with the (now
  *  retired) Phaser bake, which stored them as numbers. */
@@ -74,8 +77,37 @@ export function GameHud() {
           <MeterBars />
           <DayNightDial />
           <ResourceChips />
+          <ActionLayer />
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Bottom action layer (plan 046 Step 10): the persistent 6-slot `Hotbar` above the morphing
+ * `CommandBar`, anchored to the bottom of the design space. The bar's morph is derived here from the
+ * store — build mode wins, then the combat auto-surface / manual combat mode, else scavenge (mirrors
+ * the old `UIScene` precedence). The movepad's held-state is pushed to the registry `movepadHeld` flag
+ * via the bridge so `PointerInputController` suppresses world pan/tap while the pad is dragged.
+ */
+function ActionLayer() {
+  const gameMode = useHudStore((s) => s.mode);
+  const buildMode = useHudStore((s) => s.buildMode);
+  const combatActive = useHudStore((s) => s.combatActive);
+
+  const barMode: CommandBarMode = buildMode
+    ? 'build'
+    : gameMode === 'combat' || combatActive
+      ? 'fight'
+      : 'scavenge';
+
+  return (
+    <div className="absolute inset-x-0 bottom-0 flex flex-col items-stretch gap-1.5 px-2 pb-2">
+      <div className="flex justify-center">
+        <Hotbar />
+      </div>
+      <CommandBar mode={barMode} onMoveHeldChange={(held) => hudBridge()?.setMovepadHeld(held)} />
     </div>
   );
 }

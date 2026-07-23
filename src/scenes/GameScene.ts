@@ -669,7 +669,10 @@ export class GameScene extends Phaser.Scene {
       },
       onBuildMove: (pointer) => this.buildManager.updateGhost(pointer),
       getMode: () => this.mode,
-      isMovepadHeld: () => this.ui.isMovepadHeld(),
+      // The DOM movepad (plan 046 Step 10) sets the `movepadHeld` registry flag through the HUD bridge;
+      // read it here (was `this.ui.isMovepadHeld()`, the retired Phaser CombatControls movepad) so world
+      // pan/tap stays suppressed while the on-screen pad is being dragged.
+      isMovepadHeld: () => this.registry.get('movepadHeld') === true,
       onTap: (pointer) => {
         // Guard-point placement (plan 042 Step 9): while armed by the assignment menu's "Guard here",
         // the tap places the point — UNLESS it landed back on the NPC, which cancels (the menu's other
@@ -730,6 +733,7 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBounds(originPx.x, originPx.y, worldPx.w, worldPx.h);
     this.cameras.main.centerOn(this.player.x, this.player.y);
     this.registry.set('following', true);
+    this.registry.set('movepadHeld', false); // reset the DOM-movepad gate each (re)start (plan 046 Step 10)
     this.cameras.main.startFollow(this.player, true);
     this.pointerInput.setZoom(this.pointerInput.loadStoredZoom());
 

@@ -3,10 +3,7 @@ import { BASE_WIDTH, BASE_HEIGHT, RENDER_SCALE, HUNGER_MAX, HUNGER_LOW_FRACTION 
 import type { Inventory } from '../systems/Inventory';
 import { WellbeingPanel } from './hud/WellbeingPanel';
 import { InventoryWidget } from './hud/InventoryWidget';
-import { BuildControls } from './hud/BuildControls';
-import { CombatControls } from './hud/CombatControls';
 import { InspectPanel } from './hud/InspectPanel';
-import { ModeControls } from './hud/ModeControls';
 import { DevMenu } from './hud/DevMenu';
 import { NpcAssignMenu } from './hud/NpcAssignMenu';
 import type { HudElement } from './hud/types';
@@ -23,21 +20,17 @@ import type { HudElement } from './hud/types';
  * handler. Cross-widget state (the HUD hit-region list, the shared Inventory, the input mode, the
  * player HP/hunger that feed the Wellbeing panel) stays on the scene.
  *
- * Migration (plan 046): the always-on HP/food/fire/supply bars, the top-centre day-night/zoom/follow
- * stack, and the damage/hunger vignettes were retired here at Step 9 — they now live in the DOM HUD
- * (`src/hud/`). The rest migrate at Steps 10–12; this scene is deleted wholesale at Step 13.
+ * Migration (plan 046): the always-on bars + top-centre stack + vignettes were retired at Step 9;
+ * the build controls, combat controls (movepad/attack/bow), and mode toggles at Step 10 — all now in
+ * the DOM HUD (`src/hud/`), which owns the `movepadHeld` registry gate. The remaining widgets
+ * (Wellbeing, Inventory, Inspect, Dev, NPC-assign) migrate at Steps 11–12; this scene is deleted at
+ * Step 13.
  *
  * Cross-scene input arbitration: GameScene's world tap handler ignores pointers inside the HUD
  * hit-region ({@link hudHitTest}) so tapping a button never also moves/chops/places underneath.
  */
 export class UIScene extends Phaser.Scene {
   private inv?: Inventory;
-
-  // Latest input mode + auto-surface state from GameScene (plan 035a Step 3). The fighting controls
-  // (movepad + action cluster) reveal when EITHER is combat-ish — see combatControlsShown /
-  // refreshCombatControls, driven by both `mode:changed` and `combat:activeChanged`.
-  private mode: 'command' | 'combat' | 'inspect' = 'command';
-  private combatActive = false;
 
   // Player HP — seeded lazily from the first player:hpChanged (HP isn't on the registry); maxHp seeds
   // from playerStats. Owned here because it feeds the Wellbeing panel bars (updateHealthBar). The
@@ -54,10 +47,7 @@ export class UIScene extends Phaser.Scene {
   // Per-widget groups (each owns its own builder + update handlers — see scenes/hud/).
   private wellbeing!: WellbeingPanel;
   private inventory!: InventoryWidget;
-  private buildControls!: BuildControls;
-  private combatControls!: CombatControls;
   private inspectPanel!: InspectPanel;
-  private modeControls!: ModeControls;
   private devMenu!: DevMenu;
   private npcAssignMenu!: NpcAssignMenu;
 
@@ -96,44 +86,24 @@ export class UIScene extends Phaser.Scene {
     this.updateHealthBar();
     this.updateHungerBar((this.registry.get('hunger') as number | undefined) ?? HUNGER_MAX);
 
-    // Build column + palette (plan 012) — built before refreshInventory so its rows exist for the
-    // first affordability pass.
-    this.buildControls = new BuildControls(this, { inv, addHudElement });
     this.inventory = new InventoryWidget(this, { addHudElement });
-    this.combatControls = new CombatControls(this, { addHudElement });
     this.inspectPanel = new InspectPanel(this, { addHudElement });
-    this.modeControls = new ModeControls(this, { addHudElement });
     this.devMenu = new DevMenu(this, { addHudElement, initialPhase });
     // Companion assignment menu (plan 042 Step 9) — hidden until GameScene emits `npc:menuOpen`.
     this.npcAssignMenu = new NpcAssignMenu(this, { addHudElement });
 
-    // Control hint — a genuinely fixed HUD label belongs on the never-zoomed UI camera, not on the
-    // world camera (which now pans/zooms with the player).
-    this.add.text(6, BASE_HEIGHT - 30, 'tap: order · hold: queue · Build: menu', {
-      fontFamily: 'monospace',
-      fontSize: '8px',
-      color: '#6f6552',
-    });
+    // The DOM HUD now owns the always-on hotbar (plan 046 Step 10), so hide the Phaser one to avoid a
+    // double hotbar; the full inventory panel + Wellbeing/Inspect/Dev/NPC widgets stay until Steps 11–12.
+    this.inventory.setHotbarVisible(false);
 
-    // ESC closes the palette if open, else exits build mode (mirrors tapping BUILD again). Keyboard
-    // is scene-scoped input, torn down with the scene — no manual off needed.
+    // ESC bails out of any armed guard-point placement (the companion menu's documented Escape cancel);
+    // build/demolish exit + rotate are DOM buttons now (plan 046 Step 10). Keyboard is scene-scoped.
     this.input.keyboard?.on('keydown-ESC', this.onEscape, this);
-    // R rotates the placement facing while in build mode — the keyboard mirror of the ROTATE button.
-    this.input.keyboard?.on('keydown-R', this.buildControls.onRotateKey, this.buildControls);
 
     // Seed + subscribe: read the shared Inventory's own 'change' directly (no event-bus hop).
     this.refreshInventory();
     this.inv?.on('change', this.refreshInventory, this);
-    this.game.events.on('build:modeChanged', this.buildControls.onBuildMode, this.buildControls);
-    this.game.events.on(
-      'demolish:modeChanged',
-      this.buildControls.onDemolishMode,
-      this.buildControls,
-    );
-    this.game.events.on('build:select', this.buildControls.onBuildSelected, this.buildControls);
-    this.game.events.on('tasks:changed', this.buildControls.onTasks, this.buildControls);
     this.game.events.on('mode:changed', this.onModeChanged, this);
-    this.game.events.on('combat:activeChanged', this.onCombatActiveChanged, this);
     this.game.events.on('inspect:show', this.inspectPanel.show, this.inspectPanel);
     this.game.events.on('inspect:hide', this.inspectPanel.hide, this.inspectPanel);
     this.game.events.on('time:changed', this.onTimeChanged, this);
@@ -144,16 +114,7 @@ export class UIScene extends Phaser.Scene {
     // Teardown so a future scene restart doesn't double-register on stale listeners.
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.inv?.off('change', this.refreshInventory, this);
-      this.game.events.off('build:modeChanged', this.buildControls.onBuildMode, this.buildControls);
-      this.game.events.off(
-        'demolish:modeChanged',
-        this.buildControls.onDemolishMode,
-        this.buildControls,
-      );
-      this.game.events.off('build:select', this.buildControls.onBuildSelected, this.buildControls);
-      this.game.events.off('tasks:changed', this.buildControls.onTasks, this.buildControls);
       this.game.events.off('mode:changed', this.onModeChanged, this);
-      this.game.events.off('combat:activeChanged', this.onCombatActiveChanged, this);
       this.game.events.off('inspect:show', this.inspectPanel.show, this.inspectPanel);
       this.game.events.off('inspect:hide', this.inspectPanel.hide, this.inspectPanel);
       this.game.events.off('time:changed', this.onTimeChanged, this);
@@ -168,18 +129,11 @@ export class UIScene extends Phaser.Scene {
     return this.hudElements.some((el) => el.visible && el.getBounds().contains(x, y));
   }
 
-  /** True while a finger is held on the movepad (see {@link CombatControls.isHeld}). Gates map order
-   *  dispatch in PointerInputController: while you're driving, map taps/queue-paint stay inert. */
-  isMovepadHeld(): boolean {
-    return this.combatControls.isHeld();
-  }
-
-  /** Repaint the hotbar + full grid from the shared Inventory's slots, and re-dim the build-palette
-   * rows by affordability + the Wellbeing edible counts. */
+  /** Repaint the full inventory grid from the shared Inventory's slots, and re-dim the Wellbeing edible
+   * counts. (Build-palette affordability moved to the DOM BuildCatalog — plan 046.) */
   private refreshInventory(): void {
     const slots = this.inv?.slots() ?? [];
     this.inventory.refresh(slots);
-    this.buildControls.refreshBuildPalette(); // per-row buildable affordability
     this.wellbeing.refreshEatRows(); // keep the Wellbeing edible counts live with the bag
   }
 
@@ -217,49 +171,17 @@ export class UIScene extends Phaser.Scene {
     this.devMenu.setPhaseLabel(phase);
   }
 
-  /** Reflects the authoritative mode from GameScene: button highlight + combat-controls visibility. */
+  /** Hide the Phaser inspect panel when leaving inspect mode. Mode-toggle highlighting + the combat
+   *  controls' visibility moved to the DOM HUD (CommandBar) at plan 046 Step 10. */
   private onModeChanged(mode: 'command' | 'combat' | 'inspect'): void {
-    this.mode = mode;
-    this.modeControls.reflect(mode);
-    this.refreshCombatControls();
     if (mode !== 'inspect') this.inspectPanel.hide();
   }
 
-  /** GameScene's auto-surface predicate flipped (plan 035a Step 3) — re-evaluate whether the fighting
-   *  controls should show. Independent of `mode`, so an enemy wandering near (or dusk) reveals the
-   *  movepad + cluster while the player stays in command mode. */
-  private onCombatActiveChanged(active: boolean): void {
-    this.combatActive = active;
-    this.refreshCombatControls();
-  }
-
-  /** The fighting controls show when the movepad is authoritative — manual Combat mode OR the
-   *  combatActive auto-surface (mirrors GameScene.movepadDrives). */
-  private combatControlsShown(): boolean {
-    return this.mode === 'combat' || this.combatActive;
-  }
-
-  /** Show/hide the left-thumb movepad + right-thumb action cluster (and hide the clashing hotbar)
-   *  from the current mode + auto-surface state. Called by both `mode:changed` and
-   *  `combat:activeChanged`, so either trigger reveals or retracts the same control set. */
-  private refreshCombatControls(): void {
-    const show = this.combatControlsShown();
-    this.combatControls.setControlsVisible(show);
-    // Hide the hotbar while the fighting controls are up so it doesn't clash with the movepad/cluster;
-    // and drop any open full-inventory panel as they surface.
-    this.inventory.setHotbarVisible(!show);
-    if (show) this.inventory.setOpen(false);
-  }
-
-  /** ESC: close the companion menu if open, else the build palette, else exit build mode, else exit
-   *  demolish mode (each mirrors tapping its own toggle again — plan 037 2b adds the demolish rung).
-   *  With none of those open it bails out of any armed guard-point placement in GameScene (a harmless
-   *  no-op when nothing is armed) — the assignment menu's documented Escape cancel (plan 042 Step 9). */
+  /** ESC: close the companion menu if open, else bail out of any armed guard-point placement in
+   *  GameScene (a harmless no-op when nothing is armed) — the assignment menu's documented Escape
+   *  cancel (plan 042 Step 9). Build/demolish exit + rotate are DOM buttons now (plan 046 Step 10). */
   private onEscape(): void {
     if (this.npcAssignMenu.isOpen()) this.npcAssignMenu.close();
-    else if (this.buildControls.isPaletteOpen()) this.buildControls.closePalette();
-    else if (this.buildControls.isBuildToggled()) this.game.events.emit('build:toggle');
-    else if (this.buildControls.isDemolishToggled()) this.game.events.emit('demolish:toggle');
     else this.game.events.emit('npc:cancelPlaceGuard');
   }
 }

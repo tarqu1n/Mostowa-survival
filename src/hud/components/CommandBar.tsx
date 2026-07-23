@@ -49,20 +49,59 @@ export function CommandBar({
   onMoveHeldChange,
   className,
 }: CommandBarProps) {
-  // Build-layout state (not `mode`, which is the prop): the selected buildable highlights its tray
-  // chip, `orientable` gates Rotate, `demolishMode` reflects the Demolish toggle.
+  // Build-layout state (not the `mode` prop, which drives the morph): the selected buildable
+  // highlights its tray chip, `orientable` gates Rotate, `demolishMode` reflects the Demolish toggle.
   const selection = useHudStore((s) => s.selection);
   const orientable = useHudStore((s) => s.orientable);
   const demolishMode = useHudStore((s) => s.demolishMode);
+
+  // Utility rail state (always visible, independent of the morph): the raw game mode drives the
+  // Fight/Inspect toggle highlights, and the queue summary reveals Cancel Queue when work is pending.
+  const gameMode = useHudStore((s) => s.mode);
+  const tasks = useHudStore((s) => s.tasks);
+  const hasQueue = tasks.current !== null || tasks.pending > 0;
 
   return (
     <div
       data-testid="hud-command-bar"
       className={cn(
-        'pointer-events-auto rounded-xl border border-border bg-inset/85 p-2',
+        'pointer-events-auto flex flex-col gap-1.5 rounded-xl border border-border bg-inset/85 p-2',
         className,
       )}
     >
+      {/* Utility rail — mode toggles + cancel-queue, replacing the legacy ModeControls + the
+          BuildControls Cancel button. Always shown so you can switch mode / clear the queue from any
+          morph. Fight ↔ mode:combatToggle, Inspect ↔ mode:inspectToggle (the only path into inspect
+          mode). Cancel Queue appears only with pending work. */}
+      <div className="flex items-center gap-1.5">
+        <Button
+          size="xs"
+          variant={gameMode === 'combat' ? 'default' : 'secondary'}
+          aria-pressed={gameMode === 'combat'}
+          onClick={() => emit({ type: 'mode:combatToggle' })}
+        >
+          Fight
+        </Button>
+        <Button
+          size="xs"
+          variant={gameMode === 'inspect' ? 'default' : 'secondary'}
+          aria-pressed={gameMode === 'inspect'}
+          onClick={() => emit({ type: 'mode:inspectToggle' })}
+        >
+          Inspect
+        </Button>
+        {hasQueue && (
+          <Button
+            size="xs"
+            variant="destructive"
+            className="ml-auto"
+            onClick={() => emit({ type: 'tasks:cancel' })}
+          >
+            Cancel Queue
+          </Button>
+        )}
+      </div>
+
       {mode === 'scavenge' && (
         <div className="flex gap-1.5">
           <Button

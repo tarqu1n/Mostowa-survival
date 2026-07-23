@@ -32,6 +32,7 @@ export interface EventBus {
  *  sets) — both of which the bridge listens to so a restart's fresh `inventory` is caught. */
 export interface Registry {
   get(key: string): unknown;
+  set(key: string, value: unknown): unknown;
   events: EventBus;
 }
 
@@ -108,6 +109,11 @@ export type InboundEvent =
 export interface Bridge {
   /** Send an inbound (HUD→world) event onto the bus for the game to handle. */
   emit(event: InboundEvent): void;
+  /** Set the registry `movepadHeld` flag (plan 046 Step 10). `PointerInputController` reads it to
+   *  suppress world pan/tap while the DOM movepad is being dragged — the DOM peer of the old
+   *  `UIScene.isMovepadHeld()`. Not a bus event: it's polled per-pointer, so a registry flag (not an
+   *  event) is the right shape. */
+  setMovepadHeld(held: boolean): void;
   /** Unsubscribe every listener (call on React unmount / `game.destroy`). Idempotent. */
   dispose(): void;
 }
@@ -186,6 +192,9 @@ export function initBridge(bus: EventBus, registry: Registry): Bridge {
     emit(event: InboundEvent): void {
       if ('payload' in event) bus.emit(event.type, event.payload);
       else bus.emit(event.type);
+    },
+    setMovepadHeld(held: boolean): void {
+      registry.set('movepadHeld', held);
     },
     dispose(): void {
       if (disposed) return;

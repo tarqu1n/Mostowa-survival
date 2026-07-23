@@ -367,8 +367,28 @@ crispness proven at the Step 1 gate before any component is built on top.
     banner, zoom, and follow all match prior behaviour and update live; vignettes fire on
     hit/starving.
 
-- [ ] **Step 10: Integrate hotbar + command bar + movepad-held bridge; retire
+- [x] **Step 10: Integrate hotbar + command bar + movepad-held bridge; retire
   BuildControls/CombatControls/ModeControls** `[inline]`
+  - Outcome: `GameHud` gained a bottom `ActionLayer` — the persistent `Hotbar` above the morphing
+    `CommandBar`; `barMode` is derived from the store (`buildMode` → build, else `mode==='combat' ||
+    combatActive` → fight, else scavenge — mirrors the old UIScene precedence). **CommandBar extended
+    at integration:** the Step-6 component had no mode-toggle / cancel-queue affordances, so a
+    persistent utility rail was added (Fight → `mode:combatToggle`, Inspect → `mode:inspectToggle`,
+    Cancel Queue → `tasks:cancel`, shown only when `tasks` has work) — this is where the retired
+    `ModeControls` + `BuildControls` Cancel button now live. Movepad-held coupling: added
+    `Bridge.setMovepadHeld` → sets the registry `movepadHeld` flag; `GameScene`'s `isMovepadHeld` dep
+    now reads `registry.get('movepadHeld') === true` (was `this.ui.isMovepadHeld()`), reset to false
+    each (re)start. `UIScene` retirements: removed `BuildControls`/`CombatControls`/`ModeControls`
+    (imports, fields, construction, their `build:*`/`demolish:*`/`tasks:changed`/`combat:activeChanged`
+    subs + teardown, `isMovepadHeld`, `refreshCombatControls`/`combatControlsShown`/
+    `onCombatActiveChanged`, the R-key + control-hint), trimmed `onModeChanged` to just the
+    inspect-panel hide, dropped `refreshBuildPalette` from `refreshInventory`, simplified `onEscape`,
+    and hid the Phaser hotbar (`inventory.setHotbarVisible(false)`) to avoid a double hotbar (the rest
+    of InventoryWidget retires Step 11). Only GameScene-side edit is the one-line registry read.
+    **e2e:** build/combat/gestures/follow (24) + zoom (4) all pass UNCHANGED — event-driven, not
+    Phaser-HUD queries. typecheck + lint (0 err) + 932 unit + build + smoke green; a headless DOM check
+    confirmed the build/fight morphs, `movepadHeld` toggling true/false on movepad drag, and the
+    Fight/Inspect/Cancel-Queue emits.
   - Compose `Hotbar` + `CommandBar` (+ `Movepad`) into `GameHud`; drive the morph from
     `mode:changed` / `build:modeChanged` / `combat:activeChanged`. Wire the movepad-held
     coupling: bridge sets a registry key `movepadHeld` (bool); `src/scenes/input/

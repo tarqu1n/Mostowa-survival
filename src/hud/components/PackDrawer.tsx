@@ -91,12 +91,12 @@ function PackSlot({
         <img
           src={`/assets/icons/${def.icon}`}
           alt=""
-          className="size-7 [image-rendering:pixelated]"
+          className="size-12 [image-rendering:pixelated]"
           aria-hidden
         />
       ) : (
         <span
-          className="size-7 rounded-sm border border-border"
+          className="size-12 rounded-sm border border-border"
           style={{ backgroundColor: hexColor(def?.color ?? 0x888888) }}
           aria-hidden
         />

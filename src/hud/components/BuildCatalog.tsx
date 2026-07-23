@@ -97,7 +97,7 @@ function BuildTile({
       {...press}
     >
       <span
-        className="size-8 rounded-sm border border-border"
+        className="size-12 rounded-sm border border-border"
         style={{ backgroundColor: hexColor(def.color) }}
         aria-hidden
       />

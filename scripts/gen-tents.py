@@ -157,7 +157,17 @@ def side_ref_png() -> bytes:
     return out.read_bytes()
 
 
-def compose(orient: str, colour: str) -> str:
+# Optional per-id collapse flavour so same-orientation tents don't look like clones (owner: "different
+# looking"). Appended to the prompt; empty/absent ids just use the base DESTROYED description.
+FLAVOUR = {
+    "tent_side_2": "This one has TOTALLY caved in at one end — that end collapsed flat to the ground "
+                   "while the other end still holds a lopsided peak; the ridge pole is snapped in two.",
+    "tent_side_3": "This one has slumped and twisted sideways — the canvas has pooled and folded in "
+                   "big sagging drapes, most poles are broken stubs, one corner peeled right back.",
+}
+
+
+def compose(orient: str, colour: str, flavour: str = "") -> str:
     subject = f"a large 6-person ridge camping tent in {colour}"
     if orient == "side":
         return (
@@ -165,12 +175,12 @@ def compose(orient: str, colour: str) -> str:
             f"BROADSIDE roof with a HORIZONTAL ridge, both slopes seen from a high top-down angle. "
             f"Copy that SAME camera angle, that broadside horizontal-ridge orientation, and that flat "
             f"pixel-art style — but draw a wrecked fabric TENT, NOT a house and NOT roof tiles. "
-            f"Draw {subject}. {ORIENT[orient]} {DESTROYED} {STYLE} {BG}"
+            f"Draw {subject}. {ORIENT[orient]} {DESTROYED} {flavour} {STYLE} {BG}"
         )
     return (
         f"The attached image is a REFERENCE for the exact camera angle and pixel-art style of the "
         f"game: a ridged roof seen from a high top-down angle. Using that SAME angle and style, "
-        f"draw {subject}. {ORIENT[orient]} {TOPDOWN} {DESTROYED} {STYLE} {BG}"
+        f"draw {subject}. {ORIENT[orient]} {TOPDOWN} {DESTROYED} {flavour} {STYLE} {BG}"
     )
 
 
@@ -301,7 +311,7 @@ def main() -> None:
     for tid in ids:
         orient, colour = VARIANTS[tid]
         print(f"\n=== {tid} ({orient}) ===")
-        raw = gemini_image(compose(orient, colour), images_for(orient), key, args.model)
+        raw = gemini_image(compose(orient, colour, FLAVOUR.get(tid, "")), images_for(orient), key, args.model)
         raw_png = RAW / f"{tid}.png"
         raw_png.parent.mkdir(parents=True, exist_ok=True)
         raw_png.write_bytes(raw)

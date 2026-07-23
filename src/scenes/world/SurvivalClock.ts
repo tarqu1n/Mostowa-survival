@@ -289,9 +289,13 @@ export class SurvivalClock {
     const def = ITEMS[itemId];
     if (def?.nutrition == null || !this.deps.canAfford({ [itemId]: 1 })) return false;
     this.deps.spend({ [itemId]: 1 });
+    const before = this.hunger;
     this.hunger = feed(this.hunger, def.nutrition, HUNGER_MAX);
     this.scene.registry.set('hunger', this.hunger);
     this.scene.game.events.emit('hunger:changed', { hunger: this.hunger, max: HUNGER_MAX });
+    // Feedback pulse for the HUD (the "you ate something" indicator on the hunger meter). Carries the
+    // ACTUAL hunger gained (capped at HUNGER_MAX), so eating near-full honestly shows the smaller gain.
+    this.scene.game.events.emit('needs:fed', { amount: Math.round(this.hunger - before) });
     return true;
   }
 

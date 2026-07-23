@@ -82,6 +82,10 @@ export function MeterBars() {
   const maxHunger = useHudStore((s) => s.maxHunger);
   const fire = useHudStore((s) => s.fire);
   const supply = useHudStore((s) => s.supply);
+  // Eat feedback (`needs:fed`): a monotonic nonce + the hunger gained. `key`ing the pop wrapper and the
+  // "+N" float on the nonce remounts them each eat, replaying their CSS animations (hud.css).
+  const fedNonce = useHudStore((s) => s.fedNonce);
+  const fedAmount = useHudStore((s) => s.fedAmount);
 
   const hpRatio = maxHp > 0 ? hp / maxHp : 0;
   const foodRatio = maxHunger > 0 ? hunger / maxHunger : 0;
@@ -96,7 +100,23 @@ export function MeterBars() {
     >
       <div className="flex gap-1.5">
         <Ring icon={Heart} value={`${Math.round(hp)}`} ratio={hpRatio} tone={hpTone} />
-        <Ring icon={Beef} value={`${Math.round(hunger)}`} ratio={foodRatio} tone={foodTone} />
+        {/* Hunger ring with the eat feedback overlay: a quick scale "pop" of the ring and a green "+N"
+            floating up, both replayed on each eat by keying on fedNonce (see hud.css keyframes). */}
+        <div className="relative">
+          <div key={`fed-pop-${fedNonce}`} className={fedNonce > 0 ? 'hud-fed-pop' : undefined}>
+            <Ring icon={Beef} value={`${Math.round(hunger)}`} ratio={foodRatio} tone={foodTone} />
+          </div>
+          {fedNonce > 0 && (
+            <span
+              key={`fed-float-${fedNonce}`}
+              data-testid="hud-fed-float"
+              className="hud-fed-float absolute font-mono font-bold"
+              style={{ left: '50%', top: -2, fontSize: 9, color: 'var(--color-ok-border)' }}
+            >
+              +{fedAmount}
+            </span>
+          )}
+        </div>
         {/* Fire ring hidden entirely when no hearth exists (mirrors HudBars.onFireChanged(null)). */}
         {fire && (
           <Ring

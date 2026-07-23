@@ -75,6 +75,12 @@ describe('outbound event → store mapping', () => {
     expect(s().hunger).toBe(42);
     expect(s().maxHunger).toBe(100);
 
+    // `needs:fed` bumps the feed-pulse nonce + records the gain (drives the hunger meter's "+N" cue).
+    const fedBefore = s().fedNonce;
+    bus.emit('needs:fed', { amount: 25 });
+    expect(s().fedNonce).toBe(fedBefore + 1);
+    expect(s().fedAmount).toBe(25);
+
     bus.emit('fire:changed', { fuel: 30, maxFuel: 60, lit: true });
     expect(s().fire).toEqual({ fuel: 30, maxFuel: 60, lit: true });
     bus.emit('fire:changed', null);

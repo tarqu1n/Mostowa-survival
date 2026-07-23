@@ -137,6 +137,8 @@ export function initBridge(bus: EventBus, registry: Registry): Bridge {
   on<HpPayload>('player:hpChanged', (p) => store.setHp(p.hp, p.maxHp));
   on('player:hit', () => store.pulseHit());
   on<HungerPayload>('hunger:changed', (p) => store.setHunger(p.hunger, p.max));
+  // Eat feedback: the hunger meter replays a "+N" pulse (the "you ate something" indicator).
+  on<{ amount: number }>('needs:fed', (p) => store.pulseFed(p.amount));
   on<FirePayload>('fire:changed', (p) =>
     store.setFire(p ? { fuel: p.fuel, maxFuel: p.maxFuel, lit: p.lit } : null),
   );

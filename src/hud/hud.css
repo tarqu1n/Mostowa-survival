@@ -130,3 +130,35 @@
 @utility slide-out-to-right {
   --tw-exit-translate-x: 100%;
 }
+
+/* Eat feedback on the hunger meter (MeterBars): a quick scale "pop" of the ring and a green "+N"
+ * floating up + fading out. Replayed on each eat by React remounting the elements (key on fedNonce).
+ * These live inside #hud-root (not portaled), but are plain classes so they work regardless of scope. */
+@keyframes hud-fed-pop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.18);
+  }
+}
+@keyframes hud-fed-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 2px);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -16px);
+  }
+}
+.hud-fed-pop {
+  animation: hud-fed-pop 380ms ease-out;
+}
+.hud-fed-float {
+  animation: hud-fed-float 900ms ease-out forwards;
+}

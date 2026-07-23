@@ -106,6 +106,12 @@ export interface HudState {
    *  `sceneActive` flag true in create()/false on SHUTDOWN; the bridge mirrors it here and `GameHud`
    *  renders nothing while it's false. */
   sceneActive: boolean;
+  /** Monotonic counter bumped each time the player eats (`needs:fed`), with {@link fedAmount} the
+   *  hunger gained. Like {@link hitNonce}, a transient event surfaced as a store read so the hunger
+   *  meter can replay its "+N" feed-pulse indicator on each eat. */
+  fedNonce: number;
+  /** Hunger points gained on the most recent eat (paired with {@link fedNonce}). */
+  fedAmount: number;
 }
 
 /** Imperative setters the bridge calls; grouped so components never mutate state directly. */
@@ -144,6 +150,9 @@ export interface HudActions {
   /** Mirror the Game scene's live/gone state (from the registry `sceneActive` flag) — gates the whole
    *  overlay so it never paints over the loading/title screens. */
   setSceneActive(active: boolean): void;
+  /** Bump the feed pulse (from `needs:fed`) with the hunger gained — replays the hunger meter's "+N"
+   *  eat indicator. */
+  pulseFed(amount: number): void;
 }
 
 /** Initial state — sane defaults so the HUD renders before the first event lands. HP seeds to the
@@ -176,6 +185,8 @@ const initialState: HudState = {
   zoom: 1,
   hitNonce: 0,
   sceneActive: false, // hidden until GameScene.create() flips the registry flag (see bridge)
+  fedNonce: 0,
+  fedAmount: 0,
 };
 
 export const useHudStore = create<HudState & HudActions>()(
@@ -219,5 +230,6 @@ export const useHudStore = create<HudState & HudActions>()(
     setFollowing: (following) => set({ following }),
     setZoom: (zoom) => set({ zoom }),
     setSceneActive: (sceneActive) => set({ sceneActive }),
+    pulseFed: (amount) => set((s) => ({ fedNonce: s.fedNonce + 1, fedAmount: amount })),
   })),
 );

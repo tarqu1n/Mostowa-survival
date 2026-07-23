@@ -122,4 +122,8 @@ test('a stackable hotbar item shows its live count and a tap eats one, decrement
   await berries.click();
   await expect(hotbar.getByTestId('hud-hotbar-count')).toHaveText('2');
   expect(await held(page, 'berries')).toBe(2);
+
+  // Eating shows the visual feedback cue: a "+N" floats up from the hunger meter (seeded hunger 20 +
+  // berries' 25 nutrition = a +25 gain).
+  await expect(page.getByTestId('hud-fed-float')).toHaveText('+25');
 });

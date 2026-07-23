@@ -4296,6 +4296,62 @@
       "col": 128,
       "row": 138,
       "skin": "diag_grey"
+    },
+    {
+      "id": "node_0044",
+      "kind": "node",
+      "ref": "tree",
+      "col": 114,
+      "row": 134,
+      "skin": "skin_7"
+    },
+    {
+      "id": "node_0045",
+      "kind": "node",
+      "ref": "tree",
+      "col": 116,
+      "row": 134,
+      "skin": "skin_4"
+    },
+    {
+      "id": "node_0046",
+      "kind": "node",
+      "ref": "tree",
+      "col": 115,
+      "row": 135,
+      "skin": "skin_7",
+      "rotation": 11.199907906557826
+    },
+    {
+      "id": "node_0047",
+      "kind": "node",
+      "ref": "tree",
+      "col": 113,
+      "row": 135,
+      "skin": "skin_4"
+    },
+    {
+      "id": "node_0048",
+      "kind": "node",
+      "ref": "tree",
+      "col": 116,
+      "row": 133,
+      "skin": "skin_7"
+    },
+    {
+      "id": "node_0049",
+      "kind": "node",
+      "ref": "tree",
+      "col": 114,
+      "row": 136,
+      "skin": "skin_3"
+    },
+    {
+      "id": "node_0050",
+      "kind": "node",
+      "ref": "berryBushMed",
+      "col": 116,
+      "row": 136
     }
   ]
 }

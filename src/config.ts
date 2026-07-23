@@ -100,6 +100,22 @@ export const TREE_FELL_FADE_MS = 200;
 export const ROCK_CRUMBLE_MS = 320;
 export const BUSH_RUSTLE_MS = 220;
 
+/**
+ * In-progress feedback for the timed salvage/clear actions (plan 047). While the action runs the node
+ * SHAKES — a constant-amplitude looping jitter (unlike the chop tremble, which scales with depletion):
+ * `NODE_SHAKE_PX`/`NODE_SHAKE_DEG` are the fixed position/angle amplitude, `NODE_SHAKE_HZ` the loop
+ * rate (the shake tween uses integer-multiple frequencies so it never snaps at the loop seam) — and a
+ * world-space PROGRESS BAR floats above the node, filling 0→1 over `SALVAGE_MS`/`CLEAR_MS` so the long
+ * countdown is readable. `NODE_PROGRESS_BAR_W`/`_H` size it; `_Y_OFFSET` lifts it above the art's top.
+ * The bar mirrors the enemy HP-bar renderer (`CombatFxManager.syncEnemyHealthBars`).
+ */
+export const NODE_SHAKE_PX = 1.2;
+export const NODE_SHAKE_DEG = 1.5;
+export const NODE_SHAKE_HZ = 3;
+export const NODE_PROGRESS_BAR_W = 20;
+export const NODE_PROGRESS_BAR_H = 3;
+export const NODE_PROGRESS_BAR_Y_OFFSET = 4;
+
 /** Hold time (ms) that turns a tap into a queued order rather than an act-now order. */
 export const LONGPRESS_MS = 350;
 
@@ -628,4 +644,6 @@ export const COLORS = {
   hpBarBg: 0x1c1410, // floating monster HP-bar backing (plan 035a Step 6)
   hpBarHigh: 0x4caf50, // HP-bar fill when healthy (matches the player bar's green)
   hpBarLow: 0xc0392b, // HP-bar fill when low (matches the player bar's red)
+  nodeProgressBg: 0x1c1410, // salvage/clear progress-bar backing (reuses the HP-bar backing, plan 047)
+  nodeProgressFg: 0xd9a441, // salvage/clear progress fill — amber, so a filling work-bar doesn't read as a green HP bar
 } as const;

@@ -10,6 +10,13 @@ import {
   TREE_FELL_FADE_MS,
   ROCK_CRUMBLE_MS,
   BUSH_RUSTLE_MS,
+  NODE_SHAKE_PX,
+  NODE_SHAKE_DEG,
+  NODE_SHAKE_HZ,
+  NODE_PROGRESS_BAR_W,
+  NODE_PROGRESS_BAR_H,
+  NODE_PROGRESS_BAR_Y_OFFSET,
+  COLORS,
 } from '../../config';
 import type { GameScene } from '../GameScene';
 
@@ -91,6 +98,27 @@ export class NodeFxManager {
   // Live fell/crumble/rustle clones + their tweens. Each self-unregisters on completion (endTransient);
   // reset() stops+destroys the survivors, destroy() stops+drops them (Phaser already destroyed them).
   private readonly transient = new Set<TransientFx>();
+  // Continuous salvage/clear shake (plan 047): one looping (`repeat:-1`) tween per node sprite, keyed by
+  // it, plus the captured rest transform so stopShake can snap it back. Only one player action runs at a
+  // time, but keying by sprite keeps the teardown symmetric with recoilTweens. The tween pokes the
+  // sprite, so it MUST be stopped before the sprite is destroyed (removeNode / clearAll / SHUTDOWN).
+  private readonly shakeTweens = new Map<
+    Phaser.GameObjects.Image,
+    {
+      tween: Phaser.Tweens.Tween;
+      restX: number;
+      restY: number;
+      restAngle: number;
+      restScale: number;
+    }
+  >();
+  // Salvage/clear progress bars (plan 047): a lazily-created {bg,fg} rectangle pair per node sprite,
+  // mirroring the enemy HP-bar pool. reset() destroys the survivors; destroy() drops the refs (Phaser
+  // already destroyed the rectangles on the SHUTDOWN path).
+  private readonly progressBars = new Map<
+    Phaser.GameObjects.Image,
+    { bg: Phaser.GameObjects.Rectangle; fg: Phaser.GameObjects.Rectangle }
+  >();
 
   // Field-initializer construction (see CombatFxManager): only stash the scene here — scene.events/
   // tweens/time aren't injected yet. armShutdown() waits for create().
@@ -283,11 +311,117 @@ export class NodeFxManager {
     if (entry.sprite.active) entry.sprite.destroy();
   }
 
+  // --- Timed-action feedback: continuous shake + progress bar (plan 047) ----------
+
+  /**
+   * Start (or keep) a continuous shake on a node sprite for a long timed action (salvage/clear). Unlike
+   * {@link playChop}'s per-hit tremble, this is a constant-amplitude looping jitter that runs until
+   * {@link stopShake}. IDEMPOTENT: a runner calls this every frame it's working, but only the FIRST call
+   * captures the rest transform (from the sprite, which is sitting at rest — the beginCurrent blanket
+   * teardown guarantees no prior shake) and starts the `repeat:-1` tween; later calls are a no-op so the
+   * capture never re-reads a mid-jitter transform. The onUpdate writes only position+angle (no scale),
+   * using integer-multiple frequencies of a 0→1 loop `p` so every term returns to its start value at the
+   * seam (no snap). `.active`-guarded like every other node tween.
+   */
+  startShake(sprite: Phaser.GameObjects.Image): void {
+    if (this.shakeTweens.has(sprite)) return; // already shaking — keep the tween + captured rest
+    const restX = sprite.x;
+    const restY = sprite.y;
+    const restAngle = sprite.angle;
+    const restScale = sprite.scaleX;
+    const state = { p: 0 };
+    const tween = this.scene.tweens.add({
+      targets: state,
+      p: 1,
+      duration: 1000 / NODE_SHAKE_HZ,
+      ease: 'Linear',
+      repeat: -1,
+      onUpdate: () => {
+        if (!sprite.active) return;
+        const a = state.p * Math.PI * 2; // one full loop per cycle
+        // Integer-multiple frequencies (2, 3, 2) with per-axis phase offsets read as a jitter, not a
+        // slide, and are loop-continuous (sin(k·2π + φ) === sin(φ) at the seam → no snap).
+        sprite.setPosition(
+          restX + Math.sin(a * 2) * NODE_SHAKE_PX,
+          restY + Math.sin(a * 3 + 1.7) * NODE_SHAKE_PX,
+        );
+        sprite.setAngle(restAngle + Math.sin(a * 2 + 0.5) * NODE_SHAKE_DEG);
+      },
+    });
+    this.shakeTweens.set(sprite, { tween, restX, restY, restAngle, restScale });
+  }
+
+  /** Stop a node's shake and snap it back to the captured rest transform. Safe if it isn't shaking. */
+  stopShake(sprite: Phaser.GameObjects.Image): void {
+    const s = this.shakeTweens.get(sprite);
+    if (!s) return;
+    s.tween.stop();
+    this.shakeTweens.delete(sprite);
+    if (sprite.active)
+      sprite.setPosition(s.restX, s.restY).setAngle(s.restAngle).setScale(s.restScale);
+  }
+
+  /** Stop every in-flight node shake (the beginCurrent blanket cancel-teardown — critique #1). Snaps
+   *  each sprite back to rest. Safe to call with none running. */
+  stopAllShakes(): void {
+    for (const sprite of [...this.shakeTweens.keys()]) this.stopShake(sprite);
+  }
+
+  /**
+   * Show/update a world-space progress bar above a node for a timed action, `frac` (0..1) filling it
+   * left→right. Mirrors the enemy HP-bar renderer: a lazily-created {bg,fg} rectangle pair pooled per
+   * node sprite, repositioned each frame just above the sprite's display top (the node art is tall, so
+   * anchor off `getBounds().top`, not a fixed offset). {@link hideActionProgress} destroys the pair.
+   */
+  showActionProgress(sprite: Phaser.GameObjects.Image, frac: number): void {
+    if (!sprite.active) return;
+    const x = sprite.x;
+    const y = sprite.getBounds().top - NODE_PROGRESS_BAR_Y_OFFSET;
+    let bar = this.progressBars.get(sprite);
+    if (!bar) {
+      const bg = this.scene.add
+        .rectangle(x, y, NODE_PROGRESS_BAR_W, NODE_PROGRESS_BAR_H, COLORS.nodeProgressBg, 0.85)
+        .setDepth(12); // above world/actors (≤9) + node bands; below the enemy HP bars (13/14)
+      // fg is left-anchored so scaleX GROWS it from the left as the action progresses (a filling bar).
+      const fg = this.scene.add
+        .rectangle(
+          x - NODE_PROGRESS_BAR_W / 2,
+          y,
+          NODE_PROGRESS_BAR_W,
+          NODE_PROGRESS_BAR_H,
+          COLORS.nodeProgressFg,
+          1,
+        )
+        .setOrigin(0, 0.5)
+        .setDepth(12);
+      bar = { bg, fg };
+      this.progressBars.set(sprite, bar);
+    }
+    bar.bg.setPosition(x, y);
+    bar.fg.setPosition(x - NODE_PROGRESS_BAR_W / 2, y);
+    bar.fg.scaleX = Phaser.Math.Clamp(frac, 0, 1);
+  }
+
+  /** Destroy a node's progress bar. Safe if it has none. */
+  hideActionProgress(sprite: Phaser.GameObjects.Image): void {
+    const bar = this.progressBars.get(sprite);
+    if (!bar) return;
+    bar.bg.destroy();
+    bar.fg.destroy();
+    this.progressBars.delete(sprite);
+  }
+
+  /** Destroy every in-flight progress bar (the beginCurrent blanket cancel-teardown — critique #1). */
+  hideAllActionProgress(): void {
+    for (const sprite of [...this.progressBars.keys()]) this.hideActionProgress(sprite);
+  }
+
   /**
    * Scene-alive teardown (DEV scenario reset / dev-menu world randomiser, called before node sprites
    * are destroyed): stop every recoil tween then clear the map, and stop every transient's tweens +
    * `sprite.destroy()` then clear the set. Stop-before-clear: a cleared map still leaves the tween
-   * running in Phaser's TweenManager, poking a sprite the reset is about to destroy.
+   * running in Phaser's TweenManager, poking a sprite the reset is about to destroy. The salvage/clear
+   * shake tweens get the same stop-then-clear; the progress bars are OWNED rectangles → destroy them.
    */
   reset(): void {
     for (const t of this.recoilTweens.values()) t.stop();
@@ -297,6 +431,13 @@ export class NodeFxManager {
       if (e.sprite.active) e.sprite.destroy();
     }
     this.transient.clear();
+    for (const s of this.shakeTweens.values()) s.tween.stop();
+    this.shakeTweens.clear();
+    for (const bar of this.progressBars.values()) {
+      if (bar.bg.active) bar.bg.destroy();
+      if (bar.fg.active) bar.fg.destroy();
+    }
+    this.progressBars.clear();
   }
 
   /**
@@ -308,5 +449,8 @@ export class NodeFxManager {
     this.recoilTweens.clear();
     for (const e of this.transient) for (const t of e.tweens) t.stop();
     this.transient.clear();
+    for (const s of this.shakeTweens.values()) s.tween.stop();
+    this.shakeTweens.clear();
+    this.progressBars.clear(); // rectangles already destroyed by Phaser's scene teardown — drop refs only
   }
 }

@@ -183,7 +183,8 @@ Key files/patterns to mirror (from research):
   - Done when: savaging takes ~20s (progress persists across cancel) then leaves a ruin; clearing
     takes ~40s, yields the scrap, removes the node, frees the tile; trees/rocks/bushes unchanged.
 
-- [ ] **Step 6: in-progress feedback — continuous shake + progress bar** `[inline]`
+- [x] **Step 6: in-progress feedback — continuous shake + progress bar** `[inline]`
+  - Outcome: `src/scenes/fx/NodeFxManager.ts` — added `startShake` (idempotent, captures rest from the sprite, `repeat:-1` loop-continuous jitter) / `stopShake` (snaps back) / `stopAllShakes`, and `showActionProgress` (HP-bar-style `{bg,fg}` pool, anchored off `getBounds().top`) / `hideActionProgress` / `hideAllActionProgress`; extended `reset()`/`destroy()` for both new Maps. `src/config.ts` — `NODE_SHAKE_PX/DEG/HZ`, `NODE_PROGRESS_BAR_W/H/Y_OFFSET`, `COLORS.nodeProgressBg/Fg` (amber fill so it doesn't read as an HP bar). `src/scenes/GameScene.ts` — blanket `stopAllShakes()`+`hideAllActionProgress()` at the TOP of `beginCurrent` (critique #1 cancel-teardown); salvage branch of `runHarvest` + `runClear` drive shake+bar each frame and stop/hide before the fell/removeNode. `docs/RENDERING.md` — terse note (looping tween, not a shader; bar mirrors the HP-bar renderer; cancel-teardown chokepoint). Signature deviation: `startShake(sprite)` captures rest internally (node is at rest on first call, guaranteed by the blanket teardown) rather than taking explicit rest params — cleaner than threading skin scale through GameScene. Typecheck + 962 unit tests green; `chop` e2e green (node-fx path boots/harvests).
   - **Shake** — `src/scenes/fx/NodeFxManager.ts`: add `startShake(sprite, restX, restY, baseAngle,
     baseScale)` and `stopShake(sprite)`. `startShake` runs a `repeat:-1` tween writing a small
     constant-amplitude `sin`-based position+angle jitter each `onUpdate` (reuse the tremble math at

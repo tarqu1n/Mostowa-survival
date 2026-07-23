@@ -1115,6 +1115,14 @@ export class GameScene extends Phaser.Scene {
    *  Shared prelude (reset path/goal + breadcrumb) then dispatch the per-kind stand-tile resolution
    *  through {@link orderBeginners} (the registry-driven replacement for the old if-chain). */
   private beginCurrent(): void {
+    // Blanket teardown of the timed-action feedback (plan 047, critique #1): a toggle-cancel (re-tapping
+    // a queued salvage/clear), a walk-away, or switching to another order ALL route through here — NOT
+    // completeCurrent — so this is the one guaranteed chokepoint to stop the looping shake + hide the
+    // progress bar. Without it a cancel would leak an infinite `repeat:-1` tween poking the node
+    // transform forever + a floating bar. Safe (no-op) when nothing is animating; runs before the
+    // `!a` idle return so going idle cleans up too. The active runner re-arms its own shake/bar next frame.
+    this.nodeFx.stopAllShakes();
+    this.nodeFx.hideAllActionProgress();
     this.chopElapsed = 0;
     this.playerChar.path = [];
     this.playerChar.pathIndex = 0;
@@ -1355,9 +1363,17 @@ export class GameScene extends Phaser.Scene {
       // clamps, so a near-full bag drops the overflow exactly as before (critique #4 — accepted, not
       // re-gated). The hit-cadence path below is untouched for trees/rocks/bushes.
       if (tree.def.oneShot && tree.def.loot) {
-        // Step 6 wires the continuous shake + progress bar here (driven off tree.progressMs / SALVAGE_MS).
         tree.progressMs += delta;
+        // Continuous shake + a progress bar filling over the 20s (plan 047). startShake is idempotent
+        // (captures rest once); the bar reflects persisted progress on resume for free (progressMs/SALVAGE_MS).
+        this.nodeFx.startShake(tree.sprite);
+        this.nodeFx.showActionProgress(tree.sprite, tree.progressMs / SALVAGE_MS);
         if (tree.progressMs >= SALVAGE_MS) {
+          // Stop the shake + hide the bar BEFORE the fell — chop() starts its own recoil tween on this
+          // same sprite, which must not fight a still-running shake (the beginCurrent blanket is only a
+          // backstop). stopShake snaps the node back to rest first.
+          this.nodeFx.stopShake(tree.sprite);
+          this.nodeFx.hideActionProgress(tree.sprite);
           // faceTile above set lastFacing FROM the player TO the node, so the fell lean is +lastFacing.
           this.resourceNodeManager.chop(tree, this.playerChar.lastFacing); // rolls loot + depletes; no regrow (oneShot)
           tree.progressMs = 0; // reset the accumulator for the later CLEAR stage
@@ -1475,9 +1491,15 @@ export class GameScene extends Phaser.Scene {
       this.player.body.setVelocity(0, 0);
       this.playerChar.faceTile(tree.col, tree.row); // face the husk as it comes apart
       this.harvestSwing = 'gather'; // dismantle reads as the rummage/gather motion (reskin stand-in)
-      // Step 6 wires the continuous shake + progress bar here (driven off tree.progressMs / CLEAR_MS).
       tree.progressMs += delta;
+      // Continuous shake + a progress bar filling over the 40s (plan 047); persisted progress resumes it.
+      this.nodeFx.startShake(tree.sprite);
+      this.nodeFx.showActionProgress(tree.sprite, tree.progressMs / CLEAR_MS);
       if (tree.progressMs >= CLEAR_MS) {
+        // Stop the shake + hide the bar before removeNode destroys the sprite (a live tween writing a
+        // destroyed sprite is .active-guarded, but stop it cleanly rather than lean on the backstop).
+        this.nodeFx.stopShake(tree.sprite);
+        this.nodeFx.hideActionProgress(tree.sprite);
         // A little scrap for the effort (cloth/wood) — a one-shot node with no clearLoot clears silently.
         if (tree.def.clearLoot)
           for (const drop of rollLoot(tree.def.clearLoot)) this.inv.add(drop.itemId, drop.qty);

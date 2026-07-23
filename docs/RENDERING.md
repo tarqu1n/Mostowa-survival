@@ -81,6 +81,15 @@ need no glow-specific code. Corollary: keep game **logic** (targeting, pathfindi
 off the tile (`col`/`row`), never the animated sprite transform — a sway or a mid-fall lean is purely
 visual and must not move the object's logical position.
 
+**Timed-action feedback (salvage/clear, plan 047):** the node's continuous shake is a plain looping
+(`repeat:-1`) tween writing a small constant-amplitude position+angle jitter each `onUpdate` (loop-
+continuous integer-multiple frequencies, no snap at the seam) — **not** a frame-loop shader; and the
+progress bar above the node is a `{bg,fg}` rectangle pair repositioned/scaled each frame, mirroring the
+enemy HP-bar renderer (`CombatFxManager.syncEnemyHealthBars`). Both live in `NodeFxManager`; the glow
+halo follows the shake for free via the same transform-mirror above. Cancel-safety: the one guaranteed
+teardown is at the top of `GameScene.beginCurrent` (`stopAllShakes`/`hideAllActionProgress`), since a
+toggle-cancel routes through there, not `completeCurrent`.
+
 ## Light layer: a baked gradient brush erased into a screen-space RenderTexture
 
 The night darkness (plan 039 Step 2) is a **full-opacity** dark overlay that lit fires *reveal* holes

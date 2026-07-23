@@ -25,6 +25,8 @@ export function orderTargetId(a: Action): string | null {
   switch (a.kind) {
     case 'harvest':
       return a.treeId;
+    case 'clear':
+      return a.treeId;
     case 'refuel':
       return a.campfireId;
     case 'build':
@@ -66,6 +68,7 @@ export interface OrderMeta {
 export const ORDER_META: Record<Action['kind'], OrderMeta> = {
   move: { highlight: 'move', dedupeOnEnqueue: false },
   harvest: { highlight: 'tree', dedupeOnEnqueue: true },
+  clear: { highlight: 'tree', dedupeOnEnqueue: true },
   build: { highlight: 'site', dedupeOnEnqueue: false },
   refuel: { highlight: 'structure', dedupeOnEnqueue: true },
   deconstruct: { highlight: 'structure', dedupeOnEnqueue: true },

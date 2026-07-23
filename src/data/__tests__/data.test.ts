@@ -88,6 +88,8 @@ describe('NODES', () => {
     expect(tent).toBeDefined();
     expect(tent.harvestAnim).toBe('savage');
     expect(tent.loot).toBeDefined();
+    expect(tent.oneShot).toBe(true); // no regrow — the ruined husk stays forever (plan 047)
+    expect(tent.clearLoot).toBeDefined(); // scrap rolled once when the husk is cleared
     expect(tent.skins).toHaveLength(17); // 7 diagonal + 6 front + 4 side
   });
 });

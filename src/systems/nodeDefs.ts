@@ -66,6 +66,12 @@ export interface AuthoredNodeDef {
   /** Optional loot table — each harvest hit rolls this instead of the fixed yield (the "savage"
    *  action). Cross-checked itemId ∈ ITEMS by `parseLootTable`. See `ResourceNodeDef.loot`. */
   loot?: LootTable;
+  /** No-regrow flag — the node stays depleted/ruined forever once harvested (the tent husk). Ignored
+   *  runtime-effect-wise here, but `regrowMs` stays required + validated. See `ResourceNodeDef.oneShot`. */
+  oneShot?: boolean;
+  /** Optional loot table rolled once when the ruined husk is cleared. Cross-checked itemId ∈ ITEMS by
+   *  `parseLootTable`. See `ResourceNodeDef.clearLoot`. */
+  clearLoot?: LootTable;
   color: number;
   stumpColor: number;
   /** Def-level display scale (a multiplier on the source sprite's native pixels — the pack is
@@ -325,6 +331,8 @@ const AUTHORED_NODE_DEF_KEYS = [
   'blocksPath',
   'harvestAnim',
   'loot',
+  'oneShot',
+  'clearLoot',
   'color',
   'stumpColor',
   'scale',
@@ -376,6 +384,11 @@ function parseAuthoredNodeDef(
 
   const loot = obj.loot === undefined ? undefined : parseLootTable(obj.loot, `${path}.loot`);
 
+  const oneShot =
+    obj.oneShot === undefined ? undefined : expectBoolean(obj.oneShot, `${path}.oneShot`);
+  const clearLoot =
+    obj.clearLoot === undefined ? undefined : parseLootTable(obj.clearLoot, `${path}.clearLoot`);
+
   const color = expectInt(obj.color, `${path}.color`);
   const stumpColor = expectInt(obj.stumpColor, `${path}.stumpColor`);
 
@@ -411,6 +424,8 @@ function parseAuthoredNodeDef(
     blocksPath,
     ...(harvestAnim === undefined ? {} : { harvestAnim }),
     ...(loot === undefined ? {} : { loot }),
+    ...(oneShot === undefined ? {} : { oneShot }),
+    ...(clearLoot === undefined ? {} : { clearLoot }),
     color,
     stumpColor,
     scale,
@@ -466,6 +481,8 @@ export function parseNodeDefs(raw: unknown): Record<string, ParsedNodeDef> {
       blocksPath: def.blocksPath,
       ...(def.harvestAnim === undefined ? {} : { harvestAnim: def.harvestAnim }),
       ...(def.loot === undefined ? {} : { loot: def.loot }),
+      ...(def.oneShot === undefined ? {} : { oneShot: def.oneShot }),
+      ...(def.clearLoot === undefined ? {} : { clearLoot: def.clearLoot }),
       scale: def.scale ?? 1,
       originX: def.originX,
       originY: def.originY,

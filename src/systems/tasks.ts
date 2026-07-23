@@ -3,7 +3,7 @@
  * No side effects or Phaser imports; wired into the game scene by Step 3.
  */
 
-/** An action in a worker's task queue: move, harvest, build, refuel, deconstruct, rearm, or repair. */
+/** An action in a worker's task queue: move, harvest, build, refuel, deconstruct, rearm, repair, or clear. */
 export type Action =
   | { kind: 'move'; col: number; row: number } // path to the tile and stop
   | { kind: 'harvest'; treeId: string } // path adjacent to the tree, chop until felled
@@ -11,7 +11,8 @@ export type Action =
   | { kind: 'refuel'; campfireId: string } // path adjacent to the fire, feed wood until topped up / out
   | { kind: 'deconstruct'; wallId: string } // path adjacent to the wall, remove it + refund (plan 037 2b)
   | { kind: 'rearm'; trapId: string } // path adjacent to the spent trap, re-prime it (plan 040)
-  | { kind: 'repair'; wallId: string }; // path adjacent to a damaged wall, mend it on a cadence (plan 042 Step 5, companion-only)
+  | { kind: 'repair'; wallId: string } // path adjacent to a damaged wall, mend it on a cadence (plan 042 Step 5, companion-only)
+  | { kind: 'clear'; treeId: string }; // path adjacent to a depleted oneShot node, clear the husk to free the tile (plan 047)
 
 /** Queue holding a current action and pending actions for a worker. */
 export class TaskQueue {

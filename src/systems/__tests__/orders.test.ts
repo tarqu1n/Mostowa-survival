@@ -6,6 +6,7 @@ import type { Action } from '../tasks';
 // Plain-Node tests: orders + tasks are pure (no `phaser`, no jsdom). See vitest.config.ts.
 
 const harvest = (treeId: string): Action => ({ kind: 'harvest', treeId });
+const clear = (treeId: string): Action => ({ kind: 'clear', treeId });
 const refuel = (campfireId: string): Action => ({ kind: 'refuel', campfireId });
 const rearm = (trapId: string): Action => ({ kind: 'rearm', trapId });
 const deconstruct = (wallId: string): Action => ({ kind: 'deconstruct', wallId });
@@ -15,6 +16,7 @@ const move = (col: number, row: number): Action => ({ kind: 'move', col, row });
 describe('orderTargetId', () => {
   it('extracts the target id per kind', () => {
     expect(orderTargetId(harvest('t1'))).toBe('t1');
+    expect(orderTargetId(clear('t1'))).toBe('t1');
     expect(orderTargetId(refuel('c1'))).toBe('c1');
     expect(orderTargetId(build('s1'))).toBe('s1');
     expect(orderTargetId(deconstruct('w1'))).toBe('w1');
@@ -56,6 +58,7 @@ describe('ORDER_META', () => {
 
   it('classifies highlights, folding the three structure-tending kinds together', () => {
     expect(ORDER_META.harvest.highlight).toBe('tree');
+    expect(ORDER_META.clear.highlight).toBe('tree');
     expect(ORDER_META.build.highlight).toBe('site');
     expect(ORDER_META.move.highlight).toBe('move');
     for (const k of ['refuel', 'deconstruct', 'rearm'] as const)
@@ -69,6 +72,13 @@ describe('isOrderQueued', () => {
     q.append(harvest('t1'));
     expect(isOrderQueued(q, harvest('t1'))).toBe(true);
     expect(isOrderQueued(q, harvest('t2'))).toBe(false);
+  });
+
+  it('detects a matching clear order by target', () => {
+    const q = new TaskQueue();
+    q.append(clear('t1'));
+    expect(isOrderQueued(q, clear('t1'))).toBe(true);
+    expect(isOrderQueued(q, clear('t2'))).toBe(false);
   });
 
   it('detects a matching pending order (behind a current)', () => {
@@ -109,6 +119,13 @@ describe('toggleOrder', () => {
     q.append(refuel('c1')); // duplicate pending
     expect(toggleOrder(q, refuel('c1'))).toBe(true);
     expect(q.all()).toEqual([move(0, 0)]);
+  });
+
+  it('re-tapping a clear order toggles it off (the cancel path)', () => {
+    const q = new TaskQueue();
+    q.append(clear('t1')); // current
+    expect(toggleOrder(q, clear('t1'))).toBe(true); // current removed → restart / idle
+    expect(q.current).toBeNull();
   });
 
   it('a move toggles nothing (null target matches nothing)', () => {

@@ -27,6 +27,8 @@ interface RawDefFixture {
   blocksPath: boolean;
   harvestAnim?: string;
   loot?: unknown;
+  oneShot?: unknown;
+  clearLoot?: unknown;
   color: number;
   stumpColor: number;
   scale?: number;
@@ -382,5 +384,65 @@ describe('parseNodeDefs', () => {
       };
     });
     expect(() => parseNodeDefs(raw)).toThrow(/loot\.drops\[0\] has unknown key "chance"/);
+  });
+
+  // ---- oneShot + clearLoot (savage-node lifecycle, plan 047) ----
+
+  it('carries oneShot:true through to the def', () => {
+    const raw = withRaw((r) => {
+      r.defs[0].oneShot = true;
+    });
+    expect(parseNodeDefs(raw).tree.oneShot).toBe(true);
+  });
+
+  it('leaves oneShot and clearLoot undefined when the def omits them', () => {
+    const def = parseNodeDefs(validRaw()).tree;
+    expect(def.oneShot).toBeUndefined();
+    expect(def.clearLoot).toBeUndefined();
+  });
+
+  it('rejects a non-boolean oneShot', () => {
+    const raw = withRaw((r) => {
+      r.defs[0].oneShot = 'yes';
+    });
+    expect(() => parseNodeDefs(raw)).toThrow(/oneShot must be a boolean/);
+  });
+
+  it('parses a valid clearLoot table through to the def, defaulting a drop weight to 1', () => {
+    const raw = withRaw((r) => {
+      r.defs[0].clearLoot = {
+        rolls: 1,
+        drops: [
+          { itemId: 'wood', min: 1, max: 2, weight: 2 },
+          { itemId: 'stone', min: 1, max: 1 }, // weight omitted -> defaults to 1
+        ],
+      };
+    });
+    expect(parseNodeDefs(raw).tree.clearLoot).toEqual({
+      rolls: 1,
+      drops: [
+        { itemId: 'wood', min: 1, max: 2, weight: 2 },
+        { itemId: 'stone', min: 1, max: 1, weight: 1 },
+      ],
+    });
+  });
+
+  it('rejects a clearLoot drop naming an unknown item id', () => {
+    const raw = withRaw((r) => {
+      r.defs[0].clearLoot = {
+        rolls: 1,
+        drops: [{ itemId: 'unobtainium', min: 1, max: 1, weight: 1 }],
+      };
+    });
+    expect(() => parseNodeDefs(raw)).toThrow(
+      /clearLoot\.drops\[0\]\.itemId "unobtainium" is not a known/,
+    );
+  });
+
+  it('rejects a clearLoot table with no drops', () => {
+    const raw = withRaw((r) => {
+      r.defs[0].clearLoot = { rolls: 1, drops: [] };
+    });
+    expect(() => parseNodeDefs(raw)).toThrow(/clearLoot\.drops must be non-empty/);
   });
 });

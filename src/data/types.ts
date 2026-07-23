@@ -108,6 +108,20 @@ export interface ResourceNodeDef extends ObjectStats {
    * a future def sets both) but are ignored while `loot` is set. See `src/systems/loot.ts`.
    */
   loot?: LootTable;
+  /**
+   * When `true`, this node never regrows — once depleted it stays in its depleted/ruined state
+   * forever (the wrecked-tent husk that keeps blocking its tile). `regrowMs` stays required by the
+   * schema (and remains validated `>0`) but is ignored while `oneShot` is set, mirroring how
+   * `yieldItemId` stays required but is ignored when `loot` is present. See `src/systems/nodeDefs.ts`.
+   */
+  oneShot?: boolean;
+  /**
+   * Optional loot table rolled ONCE when the ruined husk is cleared (the `clear` order), yielding a
+   * little scrap and freeing the tile. Distinct from `loot` (rolled per harvest hit): `clearLoot`
+   * fires a single time on the clear action. A `oneShot` node with no `clearLoot` clears silently.
+   * Cross-checked itemId ∈ ITEMS by `parseLootTable`. See `src/systems/loot.ts`.
+   */
+  clearLoot?: LootTable;
   /** Display scale — a multiplier on the source sprite's native pixels (`1.0` = native size). The
    *  art pack is authored at the game's `TILE_SIZE`, so native scale keeps pixels crisp and
    *  preserves each skin's relative size. Resolved (defaulted to 1.0) by `parseNodeDefs`. */

@@ -70,7 +70,8 @@ Key files/patterns to mirror (from research):
 
 ## Steps
 
-- [ ] **Step 1: `oneShot` + `clearLoot` node-def schema (+ savagedTent data)** `[delegate]` (parallel: A)
+- [x] **Step 1: `oneShot` + `clearLoot` node-def schema (+ savagedTent data)** `[delegate]` (parallel: A)
+  - Outcome: added `oneShot?: boolean` + `clearLoot?: LootTable` to `ResourceNodeDef` (`src/data/types.ts`), `AuthoredNodeDef` + `AUTHORED_NODE_DEF_KEYS` + `parseAuthoredNodeDef`/`parseNodeDefs` (`src/systems/nodeDefs.ts`, `oneShot` via `expectBoolean`, `clearLoot` via existing `parseLootTable`); `regrowMs` left required+`>0`. `savagedTent` in `nodes.json` gets `oneShot:true` + `clearLoot` (cloth 1–2 w2, wood 1 w1, 1 roll). Tests extended in `nodeDefs.test.ts` + `data.test.ts`. Full suite 962 green; `NODES.savagedTent.oneShot === true`.
   - `src/data/types.ts`: on `ResourceNodeDef` add optional `oneShot?: boolean` (no regrow — stays in
     its depleted/ruined state forever) and `clearLoot?: LootTable` (rolled when the ruin is cleared),
     documented near `regrowMs`/`loot` (~L89-110), same "required-but-ignored when set" note style as
@@ -93,7 +94,8 @@ Key files/patterns to mirror (from research):
   - Docs: none this step (covered in Step 8).
   - Done when: `npm test` green; `parseNodeDefs` accepts the new savagedTent; `NODES.savagedTent.oneShot === true`.
 
-- [ ] **Step 2: `clear` order kind registry (pure)** `[delegate]` (parallel: A)
+- [x] **Step 2: `clear` order kind registry (pure)** `[delegate]` (parallel: A)
+  - Outcome: added `{ kind: 'clear'; treeId }` to the `Action` union (`src/systems/tasks.ts`); `orderTargetId` `clear` case + `ORDER_META.clear = { highlight:'tree', dedupeOnEnqueue:true }` (`src/systems/orders.ts`); fixtures + exhaustive assertions in `orders.test.ts` (16 green). Full `tsc` clean incl. GameScene (optional mapped types, no forced beginner/runner). No runtime `clear` handler until Step 5. Pre-existing `docs/ui-overhaul/pitch.html` format-check failure is unrelated to this change.
   - `src/systems/tasks.ts`: add `| { kind: 'clear'; treeId: string }` to the `Action` union (L7-14).
   - `src/systems/orders.ts`: add the `clear` case to `orderTargetId` (return `a.treeId`, L24-41); add
     an `ORDER_META.clear` entry (L66-74) with `highlight: 'tree'` (reuses the node glow) and

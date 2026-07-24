@@ -6,6 +6,7 @@ import { ACTIVE_TILESET, resolveTile } from '../../data/tileset';
 import { BUILDABLES } from '../../data/buildables';
 import { isInBase, baseZoneFromSpawn, type Rect } from '../../systems/base';
 import { rowDepthOffset } from '../../systems/mapFormat';
+import { ghostTextureFor } from './ghostTexture';
 import type { BuildSite, FacingSpec } from '../../entities/types';
 import type { CharacterSprite } from '../../entities/Character';
 import type { GameScene } from '../GameScene';
@@ -76,7 +77,9 @@ export class BuildManager {
   private placeFacing: FacingSpec = 'down';
 
   private readonly walls: Phaser.Physics.Arcade.StaticGroup;
-  private readonly ghost: Phaser.GameObjects.Rectangle;
+  /** The pre-placement placement cursor — a real structure sprite (plan 050 Step 2) textured from the
+   *  selected buildable's in-world art, oriented to {@link placeFacing}, tinted valid/invalid. */
+  private readonly ghost: Phaser.GameObjects.Sprite;
   private readonly occupied = new Set<string>();
   private sites: BuildSite[] = [];
   private readonly siteTiles = new Set<string>();
@@ -99,11 +102,11 @@ export class BuildManager {
     this.walls = scene.physics.add.staticGroup();
     scene.physics.add.collider(deps.getPlayerSprite(), this.walls);
 
-    // Build ghost — hidden until build mode; recoloured valid/invalid as it tracks the tapped tile.
-    this.ghost = scene.add
-      .rectangle(0, 0, TILE_SIZE, TILE_SIZE, COLORS.ghostValid, 0.5)
-      .setVisible(false)
-      .setDepth(6);
+    // Build ghost — a structure sprite, hidden until build mode; textured from the selected buildable
+    // + placeFacing and tinted valid/invalid as it tracks the tapped tile. Starts on a neutral frame,
+    // then applyGhostAppearance() points it at the default selection (the wall, facing down).
+    this.ghost = scene.add.sprite(0, 0, '__WHITE').setVisible(false).setDepth(6);
+    this.applyGhostAppearance();
 
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
@@ -177,10 +180,39 @@ export class BuildManager {
     const ok =
       this.tilePlaceable(col, row) &&
       this.deps.canAfford(BUILDABLES[this.selectedBuildableId].cost);
+    // Keep the sprite's texture/frame + flip in step with the current selection + placeFacing (the
+    // orientable wall re-orients as build:rotate fires), then track/tint the tile under the pointer.
+    this.applyGhostAppearance();
     this.ghost
       .setPosition(snapToTileCenter(pointer.worldX), snapToTileCenter(pointer.worldY))
-      .setFillStyle(ok ? COLORS.ghostValid : COLORS.ghostInvalid, 0.5)
+      .setTint(ok ? COLORS.ghostValid : COLORS.ghostInvalid)
+      .setAlpha(0.5)
       .setVisible(true);
+  }
+
+  /** Point the ghost sprite at the selected buildable's in-world texture for the current
+   *  {@link placeFacing}: set its texture/frame, orientation flip, bottom-anchor, and tile-scaled size
+   *  ({@link ghostTextureFor} — the wall reuses the barricade orient/flip mapping the placed wall
+   *  renders from, so the two can't drift). Called on construction and whenever the selection or facing
+   *  changes (select/rotate/reset) plus each {@link updateGhost}; leaves visibility/position/tint alone.
+   *  Falls back to a neutral tile square if the buildable's texture isn't resident (shouldn't happen —
+   *  PreloadScene loads every structure texture). */
+  private applyGhostAppearance(): void {
+    const tex = ghostTextureFor(this.scene, this.selectedBuildableId, this.placeFacing);
+    if (!tex) {
+      this.ghost
+        .setTexture('__WHITE')
+        .setOrigin(0.5)
+        .setFlipX(false)
+        .setDisplaySize(TILE_SIZE, TILE_SIZE);
+      return;
+    }
+    if (tex.frame !== undefined) this.ghost.setTexture(tex.key, tex.frame);
+    else this.ghost.setTexture(tex.key);
+    this.ghost
+      .setOrigin(0.5, tex.originY)
+      .setFlipX(tex.flipX)
+      .setScale((TILE_SIZE * tex.tilesTall) / this.ghost.frame.height);
   }
 
   placeOrEnqueueBuild(pointer: Phaser.Input.Pointer): void {
@@ -217,6 +249,7 @@ export class BuildManager {
   select(id: string): void {
     this.selectedBuildableId = id;
     this.placeFacing = 'down'; // a fresh selection starts front-facing (rotate cycles from here)
+    this.applyGhostAppearance(); // re-texture the ghost for the newly-selected buildable
     this.buildMode = true;
     this.scene.game.events.emit('build:modeChanged', this.buildMode);
   }
@@ -228,6 +261,9 @@ export class BuildManager {
   rotatePlacement(): void {
     const order: FacingSpec[] = ['down', 'right', 'up', 'left'];
     this.placeFacing = order[(order.indexOf(this.placeFacing) + 1) % order.length];
+    // Re-orient the ghost now: rotate fires off a button/key, not a pointer move, so updateGhost won't
+    // run — refresh here so the wall ghost flips/re-faces immediately (plan 050 Step 2 acceptance).
+    this.applyGhostAppearance();
   }
 
   /** Add a passable, unbuilt blueprint at a tile and register its occupancy (shared by real build
@@ -342,7 +378,8 @@ export class BuildManager {
 
   /** Drop every placed site's GameObjects + this run's build-mode/occupancy state — mirrors what a
    *  fresh create() used to do inline, now on demand for the DEV-only scenario reset (testResetWorld).
-   *  Does NOT touch the ghost — it persists across a scenario reset, same as before this move. */
+   *  The ghost sprite persists across a scenario reset (not destroyed/hidden); its texture is just
+   *  re-pointed at the reset wall selection so it can't show a stale prior buildable. */
   reset(): void {
     for (const s of this.sites) {
       s.visual?.destroy();
@@ -356,6 +393,7 @@ export class BuildManager {
     this.buildMode = false;
     this.selectedBuildableId = 'wall'; // don't leak a prior campfire selection into a fresh scenario
     this.placeFacing = 'down'; // nor a prior rotate facing (a fresh scenario places walls front-facing)
+    this.applyGhostAppearance(); // re-texture the (persisting) ghost back to the reset wall selection
   }
 
   /**

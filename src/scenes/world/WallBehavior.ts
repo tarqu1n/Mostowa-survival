@@ -3,8 +3,9 @@ import { TILE_SIZE, DECONSTRUCT_REFUND_FRACTION } from '../../config';
 import { tileToWorldCenter } from '../../systems/grid';
 import { rowDepthOffset } from '../../systems/mapFormat';
 import { BUILDABLES } from '../../data/buildables';
-import { barricadeBuildKey, barricadeDestroyKey, type Facing } from '../../data/tileset';
+import { barricadeBuildKey, barricadeDestroyKey } from '../../data/tileset';
 import { placedWallStats } from '../../systems/stats';
+import { wallOrientation } from '../../systems/wallOrientation';
 import type { InspectableStats } from '../../data/types';
 import type { WallStructure, BuildSite, FacingSpec, PlacedStructure } from '../../entities/types';
 import type { GameScene } from '../GameScene';
@@ -77,7 +78,7 @@ export class WallBehavior implements StructureBehavior {
   materialise(site: BuildSite): void {
     const def = BUILDABLES[site.buildableId];
     const facing: FacingSpec = site.facing ?? 'down';
-    const orient = orientOf(facing);
+    const { orient, flipX } = wallOrientation(facing);
     const x = tileToWorldCenter(site.col);
     const y = tileToWorldCenter(site.row);
     const originY = def.originY ?? WALL_ORIGIN_Y;
@@ -91,7 +92,7 @@ export class WallBehavior implements StructureBehavior {
       .sprite(x, y, buildKey)
       .setDepth(1 + rowDepthOffset(site.row))
       .setOrigin(0.5, originY)
-      .setFlipX(facing === 'left');
+      .setFlipX(flipX);
     sprite.setScale((TILE_SIZE * tilesTall) / sprite.frame.height);
     sprite.play(buildKey);
     // On the Build anim's completion, settle on the Destroy sheet's frame 0 — the intact standing
@@ -178,7 +179,7 @@ export class WallBehavior implements StructureBehavior {
   private applyDamageStage(w: WallStructure): void {
     const frame = Phaser.Math.Clamp(Math.round((1 - w.state.hp / w.state.maxHp) * 5), 0, 5);
     w.sprite.stop(); // in case the Build anim is somehow still playing — the HP-stage frame is authoritative
-    w.sprite.setTexture(barricadeDestroyKey(orientOf(w.state.facing)), frame);
+    w.sprite.setTexture(barricadeDestroyKey(wallOrientation(w.state.facing).orient), frame);
   }
 
   /** Free a wall's tile + collision (via {@link WallBehaviorDeps.freeTile}, BuildManager the sole writer)
@@ -199,7 +200,7 @@ export class WallBehavior implements StructureBehavior {
     this.retireWall(w);
     const sprite = w.sprite;
     this.dying.push(sprite);
-    sprite.play(barricadeDestroyKey(orientOf(w.state.facing)));
+    sprite.play(barricadeDestroyKey(wallOrientation(w.state.facing).orient));
     sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
       this.dying = this.dying.filter((s) => s !== sprite);
       if (sprite.active) sprite.destroy();
@@ -260,12 +261,6 @@ export class WallBehavior implements StructureBehavior {
     this.walls = [];
     this.dying = [];
   }
-}
-
-/** Map a placement facing to its sheet orientation (down/side/up): left & right both use the `side`
- *  sheet (left is flipped at materialise). */
-function orientOf(facing: FacingSpec): Facing {
-  return facing === 'up' ? 'up' : facing === 'down' ? 'down' : 'side';
 }
 
 /** The buildable id a placed wall renders from — a single wall archetype today, so this is constant;

@@ -123,7 +123,8 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
   - Done when: `npm test` passes; a unit test asserts `buildTimeFor` returns the per-buildable value
     and falls back to `BUILD_MS`; every structure builds in the same time as before.
 
-- [ ] **Step 2: Textured, orientation-aware ghost sprite** `[inline]`
+- [x] **Step 2: Textured, orientation-aware ghost sprite** `[inline]`
+  - Outcome: ghost is now a `Phaser.GameObjects.Sprite` (was `Rectangle`) in `BuildManager.ts` via new `applyGhostAppearance()` (called from constructor/`select`/`rotatePlacement`/`reset`/`updateGhost`), tinted valid/invalid at 0.5 alpha. New `src/scenes/build/ghostTexture.ts` (`ghostTextureFor(scene, buildableId, facing)`) resolves each buildable's in-world texture/frame/flip (wall→`barricadeDestroyKey`, workbench→`resolveDecorDraw`, campfire→`campfireBaseKey`, trap→`spikeTrapKey`). Facing→(orient,flipX) mapping extracted to new pure `src/systems/wallOrientation.ts` and `WallBehavior.ts` refactored to use it (byte-for-byte identical). `createBlueprint`/`TaskGlowRenderer` untouched. typecheck clean, 996 unit pass, build + smoke canary pass. Minor: also handled workbench ghost (plan named only campfire/trap); campfire ghost preview slightly larger than in-world (didn't duplicate CampfireBehavior private constants) — cosmetic, acceptable.
   - Replace the flat `Rectangle` ghost (`BuildManager.ts:103-106`) with a real structure sprite
     (`Sprite`/`Image` using the buildable's in-world texture/frame). `updateGhost` reads `placeFacing`
     and sets frame + `setFlipX`, reusing the exact `orient`/flip mapping in `WallBehavior.ts:88-94` —

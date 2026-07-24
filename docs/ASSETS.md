@@ -11,13 +11,13 @@ image-to-image, then a PIL post-process (keyout → downscale → outline/cel-sh
 the result sits next to the pack's hand-drawn art. Synthesis-from-code is the **narrow
 exception**, not the norm. Route by what you're making:
 
-| You want to make… | Pipeline | Doc / scripts |
+|You want to make…|Pipeline|Doc / scripts|
 |---|---|---|
-| An **inventory/item icon** (32×32) | Gemini | [gemini-pipeline.md](gemini-pipeline.md) · [`scripts/gen-icons/`](../scripts/gen-icons/) |
-| A **character animation strip** (missing pose on a pack actor) | Gemini image-to-image + cel-shade | [AI-SPRITE-PIPELINE.md](AI-SPRITE-PIPELINE.md) · [`scripts/pixel-crawler/gen_*_gemini.py`](../scripts/pixel-crawler/) |
-| A **static world prop / structure / decorative tile** (jetty, dock, furniture, wreckage, a themed one-off tile) | Gemini + the static-prop playbook | [AI-SPRITE-PIPELINE.md § Static world-prop sprites](AI-SPRITE-PIPELINE.md#static-world-prop-sprites-the-destroyed-tents--a-reusable-playbook) · `scripts/gen-tents.py` pattern |
-| A whole art set that a **stock pack already ships** | Import, don't generate | [CRAFTPIX.md](CRAFTPIX.md) |
-| A **seamless terrain transition / Wang tile** that must tile edge-to-edge AND survive editor rotation with zero seams (coast, multi-tile fills) | **Pure synthesis** (the exception) | [TILE-AUTHORING.md](TILE-AUTHORING.md) |
+|An **inventory/item icon** (32×32)|Gemini|[gemini-pipeline.md](gemini-pipeline.md) · [`scripts/gen-icons/`](../scripts/gen-icons/)|
+|A **character animation strip** (missing pose on a pack actor)|Gemini image-to-image + cel-shade|[AI-SPRITE-PIPELINE.md](AI-SPRITE-PIPELINE.md) · [`scripts/pixel-crawler/gen_*_gemini.py`](../scripts/pixel-crawler/)|
+|A **static world prop / structure / decorative tile** (jetty, dock, furniture, wreckage, a themed one-off tile)|Gemini + the static-prop playbook|[AI-SPRITE-PIPELINE.md § Static world-prop sprites](AI-SPRITE-PIPELINE.md#static-world-prop-sprites-the-destroyed-tents--a-reusable-playbook) · `scripts/gen-tents.py` pattern|
+|A whole art set that a **stock pack already ships**|Import, don't generate|[CRAFTPIX.md](CRAFTPIX.md)|
+|A **seamless terrain transition / Wang tile** that must tile edge-to-edge AND survive editor rotation with zero seams (coast, multi-tile fills)|**Pure synthesis** (the exception)|[TILE-AUTHORING.md](TILE-AUTHORING.md)|
 
 **The rule of thumb:** if it's a *thing* (an object, character, icon, or a one-off themed
 tile), **generate it with Gemini**. Only reach for code-synthesis when the job is *seamless

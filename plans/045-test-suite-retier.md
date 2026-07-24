@@ -128,7 +128,7 @@ non-blocking). Plan 044 deferred this Phase 2 "until re-measured as a **bottlene
     render cost gone from the converted specs, right-size their now-oversized `test.setTimeout(...)` and
     re-run to confirm still green. Re-benchmark `workers` only if the profile shifted.
   - Docs: `docs/testing.md` — update the "Phase 2 (planned, plan 045)" note to reflect stepLogic shipped
-    + new numbers, and **prominently document the `step` (renders) vs `stepLogic` (logic-only) rule** and
+    - new numbers, and **prominently document the `step` (renders) vs `stepLogic` (logic-only) rule** and
     when each applies (Finding 2), in the scenario-API + "adding a test" sections. `docs/WORKFLOW.md` +
     `CLAUDE.md` — refresh the e2e wall number. `docs/STATUS.md` — note stepLogic landed.
   - Side effects: CI (`ci.yml`) shards inherit the faster specs — confirm shard balance still even.

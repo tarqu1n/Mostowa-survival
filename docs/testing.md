@@ -18,6 +18,15 @@ on its one linear path changed. Now:
 
 The heavy browser tier is **off the local critical path** — CI runs it, so the human loop stays fast.
 
+> **⛔ Verifying a step or change — run the ONE guarding spec, never the full suite (lever A).**
+> To check that a plan step or a change works, run **only** the single e2e spec that guards it —
+> `npx playwright test <name>` (e.g. `campfire`) or `npx playwright test -g "<title>"` — and prefer a
+> **unit** run (`npm run test:related` / `npx vitest run <name>`) whenever the behaviour is Node-testable.
+> **Do NOT run `npm run e2e` / `npm run check:all` to "make sure everything still works" mid-work:** the
+> full ~9-min suite is **CI's job** (`ci.yml` on push), not a between-steps gate. Running the whole
+> browser tier per step is the single biggest drag on in-session work — one spec is seconds, the suite
+> is minutes. If a step genuinely spans several specs, run just those by name, not the lot.
+
 |Moment|Runs|Speed|
 |---|---|---|
 |On save (inner loop)|`npm run test:watch` — only affected unit tests|<1s|

@@ -30,6 +30,10 @@ Build using the **Hermes dev skills** (from the `hermes-ai-tooling` repo): `plan
 `critique-plan` → `execute-plan`, one step at a time. Wiring, review gates, and the day-to-day loop:
 [docs/WORKFLOW.md](docs/WORKFLOW.md).
 
+> **Verifying a step/change: run the ONE guarding e2e spec (`npx playwright test <name>`/`-g`), or a
+> unit run — never the full `npm run e2e`/`check:all` mid-work.** The ~9-min browser suite is CI's job
+> (`ci.yml`), not a between-steps gate. Rule + rationale: [docs/testing.md](docs/testing.md#when-to-run-what-plan-044).
+
 ## Architecture map
 
 Data-driven content · pure systems · decoupled scenes:

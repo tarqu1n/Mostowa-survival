@@ -73,7 +73,13 @@ and re-use); held-item rendering is the first sliver of the deferred paper-doll.
 - [ ] **Step 1: Rename brand → torch (data, config, refs, tests)** `[inline]`
   - `items.ts`: `brand` → `torch` (id + `name: 'Torch'` + `icon: 'torch.png'`); keep `equip:'offHand'`
     + `durability`. Rename the icon file `public/assets/icons/brand.png` → `torch.png` (`git mv`) and
-    the prompt entry in `scripts/gen-icons/prompts.py` if one exists.
+    update its origin in `scripts/craft-items-art.mjs` (the actual generator of `brand.png` — it writes
+    the file + carries `brand` comments; there is NO `brand` entry in `scripts/gen-icons/prompts.py`, so
+    don't touch that manifest).
+  - **Recipe rename (explicit, not just via grep):** `recipes.ts` `RECIPES.brand` — rename the object
+    KEY + the entry's `id` + `name` to `torch`; then fix every `recipeId`/id ref: `orders.test.ts`
+    (`craft('b1','brand')` → `'torch'`), `tests/e2e/workbench.spec.ts` (`recipeId:'brand'` → `'torch'`),
+    and any `CraftMenu`/`WorkbenchBehavior` literal.
   - `config.ts`: `BRAND_DURABILITY`→`TORCH_DURABILITY`, `BRAND_LIFETIME_SEC`→`TORCH_LIFETIME_SEC`,
     `BRAND_DRAIN_PER_SEC`→`TORCH_DRAIN_PER_SEC`, `BRAND_LIGHT_RADIUS`→`TORCH_LIGHT_RADIUS`,
     `BRAND_DRAIN_EMIT_MS`→`TORCH_DRAIN_EMIT_MS` (keep values). Update the doc-comments that say "brand".
@@ -81,8 +87,8 @@ and re-use); held-item rendering is the first sliver of the deferred paper-doll.
     `=== 'torch'`, `tickBrand`→`tickTorch`, `brandEmitAccumMs`→`torchEmitAccumMs`, `toggleEquip` comments),
     `data.test.ts`, `tests/e2e/equip.spec.ts` (`'brand'`→`'torch'`, test titles/comments), `testApi.ts`
     seams, and any `docs/` prose that names the brand item (leave the *history* in `plans/049` intact).
-  - Side effects: grep `-ri brand src public scripts tests docs` to catch every ref; recipe outputs
-    (`recipes.ts`) — if a recipe yields `brand`, rename its output id too.
+  - Side effects: grep `-ri brand src public scripts tests docs` as a final catch-all after the explicit
+    renames above; verify no ref survives outside plan-049 history.
   - Docs: none new here (Step 7 does the doc pass); just keep inline comments truthful.
   - Done when: `grep -ri "\bbrand\b" src scripts tests` returns only plan-049 history; `npm run build`
     + `npm test` green; the item shows as "Torch" with `torch.png`.
@@ -90,19 +96,32 @@ and re-use); held-item rendering is the first sliver of the deferred paper-doll.
 - [ ] **Step 2: Unequip returns the torch to the pack (partial durability persists)** `[inline]`
   - `GameScene`: add a scene field `equipCharge: Record<string, number>` (itemId → remaining
     durability), reset in `resetWorld`/on (re)start. In `toggleEquip`:
-    - **Unequip a durability item**: read the slot's `durability` BEFORE `unequip`, store it in
-      `equipCharge[id]`, then `this.inv.add(id, 1)` (return to bag) for ALL items (drop the
-      `durability === undefined` gate on the return path). Same for a **displaced** durability item.
+    - **Unequip a durability item — BAG-FULL GUARD (finding #1):** `Inventory.add` caps at `maxStack`
+      (torch = 1) and RETURNS the leftover it couldn't fit. So return-to-bag must be add-first,
+      commit-after: if `this.inv.add(id, 1)` returns leftover > 0 (bag already holds a torch — e.g. one
+      worn + one crafted), the bag is full → **DENY the unequip: leave the item worn, do NOT clear the
+      slot, do NOT write `equipCharge`**, and no-op (optionally surface a brief "pack full" hint). Only
+      when `add` fully succeeds do we `unequip` + stash `equipCharge[id] = <slot durability read before
+      unequip>`. This prevents the orphaned-charge item-loss the critique flagged. Same add-first guard
+      for a **displaced** durability item (if it can't fit the bag, refuse the incoming equip).
     - **Equip a durability item**: seed the slot from `equipCharge[id] ?? def.durability` (resume from
       stash if present), then delete `equipCharge[id]`.
   - `tickTorch` (renamed in Step 1): on `'destroyed'`, `delete this.equipCharge[id]` (a burnt-out torch
     leaves no stash) and do NOT add to bag — destroy still removes it entirely.
-  - Side effects: `bridge.test.ts` equip round-trip; the pack already merges equipped ids, and now an
-    unequipped torch reappears as a normal stack — verify the durability bar shows on re-equip. Guard
-    the `equipCharge` seed against a `null` durability (permanent items ignore it).
+  - **Bagged-charge indicator (finding #5):** forward `equipCharge` to the HUD so a partially-drained
+    torch sitting in the pack shows its remaining charge (not a bare "×1"). Extend the
+    `equipment:changed` payload (or add a sibling `equipCharge` field to the store), and have
+    `PackDrawer`'s `PackSlot` draw the durability bar for a NON-equipped item when `equipCharge[id]` is
+    present (reuse the same gold bar; fraction = `equipCharge[id] / ITEMS[id].durability`). The Diablo
+    panel (Step 4) does not need this (it only shows worn slots).
+  - Side effects: `bridge.test.ts` equip round-trip + a **bag-full unequip-denied** unit test; the pack
+    already merges equipped ids, and now an unequipped torch reappears as a normal stack — verify the
+    durability bar shows on re-equip. Guard the `equipCharge` seed against a `null` durability (permanent
+    items ignore it — the guard/stash logic runs only for `def.durability != null`).
   - Docs: none (Step 7).
-  - Done when: equip torch → drain partway → unequip → torch back in pack; re-equip resumes at the
-    reduced charge (bar not full); drain-to-0 still destroys with no bag return. Build + tests green.
+  - Done when: equip torch → drain partway → unequip → torch back in pack showing its reduced charge;
+    re-equip resumes at that charge (bar not full); a bag-already-full unequip is denied (item stays
+    worn, nothing lost); drain-to-0 still destroys with no bag return. Build + tests green.
 
 - [ ] **Step 3: Suppress the native image context-menu / drag on HUD item slots** `[delegate]`
   - `PackDrawer.tsx` `PackSlot`: add `draggable={false}` to the `<img>` (mirror `Hotbar`'s
@@ -147,11 +166,14 @@ and re-use); held-item rendering is the first sliver of the deferred paper-doll.
 - [ ] **Step 5: In-hand torch overlay sprite on the player** `[inline]`
   - New small `world/` manager (e.g. `src/scenes/world/HeldItemOverlay.ts`) OR a private field-cluster
     on `GameScene`: owns a single Phaser sprite (`heldSprite`) created once, `setVisible(false)` by
-    default, depth just above the player (11). Per-frame in `GameScene.update()` (beside the existing
-    player-anim step): if a torch is in the off-hand, position it at the player's hand — `player.sprite.x
-    + handOffsetX`, `player.sprite.y + handOffsetY` — `setFlipX` to match the player's facing (mirror
-    `lastFacing.dCol < 0` on side; sensible fixed offset for up/down), and `setVisible(true)`; else hide.
-    Offsets are small tunable consts (add to `config.ts`, e.g. `HELD_TORCH_OFFSET_X/Y`).
+    default, depth just above the player (11). **Tick placement (finding #4):** `GameScene.update()` has
+    a death early-return (~1089) and TWO `updateAnim` sites (the movepad-return path ~1151 and the
+    normal path ~1167). To avoid the torch un-following on one movement path, run the overlay
+    position/flip update ONCE per non-death frame at a single point ABOVE that branch — right after the
+    `tickTorch` call (~1104), not next to either `updateAnim`. Behaviour: if a torch is in the off-hand,
+    position it at the player's hand (`player.sprite.x + handOffsetX`, `player.sprite.y + handOffsetY`),
+    `setFlipX` to match facing (mirror `lastFacing.dCol < 0` on side; fixed offset for up/down),
+    `setVisible(true)`; else hide. Offsets are small tunable consts (`config.ts`: `HELD_TORCH_OFFSET_X/Y`).
   - Art: a small held-torch sprite. Reuse the `torch.png` icon at first for a working overlay; if it
     reads poorly at hand-scale, generate a dedicated `held_torch` sprite in Step 6's Gemini pass
     (a vertical torch with flame). Load it in `PreloadScene` (a static image, like an icon). Keep the
@@ -197,7 +219,12 @@ and re-use); held-item rendering is the first sliver of the deferred paper-doll.
     supersedes 049 #7; unequip-returns-with-durability reverses 049's discard; overlay = held-item
     render sliver, full paper-doll still deferred), `docs/GAME-MECHANICS.md` (torch equip/relight),
     `CLAUDE.md` Status one-liner, `docs/ASSETS.md`/`wired-art.md` (new workbench + held-torch origins).
-    Flip this plan's Status to `deployed`.
+  - **Free the `torch` name in the design docs (finding #2):** `docs/GAME-DESIGN.md` (~L372-375, the
+    "Torches" buildable) and `docs/ROADMAP.md` (~L179) still call the FUTURE perimeter light "torch",
+    which now collides with the hand item. Rename that future buildable in the design text to
+    `torch_post` (perimeter light post) so the id isn't double-booked, and add a one-line note that the
+    hand item took the `torch` id (plan 051, superseding 049 #7).
+  - Flip this plan's Status to `deployed`.
   - Done when: `npm run check:all` green; docs match shipped behaviour.
 
 ## Out of scope
@@ -211,3 +238,21 @@ and re-use); held-item rendering is the first sliver of the deferred paper-doll.
 - **Durability on non-torch equippables / a generic bag-durability model** — the stash is a minimal
   per-id scene map for the torch; `Inventory`/`Slot` stay pure and count-only.
 - **Re-animating the player** with torch-in-hand strips — the overlay replaces that.
+
+## Critique
+
+> Fresh-eyes review (uncontaminated sub-agent). All six findings folded into the steps above; kept here
+> for the execution record.
+
+**Verdict:** Sound and largely well-scouted follow-up plan with no hard blockers — but the return-to-bag
+durability stash has an unguarded item-loss edge, and taking the `torch` id collides with the design
+doc's own "Torches" buildable, both fixed during execution.
+
+| # | Finding | Severity | Resolution in plan |
+| - | ------- | -------- | ------------------ |
+| 1 | Step 2 `inv.add(id,1)` is unguarded but `Inventory.add` caps at `maxStack:1` and returns leftover → equip torch + craft a 2nd + unequip drops the returned torch, orphaning its `equipCharge`. | Medium | Step 2 now add-first/commit-after: deny unequip when the bag can't fit; + bag-full test. |
+| 2 | `torch` is the design doc's canonical name for the planned buildable perimeter light (GAME-DESIGN.md:372-375, ROADMAP:179); Step 7 omitted those docs. | Medium | Step 7 now renames the future buildable to `torch_post` in GAME-DESIGN.md + ROADMAP.md. |
+| 3 | Step 1 named `gen-icons/prompts.py` as the icon origin, but `brand.png` is generated by `scripts/craft-items-art.mjs`. | Low | Step 1 now points at `craft-items-art.mjs`. |
+| 4 | Held-overlay "beside the player-anim step" is ambiguous — `update()` has two `updateAnim` sites; wiring one leaves the torch un-following on the other path. | Low | Step 5 pins the tick above the branch (after `tickTorch` ~1104), once per non-death frame. |
+| 5 | A partially-drained torch returned to the pack shows "×1" with no charge indication. | Low | Step 2 forwards `equipCharge` so the pack draws the bar for a bagged torch. |
+| 6 | The `RECIPES.brand` key/id/name + refs (`orders.test.ts`, `workbench.spec.ts`) need renaming, not just a grep. | Low | Step 1 now calls out the full recipe rename explicitly. |

@@ -118,6 +118,28 @@ describe('selectRun (placeable / affordable / totalCost / eta)', () => {
     });
     expect(sel.placeableCount).toBe(4);
     expect(sel.affordableCount).toBe(5); // affordability charges every tile regardless of placeability
+    // buildableCount = the affordable prefix (all 5) ∩ placeable (tile 2 blocked) = 4; cost/ETA follow
+    // THAT (what commitRun actually blueprints), not the raw affordable prefix.
+    expect(sel.buildableCount).toBe(4);
+    expect(sel.totalCost).toEqual({ wood: 4 });
+    expect(sel.etaMs).toBe(4 * 100);
+  });
+
+  it('buildableCount only counts placeable tiles INSIDE the affordable prefix', () => {
+    // Budget affords the first 2 tiles; of those, tile 1 is blocked → only 1 builds. The placeable
+    // tiles at index 3/4 are beyond the affordable prefix, so they do NOT count (nor cost/ETA).
+    const sel = selectRun({
+      tiles,
+      placeable: [true, false, true, true, true],
+      cost: { wood: 2 },
+      inventory: { wood: 4 }, // 2 tiles afford
+      buildTimeMs: 1000,
+    });
+    expect(sel.affordableCount).toBe(2);
+    expect(sel.placeableCount).toBe(4);
+    expect(sel.buildableCount).toBe(1);
+    expect(sel.totalCost).toEqual({ wood: 2 });
+    expect(sel.etaMs).toBe(1000);
   });
 
   it('a length-1 run (single-tap path) resolves normally', () => {

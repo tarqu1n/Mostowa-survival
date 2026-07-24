@@ -85,9 +85,15 @@ export interface RunSelection {
    *  Orthogonal to placeability — the render layer combines the two (valid = affordable prefix AND
    *  placeable). */
   affordableCount: number;
-  /** Cumulative cost of the affordable subset (item id → qty) — what a commit would spend at most. */
+  /** How many tiles a commit will ACTUALLY blueprint: those inside the affordable prefix that are ALSO
+   *  placeable ({@link RunSelectionInput.placeable}) — `commitRun` skips an unplaceable prefix tile
+   *  without spending, so this is the real "will build" count that drives {@link totalCost}/{@link etaMs}
+   *  and the commit-bar tally. It equals the count of valid-tinted ghosts (`i < affordableCount &&
+   *  placeable[i]`), so the readout can't disagree with what the preview shows. */
+  buildableCount: number;
+  /** Cumulative cost of the buildable subset (item id → qty) — exactly what a commit spends. */
   totalCost: Record<string, number>;
-  /** Serial build time (ms) over the affordable subset = `affordableCount * buildTimeMs`. */
+  /** Serial build time (ms) over the buildable subset = `buildableCount * buildTimeMs`. */
   etaMs: number;
 }
 
@@ -95,8 +101,9 @@ export interface RunSelection {
  * Compute the {@link RunSelection} for a pending run. `placeableCount` counts the placeable tiles.
  * `affordableCount` walks the run in order accumulating cost — tile N is affordable only if tiles 1..N
  * together still fit `inventory` (every tile charges, placeability aside; the render layer ANDs the two).
- * `totalCost` is the affordable subset's cumulative cost and `etaMs` its serial build time. Pure —
- * mutates nothing (no spend), so building a run costs no resources here.
+ * `buildableCount` is the affordable-prefix ∩ placeable subset the commit really blueprints, and
+ * `totalCost`/`etaMs` are its cumulative cost + serial build time. Pure — mutates nothing (no spend),
+ * so building a run costs no resources here.
  */
 export function selectRun({
   tiles,
@@ -117,14 +124,21 @@ export function selectRun({
     affordableCount++;
   }
 
+  // The commit only blueprints tiles that are BOTH affordable (in the prefix) AND placeable —
+  // commitRun skips an unplaceable prefix tile without spending — so THIS count, not the raw
+  // affordable prefix, is what actually gets built and what the cost/ETA/tally must reflect.
+  let buildableCount = 0;
+  for (let i = 0; i < affordableCount; i++) if (placeable[i]) buildableCount++;
+
   const totalCost: Record<string, number> = {};
-  for (const [id, qty] of costEntries) totalCost[id] = qty * affordableCount;
+  for (const [id, qty] of costEntries) totalCost[id] = qty * buildableCount;
 
   return {
     tiles,
     placeableCount,
     affordableCount,
+    buildableCount,
     totalCost,
-    etaMs: affordableCount * buildTimeMs,
+    etaMs: buildableCount * buildTimeMs,
   };
 }

@@ -390,14 +390,15 @@ export class BuildManager {
       tileCount: sel.tiles.length,
       placeableCount: sel.placeableCount,
       affordableCount: sel.affordableCount,
+      buildableCount: sel.buildableCount,
       totalCost: sel.totalCost,
       etaMs: sel.etaMs,
     });
   }
 
   /**
-   * The Step-5 pending-run selector: `{ tiles, placeableCount, affordableCount, totalCost, etaMs }` for
-   * the current run — delegating the math to the pure {@link selectRun}, fed this manager's live
+   * The Step-5 pending-run selector: `{ tiles, placeableCount, affordableCount, buildableCount, totalCost,
+   * etaMs }` for the current run — delegating the math to the pure {@link selectRun}, fed this manager's live
    * {@link tilePlaceable} per tile, the selected buildable's cost, the {@link BuildManagerDeps.heldCounts}
    * inventory snapshot, and its {@link buildTimeFor} time. Read-only (no spend); consumed by Step 7's
    * commit + HUD.

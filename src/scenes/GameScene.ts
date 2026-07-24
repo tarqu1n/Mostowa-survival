@@ -11,7 +11,6 @@ import {
   WORKBENCH_REPAIR_PER_TICK,
   CRAFT_DAMAGED_MIN_FRAC,
   LONGPRESS_MS,
-  BUILD_MS,
   SALVAGE_MS,
   CLEAR_MS,
   COMBAT_ACTIVE_RADIUS_TILES,
@@ -43,6 +42,7 @@ import { ORDER_META, isOrderQueued, orderTargetId, toggleOrder } from '../system
 import { harvestAnimMotion } from '../systems/nodeDefs';
 import { rollLoot } from '../systems/loot';
 import { objectAsDefender } from '../systems/combat';
+import { buildTimeFor } from '../systems/buildTime';
 import { hurtboxTiles, DEFAULT_HURTBOX } from '../systems/hurtbox';
 import type { DayPhase } from '../systems/daynight';
 import type { GameTestApi } from '../entities/testTypes';
@@ -1541,8 +1541,9 @@ export class GameScene extends Phaser.Scene {
       this.player.body.setVelocity(0, 0);
       this.playerChar.faceTile(site.col, site.row); // face the blueprint while building it
       site.progress += delta;
-      site.rect.setAlpha(0.35 + 0.55 * Math.min(1, site.progress / BUILD_MS));
-      if (site.progress >= BUILD_MS) {
+      const total = buildTimeFor(BUILDABLES[site.buildableId]); // per-def time, else BUILD_MS
+      site.rect.setAlpha(0.35 + 0.55 * Math.min(1, site.progress / total));
+      if (site.progress >= total) {
         this.buildManager.finishSite(site);
         this.completeCurrent();
       }

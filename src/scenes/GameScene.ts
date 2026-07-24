@@ -608,6 +608,8 @@ export class GameScene extends Phaser.Scene {
     this.buildManager = new BuildManager(this, {
       getPlayerSprite: () => this.player,
       playerTile: () => this.playerChar.tile(),
+      playerFacing: () => this.playerChar.lastFacing,
+      isLineTool: () => this.lineTool,
       isBlocked: (col, row) => this.isBlocked(col, row),
       hasBlockingTree: (col, row) => this.resourceNodeManager.hasBlockingNode(col, row),
       dims: () => this.gridDims,
@@ -1940,6 +1942,9 @@ export class GameScene extends Phaser.Scene {
    *  already clears any in-flight run in BuildManager. */
   private onLineToolToggle({ on }: { on: boolean }): void {
     this.lineTool = on;
+    // Hide the single idle ghost while the tool is armed (its run-ghost pool owns the preview) and bring
+    // it back when disarmed — parkGhost reads the flag we just set.
+    this.buildManager.refreshHoverGhost();
     this.game.events.emit('build:lineToolChanged', this.lineTool);
   }
 

@@ -21,6 +21,7 @@ import {
   YIELD_ICON_START_OFFSET,
   YIELD_FLOAT_RISE_PX,
   YIELD_FLOAT_MS,
+  YIELD_FADE_MS,
   YIELD_POP_MS,
   COLORS,
 } from '../../config';
@@ -339,14 +340,24 @@ export class NodeFxManager {
         .setDepth(15); // above world/actors (≤9) + node bands + the salvage progress bar (12): a transient celebration
       const restScale = icon.scale; // setDisplaySize fixed scaleX===scaleY; the pop eases up to this
       const entry = this.track(icon);
-      // Rise-and-fade: drift straight up while fading to nothing, then free the clone.
+      // Rise: drift straight up over the whole life, easing out (fast off the node, settling as it goes).
       entry.tweens.push(
         this.scene.tweens.add({
           targets: icon,
           y: topY - YIELD_FLOAT_RISE_PX,
-          alpha: { from: 1, to: 0 },
           duration: YIELD_FLOAT_MS,
           ease: 'Quad.easeOut',
+        }),
+      );
+      // Fade: hold full opacity, then fade out only over the LAST YIELD_FADE_MS (a delayed fade like
+      // the tree-fell clone) so the icon stays readable instead of dimming the moment it appears. This
+      // tween ends the transient — it finishes at YIELD_FLOAT_MS, last of the trio.
+      entry.tweens.push(
+        this.scene.tweens.add({
+          targets: icon,
+          alpha: 0,
+          delay: Math.max(0, YIELD_FLOAT_MS - YIELD_FADE_MS),
+          duration: YIELD_FADE_MS,
           onComplete: () => this.endTransient(entry),
         }),
       );

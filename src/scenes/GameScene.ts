@@ -9,6 +9,7 @@ import {
   CAMPFIRE_FEED_INTERVAL_MS,
   WORKBENCH_REPAIR_INTERVAL_MS,
   WORKBENCH_REPAIR_PER_TICK,
+  CRAFT_DAMAGED_MIN_FRAC,
   LONGPRESS_MS,
   BUILD_MS,
   SALVAGE_MS,
@@ -21,6 +22,7 @@ import {
 } from '../config';
 import { ITEMS } from '../data/items';
 import { BUILDABLES } from '../data/buildables';
+import { RECIPES } from '../data/recipes';
 import { iconKey } from '../data/tileset';
 import { Inventory } from '../systems/Inventory';
 import { BaseSupply } from '../systems/baseSupply';
@@ -979,6 +981,7 @@ export class GameScene extends Phaser.Scene {
       damageWall: (i, amount) => testApi.damageWall(i, amount),
       workbenches: () => testApi.workbenches(),
       damageWorkbench: (i, amount) => testApi.damageWorkbench(i, amount),
+      itemCount: (id) => this.inv.get(id),
       enemyHps: () => testApi.enemyHps(),
       nodes: () => testApi.nodes(),
       setNodeProgress: (id, ms) => testApi.setNodeProgress(id, ms),
@@ -1188,6 +1191,7 @@ export class GameScene extends Phaser.Scene {
     deconstruct: (a) => this.runDeconstruct(a),
     rearm: (a) => this.runRearm(a),
     repair: (a, delta) => this.runRepair(a, delta),
+    craft: (a, delta) => this.runCraft(a, delta),
     clear: (a, delta) => this.runClear(a, delta),
   };
 
@@ -1204,6 +1208,7 @@ export class GameScene extends Phaser.Scene {
       if (!this.pathTo({ col: a.col, row: a.row })) this.completeCurrent();
     },
     repair: (a) => this.beginRepair(a),
+    craft: (a) => this.beginCraft(a),
     harvest: (a) => this.beginHarvest(a),
     refuel: (a) => this.beginRefuel(a),
     deconstruct: (a) => this.beginDeconstruct(a),
@@ -1292,6 +1297,25 @@ export class GameScene extends Phaser.Scene {
     // the order. (A wall id on the player queue also resolves to no bench here → dropped — walls are
     // the companion's job, plan 042.)
     if (!b || b.state.hp >= b.state.maxHp) return this.completeCurrent();
+    // Stand on any tile adjacent to the bench's foot tile (it blocks its own tile, like the fire/wall).
+    const stand = reachableAdjacent(
+      this.playerChar.tile(),
+      { col: b.col, row: b.row },
+      this.isBlocked,
+      this.gridDims,
+    );
+    if (!stand || !this.pathTo(stand)) this.completeCurrent();
+  }
+
+  private beginCraft(a: Extract<Action, { kind: 'craft' }>): void {
+    const b = this.workbench.benchById(a.benchId);
+    const recipe = RECIPES[a.recipeId];
+    if (!b || !recipe) return this.completeCurrent(); // bench gone / unknown recipe — drop the order
+    // Start (or resume) the craft record on the bench. A different recipe mid-craft on this bench
+    // shouldn't happen (crafts are sequential), but defensively restart fresh for THIS recipe — the
+    // progress lives on the bench so a walk-away + re-queue of the same recipe picks up where it left off.
+    if (!b.state.craft || b.state.craft.recipeId !== a.recipeId)
+      b.state.craft = { recipeId: a.recipeId, progress: 0 };
     // Stand on any tile adjacent to the bench's foot tile (it blocks its own tile, like the fire/wall).
     const stand = reachableAdjacent(
       this.playerChar.tile(),
@@ -1556,6 +1580,47 @@ export class GameScene extends Phaser.Scene {
       if (this.chopElapsed >= WORKBENCH_REPAIR_INTERVAL_MS) {
         this.chopElapsed = 0;
         if (this.workbench.repair(a.structureId, WORKBENCH_REPAIR_PER_TICK)) this.completeCurrent();
+      }
+    }
+  }
+
+  /**
+   * Craft a recipe at a workbench (plan 048 Step 6): walk to the stand tile (set in beginCraft), then
+   * accumulate craft progress on the bench's `craft` record — the rate SCALED by the bench's current hp
+   * (`Linear(CRAFT_DAMAGED_MIN_FRAC, 1, hp/maxHp)`, so a full-hp bench crafts at 1× and a near-dead one
+   * at the {@link CRAFT_DAMAGED_MIN_FRAC} floor, never fully stalling). A timed progress-accumulator like
+   * {@link runBuild}/{@link runClear} (progress lives on the bench, so a walk-away + re-queue resumes),
+   * with an above-bench progress bar (à la the salvage/clear bar). On reaching `recipe.craftMs`: SPEND
+   * `recipe.cost` + ADD `recipe.output` to the bag, then END the order. Deliberately checked at
+   * COMPLETION (not begin — materials may be gathered mid-craft): if the cost is unaffordable OR the
+   * output won't fit the bag at that moment, the craft FIZZLES (no spend, no item, a bench flash) rather
+   * than stalling. If the bench vanished mid-craft (a mob destroyed it), drop the order.
+   */
+  private runCraft(a: Extract<Action, { kind: 'craft' }>, delta: number): void {
+    const b = this.workbench.benchById(a.benchId);
+    const recipe = RECIPES[a.recipeId];
+    if (!b || !recipe) return this.completeCurrent(); // bench destroyed mid-craft / bad recipe — drop
+    if (this.playerChar.advancePath()) {
+      this.player.body.setVelocity(0, 0);
+      this.playerChar.faceTile(b.col, b.row); // face the bench while working it
+      this.harvestSwing = 'gather'; // the work-the-bench loop reads as the rummage/gather motion
+      const craft = (b.state.craft ??= { recipeId: a.recipeId, progress: 0 });
+      const rate = Phaser.Math.Linear(CRAFT_DAMAGED_MIN_FRAC, 1, b.state.hp / b.state.maxHp);
+      craft.progress += delta * rate;
+      this.nodeFx.showActionProgress(b.sprite, Math.min(1, craft.progress / recipe.craftMs));
+      if (craft.progress >= recipe.craftMs) {
+        this.nodeFx.hideActionProgress(b.sprite);
+        b.state.craft = null;
+        if (
+          this.inv.canAfford(recipe.cost) &&
+          this.inv.canAccept(recipe.output.itemId, recipe.output.count)
+        ) {
+          this.inv.spend(recipe.cost);
+          this.inv.add(recipe.output.itemId, recipe.output.count);
+        } else {
+          this.workbench.flashFizzle(b.id); // unaffordable / bag full at completion — fizzle, no item
+        }
+        this.completeCurrent();
       }
     }
   }

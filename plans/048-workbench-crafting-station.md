@@ -194,7 +194,7 @@ queued station task over `craftMs`" — exactly the worker-order model here.
     exact brand/bow/sword shape), NOT load-time (that's reserved for external JSON like nodeDefs). All
     required item ids + the workbench buildable confirmed present. `npm test` (974 tests) + build green.
 
-- [ ] **Step 6: `craft` worker order (HP-scaled)** `[inline]`
+- [x] **Step 6: `craft` worker order (HP-scaled)** `[inline]`
   - `src/systems/tasks.ts`: add `{ kind:'craft', benchId, recipeId }` to `Action`. `src/systems/orders.ts`:
     `orderTargetId` → `benchId`; `ORDER_META.craft` (`highlight:'structure'`, `dedupeOnEnqueue:false`
     — several crafts may queue). Extend `orders.test.ts` exhaustively. GameScene `begin`/`run`: walk
@@ -206,6 +206,18 @@ queued station task over `craftMs`" — exactly the worker-order model here.
     is one `ORDER_META` entry + the scene handlers.
   - Done when: a queued craft at a healthy bench delivers the item; a damaged bench is visibly slower;
     unit + build green.
+  - Outcome: `craft` Action `{ benchId, recipeId }` added (tasks.ts); `orderTargetId`→`benchId` +
+    `ORDER_META.craft` (`highlight:'structure'`, `dedupeOnEnqueue:false` — appends like build so several
+    crafts stack); `orders.test.ts` extended (craft target-id, noDedupe now `[build,craft,move]`, a
+    craft-specific describe). GameScene `beginCraft`/`runCraft` wired into the begin/run tables: walk
+    adjacent, accumulate `bench.state.craft.progress` at rate `Linear(CRAFT_DAMAGED_MIN_FRAC,1,hp/maxHp)`
+    with an above-bench progress bar (nodeFx, cleaned up by beginCurrent's blanket chokepoint on
+    interrupt); at `craftMs` spend cost + add output, or **fizzle** (new `WorkbenchBehavior.flashFizzle`
+    red flash) if unaffordable/bag-full at completion. Progress persists on the bench (walk-away + same
+    recipe re-queue resumes). Added an `itemCount(id)` DEV seam (Inventory.get) + harness wrapper for the
+    craft proof. e2e (`workbench.spec.ts`, +2 tests): a healthy bench delivers brand + spends the cost;
+    a crippled bench (hp 5/60) is unfinished in the healthy 9s window but still completes later (floors,
+    never stalls). Build + 975 unit + 4 workbench e2e green.
 
 - [ ] **Step 7: HUD craft menu + tests + docs** `[inline]`
   - Tapping a workbench opens a **recipe list** (a drawer/sheet like `PackDrawer`): each recipe shows

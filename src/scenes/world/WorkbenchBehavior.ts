@@ -186,6 +186,18 @@ export class WorkbenchBehavior implements StructureBehavior {
     b.sprite.setTint(Phaser.Display.Color.GetColor(c.r, c.g, c.b));
   }
 
+  /** Brief red flash on a bench — the "craft fizzled" feedback (recipe unaffordable / bag full at
+   *  completion, plan 048 Step 6). Restores the current HP-stage damage tint afterward so it doesn't
+   *  clobber the damage wash. No-op on a gone/destroyed bench. */
+  flashFizzle(id: string): void {
+    const b = this.benchById(id);
+    if (!b) return;
+    b.sprite.setTint(0xb23b3b);
+    this.scene.time.delayedCall(150, () => {
+      if (b.sprite.active) this.applyDamageTint(b);
+    });
+  }
+
   /** Remove a destroyed bench (mob kill): free its tile NOW (pathing/occupancy open immediately) + drop
    *  it from the collection + repath, then fade the sprite out and self-destroy it. No crumble sheet
    *  (plan 048 Step 3) and no refund — a kill is not a player unbuild. */

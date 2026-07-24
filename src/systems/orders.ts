@@ -37,6 +37,8 @@ export function orderTargetId(a: Action): string | null {
       return a.trapId;
     case 'repair':
       return a.structureId;
+    case 'craft':
+      return a.benchId;
     case 'move':
       return null;
   }
@@ -74,6 +76,9 @@ export const ORDER_META: Record<Action['kind'], OrderMeta> = {
   deconstruct: { highlight: 'structure', dedupeOnEnqueue: true },
   rearm: { highlight: 'structure', dedupeOnEnqueue: true },
   repair: { highlight: 'structure', dedupeOnEnqueue: true },
+  // Craft does NOT de-dupe (like build): several crafts of the SAME recipe at the SAME bench may queue
+  // up (craft three swords), so enqueuing must APPEND, not toggle a same-target duplicate off.
+  craft: { highlight: 'structure', dedupeOnEnqueue: false },
 };
 
 /** Two orders address the same work: same kind AND same (non-null) target id. Never true for a

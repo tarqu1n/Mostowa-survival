@@ -131,6 +131,9 @@ export interface GameTestApi {
   /** DEV/test-only: damage the workbench at `index` by `amount` (WorkbenchBehavior.takeDamage — the
    *  path a bashing mob drives). Returns whether the blow destroyed it; false if none at that index. */
   damageWorkbench(index: number, amount: number): boolean;
+  /** DEV/test-only: the player's aggregate count of item `id` in the pack (Inventory.get) — the read
+   *  seam a spec asserts a crafted item arrived / a cost was spent against (plan 048). */
+  itemCount(id: string): number;
   /** DEV/test-only: live enemies' current HP, spec order (plan 037 2c) — lets the enemy-attack spec
    *  watch a mob's HP fall to a spiked wall's thorns. NOT part of DebugState (no golden bump). */
   enemyHps(): number[];

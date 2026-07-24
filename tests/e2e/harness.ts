@@ -261,6 +261,12 @@ export function damageWorkbench(page: Page, index: number, amount: number): Prom
   );
 }
 
+/** The player's aggregate count of item `id` in the pack (Inventory.get, plan 048) — assert a crafted
+ *  item arrived / a cost was spent. */
+export function itemCount(page: Page, id: string): Promise<number> {
+  return page.evaluate((i) => (window as any).game.__test.itemCount(i), id);
+}
+
 /** Live enemies' current HP, spec order (plan 037 2c) — lets the enemy-attack spec watch a mob's HP
  *  fall to a spiked wall's thorns. NOT part of DebugState. */
 export function enemyHps(page: Page): Promise<number[]> {

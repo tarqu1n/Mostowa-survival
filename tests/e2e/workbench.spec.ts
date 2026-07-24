@@ -7,6 +7,7 @@ import {
   blocked,
   workbenches,
   damageWorkbench,
+  itemCount,
   enqueue,
 } from './harness';
 
@@ -41,38 +42,42 @@ test('a mob walled off by a workbench bashes it, destroys it, then reaches the p
     workbenches: [[FRONTIER.col, FRONTIER.row]],
     enemies: [{ at: [13, 10], id: 'boar', mode: 'chase' }],
   });
-  // Pre-damage the bench low (maxHp 60) so a lethal break is observable within the step budget — the
-  // point of THIS test is the mob→bench damage + destruction wiring, not felling a full 60 HP.
-  expect(await damageWorkbench(page, 0, 55)).toBe(false); // hp 60 → 5, not destroyed
-  await step(page, 500); // let the ring build anims settle
+  await step(page, 500); // let the ring build anims settle + the mob close on the frontier bench
 
-  let benches = await workbenches(page);
-  expect(benches.length).toBe(1);
-  const bench0 = benches[0];
-  expect(bench0.hp).toBeGreaterThan(0);
-  expect(bench0.hp).toBeLessThan(bench0.maxHp); // the pre-damage landed
+  const bench0 = (await workbenches(page))[0];
+  expect(bench0).toBeTruthy();
+  expect(bench0.hp).toBe(bench0.maxHp); // starts intact
   expect(await blocked(page, FRONTIER.col, FRONTIER.row)).toBe(true); // bench blocks its tile
   expect((await state(page)).playerHp).toBe(10); // walled off — not yet reachable
 
-  // Drive in slices: the bench's HP falls to the mob's bashes, it is destroyed (gone + tile freed), and
-  // only THEN does the player start taking bites — never before the bench breaks.
+  // Phase 1 — the mob DAMAGES the bench over time (the HP path, not instant removal): drive slices
+  // until a sampled reading shows the bench chipped below max while still standing.
   let benchDamaged = false;
+  for (let i = 0; i < 40 && !benchDamaged; i++) {
+    await step(page, 400);
+    const b = (await workbenches(page))[0];
+    if (b && b.hp < b.maxHp) benchDamaged = true;
+  }
+  expect(benchDamaged).toBe(true); // a night mob adjacent to the bench damaged it
+  expect((await state(page)).playerHp).toBe(10); // still walled off while the bench stands
+
+  // Phase 2 — destruction + ordering: knock the already-chipped bench to the brink, then let the mob
+  // land the finishing blow. The player must stay unharmed until the bench is GONE (never reachable
+  // through a standing bench), then get bitten once its tile frees.
+  const b1 = (await workbenches(page))[0];
+  expect(await damageWorkbench(page, 0, b1.hp - 1)).toBe(false); // leave 1 hp — not destroyed yet
   let benchGone = false;
   let hurtBeforeBreak = false;
   let playerHurt = false;
   for (let i = 0; i < 60 && !playerHurt; i++) {
     await step(page, 400);
-    benches = await workbenches(page);
-    const b = benches[0];
-    if (b && b.hp < bench0.hp) benchDamaged = true;
-    if (!b) benchGone = true;
+    if ((await workbenches(page)).length === 0) benchGone = true;
     const hp = (await state(page)).playerHp;
     if (hp < 10 && !benchGone) hurtBeforeBreak = true;
     if (hp < 10) playerHurt = true;
   }
 
-  expect(benchDamaged).toBe(true); // the mob chipped the bench over time (HP path, not instant)
-  expect(benchGone).toBe(true); // …then a lethal blow destroyed it
+  expect(benchGone).toBe(true); // a lethal blow destroyed the bench
   expect(await blocked(page, FRONTIER.col, FRONTIER.row)).toBe(false); // its tile freed for pathing
   expect(hurtBeforeBreak).toBe(false); // the player was never reachable while the bench stood
   expect(playerHurt).toBe(true); // once broken, the mob routed through and bit the player
@@ -114,4 +119,64 @@ test('a player repair order mends a damaged workbench back to full HP', async ({
 
   expect(mended).toBe(true); // the queued repair restored the bench to full HP
   expect((await workbenches(page))[0].hp).toBe(maxHp);
+});
+
+test('a queued craft at a healthy bench delivers the item to the pack (spending the cost)', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await startGame(page);
+  // Player adjacent to a full-hp bench, holding the brand recipe cost (wood + cloth) plus spare.
+  const { workbenchIds } = await applyScenario(page, {
+    player: PLAYER,
+    workbenches: [[FRONTIER.col, FRONTIER.row]],
+    inventory: { wood: 3, cloth: 3 },
+  });
+  expect(await itemCount(page, 'brand')).toBe(0);
+
+  await enqueue(page, { kind: 'craft', benchId: workbenchIds[0], recipeId: 'brand' });
+
+  // Drive step() until the brand arrives (walk-adjacent is trivial — already adjacent — then ~craftMs
+  // of work at full-hp 1× rate). Budget well over CRAFT_BASE_MS (8s).
+  let crafted = false;
+  for (let i = 0; i < 40 && !crafted; i++) {
+    await step(page, 500);
+    if ((await itemCount(page, 'brand')) >= 1) crafted = true;
+  }
+
+  expect(crafted).toBe(true); // the brand was delivered to the pack
+  expect(await itemCount(page, 'brand')).toBe(1);
+  expect(await itemCount(page, 'wood')).toBe(2); // brand cost 1 wood…
+  expect(await itemCount(page, 'cloth')).toBe(2); // …+ 1 cloth, spent at completion
+  expect((await workbenches(page))[0].crafting).toBe(false); // craft cleared on completion
+});
+
+test('a damaged bench crafts slower than a healthy one, but never fully stalls', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await startGame(page);
+  const { workbenchIds } = await applyScenario(page, {
+    player: PLAYER,
+    workbenches: [[FRONTIER.col, FRONTIER.row]],
+    inventory: { wood: 3, cloth: 3 },
+  });
+  // Cripple the bench (maxHp 60 → 5). Its craft rate = Linear(0.4, 1, 5/60) ≈ 0.45×, so brand takes
+  // ~CRAFT_BASE_MS/0.45 ≈ 17.8s vs 8s at full HP.
+  expect(await damageWorkbench(page, 0, 55)).toBe(false);
+  await enqueue(page, { kind: 'craft', benchId: workbenchIds[0], recipeId: 'brand' });
+
+  // After a window that a HEALTHY bench would have finished in (9s > 8s craftMs) but a crippled one
+  // would NOT (needs ~17.8s), the damaged craft is still in flight — no brand yet, still crafting.
+  await step(page, 9000);
+  expect(await itemCount(page, 'brand')).toBe(0); // slower — not done in the healthy-bench window
+  expect((await workbenches(page))[0].crafting).toBe(true); // …but still progressing (not stalled)
+
+  // Given more time it DOES complete — the rate floors at CRAFT_DAMAGED_MIN_FRAC, never zero.
+  let crafted = false;
+  for (let i = 0; i < 40 && !crafted; i++) {
+    await step(page, 500);
+    if ((await itemCount(page, 'brand')) >= 1) crafted = true;
+  }
+  expect(crafted).toBe(true); // a damaged bench still finishes eventually
 });

@@ -12,6 +12,7 @@ export type Action =
   | { kind: 'deconstruct'; wallId: string } // path adjacent to the wall, remove it + refund (plan 037 2b)
   | { kind: 'rearm'; trapId: string } // path adjacent to the spent trap, re-prime it (plan 040)
   | { kind: 'repair'; structureId: string } // path adjacent to a damaged structure, mend it on a cadence (wall: companion, plan 042 Step 5; workbench: player, plan 048 Step 4)
+  | { kind: 'craft'; benchId: string; recipeId: string } // path adjacent to a workbench, work a recipe over time (HP-scaled), deliver the item (plan 048 Step 6)
   | { kind: 'clear'; treeId: string }; // path adjacent to a depleted oneShot node, clear the husk to free the tile (plan 047)
 
 /** Queue holding a current action and pending actions for a worker. */

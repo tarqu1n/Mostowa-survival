@@ -23,6 +23,7 @@ import { Hotbar } from './components/Hotbar';
 import { CommandBar } from './components/CommandBar';
 import type { CommandBarMode } from './components/CommandBar';
 import { BuildCatalog } from './components/BuildCatalog';
+import { LineToolFab } from './components/LineToolFab';
 import { PackDrawer } from './components/PackDrawer';
 import { StatusDrawer } from './components/StatusDrawer';
 import { InspectCard } from './components/InspectCard';
@@ -130,6 +131,10 @@ function ActionLayer() {
 
   return (
     <div className="absolute inset-x-0 bottom-0 flex flex-col items-stretch gap-1.5 px-2 pb-2">
+      {/* Build line-tool FAB (plan 050 Step 6) — right-aligned at the top of the thumb cluster, shown
+          only in build mode. Toggles the run-paint gesture; the CommandBar's build morph below carries
+          the rest of the placement controls (Rotate/Place/Demolish/Cancel). */}
+      {buildMode && <LineToolFab />}
       <div className="flex justify-center">
         <Hotbar />
       </div>

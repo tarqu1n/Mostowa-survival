@@ -186,7 +186,8 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
   - Done when: unit tests cover axis-lock (row vs column), dedupe, affordable-subset cutoff, and eta;
     building a run spends no resources.
 
-- [ ] **Step 6: Line-tool toggle + straight-line drag paint (input)** `[inline]`
+- [x] **Step 6: Line-tool toggle + straight-line drag paint (input)** `[inline]`
+  - Outcome: `lineTool` flag lives on `GameScene` (source of truth), read by `PointerInputController` via new `isLineTool()` dep (mirrors `isBuildMode`). New deps `onBuildRunBegin`/`onBuildRunExtend` → `BuildManager.beginRun`/`extendRun` (pointer→tile via `worldToTile`). Armed build-mode gesture: down→beginRun, move→`paintRunAt` (per-gesture `runExtendedThisGesture` Set dedupes new tiles, mirrors `paintedThisGesture`; returns before pan classifier), up→ends gesture, run stays pending (no commit). Tool-off = byte-for-byte Step-3 path. New `build:lineTool {on}` inbound + `build:lineToolChanged` outbound (`bridge.ts`/`store.ts`); new `LineToolFab.tsx` in `GameHud` ActionLayer, gated on `buildMode`, fires on pointerdown, mirrors store state. Pinch checked first, movepad gate applies. typecheck clean, 1009 unit pass, smoke pass. Note for Step 7: an armed single tap begins a length-1 pending run (committed via the commit bar).
   - Add a **line-tool toggle** FAB to the build thumb zone (new `InboundEvent` `build:lineTool` {on} +
     `wireBus` row + a flag). When build mode + tool armed: `pointerdown` → `onBuildRunBegin`;
     `pointermove` → `onBuildRunExtend` painting each new tile via a per-gesture `Set` mirroring

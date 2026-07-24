@@ -92,6 +92,10 @@ export interface HudState {
   tasks: TaskSummary;
   mode: HudMode;
   buildMode: boolean;
+  /** Whether the Blueprint-Mode line tool is armed (plan 050 Step 6). While true, a build-mode drag
+   *  paints an axis-locked run of blueprints; the build-thumb-zone FAB reflects this. Mirrors the
+   *  game's `build:lineToolChanged` (the game owns the flag; the FAB is a pure mirror). */
+  lineTool: boolean;
   /** Currently selected buildable id, or `null` when nothing is selected. */
   selection: string | null;
   /** Whether {@link selection} can be rotated at placement (derived from `BUILDABLES`). */
@@ -154,6 +158,8 @@ export interface HudActions {
   setTasks(tasks: TaskSummary): void;
   setMode(mode: HudMode): void;
   setBuildMode(on: boolean): void;
+  /** Mirror the build line-tool armed/off flag (from `build:lineToolChanged`). */
+  setLineTool(on: boolean): void;
   /** Select a buildable (or `null` to clear). Recomputes {@link HudState.orientable} from data. */
   setSelection(id: string | null): void;
   setDemolishMode(on: boolean): void;
@@ -209,6 +215,7 @@ const initialState: HudState = {
   tasks: { current: null, pending: 0 },
   mode: 'command',
   buildMode: false,
+  lineTool: false,
   selection: null,
   orientable: false,
   demolishMode: false,
@@ -247,6 +254,7 @@ export const useHudStore = create<HudState & HudActions>()(
     setTasks: (tasks) => set({ tasks }),
     setMode: (mode) => set({ mode }),
     setBuildMode: (buildMode) => set({ buildMode }),
+    setLineTool: (lineTool) => set({ lineTool }),
     setSelection: (selection) =>
       set({
         selection,

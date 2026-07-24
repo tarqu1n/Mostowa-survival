@@ -130,6 +130,14 @@ export class GameScene extends Phaser.Scene {
   // queue (mirrors build mode). The DOM HUD mirrors it via `demolish:modeChanged` for the DEMOLISH button.
   private demolishMode = false;
 
+  // Blueprint-Mode line tool (plan 050 Step 6): while armed, a build-mode drag paints an axis-locked
+  // straight run of blueprint ghosts (BuildManager's Step-5 run API) instead of the tool-off Step-3
+  // tap-place-on-up / drag-pans behaviour. The HUD FAB is the source of truth via the `build:lineTool`
+  // inbound event (onLineToolToggle sets this + echoes `build:lineToolChanged` so the FAB reflects it);
+  // PointerInputController reads it through the `isLineTool` dep. Persists across a build-mode toggle
+  // (the FAB only shows in build mode); reset to false on a death-restart (resetState + buildWorld resync).
+  private lineTool = false;
+
   // Guard-point placement (plan 042 Step 9): armed by the companion assignment menu's "Guard here"
   // option, it makes the NEXT command-mode world tap set the companion's guard tile (and its night
   // posture to `guard`), then disarms — the arm→place→disarm shape build placement uses. A tap back
@@ -365,6 +373,7 @@ export class GameScene extends Phaser.Scene {
     this.nodeFx.reset();
     this.mode = 'command';
     this.demolishMode = false; // a death-restart starts clear of demolish mode (HUD resynced in buildWorld)
+    this.lineTool = false; // …and clear of the build line tool (plan 050 Step 6; HUD resynced in buildWorld)
     this.placingGuardPoint = false; // …and clear of any half-armed guard-point placement (plan 042 Step 9)
     // baseSupply is (re)constructed fresh in buildWorld (like the shared Inventory), so a death-restart
     // starts with an empty pool without an explicit reset here — see plan 042 Step 3.
@@ -731,6 +740,20 @@ export class GameScene extends Phaser.Scene {
       onBuildDown: (pointer) => this.buildManager.updateGhost(pointer),
       onBuildMove: (pointer) => this.buildManager.updateGhost(pointer),
       onBuildUp: (pointer) => this.buildManager.placeOrEnqueueBuild(pointer),
+      // Line tool (plan 050 Step 6): while armed, a build-mode drag paints an axis-locked run of ghosts
+      // via BuildManager's Step-5 run API (begin at the anchor tile, extend to each new drag tile). The
+      // controller converts the pointer to a tile the same way the ghost does (worldToTile).
+      isLineTool: () => this.lineTool,
+      onBuildRunBegin: (pointer) =>
+        this.buildManager.beginRun({
+          col: worldToTile(pointer.worldX),
+          row: worldToTile(pointer.worldY),
+        }),
+      onBuildRunExtend: (pointer) =>
+        this.buildManager.extendRun({
+          col: worldToTile(pointer.worldX),
+          row: worldToTile(pointer.worldY),
+        }),
       getMode: () => this.mode,
       // The DOM movepad (plan 046 Step 10) sets the `movepadHeld` registry flag through the HUD bridge;
       // read it here (was `this.ui.isMovepadHeld()`, the retired Phaser CombatControls movepad) so world
@@ -862,6 +885,9 @@ export class GameScene extends Phaser.Scene {
     // Demolish mode: re-emit the reset value (false) so the DEMOLISH button/hint don't linger toggled
     // from the prior run (plan 037 2b).
     this.game.events.emit('demolish:modeChanged', this.demolishMode);
+    // Line tool: re-emit the reset value (false) so the build FAB doesn't linger armed from the prior
+    // run (plan 050 Step 6).
+    this.game.events.emit('build:lineToolChanged', this.lineTool);
     // Seed the base-supply readout with this (re)start's pool (fresh = 0/0) so it reflects this run
     // (plan 042 Step 3).
     this.game.events.emit('supply:changed', this.baseSupply.snapshot());
@@ -885,6 +911,7 @@ export class GameScene extends Phaser.Scene {
       ['build:rotate', this.buildManager.rotatePlacement, this.buildManager],
       ['build:select', this.onBuildSelect, this],
       ['build:modeChanged', this.onBuildModeChanged, this], // turn demolish off when build turns on (plan 037 2b)
+      ['build:lineTool', this.onLineToolToggle, this], // FAB armed/off → flip the run-paint flag (plan 050 Step 6)
       ['demolish:toggle', this.onDemolishToggle, this],
       ['tasks:cancel', this.cancelAll, this],
       ['debug:randomise', this.devWorldTools.randomiseWorld, this.devWorldTools], // dev menu: scatter nodes + enemies
@@ -1868,6 +1895,16 @@ export class GameScene extends Phaser.Scene {
    *  own build mode, so this closes the loop without them knowing demolish exists). */
   private onBuildModeChanged(active: boolean): void {
     if (active && this.demolishMode) this.setDemolishMode(false);
+  }
+
+  /** Arm/disarm the build line tool (plan 050 Step 6) — the HUD FAB's `build:lineTool {on}`. Flips the
+   *  flag PointerInputController reads (`isLineTool`) and echoes `build:lineToolChanged` so the FAB's
+   *  armed/off highlight mirrors the true state (same round-trip demolish/build mode use). Purely a
+   *  gesture-mode switch: no queue/run side effects here — leaving build mode / changing selection
+   *  already clears any in-flight run in BuildManager. */
+  private onLineToolToggle({ on }: { on: boolean }): void {
+    this.lineTool = on;
+    this.game.events.emit('build:lineToolChanged', this.lineTool);
   }
 
   // --- Companion assignment (plan 042 Step 9) — the SHARED setter path the assignment menu AND the

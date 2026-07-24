@@ -82,6 +82,7 @@ export type InboundEvent =
   | { type: 'build:toggle' }
   | { type: 'build:select'; payload: BuildSelectPayload }
   | { type: 'build:rotate' }
+  | { type: 'build:lineTool'; payload: { on: boolean } }
   | { type: 'demolish:toggle' }
   | { type: 'tasks:cancel' }
   | { type: 'zoom:delta'; payload: number }
@@ -178,6 +179,9 @@ export function initBridge(bus: EventBus, registry: Registry): Bridge {
     if (m !== 'inspect') store.setInspect(null);
   });
   on<boolean>('build:modeChanged', (on) => store.setBuildMode(on));
+  // Build line-tool armed/off (plan 050 Step 6) — the game echoes this back after handling the FAB's
+  // `build:lineTool`, so the FAB's highlight is a pure mirror of the true flag (like build/demolish mode).
+  on<boolean>('build:lineToolChanged', (on) => store.setLineTool(on));
   on<BuildSelectPayload>('build:select', (p) => store.setSelection(p.id));
   on<boolean>('demolish:modeChanged', (on) => store.setDemolishMode(on));
   on<boolean>('combat:activeChanged', (on) => store.setCombatActive(on));

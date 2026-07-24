@@ -35,6 +35,18 @@ export interface PointerInputDeps {
    *  pointer). Called by {@link PointerInputController} ONLY when the gesture never became a drag —
    *  a drag pans instead and never places (plan 050 Step 3). */
   onBuildUp(pointer: Phaser.Input.Pointer): void;
+  /** True while the build-mode **line tool** is armed (plan 050 Step 6). When armed, a build-mode drag
+   *  PAINTS an axis-locked straight run of ghosts ({@link onBuildRunBegin}/{@link onBuildRunExtend})
+   *  instead of the tool-off Step 3 tap-place-on-up / drag-pans behaviour. Mirrors {@link isBuildMode}:
+   *  a scene closure over the flag `build:lineTool` flips. */
+  isLineTool(): boolean;
+  /** Line-tool pointerdown: BEGIN the pending run at the anchor tile under the pointer (renders the
+   *  anchor ghost). No spend, no blueprint — the run stays pending (commit is a later step). */
+  onBuildRunBegin(pointer: Phaser.Input.Pointer): void;
+  /** Line-tool pointermove: EXTEND/redraw the pending run out to the tile under the pointer. Called by
+   *  {@link PointerInputController} once per NEW tile the drag visits (a per-gesture dedupe Set mirrors
+   *  the command-mode {@link onPaint} pattern), never every frame on the same tile. */
+  onBuildRunExtend(pointer: Phaser.Input.Pointer): void;
   /** Current input mode ('command'/'combat'/'inspect') — gates tap/paint/inspect dispatch. */
   getMode(): 'command' | 'combat' | 'inspect';
   /** True while a finger is held on the combat movepad. While it is, map order dispatch (tap-to-move,
@@ -74,6 +86,7 @@ export class PointerInputController {
   private pressStart = 0; // scene-clock time of the current pointer press (for hold detection)
   private queuePainting = false; // once a hold crosses LONGPRESS_MS, dragging paints queue orders
   private paintedThisGesture = new Set<string>(); // tile keys already queued in the current gesture
+  private runExtendedThisGesture = new Set<string>(); // tile keys already run-extended this line-tool gesture (plan 050 Step 6)
   private pinching = false; // a second pointer went down — the gesture is a pinch-zoom, not a tap
   private pinchDist = 0; // previous frame's inter-pointer distance, for the zoom delta ratio
   private isPanning = false; // this gesture dragged the camera rather than issuing an order
@@ -101,6 +114,7 @@ export class PointerInputController {
    *  scenario reset mirrors what a fresh create() would start with (see GameScene.testResetWorld). */
   clearPaintedTiles(): void {
     this.paintedThisGesture.clear();
+    this.runExtendedThisGesture.clear();
   }
 
   // --- Input gate ------------------------------------------------------------
@@ -130,8 +144,18 @@ export class PointerInputController {
     this.pressStart = this.scene.time.now;
     this.queuePainting = false;
     this.paintedThisGesture.clear();
+    this.runExtendedThisGesture.clear();
     if (this.deps.isBuildMode()) {
-      this.deps.onBuildDown(pointer);
+      if (this.deps.isLineTool()) {
+        // Line tool armed (plan 050 Step 6): begin the pending run at this anchor tile. Record the
+        // anchor's key so a move that stays on it doesn't re-extend (beginRun already spans it).
+        this.deps.onBuildRunBegin(pointer);
+        this.runExtendedThisGesture.add(
+          tileKey(worldToTile(pointer.worldX), worldToTile(pointer.worldY)),
+        );
+      } else {
+        this.deps.onBuildDown(pointer);
+      }
     }
   }
 
@@ -143,11 +167,21 @@ export class PointerInputController {
       this.pinchDist = dist;
       return;
     }
-    // Build mode (plan 050 Step 3): keep the ghost tracking the pointer, then FALL THROUGH to the
-    // shared drag→pan classifier below so a one-finger drag past DRAG_PX pans the camera (line tool
-    // treated as off until Step 6). The command-mode queue-paint/long-press block is gated OFF for
-    // build mode (see below) so a build move can't fall into it and paint move orders under the ghost.
+    // Build mode: the line tool (checked first, below) OWNS a drag when armed. When it's OFF (Step 3),
+    // keep the ghost tracking the pointer then FALL THROUGH to the shared drag→pan classifier so a
+    // one-finger drag past DRAG_PX pans the camera. The command-mode queue-paint/long-press block is
+    // gated OFF for build mode (see below) so a build move can't fall into it and paint move orders.
     const buildMode = this.deps.isBuildMode();
+    if (buildMode && this.deps.isLineTool()) {
+      // Line tool armed (plan 050 Step 6): a build-mode drag paints an axis-locked straight run of
+      // ghosts instead of falling through to the camera-pan classifier. The movepad gate still holds
+      // (a run finger must stay inert while the other thumb drives), and `!isDown` filters hover moves.
+      // Extend once per NEW tile the drag visits — see paintRunAt (mirrors the command-mode dedupe).
+      if (this.deps.isMovepadHeld()) return;
+      if (!pointer.isDown) return;
+      this.paintRunAt(pointer);
+      return;
+    }
     if (buildMode) {
       this.deps.onBuildMove(pointer);
     } else if (this.deps.getMode() === 'combat') {
@@ -219,6 +253,14 @@ export class PointerInputController {
     // (Reset so a second leaked release also no-ops.)
     if (!this.sawPointerDown) return;
     this.sawPointerDown = false;
+    if (this.deps.isBuildMode() && this.deps.isLineTool()) {
+      // Line tool armed (plan 050 Step 6): the drag already painted the run via onBuildRunExtend; the
+      // release just ENDS the gesture — the run STAYS pending (no commit/spend; that's a later step).
+      // Reset the per-gesture dedupe Set + isPanning so the next gesture starts fresh and nothing leaks.
+      this.runExtendedThisGesture.clear();
+      this.isPanning = false;
+      return;
+    }
     if (this.deps.isBuildMode()) {
       // Build mode (plan 050 Step 3): a drag panned the camera and never places; a tap (never crossed
       // DRAG_PX → isPanning stayed false) resolves a single-tap placement here, on release, spending
@@ -259,6 +301,17 @@ export class PointerInputController {
     if (this.paintedThisGesture.has(key)) return;
     this.paintedThisGesture.add(key);
     this.deps.onPaint(pointer);
+  }
+
+  /** Extend the pending build run to the tile under the pointer, once per NEW tile per line-tool
+   *  gesture (plan 050 Step 6). Mirrors {@link paintQueueAt}: dedupe on the tile key so the same tile
+   *  isn't re-extended every frame, letting BuildManager re-project the axis-locked run only when the
+   *  drag actually reaches fresh ground. */
+  private paintRunAt(pointer: Phaser.Input.Pointer): void {
+    const key = tileKey(worldToTile(pointer.worldX), worldToTile(pointer.worldY));
+    if (this.runExtendedThisGesture.has(key)) return;
+    this.runExtendedThisGesture.add(key);
+    this.deps.onBuildRunExtend(pointer);
   }
 
   /** How many of the tracked pointers (see BootScene's addPointer) are currently held down. */

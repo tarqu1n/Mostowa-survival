@@ -8,10 +8,10 @@ import { Button } from '@/hud/ui/button';
  * Blueprint-Mode commit bar (plan 050 Step 7) — the thumb-zone bar shown while a line-tool drag has
  * painted a pending run (rendered by `GameHud`'s `ActionLayer`, gated on `buildMode` AND a non-empty
  * run). It reads the live `runTally` the game emits on every run mutation (`build:runChanged`) and
- * shows how many tiles the run will actually blueprint (`affordableCount`) of how many are placeable,
- * the affordable subset's total cost, and the serial worker ETA. Confirm commits the run
- * (`build:commitRun` → blueprint + enqueue the affordable subset, spend its cost, clear); Cancel drops
- * it with no spend (`build:cancelRun`).
+ * shows how many tiles the run will actually blueprint (`buildableCount` = the affordable-prefix ∩
+ * placeable subset a commit really places) of how many were drawn (`tileCount`), that subset's total
+ * cost, and the serial worker ETA. Confirm commits the run (`build:commitRun` → blueprint + enqueue the
+ * buildable subset, spend its cost, clear); Cancel drops it with no spend (`build:cancelRun`).
  *
  * Both buttons fire on POINTER-DOWN, not click (mirrors the combat Attack/Bow buttons + the line-tool
  * FAB — see CommandBar.onPress): a browser only synthesizes `click` for the PRIMARY pointer, so a
@@ -33,7 +33,7 @@ export function CommitBar() {
     >
       <div className="flex min-w-0 flex-1 flex-col leading-tight">
         <span className="truncate text-xs font-medium text-fg-bright">
-          {run.affordableCount} of {run.placeableCount} tiles
+          {run.buildableCount} of {run.tileCount} tiles
         </span>
         <span className="truncate text-[10px] text-fg-muted">
           {costLabel(run.totalCost)} · {etaLabel(run.etaMs)}

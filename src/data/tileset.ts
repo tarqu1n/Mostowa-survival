@@ -832,6 +832,11 @@ export const facing4FromVelocity = (vx: number, vy: number): Facing4 =>
 /** Texture/anim key for the campfire's stone-ring ember base layer (see `stations.campfire.base`). */
 export const campfireBaseKey = (): string => 'campfire-base';
 
+/** On-screen render height (in tiles) of the campfire's stone-ring base layer. Shared so the placement
+ *  ghost (which previews only the base) scales it identically to the materialised fire — the flame's
+ *  height comes from the buildable's larger `tilesTall`, which must NOT be used for the base. */
+export const CAMPFIRE_BASE_TILES = 2;
+
 /** Texture/anim key for the campfire's LARGE flame sheet, burned above 50% fuel (see `stations.campfire.flameLarge`). */
 export const campfireFlameLargeKey = (): string => 'campfire-flame-large';
 

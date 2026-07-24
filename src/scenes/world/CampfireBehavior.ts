@@ -17,6 +17,7 @@ import { rowDepthOffset, SUB_ROW_EPSILON } from '../../systems/mapFormat';
 import { BUILDABLES } from '../../data/buildables';
 import {
   campfireBaseKey,
+  CAMPFIRE_BASE_TILES,
   campfireFlameLargeKey,
   campfireFlameSmallKey,
   campfireSmokeKey,
@@ -27,9 +28,6 @@ import type { InspectableStats } from '../../data/types';
 import type { CampfireStructure, BuildSite, PlacedStructure } from '../../entities/types';
 import type { GameScene } from '../GameScene';
 import type { LightSource, StructureBehavior } from './StructureManager';
-
-/** Stone-ring base render height in tiles (the flame's height comes from the buildable's `tilesTall`). */
-const EMBER_TILES = 2;
 
 /**
  * Narrow scene state {@link CampfireBehavior} needs but doesn't own — GameScene supplies these as
@@ -112,7 +110,7 @@ export class CampfireBehavior implements StructureBehavior {
       .sprite(x, y, campfireBaseKey())
       .setDepth(baseDepth)
       .setOrigin(0.5, originY);
-    base.setScale((TILE_SIZE * EMBER_TILES) / base.frame.height).play(campfireBaseKey());
+    base.setScale((TILE_SIZE * CAMPFIRE_BASE_TILES) / base.frame.height).play(campfireBaseKey());
 
     // Flame rides a few px above the stone base (depth base + 1 epsilon) so it reads as rising out of the
     // ring, not sitting in it; starts on the large sheet (full fuel). flameBaseScale = its full-fuel fit;

@@ -56,12 +56,14 @@ export type HudMode = 'command' | 'combat' | 'inspect';
 
 /** Blueprint-Mode pending-run tally (plan 050 Step 7) — the live count/cost/ETA of the run a line-tool
  *  drag has painted, mirroring the `build:runChanged` payload (BuildManager's `runSelection()`, minus
- *  the tile array). Drives the commit bar: `tileCount > 0` reveals it; it shows `affordableCount` of
- *  `placeableCount`, the affordable subset's `totalCost`, and its serial build `etaMs`. */
+ *  the tile array). Drives the commit bar: `tileCount > 0` reveals it; it shows `buildableCount` (what a
+ *  commit will actually place) of `tileCount`, the buildable subset's `totalCost`, and its serial build
+ *  `etaMs`. `placeableCount`/`affordableCount` are kept as diagnostics. */
 export interface RunTally {
   readonly tileCount: number;
   readonly placeableCount: number;
   readonly affordableCount: number;
+  readonly buildableCount: number;
   readonly totalCost: Record<string, number>;
   readonly etaMs: number;
 }
@@ -240,7 +242,14 @@ const initialState: HudState = {
   mode: 'command',
   buildMode: false,
   lineTool: false,
-  runTally: { tileCount: 0, placeableCount: 0, affordableCount: 0, totalCost: {}, etaMs: 0 },
+  runTally: {
+    tileCount: 0,
+    placeableCount: 0,
+    affordableCount: 0,
+    buildableCount: 0,
+    totalCost: {},
+    etaMs: 0,
+  },
   selection: null,
   orientable: false,
   facing: 'down',

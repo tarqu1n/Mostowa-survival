@@ -143,6 +143,7 @@ describe('outbound event → store mapping', () => {
       tileCount: 5,
       placeableCount: 5,
       affordableCount: 3,
+      buildableCount: 3,
       totalCost: { wood: 6 },
       etaMs: 7500,
     };

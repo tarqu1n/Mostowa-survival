@@ -29,6 +29,13 @@ export interface BuildManagerDeps {
   getPlayerSprite(): CharacterSprite;
   /** The worker's current tile — tilePlaceable's reachableAdjacent (stand-tile) check keys off this. */
   playerTile(): Cell;
+  /** The player's last movement direction (sign deltas, e.g. `{dCol:0,dRow:1}` = facing down) — the idle
+   *  hover ghost parks on the tile one step this way (in front of the player), so build mode always shows
+   *  a placement preview even on touch, where there's no hover to keep a cursor alive ({@link parkGhost}). */
+  playerFacing(): { dCol: number; dRow: number };
+  /** True while the Blueprint-Mode line tool is armed — then the run-ghost POOL renders the pending line
+   *  and the single hover ghost stays hidden, so the two previews never both show ({@link parkGhost}). */
+  isLineTool(): boolean;
   /** Pathfinding walkability predicate (the scene's `isBlocked`) — reachableAdjacent's obstacle test
    *  when checking whether a blueprint has a tile the worker could stand on to build it. */
   isBlocked(col: number, row: number): boolean;
@@ -260,10 +267,44 @@ export class BuildManager {
     const existing = this.siteAt(col, row);
     if (existing) {
       this.deps.enqueueBuild(existing.id);
-      return;
+    } else {
+      this.tryPlaceAt(col, row);
     }
 
-    this.tryPlaceAt(col, row);
+    // Placement resolves on pointer-UP (plan 050 Step 3). On touch there's no hover to re-home the cursor
+    // afterwards, so leaving it on the tapped tile would strand it (tinted invalid, the slot now taken) on
+    // top of the structure that just materialised. PARK it back at the idle anchor instead — the ghost
+    // stays up between placements ("ghost + snap + confirm, place again"), just off the built tile. A
+    // fresh press re-tracks it via onBuildDown → updateGhost.
+    this.parkGhost();
+  }
+
+  /**
+   * Park the single hover ghost at its idle anchor — the tile one step in front of the player — and show
+   * it, so build mode always previews the selected buildable even on touch (no hover to keep a cursor
+   * alive). Called on selection, on build-mode-on, and after a single-tile placement so the ghost stays
+   * up between placements ("place again") instead of vanishing or stranding on the just-built tile. Kept
+   * HIDDEN when build mode is off OR the line tool is armed (its run-ghost pool owns the preview then).
+   * Re-textures first (mirrors {@link updateGhost}) so a fresh selection never flashes a stale buildable.
+   */
+  private parkGhost(): void {
+    this.applyGhostAppearance();
+    if (!this.buildMode || this.deps.isLineTool()) {
+      this.ghost.setVisible(false);
+      return;
+    }
+    const t = this.deps.playerTile();
+    const f = this.deps.playerFacing();
+    const col = t.col + Math.sign(f.dCol);
+    const row = t.row + Math.sign(f.dRow);
+    const ok =
+      this.tilePlaceable(col, row) &&
+      this.deps.canAfford(BUILDABLES[this.selectedBuildableId].cost);
+    this.ghost
+      .setPosition(tileToWorldCenter(col), tileToWorldCenter(row))
+      .setTint(ok ? COLORS.ghostValid : COLORS.ghostInvalid)
+      .setAlpha(0.5)
+      .setVisible(true);
   }
 
   /**
@@ -349,14 +390,15 @@ export class BuildManager {
       tileCount: sel.tiles.length,
       placeableCount: sel.placeableCount,
       affordableCount: sel.affordableCount,
+      buildableCount: sel.buildableCount,
       totalCost: sel.totalCost,
       etaMs: sel.etaMs,
     });
   }
 
   /**
-   * The Step-5 pending-run selector: `{ tiles, placeableCount, affordableCount, totalCost, etaMs }` for
-   * the current run — delegating the math to the pure {@link selectRun}, fed this manager's live
+   * The Step-5 pending-run selector: `{ tiles, placeableCount, affordableCount, buildableCount, totalCost,
+   * etaMs }` for the current run — delegating the math to the pure {@link selectRun}, fed this manager's live
    * {@link tilePlaceable} per tile, the selected buildable's cost, the {@link BuildManagerDeps.heldCounts}
    * inventory snapshot, and its {@link buildTimeFor} time. Read-only (no spend); consumed by Step 7's
    * commit + HUD.
@@ -411,14 +453,20 @@ export class BuildManager {
     }
   }
 
+  /** Re-park the idle hover ghost — the scene calls this when the line tool arms/disarms so the single
+   *  ghost hides while the run-ghost pool owns the preview and reappears when the tool turns off. */
+  refreshHoverGhost(): void {
+    this.parkGhost();
+  }
+
   /** Palette selected a buildable: remember it + enter build mode. Wired to `build:select` by the
    *  scene; emits `build:modeChanged` so the HUD reflects build mode (mirrors {@link toggleBuild}). */
   select(id: string): void {
     this.selectedBuildableId = id;
     this.placeFacing = 'down'; // a fresh selection starts front-facing (rotate cycles from here)
     this.clearRun(); // a selection change abandons any in-flight run (would re-cost against the new pick)
-    this.applyGhostAppearance(); // re-texture the ghost for the newly-selected buildable
     this.buildMode = true;
+    this.parkGhost(); // re-texture + show the idle ghost for the new selection (buildMode is now on)
     this.emitFacingChanged(); // reset-to-'down' → light the ring's default quadrant (plan 050 Step 8)
     this.scene.game.events.emit('build:modeChanged', this.buildMode);
   }
@@ -595,7 +643,9 @@ export class BuildManager {
    *  scene (in), emits `build:modeChanged` (out) — names unchanged from the pre-move scene method. */
   toggleBuild(): void {
     this.buildMode = !this.buildMode;
-    if (!this.buildMode) {
+    if (this.buildMode) {
+      this.parkGhost(); // entering build mode → show the idle placement preview at the player
+    } else {
       this.ghost.setVisible(false);
       this.clearRun(); // leaving build mode abandons any in-flight run + hides its ghosts
     }
@@ -654,7 +704,7 @@ export class BuildManager {
     this.selectedBuildableId = 'wall'; // don't leak a prior campfire selection into a fresh scenario
     this.placeFacing = 'down'; // nor a prior rotate facing (a fresh scenario places walls front-facing)
     this.emitFacingChanged(); // keep the ring's lit quadrant in step with the reset facing (plan 050 Step 8)
-    this.applyGhostAppearance(); // re-texture the (persisting) ghost back to the reset wall selection
+    this.parkGhost(); // re-texture the (persisting) ghost to the reset wall selection; buildMode off → hidden
     this.snapGrid.clear().setVisible(false); // buildMode is now false — drop the grid immediately too
     this.clearRun(); // drop any in-flight run + hide its ghost pool (sprites persist like the ghost)
   }

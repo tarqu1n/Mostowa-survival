@@ -3,6 +3,7 @@ import { BUILDABLES } from '../../data/buildables';
 import {
   barricadeDestroyKey,
   campfireBaseKey,
+  CAMPFIRE_BASE_TILES,
   spikeTrapKey,
   SPIKE_TRAP_ARMED_FRAME,
 } from '../../data/tileset';
@@ -88,7 +89,15 @@ export function ghostTextureFor(
   // Animated live buildables — preview their primary in-world frame (a static frame, not the anim):
   // the campfire's stone-ring base, the trap's armed spike frame.
   if (def.animKey === 'campfire') {
-    return { key: campfireBaseKey(), frame: 0, flipX: false, originY, tilesTall };
+    // The base scales to CAMPFIRE_BASE_TILES, NOT the buildable's `tilesTall` (that's the taller flame
+    // height) — matching CampfireBehavior.materialise so the ghost's base can't out-size the built one.
+    return {
+      key: campfireBaseKey(),
+      frame: 0,
+      flipX: false,
+      originY,
+      tilesTall: CAMPFIRE_BASE_TILES,
+    };
   }
   if (def.animKey === 'spikeTrap') {
     return { key: spikeTrapKey(), frame: SPIKE_TRAP_ARMED_FRAME, flipX: false, originY, tilesTall };

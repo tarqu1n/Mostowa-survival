@@ -260,10 +260,15 @@ export class BuildManager {
     const existing = this.siteAt(col, row);
     if (existing) {
       this.deps.enqueueBuild(existing.id);
-      return;
+    } else {
+      this.tryPlaceAt(col, row);
     }
 
-    this.tryPlaceAt(col, row);
+    // Placement resolves on pointer-UP (plan 050 Step 3). On touch there's no hover-off to clear the
+    // hover ghost afterwards, so it would strand on the tapped tile — sitting (tinted invalid, now the
+    // slot is taken) on top of the structure that just materialised there. Hide it on release; the next
+    // press re-arms it via onBuildDown → updateGhost. Desktop re-shows it on the next pointer move.
+    this.ghost.setVisible(false);
   }
 
   /**

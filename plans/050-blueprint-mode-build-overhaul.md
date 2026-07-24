@@ -216,7 +216,8 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
   - Done when: painting a run shows the live tally; Confirm queues exactly the affordable tiles and
     spends their cost; Cancel clears with no spend; scenario test covers paint→commit→build.
 
-- [ ] **Step 8: Rotation ring control + `R`-key parity** `[inline]`
+- [x] **Step 8: Rotation ring control + `R`-key parity** `[inline]`
+  - Outcome: new `src/hud/components/RotationRing.tsx` — fixed thumb-zone compass (3×3 grid, 4 quadrant buttons fire on pointerdown), rendered in `GameHud` ActionLayer gated `buildMode && orientable` (orientable already in store), highlights the current facing. `facing` added to store via new outbound `build:facingChanged` (emitted by `BuildManager` on rotate/select/reset + GameScene restart; mirrors the `lineToolChanged`/`runChanged` pattern). Drag-safe: wrapper `pointer-events-none`, only buttons opt back in. `R`/`Shift+R` bound in `wireBus()` (first Game-scene key binding), gated to build mode → `build:rotate`. `rotatePlacement` + `build:rotate` payload extended backward-compatibly: no-arg = forward cycle (legacy CommandBar button unchanged), `{dir:-1}` reverse, `{to}` jump (ring uses `{to}` for a directional compass). typecheck clean, 1009 unit pass; smoke deferred to Step 11 (preview-server dependent).
   - A **fixed, thumb-reachable** rotation ring in the HUD (not tracking the moving world ghost — avoids
     per-frame world→screen mapping, critique #7) whose quadrants emit the existing `build:rotate`;
     light the current facing. Mirror the fight-cluster thumb pattern (`CommandBar.tsx:202-224`),

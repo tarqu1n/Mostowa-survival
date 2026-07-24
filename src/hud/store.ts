@@ -3,6 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import { PLAYER_MAX_HP, HUNGER_MAX } from '@/config';
 import { BUILDABLES } from '@/data/buildables';
 import type { CombatantStats, InspectableStats } from '@/data/types';
+import type { FacingSpec } from '@/entities/types';
 import type { NpcDayRole, NpcNightPosture } from '@/entities/NpcCharacter';
 import type { EquipmentState } from '@/systems/Equipment';
 
@@ -115,6 +116,10 @@ export interface HudState {
   selection: string | null;
   /** Whether {@link selection} can be rotated at placement (derived from `BUILDABLES`). */
   orientable: boolean;
+  /** Current placement facing of the build ghost (plan 050 Step 8) — mirrors the game's
+   *  `build:facingChanged` (BuildManager owns the flag; the rotation ring lights the matching quadrant).
+   *  Only meaningful for an `orientable` selection; harmless otherwise. */
+  facing: FacingSpec;
   demolishMode: boolean;
   combatActive: boolean;
   inspectTarget: InspectableStats | null;
@@ -179,6 +184,8 @@ export interface HudActions {
   setRunTally(tally: RunTally): void;
   /** Select a buildable (or `null` to clear). Recomputes {@link HudState.orientable} from data. */
   setSelection(id: string | null): void;
+  /** Mirror the build ghost's placement facing (from `build:facingChanged`). */
+  setFacing(facing: FacingSpec): void;
   setDemolishMode(on: boolean): void;
   setCombatActive(on: boolean): void;
   setInspect(target: InspectableStats | null): void;
@@ -236,6 +243,7 @@ const initialState: HudState = {
   runTally: { tileCount: 0, placeableCount: 0, affordableCount: 0, totalCost: {}, etaMs: 0 },
   selection: null,
   orientable: false,
+  facing: 'down',
   demolishMode: false,
   combatActive: false,
   inspectTarget: null,
@@ -279,6 +287,7 @@ export const useHudStore = create<HudState & HudActions>()(
         selection,
         orientable: selection ? (BUILDABLES[selection]?.orientable ?? false) : false,
       }),
+    setFacing: (facing) => set({ facing }),
     setDemolishMode: (demolishMode) => set({ demolishMode }),
     setCombatActive: (combatActive) => set({ combatActive }),
     setInspect: (inspectTarget) => set({ inspectTarget }),

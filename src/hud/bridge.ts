@@ -1,6 +1,7 @@
 import { useHudStore } from './store';
 import type { HudMode, RunTally } from './store';
 import type { CombatantStats, InspectableStats } from '@/data/types';
+import type { FacingSpec } from '@/entities/types';
 import type { NpcDayRole, NpcNightPosture } from '@/entities/NpcCharacter';
 import type { EquipmentState } from '@/systems/Equipment';
 
@@ -81,7 +82,10 @@ interface BuildSelectPayload {
 export type InboundEvent =
   | { type: 'build:toggle' }
   | { type: 'build:select'; payload: BuildSelectPayload }
-  | { type: 'build:rotate' }
+  // Rotate the build ghost (plan 050 Step 8). No payload cycles the facing forward (the Rotate button /
+  // R key); `{ to }` jumps to a facing (the rotation ring's compass quadrants); `{ dir: -1 }` reverses
+  // the cycle (Shift+R). BuildManager.rotatePlacement handles all three; a bare emit stays the original.
+  | { type: 'build:rotate'; payload?: { dir?: 1 | -1; to?: FacingSpec } }
   | { type: 'build:lineTool'; payload: { on: boolean } }
   | { type: 'build:commitRun' }
   | { type: 'build:cancelRun' }
@@ -188,6 +192,9 @@ export function initBridge(bus: EventBus, registry: Registry): Bridge {
   // (begin/extend/clear/commit) + once per (re)start; mirror it so the commit bar renders the live tally.
   on<RunTally>('build:runChanged', (p) => store.setRunTally(p));
   on<BuildSelectPayload>('build:select', (p) => store.setSelection(p.id));
+  // Build ghost placement facing (plan 050 Step 8) — the game emits this whenever the facing changes
+  // (rotate/select/reset) + once per (re)start; mirror it so the rotation ring lights the live quadrant.
+  on<FacingSpec>('build:facingChanged', (f) => store.setFacing(f));
   on<boolean>('demolish:modeChanged', (on) => store.setDemolishMode(on));
   on<boolean>('combat:activeChanged', (on) => store.setCombatActive(on));
   on<InspectableStats>('inspect:show', (stats) => store.setInspect(stats));

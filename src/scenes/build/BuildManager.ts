@@ -419,19 +419,37 @@ export class BuildManager {
     this.clearRun(); // a selection change abandons any in-flight run (would re-cost against the new pick)
     this.applyGhostAppearance(); // re-texture the ghost for the newly-selected buildable
     this.buildMode = true;
+    this.emitFacingChanged(); // reset-to-'down' → light the ring's default quadrant (plan 050 Step 8)
     this.scene.game.events.emit('build:modeChanged', this.buildMode);
   }
 
-  /** Cycle the placement facing for an `orientable` buildable: down → right → up → left → down (plan
-   *  037). Wired to the `build:rotate` game event (the HUD ROTATE button + the R key). No-op visual-wise
+  /** Set the placement facing for an `orientable` buildable. Wired to the `build:rotate` game event (the
+   *  HUD Rotate button + rotation ring + the R key). No payload cycles the facing forward
+   *  (down → right → up → left → down, plan 037); an optional payload steers it — `{ dir: -1 }` cycles
+   *  the other way (Shift+R reverse), `{ to }` jumps straight to a facing (the ring's compass quadrants,
+   *  plan 050 Step 8). Backward-compatible: a no-arg call is the original forward cycle. No-op visual-wise
    *  for a non-orientable selection — createBlueprint only stamps the facing when the buildable is
    *  orientable, so the extra state is harmless. */
-  rotatePlacement(): void {
+  rotatePlacement(payload?: { dir?: 1 | -1; to?: FacingSpec }): void {
     const order: FacingSpec[] = ['down', 'right', 'up', 'left'];
-    this.placeFacing = order[(order.indexOf(this.placeFacing) + 1) % order.length];
+    if (payload?.to) {
+      this.placeFacing = payload.to;
+    } else {
+      const dir = payload?.dir ?? 1;
+      this.placeFacing =
+        order[(order.indexOf(this.placeFacing) + dir + order.length) % order.length];
+    }
     // Re-orient the ghost now: rotate fires off a button/key, not a pointer move, so updateGhost won't
     // run — refresh here so the wall ghost flips/re-faces immediately (plan 050 Step 2 acceptance).
     this.applyGhostAppearance();
+    this.emitFacingChanged();
+  }
+
+  /** Emit the current placement facing so the HUD rotation ring can light its active quadrant (plan 050
+   *  Step 8). Fired whenever {@link placeFacing} changes (rotate/select/reset) and re-emitted on every
+   *  (re)start by the scene — mirroring how {@link emitRunChanged} keeps the commit bar in sync. */
+  emitFacingChanged(): void {
+    this.scene.game.events.emit('build:facingChanged', this.placeFacing);
   }
 
   /** Add a passable, unbuilt blueprint at a tile and register its occupancy (shared by real build
@@ -595,6 +613,7 @@ export class BuildManager {
     this.buildMode = false;
     this.selectedBuildableId = 'wall'; // don't leak a prior campfire selection into a fresh scenario
     this.placeFacing = 'down'; // nor a prior rotate facing (a fresh scenario places walls front-facing)
+    this.emitFacingChanged(); // keep the ring's lit quadrant in step with the reset facing (plan 050 Step 8)
     this.applyGhostAppearance(); // re-texture the (persisting) ghost back to the reset wall selection
     this.snapGrid.clear().setVisible(false); // buildMode is now false — drop the grid immediately too
     this.clearRun(); // drop any in-flight run + hide its ghost pool (sprites persist like the ghost)

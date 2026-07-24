@@ -24,6 +24,7 @@ import { CommandBar } from './components/CommandBar';
 import type { CommandBarMode } from './components/CommandBar';
 import { BuildCatalog } from './components/BuildCatalog';
 import { LineToolFab } from './components/LineToolFab';
+import { RotationRing } from './components/RotationRing';
 import { CommitBar } from './components/CommitBar';
 import { PackDrawer } from './components/PackDrawer';
 import { StatusDrawer } from './components/StatusDrawer';
@@ -118,6 +119,7 @@ type OpenDrawer = 'build' | 'pack' | 'status' | null;
 function ActionLayer() {
   const gameMode = useHudStore((s) => s.mode);
   const buildMode = useHudStore((s) => s.buildMode);
+  const orientable = useHudStore((s) => s.orientable);
   const combatActive = useHudStore((s) => s.combatActive);
   const hasPendingRun = useHudStore((s) => s.runTally.tileCount > 0);
   const [openDrawer, setOpenDrawer] = useState<OpenDrawer>(null);
@@ -137,6 +139,9 @@ function ActionLayer() {
           only in build mode. Toggles the run-paint gesture; the CommandBar's build morph below carries
           the rest of the placement controls (Rotate/Place/Demolish/Cancel). */}
       {buildMode && <LineToolFab />}
+      {/* Rotation ring (plan 050 Step 8) — a fixed thumb-reachable compass shown only while building an
+          orientable buildable; each quadrant emits `build:rotate` and the lit one mirrors the ghost facing. */}
+      {buildMode && orientable && <RotationRing />}
       {/* Commit bar (plan 050 Step 7) — shown only while build mode has a non-empty pending run painted
           by the line tool; Confirm/Cancel commit or drop the run. */}
       {buildMode && hasPendingRun && <CommitBar />}

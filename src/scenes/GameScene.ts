@@ -892,6 +892,9 @@ export class GameScene extends Phaser.Scene {
     // (an empty tally) — the persisting HUD store would otherwise linger on the prior run's tally and
     // keep the commit bar shown (plan 050 Step 7).
     this.buildManager.emitRunChanged();
+    // Placement facing: re-emit this (re)start's facing (fresh = 'down') so the HUD rotation ring lights
+    // the right quadrant rather than lingering on the prior run's facing (plan 050 Step 8).
+    this.buildManager.emitFacingChanged();
     // Seed the base-supply readout with this (re)start's pool (fresh = 0/0) so it reflects this run
     // (plan 042 Step 3).
     this.game.events.emit('supply:changed', this.baseSupply.snapshot());
@@ -952,8 +955,20 @@ export class GameScene extends Phaser.Scene {
       ['equip:toggle', this.toggleEquip, this],
     ];
     for (const [event, handler, ctx] of subs) bus.on(event, handler, ctx);
+
+    // Desktop rotate parity (plan 050 Step 8): R cycles the placement facing forward, Shift+R reverse.
+    // Gated to build mode so it only fires while a blueprint ghost is up, and routed through the same
+    // `build:rotate` bus event the HUD Rotate button / rotation ring emit — BuildManager stays the sole
+    // rotate owner and the ghost + ring update through one path. The keyboard plugin is optional (`?.`).
+    const onRotateKey = (e: KeyboardEvent): void => {
+      if (!this.buildManager.buildMode) return;
+      this.game.events.emit('build:rotate', e.shiftKey ? { dir: -1 } : undefined);
+    };
+    this.input.keyboard?.on('keydown-R', onRotateKey);
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       for (const [event, handler, ctx] of subs) bus.off(event, handler, ctx);
+      this.input.keyboard?.off('keydown-R', onRotateKey);
       // Hide the page-level HUD while no Game scene is live (a death-restart re-shows it in create()).
       this.registry.set('sceneActive', false);
     });

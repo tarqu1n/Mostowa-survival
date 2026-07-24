@@ -47000,6 +47000,76 @@
       "origin": "self-made"
     },
     {
+      "id": "mostowo-custom/Environment/Props/Static/jetty_diagonal_1.png",
+      "pack": "mostowo-custom",
+      "type": "object",
+      "role": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/jetty_diagonal_1.png"
+      },
+      "w": 112,
+      "h": 66,
+      "category": "Environment/Props/Static",
+      "tags": [
+        "diagonal",
+        "environment",
+        "jetty",
+        "pier",
+        "props",
+        "static",
+        "wooden"
+      ],
+      "origin": "self-made"
+    },
+    {
+      "id": "mostowo-custom/Environment/Props/Static/jetty_diagonal_2.png",
+      "pack": "mostowo-custom",
+      "type": "object",
+      "role": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/jetty_diagonal_2.png"
+      },
+      "w": 112,
+      "h": 117,
+      "category": "Environment/Props/Static",
+      "tags": [
+        "diagonal",
+        "environment",
+        "jetty",
+        "pier",
+        "props",
+        "static",
+        "wooden"
+      ],
+      "origin": "self-made"
+    },
+    {
+      "id": "mostowo-custom/Environment/Props/Static/jetty_side_1.png",
+      "pack": "mostowo-custom",
+      "type": "object",
+      "role": "object",
+      "source": {
+        "kind": "image",
+        "path": "Environment/Props/Static/jetty_side_1.png"
+      },
+      "w": 128,
+      "h": 42,
+      "category": "Environment/Props/Static",
+      "tags": [
+        "broadside",
+        "environment",
+        "jetty",
+        "pier",
+        "props",
+        "side",
+        "static",
+        "wooden"
+      ],
+      "origin": "self-made"
+    },
+    {
       "id": "mostowo-custom/Environment/Props/Static/tent_wreck_5_ruined.png",
       "pack": "mostowo-custom",
       "type": "object",

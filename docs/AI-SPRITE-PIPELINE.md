@@ -250,6 +250,38 @@ flat palette**. What generalises to any new prop:
   tuning never needs a regeneration. Owner picks live in `VARIANTS` + `FLAVOUR` so a regen lands near
   them.
 
+## Static props from a REAL PHOTO (the wooden jetty) — two-reference image-to-image
+
+Fourth use, and the first anchored on a **real photograph**: the Mostowo jetty
+(`scripts/gen-jetty.py`, a placeable pier prop after a 16px seamless-tile attempt flattened
+its character out). Same static-prop pipeline as the tents, with one new move — **two
+reference images per generation**, each carrying a different thing text can't:
+
+- **Image 1 = a photo of the real object** → its *character* (the jetty's weathered
+  silver-grey rustic planks, low build). Kept in the gitignored scratch dir and **never
+  committed** — it's a personal photo; the committed output is only the processed sprite.
+- **Image 2 = a pack sprite at the game's angle** (the same `Roofs.png` chevron the tents
+  use) → the *camera angle + flat pixel-art style*. Essential precisely because the photo is
+  eye-level — without image 2 the output inherits the photo's perspective. The prompt labels
+  them ("recreate image 1's character in image 2's angle and style").
+
+What carried over and what was new:
+
+- **Quantise, don't snap.** The jetty keeps the generation's own weathered greys
+  (`QUANTISE_COLOURS`, no palette snap) — right for a multi-tone weathered object, same call
+  the tents made. (Contrast the *tile* attempt, which snapped to the pack's 4 wood tones.)
+- **Diagonal + broadside land; end-on doesn't.** Exactly the tents' finding — a pier drawn
+  END-ON (running straight away from camera) folded into a malformed roof-like peak. Ship
+  diagonal + broadside and **reuse a rotated diagonal** for piers heading away; don't burn
+  generations chasing end-on. `ORIENT['end']` stays in the script for a future attempt.
+- **Batch + pick, then `--reprocess`.** Generated 7 candidates (2–3 per angle + a buoy
+  variant), kept 3 (`jetty_diagonal_1/2`, `jetty_side_1`); the buoy barely read (make it a
+  separate prop if wanted) and a 2nd broadside drifted to a square platform. `--reprocess`
+  re-bakes the kept raws (size/outline/quantise tuning) with no re-spend.
+
+**Meta:** a real photo is a *stronger* character anchor than a text description — but it
+fights the game camera, so it must be paired with a pack-angle reference, not used alone.
+
 ## Prior art & references (how this is done in the wild)
 
 **Practical guides / tools** — corroborate our choices (image-to-image for identity, no

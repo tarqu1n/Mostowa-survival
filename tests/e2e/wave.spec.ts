@@ -30,7 +30,7 @@ test('no skeletons spawn during the day (the wave never triggers by daylight)', 
 });
 
 test('beginWave starts a paced wave of walkable spawns local to the camp', async ({ page }) => {
-  test.setTimeout(120_000); // steps ~1320 fixed frames to cross the first (trickle) spawn interval
+  test.setTimeout(20_000); // stepLogic (render-free) since plan 045; ~1320 fixed frames, observed ~3.5s cold
   await startGame(page);
   await applyScenario(page, { player: FAR_PLAYER, campfires: [[CENTRE.col, CENTRE.row]] });
 
@@ -102,7 +102,7 @@ test('a fire-seeking mob with no player near attacks the fire (drains its fuel)'
 test('roadmap Step 2 acceptance: wave at night → survive to dawn → day increments', async ({
   page,
 }) => {
-  test.setTimeout(60_000); // ~510 driven frames + a live wave; fill-rate-heavy under fullyParallel load
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~4.5s cold
   await startGame(page);
   await applyScenario(page, {
     player: FAR_PLAYER, // out of the wave's reach → the player cleanly survives the crossing

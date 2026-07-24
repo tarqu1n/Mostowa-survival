@@ -1,6 +1,7 @@
 # Test Suite Re-tier (Phase 2)
 
-> Status: planned — run /execute-plan to begin.
+> Status: in review — committed core (Steps 1–2) shipped; Phase 2b (Steps 3–8) stays opt-in, gated on
+> recorded CI-wall-blocking-work evidence (see "Why now / the real gate").
 
 ## Summary
 
@@ -135,7 +136,20 @@ non-blocking). Plan 044 deferred this Phase 2 "until re-measured as a **bottlene
     assertions and a **visibly lower e2e wall**; `npm run build` + `npm run smoke` pass (seam stripped
     from prod); a render-dependent spec (e.g. `glow`) still uses and passes under `step()`.
 
-- [ ] **Step 2: Re-time, right-size timeouts, document `step` vs `stepLogic`** `[inline]`
+- [x] **Step 2: Re-time, right-size timeouts, document `step` vs `stepLogic`** `[inline]`
+  - Outcome: parent session ran two cold full-suite `npm run e2e` passes post-Step-1 (hook blocks
+    unfiltered runs, so this had to run outside delegation) — **130 tests, ~6.5min then ~6.3min**
+    (was ~9.3 min / 124 tests before Step 1; count grew for unrelated reasons). Delegated sub-agent
+    right-sized `test.setTimeout` in the 9 converted specs to 15-20s (from 60-120s render-era values,
+    2-4x headroom over ~3.3-5.3s observed) in `companion.spec.ts`/`death.spec.ts`/`monster.spec.ts`/
+    `wave.spec.ts`/`workbench.spec.ts` (`survival-hunger`/`survival-daynight`/`campfire`/`combat` had
+    no oversized timeouts to touch). CI shard balance (`ci.yml`, 2 shards) checked and left alone — now
+    balanced by even test count rather than by luck on render-seconds. Docs updated: `docs/testing.md`
+    (Phase 2 note → shipped + new numbers + a prominent `step` vs `stepLogic` table in the scenario-API
+    section + "adding a test" guidance), `docs/WORKFLOW.md` + `CLAUDE.md` (refreshed ~9.3min → ~6.5min),
+    `docs/STATUS.md` (plan 045 committed-core note, Phase 2b still opt-in/gated). Verified: `npm test`
+    992/992, `npm run build` + `npm run smoke` green, filtered re-runs of all touched specs green,
+    typecheck/lint/format clean. Not committed yet by the sub-agent — parent session committing next.
   - Run `npm test`, `npm run e2e` twice cold (record wall + fail/flake=0), `npm run smoke`. With the
     render cost gone from the converted specs, right-size their now-oversized `test.setTimeout(...)` and
     re-run to confirm still green. Re-benchmark `workers` only if the profile shifted.

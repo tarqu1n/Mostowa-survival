@@ -7,11 +7,10 @@ import { SPAWN_TILE } from '../../src/config';
 // resetting the world to its boot fixtures (player back at spawn centre, full HP, default spawns).
 test('the player dying restarts the scene and resets the world', async ({ page }) => {
   // 14000ms of driven `stepLogic()` = ~840 fixed frames — was the heaviest test in the suite under
-  // the old render-every-slice `step()` (fullyParallel contention on the headless SwiftShader
-  // renderer, fill-rate sensitive — see docs/RENDERING.md); stepLogic() (plan 045) drops the draw
-  // entirely, but the timeout headroom stays: the work is still real (physics/AI/combat over 840
-  // slices), just no longer wall-clock-dominated by rendering.
-  test.setTimeout(60_000);
+  // the old render-every-slice `step()`. stepLogic() (plan 045) drops the draw entirely; re-timed
+  // (plan 045 Step 2) at ~4.0s cold, so the timeout is right-sized with headroom, not the old
+  // render-cost estimate.
+  test.setTimeout(15_000);
   const logs: string[] = [];
   page.on('console', (m) => logs.push(m.text()));
 

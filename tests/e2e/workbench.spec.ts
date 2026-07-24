@@ -35,7 +35,7 @@ const FRONTIER = { col: 11, row: 10 };
 test('a mob walled off by a workbench bashes it, destroys it, then reaches the player', async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(20_000); // stepLogic (render-free) since plan 045; heaviest in file, observed ~5.3s cold
   await startGame(page);
   await applyScenario(page, {
     player: PLAYER,
@@ -85,7 +85,7 @@ test('a mob walled off by a workbench bashes it, destroys it, then reaches the p
 });
 
 test('a player repair order mends a damaged workbench back to full HP', async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~3.8s cold
   await startGame(page);
   // Player next to a lone bench in the open — no enemies, deterministic. The bench blocks its own tile,
   // so the player stands on an adjacent tile ([10,10] is adjacent to the bench at [11,10]).
@@ -125,7 +125,7 @@ test('a player repair order mends a damaged workbench back to full HP', async ({
 test('a queued craft at a healthy bench delivers the item to the pack (spending the cost)', async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~4.1s cold
   await startGame(page);
   // Player adjacent to a full-hp bench, holding the brand recipe cost (wood + cloth) plus spare.
   const { workbenchIds } = await applyScenario(page, {
@@ -155,7 +155,7 @@ test('a queued craft at a healthy bench delivers the item to the pack (spending 
 test('a damaged bench crafts slower than a healthy one, but never fully stalls', async ({
   page,
 }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(20_000); // stepLogic (render-free) since plan 045; observed ~4.1s cold
   await startGame(page);
   const { workbenchIds } = await applyScenario(page, {
     player: PLAYER,
@@ -185,7 +185,7 @@ test('a damaged bench crafts slower than a healthy one, but never fully stalls',
 test('the HUD craft-menu events (craft:queue / craft:repair) drive the real orders', async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~3.3s cold
   await startGame(page);
   const { workbenchIds } = await applyScenario(page, {
     player: PLAYER,

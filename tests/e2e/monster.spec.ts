@@ -43,7 +43,7 @@ test('a chasing monster gives up when the player escapes past the drop radius', 
 });
 
 test('a patrol-route monster cycles its waypoints', async ({ page }) => {
-  test.setTimeout(60_000); // ~576 driven fixed frames (24 × stepLogic(400)) across several patrol cycles
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~3.8s cold
   await startGame(page);
   // Player far away (never within the 80px vision), so the monster stays calm and patrols. Route is a
   // 2-tile horizontal hop on the known-clear row-10 band; it spawns ON waypoint 0 (the natural authoring

@@ -124,7 +124,7 @@ test('a gather-role companion chops a tree by day and deposits wood into base su
 test('a repair-role companion mends a damaged wall by day, draining wood from base supply', async ({
   page,
 }) => {
-  test.setTimeout(60_000); // a live scene + a few hundred driven frames — fill-rate-heavy under load
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~3.8s cold
   await startGame(page);
 
   // Player at [3,3]; companion two tiles east of a lone wall, in repair role, by day; wood in the pool.
@@ -160,7 +160,7 @@ test('a repair-role companion mends a damaged wall by day, draining wood from ba
 test('a repair-role companion with an empty base supply does not repair the wall', async ({
   page,
 }) => {
-  test.setTimeout(60_000); // a live scene + a few hundred driven frames — fill-rate-heavy under load
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~3.5s cold
   await startGame(page);
 
   await applyScenario(page, {
@@ -189,7 +189,7 @@ test('a repair-role companion with an empty base supply does not repair the wall
 test('a mob adjacent to the companion deals it damage (the NPC is a valid threat)', async ({
   page,
 }) => {
-  test.setTimeout(60_000); // a live scene + a mob's bite cadences — fill-rate-heavy under parallel load
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~3.6s cold
   await startGame(page);
 
   // Companion at [8,3]; a plain mob one tile west at [7,3] (orthogonally adjacent → Chebyshev 1, in
@@ -234,7 +234,7 @@ function enemiesNearCompanion(s: DebugState, radius: number): number {
 }
 
 test('a night companion attacks and kills an adjacent mob', async ({ page }) => {
-  test.setTimeout(60_000); // a live scene + a few strike/bite cadences — fill-rate-heavy under load
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~3.6s cold
   await startGame(page);
 
   // Player at [3,3]; companion at [8,3] (full HP); a plain mob adjacent at [7,3], club-armed for a
@@ -264,7 +264,7 @@ test('a night companion attacks and kills an adjacent mob', async ({ page }) => 
 test('a night companion is downed by real mob damage, then revives at the next dawn', async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~3.8s cold
   await startGame(page);
 
   // Seed the clock ~6s before dawn (cycle 900_000; dawn at 900_000 → clockMs 894_000 = night of day 1).
@@ -315,7 +315,7 @@ test('a night companion is downed by real mob damage, then revives at the next d
 test('toggling the clock day→night→day flips the companion between its day role and night posture', async ({
   page,
 }) => {
-  test.setTimeout(60_000); // a live scene + several driven-frame windows across two clock flips
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~3.6s cold
   await startGame(page);
 
   // Companion in the proven-walkable row-3 band: `repair` by day (mends a wall in place — no hearth
@@ -362,7 +362,7 @@ test('toggling the clock day→night→day flips the companion between its day r
 test('the consolidated day/night switch revives a downed companion on a manual dawn jump (idempotent)', async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~3.5s cold
   await startGame(page);
 
   // Seeded straight into night with a downed companion (far CAMP hearth keeps the wave away from it).
@@ -397,7 +397,7 @@ test('the consolidated day/night switch revives a downed companion on a manual d
 test('a night GUARD companion holds its post, engages a mob in range, and returns to post', async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~3.8s cold
   await startGame(page);
 
   // Companion posted at [8,3]; a club mob two tiles west at [6,3] (within NPC_VISION = 4 tiles), nearer
@@ -425,7 +425,7 @@ test('a night GUARD companion holds its post, engages a mob in range, and return
 });
 
 test('a night FOLLOW companion stays near the player as the player moves', async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~3.8s cold
   await startGame(page);
 
   // Player + companion in the row-3 band, follow posture; far CAMP hearth so the night wave stays away.
@@ -477,7 +477,7 @@ async function fuelAfterRefuelWindow(page: Page, wood: number): Promise<number> 
 test('a night REFUEL companion slows the fire-fuel decline (feeds the hearth from base supply)', async ({
   page,
 }) => {
-  test.setTimeout(90_000); // two live-scene windows
+  test.setTimeout(20_000); // stepLogic (render-free) since plan 045; two windows, observed ~3.7s cold
   await startGame(page);
 
   // Baseline: the SAME scenario with an EMPTY pool — the refuel NPC stands at the fire yet feeds nothing,

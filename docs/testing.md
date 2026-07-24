@@ -23,9 +23,10 @@ The heavy browser tier is **off the local critical path** — CI runs it, so the
 > `npx playwright test <name>` (e.g. `campfire`) or `npx playwright test -g "<title>"` — and prefer a
 > **unit** run (`npm run test:related` / `npx vitest run <name>`) whenever the behaviour is Node-testable.
 > **Do NOT run `npm run e2e` / `npm run check:all` to "make sure everything still works" mid-work:** the
-> full ~9-min suite is **CI's job** (`ci.yml` on push), not a between-steps gate. Running the whole
-> browser tier per step is the single biggest drag on in-session work — one spec is seconds, the suite
-> is minutes. If a step genuinely spans several specs, run just those by name, not the lot.
+> full ~6.5-min suite (plan 045 Step 1 cut it from ~9.3 min) is **CI's job** (`ci.yml` on push), not a
+> between-steps gate. Running the whole browser tier per step is the single biggest drag on in-session
+> work — one spec is seconds, the suite is minutes. If a step genuinely spans several specs, run just
+> those by name, not the lot.
 
 |Moment|Runs|Speed|
 |---|---|---|
@@ -48,19 +49,45 @@ The heavy browser tier is **off the local critical path** — CI runs it, so the
   `deploy.yml` still ships on its own green `npm test`.
 - **Manual full sweep:** `npm run check:all` (= `check` + `e2e` + `smoke`) when you want everything locally.
 
-> **Phase 2 (planned, plan 045):** re-tier the scenario suite — migrate logic-only specs to Node,
-> add a render-free `stepLogic`, delete redundant specs — to cut the e2e wall. Deferred until the
-> CI-delegated e2e is re-measured as a bottleneck; the annotated long timeouts stay until then.
+> **Phase 2 (plan 045) — committed core shipped 2026-07-24:** a render-free `stepLogic(ms)` (Step 1)
+> converted the 9 top render-cost specs (`survival-hunger`, `survival-daynight`, `companion`,
+> `campfire`, `combat`, `death`, `monster`, `workbench`, `wave`) off the WebGL-drawing `step(ms)`.
+> Re-timed (Step 2): **130 tests, ~6.3–6.5 min** on two cold runs (was ~9.3 min / 124 tests before
+> Step 1 — the count grew for unrelated reasons). `test.setTimeout(...)` on the converted specs was
+> right-sized to match (most now 15–20s, down from 60–120s, with headroom over ~3.5–5s observed
+> per-test). **Phase 2b** (the 36-spec audit, Node migration, spec deletion, shared-boot refactor) is
+> opt-in and gated on recorded evidence the CI e2e wall is blocking real work — see plan 045's "Why
+> now / the real gate"; not started.
+>
+> **`step(ms)` vs `stepLogic(ms)` — pick one per spec/assertion, not per taste.** Both drive the fixed
+> 1/60s update loop (physics/tweens/clock advance identically); the only difference is whether Phaser
+> also draws the frame:
+>
+> |Use `step(ms)` when…|Use `stepLogic(ms)` when…|
+> |---|---|
+> |the spec asserts on rendered pixels: glow/outline/PostFX (HitFlash), screenshots, anything gated on `isWebGL`|every assertion reads world/game **state** (`state()`, `debugState()`, `captured()`) and never a rendered frame|
+> |boot / first-time RenderTexture or shader construction is in play|the spec is logic/timing/AI/combat-cadence driven purely by ticking the clock|
+>
+> `stepLogic` skips only `preRender`/`scene.render`/`postRender` (`SurvivalClock.suppressRender` short-
+> circuits its RenderTexture `composite()`) — it is **not** a faster `step()`, it is a *different*
+> assertion contract: if a spec mixes both kinds of assertion, split the assertion, not the file (keep
+> the render-dependent one on `step()`). Two stepping modes are a permanent maintenance surface for a
+> solo dev — keep the seam this minimal, don't grow a third mode without a matching payoff.
 
 ### The scenario API (Tier 2)
 
 Scenarios drive a **DEV-only** control surface on `GameScene`, reachable at `window.game.__test`:
 `applyScenario(spec)` builds a known world from a declarative spec, `step(ms)` advances gameplay in
-fixed 1/60s slices with **zero wall-clock** (stops the RAF loop, drives `game.step`), plus
-`setRng`/`order`/`enqueue`/`inspect`/`state`/`blocked`. It is **gated on `import.meta.env.DEV`** so
-`vite build` strips it entirely — it exists only under `vite dev`, which is why `playwright.config.ts`
-serves `vite dev`, never `vite preview`. Chromium is pre-installed at `/opt/pw-browsers/` in web
-sessions; both the e2e config and the boot canary honour `SMOKE_CHROMIUM_PATH`.
+fixed 1/60s slices with **zero wall-clock** (stops the RAF loop, drives `game.step` — full update AND
+WebGL render each slice), plus `setRng`/`order`/`enqueue`/`inspect`/`state`/`blocked`. **`stepLogic(ms)`**
+(plan 045) is the render-free twin: same fixed-step update loop (physics/tweens/clock advance
+identically) but drives `scene.update` directly, skipping `preRender`/`scene.render`/`postRender` (and
+short-circuits `SurvivalClock.composite()`'s RenderTexture work) — use it whenever a spec's assertions
+never read a rendered frame; see the **`step` vs `stepLogic`** rule above for the choice. It is **gated
+on `import.meta.env.DEV`** so `vite build` strips it entirely — it exists only under `vite dev`, which
+is why `playwright.config.ts` serves `vite dev`, never `vite preview`. Chromium is pre-installed at
+`/opt/pw-browsers/` in web sessions; both the e2e config and the boot canary honour
+`SMOKE_CHROMIUM_PATH`.
 
 ### Boot determinism (the ex-"boot-timeout" flake) — [RESOLVED 2026-07-12]
 
@@ -87,8 +114,14 @@ fixes, both root-cause, not papered over (`retries: 0` stays):
   `import { describe, it, expect } from 'vitest'`; build tiny inputs inline (e.g. a grid via an
   `isBlocked` closure over a Set) — no scene, no Phaser. `npm run test:watch` picks it up.
 - **A scenario:** add `tests/e2e/<concern>.spec.ts`. Use the helpers in `tests/e2e/harness.ts`
-  (`startGame`, `applyScenario`, `step`, `state`, `order`/`enqueue`, `emit`, `captured`, …) and a
-  fixture from `tests/e2e/scenarios.ts` (or an inline spec). Shape: `startGame` → `applyScenario(...)`
-  → do the ONE action → drive `step(...)` if time-based → assert via `state()`/`captured()`. Place
-  entities **adjacent** so there's no multi-second walk. Add a named fixture builder only once ≥2
-  specs want the same shape. `retries: 0` — if it flakes, fix the determinism, don't paper over it.
+  (`startGame`, `applyScenario`, `step`/`stepLogic`, `state`, `order`/`enqueue`, `emit`, `captured`, …)
+  and a fixture from `tests/e2e/scenarios.ts` (or an inline spec). Shape: `startGame` →
+  `applyScenario(...)` → do the ONE action → drive `step(...)`/`stepLogic(...)` if time-based → assert
+  via `state()`/`captured()`. **Pick the stepping mode per the `step` vs `stepLogic` rule above** — if
+  every assertion in the new spec reads `state()`/`debugState()` and never a rendered frame, drive it
+  with `stepLogic(page, ms)` (cheaper, no WebGL draw); reach for `step(page, ms)` only when an assertion
+  needs a real rendered frame (glow/outline/PostFX, screenshots, `isWebGL`). Place entities **adjacent**
+  so there's no multi-second walk. Size any `test.setTimeout(...)` off an actual cold-run measurement
+  (2–3x observed, not a guess) — re-time after converting a spec's stepping mode, don't carry over the
+  other mode's timeout. Add a named fixture builder only once ≥2 specs want the same shape. `retries: 0`
+  — if it flakes, fix the determinism, don't paper over it.

@@ -109,6 +109,14 @@ export class SurvivalClock {
    *  `TIME_PROGRESS_EMIT_MS` of game time so the day/night dial sweeps without a per-frame event. */
   private progressElapsed = 0;
 
+  /** DEV-only render-skip flag (plan 045 Step 1): while true, {@link composite} short-circuits before
+   *  touching {@link nightRT} — the fixed-step `TestApi.stepLogic()` seam sets this for the duration of
+   *  a logic-only step so the per-tick RenderTexture fill/erase (real GPU work regardless of whether the
+   *  frame is ever presented) is skipped along with the draw. Set/cleared ONLY from that DEV path (see
+   *  `TestApiDeps.setSuppressRender`); every other caller (`tick`, `applyClock`, the ctor seed) always
+   *  runs with this false, so production/boot behaviour is untouched. */
+  suppressRender = false;
+
   /**
    * Night light-layer — a world-space RenderTexture, depth 15 (above the player at 10, so it darkens
    * actors too), re-centred each frame on the camera and composited from the clock + lit fires (see
@@ -268,6 +276,7 @@ export class SurvivalClock {
    * fire's diameter.
    */
   private composite(cycleMs: number): void {
+    if (this.suppressRender) return; // logic-only step (plan 045) — skip the RT fill/erase entirely
     const rt = this.nightRT;
     const cam = this.scene.cameras.main;
     const cx = cam.midPoint.x;

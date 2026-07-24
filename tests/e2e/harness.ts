@@ -138,6 +138,14 @@ export function step(page: Page, ms: number): Promise<void> {
   return page.evaluate((m) => (window as any).game.__test.step(m), ms);
 }
 
+/** Render-free twin of {@link step} (plan 045 Step 1) — same fixed 1/60s slices, no wall-clock, but
+ *  skips the WebGL draw (and SurvivalClock's RenderTexture composite) for the loop's duration. Use
+ *  for specs whose assertions never read a rendered frame (no glow/outline/PostFX/screenshot/
+ *  `isWebGL`) — mixed specs should call `step` only for the render-dependent assertions. */
+export function stepLogic(page: Page, ms: number): Promise<void> {
+  return page.evaluate((m) => (window as any).game.__test.stepLogic(m), ms);
+}
+
 /** Read the live debug snapshot. */
 export function state(page: Page): Promise<DebugState> {
   return page.evaluate(() => (window as any).game.__test.state());

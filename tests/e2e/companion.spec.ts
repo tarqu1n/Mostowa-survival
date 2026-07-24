@@ -6,7 +6,7 @@ import {
   companion,
   setNpcDayRole,
   setNpcNightPosture,
-  step,
+  stepLogic,
   walls,
   damageWall,
   moveEnemy,
@@ -20,7 +20,7 @@ import {
 // specs assert lifecycle + round-trip, the thing downstream steps build their e2e on: a scenario can
 // place the single companion and seed its scaffold state, `debugState().companion` reads it back, the
 // `setNpc*` dev seams mutate it, and an absent companion reads back as null with a zeroed baseSupply.
-// Driven with no step()/emit beyond the scenario apply, so it stays deterministic.
+// Driven with no stepLogic()/emit beyond the scenario apply, so it stays deterministic.
 
 test('a scenario places the companion + reads its scaffold state back via debugState().companion', async ({
   page,
@@ -84,7 +84,7 @@ test('the setNpc* dev seams mutate the placed companion (round-trips through deb
 // Tier-2 (plan 042 Step 4): the companion's OWN gather loop through the REAL scene — its slimmed
 // executor (own TaskQueue, never GameScene.queue) walks to the nearest wood/rock node, fells it via the
 // shared ResourceNodeManager.chop path (yield redirected into its carry buffer, NOT the player's bag),
-// then deposits the buffer into the shared base-supply pool. Driven deterministically with step().
+// then deposits the buffer into the shared base-supply pool. Driven deterministically with stepLogic().
 test('a gather-role companion chops a tree by day and deposits wood into base supply', async ({
   page,
 }) => {
@@ -106,7 +106,7 @@ test('a gather-role companion chops a tree by day and deposits wood into base su
   expect((await state(page)).baseSupply).toEqual({ wood: 0, rock: 0 });
 
   // Short walk to the tree + 3 chop intervals (maxHp 3) + a deposit — well inside this budget.
-  await step(page, 6000);
+  await stepLogic(page, 6000);
 
   const s = await state(page);
   expect(s.baseSupply.wood).toBeGreaterThan(0); // it chopped and banked wood
@@ -120,7 +120,7 @@ test('a gather-role companion chops a tree by day and deposits wood into base su
 // and mends it on the NPC_REPAIR_MS cadence, consuming wood from base supply per tick. Wall placement +
 // its full-HP start come from the scenario; the damage is seeded via the __test.damageWall seam (the
 // path the night siege drives) and wall hp is read back via the standalone walls() seam (NOT DebugState,
-// so the refactor-tripwire golden is untouched). Driven deterministically with step().
+// so the refactor-tripwire golden is untouched). Driven deterministically with stepLogic().
 test('a repair-role companion mends a damaged wall by day, draining wood from base supply', async ({
   page,
 }) => {
@@ -136,7 +136,7 @@ test('a repair-role companion mends a damaged wall by day, draining wood from ba
     startPhase: 'day',
     baseSupply: { wood: 20 },
   });
-  await step(page, 1000); // let the wall's build anim settle on the intact idle frame
+  await stepLogic(page, 1000); // let the wall's build anim settle on the intact idle frame
 
   // Knock the wall down (maxHp 12 → 4) via the mob-attack seam, so it now needs mending.
   await damageWall(page, 0, 8);
@@ -146,7 +146,7 @@ test('a repair-role companion mends a damaged wall by day, draining wood from ba
 
   // Short walk to the wall (~1 tile) + several NPC_REPAIR_MS cadences — enough to mend it back to full
   // (8 hp deficit / 2 hp-per-tick = 4 ticks ≈ 1.6s, plus the walk; kept lean to stay inside the budget).
-  await step(page, 3500);
+  await stepLogic(page, 3500);
 
   const after = await walls(page);
   const woodAfter = (await state(page)).baseSupply.wood;
@@ -170,12 +170,12 @@ test('a repair-role companion with an empty base supply does not repair the wall
     startPhase: 'day',
     baseSupply: { wood: 0 }, // empty pool — nothing to mend with
   });
-  await step(page, 1000);
+  await stepLogic(page, 1000);
 
   await damageWall(page, 0, 8);
   const hpBefore = (await walls(page))[0].hp;
 
-  await step(page, 3500);
+  await stepLogic(page, 3500);
 
   expect((await walls(page))[0].hp).toBe(hpBefore); // no wood → the wall is left untouched
   expect((await state(page)).baseSupply.wood).toBe(0); // nothing withdrawn (idle, no error)
@@ -185,7 +185,7 @@ test('a repair-role companion with an empty base supply does not repair the wall
 // it (the NEAREST threat — nearer than the player here) and bites it, so its HP falls. The companion has
 // no combat AI yet (Step 7), so it just stands and takes the hit — that's the point of this step's e2e.
 // A gather-role companion by DAY with NO nodes to gather stands still (nothing to do), and day means no
-// night wave, so the only enemy is the one we placed — deterministic. Driven with step().
+// night wave, so the only enemy is the one we placed — deterministic. Driven with stepLogic().
 test('a mob adjacent to the companion deals it damage (the NPC is a valid threat)', async ({
   page,
 }) => {
@@ -207,7 +207,7 @@ test('a mob adjacent to the companion deals it damage (the NPC is a valid threat
   expect(before.hp).toBe(8); // NPC_MAX_HP — full-health baseline
   expect(before.col).toBe(8); // standing where it was placed (nothing to gather → holds station)
 
-  await step(page, 3000); // a few ~1s bite cadences — enough for the mob to land hits
+  await stepLogic(page, 3000); // a few ~1s bite cadences — enough for the mob to land hits
 
   const after = (await companion(page))!;
   expect(after.hp).toBeLessThan(before.hp); // the mob acquired + bit the NPC → its HP fell
@@ -217,7 +217,7 @@ test('a mob adjacent to the companion deals it damage (the NPC is a valid threat
 // By night the companion runs its dedicated combat stepper (acquire nearest live enemy → chase →
 // telegraphed strike, reusing resolveMeleeAttack + the weapon rig; NOT the monster FSM); at 0 HP it
 // collapses to `downed` (inert, on the Death strip, sprite kept), and on the next dawn it revives at
-// NPC_REVIVE_HP. Driven deterministically with step(). A lit campfire sits at the camp (the wave's
+// NPC_REVIVE_HP. Driven deterministically with stepLogic(). A lit campfire sits at the camp (the wave's
 // defended centre) so the night wave converges THERE, far from the row-3 skirmish — keeping the
 // companion's local fight a clean function of the mob(s) we place, not stray wave spawns.
 const NPC_REVIVE_HP = 3; // mirrors config.ts (harness DebugState carries no consts)
@@ -252,7 +252,7 @@ test('a night companion attacks and kills an adjacent mob', async ({ page }) => 
   expect(before.companion!.hp).toBe(8); // NPC_MAX_HP baseline
   expect(enemiesNearCompanion(before, 4)).toBe(1); // the one skirmish mob (wave is at the far camp)
 
-  await step(page, 3000); // strike windup+cadence → 2 strikes (2 dmg each) kill the 3-HP mob
+  await stepLogic(page, 3000); // strike windup+cadence → 2 strikes (2 dmg each) kill the 3-HP mob
 
   const after = await state(page);
   expect(enemiesNearCompanion(after, 4)).toBe(0); // the adjacent mob was killed by the companion
@@ -283,7 +283,7 @@ test('a night companion is downed by real mob damage, then revives at the next d
   expect(seeded.companion!.downed).toBe(false); // starts UP (not force-downed) — the bite must down it
 
   // A couple of bite cadences: the mob bites the 1-HP companion to 0 → downed (by real damage, in play).
-  await step(page, 2500);
+  await stepLogic(page, 2500);
   const downed = await state(page);
   expect(downed.dayPhase).toBe('night'); // still night (2.5s < the ~6s to dawn)
   expect(downed.companion!.downed).toBe(true); // collapsed to downed by the mob's bite — no force-seed
@@ -294,7 +294,7 @@ test('a night companion is downed by real mob damage, then revives at the next d
   await moveEnemy(page, 0, 200, 200);
 
   // Cross dawn (894_000 + 2500 + 5000 = 901_500 > 900_000) → the night→day edge revives the companion.
-  await step(page, 5000);
+  await stepLogic(page, 5000);
   const dawn = await state(page);
   expect(dawn.dayPhase).toBe('day'); // survived into the next day…
   expect(dawn.companion!.downed).toBe(false); // …and the downed companion stood back up
@@ -307,7 +307,7 @@ test('a night companion is downed by real mob damage, then revives at the next d
 // range, return), follow (trail the player, fight alongside, no thrash when the player is still), refuel
 // (feed the lit hearth) — and (b) consolidates the day↔night handoff (revive + posture-adopt + day-role-
 // resume) onto ONE idempotent `time:changed` listener (CompanionManager.onPhaseChanged). Driven
-// deterministically with step(); the clock is flipped with the same `debug:toggleTime` dev event the
+// deterministically with stepLogic(); the clock is flipped with the same `debug:toggleTime` dev event the
 // menu uses (a manual `applyClock` jump, which also fires `time:changed` — exercising the idempotency).
 // A lit CAMP hearth far from each skirmish is the wave's defended centre, so night spawns converge THERE
 // and the local fight stays a clean function of the mob(s) we place (the Step-7 pattern).
@@ -330,12 +330,12 @@ test('toggling the clock day→night→day flips the companion between its day r
     startPhase: 'day',
     baseSupply: { wood: 40 },
   });
-  await step(page, 1000); // let the wall's build anim settle on its intact idle frame
+  await stepLogic(page, 1000); // let the wall's build anim settle on its intact idle frame
   await damageWall(page, 0, 10); // knock it well down so there's headroom to mend across all phases
   const hp0 = (await walls(page))[0].hp;
 
   // DAY: the repair day-role advances the wall.
-  await step(page, 2500);
+  await stepLogic(page, 2500);
   expect((await state(page)).dayPhase).toBe('day');
   const hpDay1 = (await walls(page))[0].hp;
   expect(hpDay1).toBeGreaterThan(hp0); // repaired by day
@@ -345,7 +345,7 @@ test('toggling the clock day→night→day flips the companion between its day r
   expect((await state(page)).dayPhase).toBe('night');
   await damageWall(page, 0, 4); // re-damage: if repair were still running, hp would climb back
   const hpNight0 = (await walls(page))[0].hp;
-  await step(page, 3000);
+  await stepLogic(page, 3000);
   const hpNight1 = (await walls(page))[0].hp;
   expect(hpNight1).toBe(hpNight0); // guard posture — repair is suspended, the wall is left untouched
   expect((await state(page)).companion!.downed).toBe(false); // nothing near it — it just holds post
@@ -353,7 +353,7 @@ test('toggling the clock day→night→day flips the companion between its day r
   // Flip back to DAY: the day role RESUMES (the consolidated switch) — the wall advances once more.
   await emit(page, 'debug:toggleTime');
   expect((await state(page)).dayPhase).toBe('day');
-  await step(page, 2500);
+  await stepLogic(page, 2500);
   const hpDay2 = (await walls(page))[0].hp;
   expect((await state(page)).companion!.dayRole).toBe('repair');
   expect(hpDay2).toBeGreaterThan(hpNight1); // repair resumed after the night
@@ -372,12 +372,12 @@ test('the consolidated day/night switch revives a downed companion on a manual d
     campfires: [CAMP],
     startPhase: 'night',
   });
-  await step(page, 200);
+  await stepLogic(page, 200);
   expect((await state(page)).companion!.downed).toBe(true); // still down at night (no dawn yet)
 
   // Manual jump to DAY — applyClock fires time:changed(day); the single consolidated handler revives it.
   await emit(page, 'debug:toggleTime');
-  await step(page, 200);
+  await stepLogic(page, 200);
   const day = await state(page);
   expect(day.dayPhase).toBe('day');
   expect(day.companion!.downed).toBe(false); // revived on the dawn edge (through the time:changed path)
@@ -385,9 +385,9 @@ test('the consolidated day/night switch revives a downed companion on a manual d
 
   // Jump night→day again: the handler is idempotent — no double-revive, no re-heal, no re-collapse.
   await emit(page, 'debug:toggleTime'); // → night
-  await step(page, 200);
+  await stepLogic(page, 200);
   await emit(page, 'debug:toggleTime'); // → day
-  await step(page, 200);
+  await stepLogic(page, 200);
   const again = await state(page);
   expect(again.dayPhase).toBe('day');
   expect(again.companion!.downed).toBe(false);
@@ -415,7 +415,7 @@ test('a night GUARD companion holds its post, engages a mob in range, and return
   expect(before.companion!.col).toBe(8); // posted where placed
   expect(enemiesNearCompanion(before, 5)).toBe(1); // the one skirmish mob (wave is at the far camp)
 
-  await step(page, 4000); // engage + kill the mob, then walk back to post
+  await stepLogic(page, 4000); // engage + kill the mob, then walk back to post
 
   const after = await state(page);
   expect(enemiesNearCompanion(after, 5)).toBe(0); // the guard killed the mob that came into range
@@ -443,7 +443,7 @@ test('a night FOLLOW companion stays near the player as the player moves', async
   // Walk the player west across the band; the follow companion trails it (a queued move runs at night
   // when no movepad is held — the movepad-precedence override only engages on an actual pad hold).
   await order(page, { kind: 'move', col: 3, row: 3 });
-  await step(page, 6000);
+  await stepLogic(page, 6000);
 
   const after = await state(page);
   const cheb = Math.max(
@@ -470,7 +470,7 @@ async function fuelAfterRefuelWindow(page: Page, wood: number): Promise<number> 
     startPhase: 'night',
     baseSupply: { wood },
   });
-  await step(page, 4000); // several feed cadences; the treeline spawns don't reach the fire this soon
+  await stepLogic(page, 4000); // several feed cadences; the treeline spawns don't reach the fire this soon
   return (await state(page)).campfires[0].fuel;
 }
 

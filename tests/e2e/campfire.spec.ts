@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   startGame,
   applyScenario,
-  step,
+  stepLogic,
   state,
   tryPlace,
   inLight,
@@ -143,7 +143,7 @@ test('fuel drains to 0 (douses) then feeding wood relights it', async ({ page })
     inventory: { wood: 5 },
   });
 
-  await step(page, 3000); // 1 fuel - 0.4/s * 3s -> clamped to 0 (burn retuned in plan 038 Step 2)
+  await stepLogic(page, 3000); // 1 fuel - 0.4/s * 3s -> clamped to 0 (burn retuned in plan 038 Step 2)
 
   const drained = await state(page);
   expect(drained.campfires[0].fuel).toBe(0);
@@ -185,7 +185,7 @@ test("a mob attack (damageFire) knocks the fire's light out — dark, not a loss
   expect(await damageFire(page, 0, 999)).toBe(true);
   // Run on for a beat: the loop keeps ticking, the fire stays out (no relight), and crucially nothing
   // restarts the scene — a knocked-out fire is a dire dark state, not a game-over.
-  await step(page, 1000);
+  await stepLogic(page, 1000);
 
   const out = await state(page);
   expect(out.campfires[0].fuel).toBe(0);
@@ -217,7 +217,7 @@ test('a refuel order walks the worker to the fire, feeds it, then self-terminate
   await enqueue(page, { kind: 'refuel', campfireId: campfireIds[0] });
   expect((await state(page)).currentKind).toBe('refuel'); // it's a real queued order
 
-  await step(page, 6000); // walk (~0.2s) + feed one wood/s until topped up
+  await stepLogic(page, 6000); // walk (~0.2s) + feed one wood/s until topped up
 
   const s = await state(page);
   expect(s.currentKind).toBeNull(); // order self-terminated (no spin)
@@ -240,7 +240,7 @@ test('a refuel order aborts (does not spin) when the bag runs dry mid-tend', asy
   });
 
   await enqueue(page, { kind: 'refuel', campfireId: campfireIds[0] });
-  await step(page, 6000);
+  await stepLogic(page, 6000);
 
   const s = await state(page);
   expect(s.currentKind).toBeNull(); // terminated, not stuck swinging on a fire it can't feed

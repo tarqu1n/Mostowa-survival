@@ -1,5 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { startGame, applyScenario, emit, step, state, captured, order, moveEnemy } from './harness';
+import {
+  startGame,
+  applyScenario,
+  emit,
+  stepLogic,
+  state,
+  captured,
+  order,
+  moveEnemy,
+} from './harness';
 import { oneEnemy } from './scenarios';
 import { ATTACK_COOLDOWN_MS, BOW_COOLDOWN_MS } from '../../src/config';
 
@@ -11,7 +20,7 @@ test('a chasing enemy closes distance and contact-damages the player', async ({ 
   await applyScenario(page, oneEnemy()); // player [10,10], enemy two tiles east
 
   const before = (await state(page)).playerHp;
-  await step(page, 4000); // aggro (within vision) → chase → adjacent → one contact hit
+  await stepLogic(page, 4000); // aggro (within vision) → chase → adjacent → one contact hit
   const after = (await state(page)).playerHp;
 
   expect(after).toBeLessThan(before);
@@ -33,7 +42,7 @@ test('Attack kills an adjacent enemy in three hits', async ({ page }) => {
   // glued adjacent through the longer fight.
   for (let i = 0; i < 3; i++) {
     await emit(page, 'combat:attack');
-    await step(page, ATTACK_COOLDOWN_MS + 20); // clear the cooldown so the next swing is accepted
+    await stepLogic(page, ATTACK_COOLDOWN_MS + 20); // clear the cooldown so the next swing is accepted
   }
   expect((await state(page)).enemies).toBe(0);
 });
@@ -52,14 +61,14 @@ test('the melee attack has a cooldown — mashing the button does not machine-gu
   // Three presses in the SAME frame (no step between). Only the first is outside the cooldown, so only
   // one hit lands — kidZombie maxHp 3, unarmed 1 dmg → it survives, proving the spam didn't stack 3 hits.
   for (let i = 0; i < 3; i++) await emit(page, 'combat:attack');
-  await step(page, 50); // let the single hit's flash bookkeeping run a frame
+  await stepLogic(page, 50); // let the single hit's flash bookkeeping run a frame
   expect((await state(page)).enemies).toBe(1);
   expect((await state(page)).enemyHitFlashes).toBe(1); // exactly one hit registered, not three
 
   // Once the cooldown elapses a fresh press is accepted again.
-  await step(page, ATTACK_COOLDOWN_MS);
+  await stepLogic(page, ATTACK_COOLDOWN_MS);
   await emit(page, 'combat:attack');
-  await step(page, 50);
+  await stepLogic(page, 50);
   expect((await state(page)).enemyHitFlashes).toBe(2);
 });
 
@@ -79,7 +88,7 @@ test('Attack connects with a tall enemy body, not only its feet tile', async ({ 
   expect((await state(page)).enemies).toBe(1);
 
   await emit(page, 'combat:attack');
-  await step(page, 50); // let the hit-flash bookkeeping run a frame
+  await stepLogic(page, 50); // let the hit-flash bookkeeping run a frame
   const s = await state(page);
   expect(s.enemies).toBe(1); // survived the single flat-1 hit (maxHp 3)...
   expect(s.enemyHitFlashes).toBeGreaterThan(0); // ...but the swing DID connect with the torso tile (row 9)
@@ -89,7 +98,7 @@ test('a biting enemy plays an attack lunge and the player flashes on the hit', a
   await startGame(page);
   await applyScenario(page, oneEnemy()); // player [10,10], enemy two tiles east
 
-  await step(page, 4000); // aggro → chase → adjacent → at least one bite lands
+  await stepLogic(page, 4000); // aggro → chase → adjacent → at least one bite lands
   const s = await state(page);
   // The skeleton has no attack strip, so the bite is a coded lunge — assert it fired, and that the
   // landed bite triggered the player's red-flash hit reaction (dodge 0, so the bite always connects).
@@ -115,7 +124,7 @@ test('a skeleton telegraphs a wind-up before its bite lands (plan 035a)', async 
   let sawWindupBeforeDamage = false;
   let damageLanded = false;
   for (let i = 0; i < 40 && !damageLanded; i++) {
-    await step(page, 100);
+    await stepLogic(page, 100);
     const s = await state(page);
     if (s.enemyWindups > 0 && s.playerHp === before) sawWindupBeforeDamage = true; // telegraphing, not yet bitten
     if (s.playerHp < before) damageLanded = true;
@@ -136,7 +145,7 @@ test('attacking a surviving enemy triggers its hit flash', async ({ page }) => {
   });
 
   await emit(page, 'combat:attack');
-  await step(page, 50); // let the flash bookkeeping run a frame
+  await stepLogic(page, 50); // let the flash bookkeeping run a frame
   const s = await state(page);
   expect(s.enemies).toBe(1); // survived the single hit
   expect(s.enemyHitFlashes).toBeGreaterThan(0);
@@ -154,7 +163,7 @@ test('a killed enemy leaves a lingering corpse playing its death collapse', asyn
   // kidZombie maxHp 3, flat-1 → dead on the 3rd. Spaced past the attack cooldown; 'chase' holds it adjacent.
   for (let i = 0; i < 3; i++) {
     await emit(page, 'combat:attack');
-    await step(page, ATTACK_COOLDOWN_MS + 20);
+    await stepLogic(page, ATTACK_COOLDOWN_MS + 20);
   }
 
   // Killed = out of the AI set immediately, but the sprite lingers as a corpse playing the one-shot
@@ -165,7 +174,7 @@ test('a killed enemy leaves a lingering corpse playing its death collapse', asyn
 
   // The corpse holds its settled final frame for a long linger (currently 5 min), so it's still
   // present well past the ~1s collapse — it does not vanish on animation end.
-  await step(page, 2000);
+  await stepLogic(page, 2000);
   expect((await state(page)).corpses).toBe(1);
 });
 
@@ -178,7 +187,7 @@ test('attacking slows the player — a mid-swing movepad drive covers far less g
   await applyScenario(page, { player: [10, 10], mode: 'combat' });
   const startFull = (await state(page)).px;
   await emit(page, 'combat:move', { dx: 1, dy: 0 });
-  await step(page, 300);
+  await stepLogic(page, 300);
   const fullDist = (await state(page)).px - startFull;
 
   // Same drive, but begin a Attack swing first: the attack-lock window slows movement to ATTACK_MOVE_SLOW.
@@ -186,7 +195,7 @@ test('attacking slows the player — a mid-swing movepad drive covers far less g
   const startSlow = (await state(page)).px;
   await emit(page, 'combat:attack'); // starts the swing (~400ms lock), so 300ms of the drive is slowed
   await emit(page, 'combat:move', { dx: 1, dy: 0 });
-  await step(page, 300);
+  await stepLogic(page, 300);
   const slowDist = (await state(page)).px - startSlow;
 
   expect(fullDist).toBeGreaterThan(20); // sanity: it really moved at full speed
@@ -203,7 +212,7 @@ test('firing the bow slows the player only lightly — kite-able, unlike melee (
   await applyScenario(page, { player: [10, 10], mode: 'combat' });
   const startFull = (await state(page)).px;
   await emit(page, 'combat:move', { dx: 1, dy: 0 });
-  await step(page, 300);
+  await stepLogic(page, 300);
   const fullDist = (await state(page)).px - startFull;
 
   // Same drive after firing the bow: the bow-fire lock slows movement only to BOW_MOVE_SLOW (0.75) —
@@ -213,7 +222,7 @@ test('firing the bow slows the player only lightly — kite-able, unlike melee (
   const startBow = (await state(page)).px;
   await emit(page, 'combat:bow'); // BOW_DRAW_MS lock (~450ms) covers the whole 300ms drive
   await emit(page, 'combat:move', { dx: 1, dy: 0 });
-  await step(page, 300);
+  await stepLogic(page, 300);
   const bowDist = (await state(page)).px - startBow;
 
   expect(fullDist).toBeGreaterThan(20); // sanity: full speed really moved
@@ -239,7 +248,7 @@ test('the bow auto-targets the nearest enemy in the facing direction (plan 035a)
   });
 
   await emit(page, 'combat:bow');
-  await step(page, 50); // resolve the shot + one frame of syncBowTarget
+  await stepLogic(page, 50); // resolve the shot + one frame of syncBowTarget
   const s = await state(page);
   expect(s.bowTargetId).toBe(enemyIds[0]); // the eastward enemy (spec order), not the southward one
   expect(s.enemyHitFlashes).toBeGreaterThan(0); // the target took a ranged hit (kidZombie hp3, bow 2 → survived)
@@ -263,11 +272,11 @@ test('the bow kills an enemy from range while the player stays put, then clears 
   // kidZombie maxHp 3, bow BOW_BASE_DAMAGE 2 (player dex 0), dodge 0 → two arrows kill it. The two
   // shots are spaced past BOW_COOLDOWN_MS (a bow press inside the window is now ignored).
   await emit(page, 'combat:bow');
-  await step(page, BOW_COOLDOWN_MS + 20);
+  await stepLogic(page, BOW_COOLDOWN_MS + 20);
   expect((await state(page)).enemies).toBe(1); // first shot: 3 → 1, still alive
 
   await emit(page, 'combat:bow');
-  await step(page, 100);
+  await stepLogic(page, 100);
   const s = await state(page);
   expect(s.enemies).toBe(0); // second shot killed it from range
   expect(s.pcol).toBe(10); // player never moved to melee — the fight was purely ranged
@@ -285,16 +294,16 @@ test('hitting an enemy reveals a brief HP bar that fades; no hit → no bar (pla
     facing: 'right',
     mode: 'combat',
   });
-  await step(page, 50);
+  await stepLogic(page, 50);
   expect((await state(page)).enemyHpBarsVisible).toBe(0); // un-hit, not a bow target → no bar
 
   await emit(page, 'combat:attack'); // one melee hit (kidZombie hp3 − 1 = 2, survives)
-  await step(page, 50);
+  await stepLogic(page, 50);
   expect((await state(page)).enemyHpBarsVisible).toBeGreaterThanOrEqual(1); // on-hit bar revealed
 
   // Past HP_BAR_SHOW_MS (2500) with no further hits → the brief bar fades out (enemy still alive,
   // not the bow target, HP 2/3 so not near-death — nothing keeps the bar up).
-  await step(page, 2800);
+  await stepLogic(page, 2800);
   const s = await state(page);
   expect(s.enemies).toBe(1); // still alive — the bar dropped on timeout, not on death
   expect(s.enemyHpBarsVisible).toBe(0);
@@ -314,13 +323,13 @@ test('the bow target keeps its HP bar persistently, past the on-hit fade (plan 0
   });
 
   await emit(page, 'combat:bow');
-  await step(page, 50);
+  await stepLogic(page, 50);
   let s = await state(page);
   expect(s.bowTargetId).not.toBeNull(); // locked as the bow target
   expect(s.enemyHpBarsVisible).toBeGreaterThanOrEqual(1);
 
   // Well past HP_BAR_SHOW_MS: an on-hit-only bar would have faded, but the bow TARGET keeps its bar.
-  await step(page, 2800);
+  await stepLogic(page, 2800);
   s = await state(page);
   expect(s.enemies).toBe(1); // survived the single shot
   expect(s.bowTargetId).not.toBeNull(); // still the target (alive + in range)
@@ -333,7 +342,7 @@ test('an enemy near surfaces combat controls, and the movepad drives while a que
   await startGame(page);
   // Command mode (default). Enemy 3 tiles east — inside COMBAT_ACTIVE_RADIUS_TILES (7).
   await applyScenario(page, { player: [10, 10], enemies: [[13, 10]] });
-  await step(page, 50); // one frame so update() recomputes combatActive
+  await stepLogic(page, 50); // one frame so update() recomputes combatActive
   let s = await state(page);
   expect(s.combatActive).toBe(true); // enemy-near trigger surfaced the controls
   expect(s.mode).toBe('command'); // NOT auto-switched to Combat mode (that would cancel the queue)
@@ -347,7 +356,7 @@ test('an enemy near surfaces combat controls, and the movepad drives while a que
   // but the order still survives in the queue (chosen precedence: movepad drives, taps still queue).
   const before = (await state(page)).px;
   await emit(page, 'combat:move', { dx: 1, dy: 0 });
-  await step(page, 300);
+  await stepLogic(page, 300);
   s = await state(page);
   expect(s.px).toBeGreaterThan(before); // moved east under movepad control
   expect(s.currentKind).toBe('move'); // the pending move order survived the reveal + the pad drive
@@ -362,14 +371,14 @@ test('night surfaces combat controls at dusk and retracts at dawn when no enemy 
   // to the defended centre), leaving the player's vicinity clear — so this still isolates the night
   // trigger from the enemy-near trigger, now that entering night brings a wave.
   await applyScenario(page, { player: [10, 10], campfires: [[200, 250]], startPhase: 'night' });
-  await step(page, 50); // one frame so update() recomputes combatActive
+  await stepLogic(page, 50); // one frame so update() recomputes combatActive
   let s = await state(page);
   expect(s.dayPhase).toBe('night');
   expect(s.combatActive).toBe(true); // night trigger
 
   // Flip to day (dev toggle) with no enemy near the player → the predicate retracts.
   await emit(page, 'debug:toggleTime'); // night -> day
-  await step(page, 50);
+  await stepLogic(page, 50);
   s = await state(page);
   expect(s.dayPhase).toBe('day');
   expect(s.combatActive).toBe(false); // retracted at dawn — no enemy near the player, daytime
@@ -381,7 +390,7 @@ test('the movepad drives the player directly, bypassing the pathfinder', async (
 
   // A movepad vector sets velocity directly (no task queue, no path) — the player just translates.
   await emit(page, 'combat:move', { dx: 1, dy: 0 });
-  await step(page, 800);
+  await stepLogic(page, 800);
   const s = await state(page);
   expect(s.pcol).toBeGreaterThan(10); // moved east
   expect(s.currentKind).toBeNull(); // no task/path was involved
@@ -393,7 +402,7 @@ test('the auto-surface predicate has hysteresis — an enemy at the boundary doe
   await startGame(page);
   // Enemy exactly at COMBAT_ACTIVE_RADIUS_TILES (7) east of the player → the controls engage.
   await applyScenario(page, { player: [10, 10], enemies: [[17, 10]] });
-  await step(page, 50);
+  await stepLogic(page, 50);
   expect((await state(page)).combatActive).toBe(true);
 
   // Relocate the enemy to 8 tiles away: past the activation radius (7) but inside the release band
@@ -401,11 +410,11 @@ test('the auto-surface predicate has hysteresis — an enemy at the boundary doe
   // frame it crossed the line; WITH it, the controls hold. (One frame can't clobber the injected
   // tile — col/row only snap on reaching a waypoint, and updateCombatActive reads before the AI moves.)
   expect(await moveEnemy(page, 0, 18, 10)).toBe(true);
-  await step(page, 16);
+  await stepLogic(page, 16);
   expect((await state(page)).combatActive).toBe(true);
 
   // 11 tiles away: finally beyond the release radius (10) → the controls retract.
   await moveEnemy(page, 0, 21, 10);
-  await step(page, 16);
+  await stepLogic(page, 16);
   expect((await state(page)).combatActive).toBe(false);
 });

@@ -98,7 +98,19 @@ non-blocking). Plan 044 deferred this Phase 2 "until re-measured as a **bottlene
 
 ## Steps — Committed core (execute now)
 
-- [ ] **Step 1: Render-free `stepLogic(ms)` — spike the draw-skip, then adopt** `[inline]`
+- [x] **Step 1: Render-free `stepLogic(ms)` — spike the draw-skip, then adopt** `[inline]`
+  - Outcome: mechanism = drive `game.scene.update(clock, fixed)` (Phaser `SceneManager.update`) directly
+    instead of `game.step(...)`, skipping only `preRender`/`scene.render`/`postRender`; same update path
+    (Arcade Physics/Tweens/Clock) as `step()`. Added `TestApi.stepLogic(ms)` (`src/scenes/testApi.ts`)
+    - `SurvivalClock.suppressRender` flag (`src/scenes/world/SurvivalClock.ts`, early-return in
+    `composite()`) + wiring in `GameScene.installTestApi()`/`testTypes.ts` + `stepLogic(page, ms)` in
+    `tests/e2e/harness.ts`. Converted whole files (no mixed render/non-render assertions found) to
+    `stepLogic`: `survival-hunger`, `survival-daynight`, `companion`, `campfire`, `combat`, `death`,
+    `monster`, `workbench`, `wave`. `glow.spec.ts` untouched, stays on `step()`. Verified: `npm run
+    typecheck`/`npm test` (992/992)/prettier clean; `npm run build` → seam stripped (0 occurrences in
+    `dist`); `npm run smoke` passes; two cold `npx playwright test` runs of the 9 converted specs + `glow`
+    → 73/73 both times (~2m29s, ~2m33s). No true old-`step()` before/after wall-time captured for this
+    exact set (see Step 2 for re-timing the full suite). Not committed yet.
   - **First spike the mechanism** (Finding 5): find the cleanest way to run the fixed 1/60 s update loop
     while dropping the WebGL draw — candidates: `scene.sys.setVisible(false)` around the loop, pausing
     the renderer, or driving `scene.update(time,delta)` + `scene.physics.world.update` directly instead
@@ -128,7 +140,7 @@ non-blocking). Plan 044 deferred this Phase 2 "until re-measured as a **bottlene
     render cost gone from the converted specs, right-size their now-oversized `test.setTimeout(...)` and
     re-run to confirm still green. Re-benchmark `workers` only if the profile shifted.
   - Docs: `docs/testing.md` — update the "Phase 2 (planned, plan 045)" note to reflect stepLogic shipped
-    + new numbers, and **prominently document the `step` (renders) vs `stepLogic` (logic-only) rule** and
+    - new numbers, and **prominently document the `step` (renders) vs `stepLogic` (logic-only) rule** and
     when each applies (Finding 2), in the scenario-API + "adding a test" sections. `docs/WORKFLOW.md` +
     `CLAUDE.md` — refresh the e2e wall number. `docs/STATUS.md` — note stepLogic landed.
   - Side effects: CI (`ci.yml`) shards inherit the faster specs — confirm shard balance still even.

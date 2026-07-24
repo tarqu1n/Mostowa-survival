@@ -1015,6 +1015,9 @@ export class GameScene extends Phaser.Scene {
       setStarveElapsed: (v) => {
         this.survivalClock.starveElapsed = v;
       },
+      setSuppressRender: (v) => {
+        this.survivalClock.suppressRender = v;
+      },
       updateVision: () => this.visionController.update(),
       emitTasks: () => this.emitTasks(),
       inspectAt: (x, y) => this.scenePicker.inspectAt(x, y),
@@ -1027,6 +1030,7 @@ export class GameScene extends Phaser.Scene {
     const api: GameTestApi = {
       applyScenario: (spec) => testApi.applyScenario(spec),
       step: (ms) => testApi.step(ms),
+      stepLogic: (ms) => testApi.stepLogic(ms),
       setRng: (fn) => {
         this.rng = fn;
       },

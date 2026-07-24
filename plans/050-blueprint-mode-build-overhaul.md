@@ -229,7 +229,8 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
   - Done when: the ring rotates the ghost on touch, `R` on desktop, facing is lit, hidden for
     non-orientable buildables.
 
-- [ ] **Step 9: Construction arc + world-space progress bar** `[inline]`
+- [x] **Step 9: Construction arc + world-space progress bar** `[inline]`
+  - Outcome: `BuildSite.scaffold` field (`src/entities/types.ts`); `BuildManager` lazily creates one scaffold Sprite per active build (`ensureScaffold`, positioned at tile center, depth-sorted, alpha 0.7, textured via the shared `applyAppearanceTo`/`ghostTextureFor` path — no new art), settles it in `finishSite` (structure's own Build strip), destroys via `clearScaffold`/`clearScaffolds`/`reset`. `runBuild` (`GameScene.ts`) anchors `NodeFxManager.showActionProgress` to the scaffold sprite (not the `Rectangle` — critique #5), driven by `site.progress / buildTimeFor(def)`, hidden on completion; old blueprint-rect alpha-ramp deleted (single feedback). Leak teardown at the `beginCurrent` chokepoint (`clearScaffolds` + `hideAllActionProgress`) covers cancel/block/switch, plus reset/SHUTDOWN. typecheck clean, 1009 unit pass, 7/7 `build.spec.ts` e2e pass. No deviations from intent.
   - Add a **scaffold sprite** (an `Image`/`Sprite`) on the site while building, and wire
     `NodeFxManager.showActionProgress` **anchored to that scaffold sprite** (not `site.rect`, which is
     a `Rectangle` — critique #5) tracking `site.progress / buildTimeFor(def)`; hide on `finishSite`,

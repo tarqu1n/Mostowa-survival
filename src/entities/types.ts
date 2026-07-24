@@ -54,6 +54,12 @@ export interface BuildSite {
   row: number;
   rect: Phaser.GameObjects.Rectangle;
   visual: Phaser.GameObjects.Image | null;
+  /** Under-construction scaffold sprite (plan 050 Step 9) — a structure-textured preview raised on the
+   *  site while a worker is actively building it, the anchor `NodeFxManager.showActionProgress` hangs the
+   *  world-space build bar off (a `Rectangle` can't be a bar anchor — critique #5). Created lazily by
+   *  {@link BuildManager.ensureScaffold} on the first build tick, destroyed on finish/cancel/reset; the
+   *  finished structure's own materialise anim is the settle. `null` while unbuilt/idle. */
+  scaffold: Phaser.GameObjects.Sprite | null;
   progress: number;
   done: boolean;
   /** Placement facing for an `orientable` buildable (the wall) — stamped by `createBlueprint` from the

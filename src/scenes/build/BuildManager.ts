@@ -481,6 +481,7 @@ export class BuildManager {
       row,
       rect,
       visual: null,
+      scaffold: null,
       progress: 0,
       done: false,
       // Stamp the current rotate facing only for an orientable buildable (the wall); a fixed-orientation
@@ -490,6 +491,41 @@ export class BuildManager {
     this.sites.push(site);
     this.siteTiles.add(key);
     return site;
+  }
+
+  /**
+   * Lazily create (and return) the under-construction **scaffold sprite** for a site (plan 050 Step 9):
+   * a structure-textured preview raised on the tile while a worker builds it — the Image/Sprite anchor
+   * `NodeFxManager.showActionProgress` hangs the world-space build bar off (the blueprint `rect` is a
+   * `Rectangle`, so it can't be that anchor — critique #5). Textured + oriented exactly like the
+   * placement ghost via {@link applyAppearanceTo} (so it reads as the real structure materialising, no
+   * new art), bottom-anchored at the tile centre and y-sorted with the world like the blueprint/finished
+   * sprite. Idempotent: the runner calls it every build tick, but only the first creates the sprite.
+   */
+  ensureScaffold(site: BuildSite): Phaser.GameObjects.Sprite {
+    if (site.scaffold) return site.scaffold;
+    const scaffold = this.scene.add
+      .sprite(tileToWorldCenter(site.col), tileToWorldCenter(site.row), '__WHITE')
+      .setDepth(1 + rowDepthOffset(site.row)) // same base-row y-sort as the blueprint rect + finished art
+      .setAlpha(0.7); // translucent so it reads as "materialising", distinct from the solid finished sprite
+    this.applyAppearanceTo(scaffold, site.facing ?? 'down');
+    site.scaffold = scaffold;
+    return scaffold;
+  }
+
+  /** Destroy a site's scaffold sprite (if any) and drop the ref — the settle on finish, and the removal
+   *  on a cancelled/blocked build. Safe if the site never raised one. Idempotent. */
+  clearScaffold(site: BuildSite): void {
+    site.scaffold?.destroy();
+    site.scaffold = null;
+  }
+
+  /** Destroy every live scaffold across all sites — the blanket teardown for a cancelled/switched/idle
+   *  build order (called from GameScene.beginCurrent alongside the NodeFxManager bar/shake blanket), so a
+   *  scaffold never lingers on a blueprint whose build was abandoned. Only the actively-built site ever
+   *  has one, so this touches at most one sprite. */
+  clearScaffolds(): void {
+    for (const s of this.sites) this.clearScaffold(s);
   }
 
   /** Complete a blueprint into its finished structure (materialises on the worker-vacated tile).
@@ -505,6 +541,9 @@ export class BuildManager {
     // Hide the blueprint square either way — the finished sprite renders on top of the (kept) rect,
     // whose physics body backs the occupancy below.
     site.rect.setAlpha(0);
+    // Settle: drop the under-construction scaffold so the freshly-materialised structure (the wall plays
+    // its own Build strip anim below) is what remains. The bar was already hidden by the runner (runBuild).
+    this.clearScaffold(site);
 
     // Occupancy + static body for any blocking buildable (missing blocksPath ⇒ true, so the wall
     // keeps blocking). A non-blocking buildable stays passable and off the occupancy set.
@@ -603,6 +642,7 @@ export class BuildManager {
   reset(): void {
     for (const s of this.sites) {
       s.visual?.destroy();
+      s.scaffold?.destroy(); // drop any under-construction scaffold with its site (scene alive → destroy)
       s.rect.destroy();
     }
     this.walls.clear(false, false); // drop the (now-destroyed) wall-rect refs; children handled above

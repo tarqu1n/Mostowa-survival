@@ -1280,6 +1280,11 @@ export class GameScene extends Phaser.Scene {
     // `!a` idle return so going idle cleans up too. The active runner re-arms its own shake/bar next frame.
     this.nodeFx.stopAllShakes();
     this.nodeFx.hideAllActionProgress();
+    // Blanket-drop any under-construction build scaffold too (plan 050 Step 9): a cancelled/switched/idle
+    // build must not leave its scaffold sprite standing on the (still-unbuilt) blueprint. The bar it
+    // anchored was just hidden by hideAllActionProgress above; this frees the sprite. The active build
+    // runner re-raises its scaffold next frame, mirroring the shake/bar re-arm.
+    this.buildManager.clearScaffolds();
     this.chopElapsed = 0;
     this.playerChar.path = [];
     this.playerChar.pathIndex = 0;
@@ -1594,8 +1599,13 @@ export class GameScene extends Phaser.Scene {
       this.playerChar.faceTile(site.col, site.row); // face the blueprint while building it
       site.progress += delta;
       const total = buildTimeFor(BUILDABLES[site.buildableId]); // per-def time, else BUILD_MS
-      site.rect.setAlpha(0.35 + 0.55 * Math.min(1, site.progress / total));
+      // Single progress feedback (plan 050 Step 9): a scaffold sprite raised on the site + a world-space
+      // bar anchored to it (the blueprint rect is a Rectangle — can't anchor the bar, critique #5). The
+      // old alpha-ramp on `site.rect` is gone — the bar is the one construction cue now.
+      const scaffold = this.buildManager.ensureScaffold(site);
+      this.nodeFx.showActionProgress(scaffold, Math.min(1, site.progress / total));
       if (site.progress >= total) {
+        this.nodeFx.hideActionProgress(scaffold); // drop the bar before finishSite settles the scaffold
         this.buildManager.finishSite(site);
         this.completeCurrent();
       }

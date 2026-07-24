@@ -212,6 +212,10 @@ export interface TestApiDeps {
   getHunger(): number;
   setHunger(v: number): void;
   setStarveElapsed(v: number): void;
+  /** Flip `SurvivalClock.suppressRender` (plan 045 Step 1) — set for the duration of a `stepLogic()`
+   *  loop so its per-tick `composite()` RenderTexture ops are skipped along with the draw, cleared
+   *  after. The ONLY caller of this seam; every other path leaves suppressRender false. */
+  setSuppressRender(v: boolean): void;
 
   // Scene glue that stays scene-owned (task loop / vision / input-mode dispatch).
   updateVision(): void;
@@ -496,6 +500,37 @@ export class TestApi {
     for (let i = 0; i < steps; i++) {
       this.testClock += fixed;
       this.scene.game.step(this.testClock, fixed);
+    }
+  }
+
+  /**
+   * Render-free twin of {@link step} (plan 045 Step 1) — same fixed 1/60s slices, same monotonic
+   * `testClock`, same stopped-RAF-loop precondition, but drives `game.scene.update(clock, fixed)`
+   * (the `Phaser.Scenes.SceneManager`) directly instead of `game.step(...)`. That's the exact
+   * update-half of `Game#step` (see `node_modules/phaser/src/core/Game.js`: `step()` calls
+   * `this.scene.update(time, delta)` THEN `renderer.preRender()` / `this.scene.render(renderer)` /
+   * `renderer.postRender()`) — `SceneManager.update` fans out to each active scene's
+   * `Systems.step`, which fires the same `PRE_UPDATE`/`UPDATE`/`POST_UPDATE` scene events Arcade
+   * Physics, the Tween manager, and the Clock (timers) all hook into, and calls GameScene's own
+   * `update()` override — so physics/tweens/timers/the survival clock advance identically to
+   * `step()`. Only the renderer calls (`preRender`/`scene.render`/`postRender`) are skipped, and
+   * `SurvivalClock.suppressRender` is held true for the loop so `composite()` doesn't spend GPU
+   * time on a RenderTexture fill/erase nobody will see. Use this for specs whose assertions never
+   * read a rendered frame (no glow/outline/PostFX/screenshot/`isWebGL`) — see plan 045.
+   */
+  stepLogic(ms: number): void {
+    const fixed = 1000 / 60;
+    if (this.scene.game.loop.running) this.scene.game.loop.stop();
+    if (this.testClock === 0) this.testClock = this.scene.time.now;
+    const steps = Math.max(1, Math.round(ms / fixed));
+    this.deps.setSuppressRender(true);
+    try {
+      for (let i = 0; i < steps; i++) {
+        this.testClock += fixed;
+        this.scene.game.scene.update(this.testClock, fixed);
+      }
+    } finally {
+      this.deps.setSuppressRender(false);
     }
   }
 

@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { startGame, applyScenario, step, state } from './harness';
+import { startGame, applyScenario, stepLogic, state } from './harness';
 import { DAY_MS, NIGHT_MS, TWILIGHT_MS, NIGHT_MAX_ALPHA } from '../../src/config';
 
 // Tier-2: the day/night clock advances through the REAL scene's per-frame survival tick (above the
-// no-action early-return), driven deterministically via step(). The tint/phase/day math itself is
+// no-action early-return), driven deterministically via stepLogic(). The tint/phase/day math itself is
 // Tier-1 (daynight.test.ts); these prove the clock is wired into update() and drives the overlay +
 // derived phase/day state. Seed clockMs near a boundary so only a few driven slices cross it.
 
@@ -17,7 +17,7 @@ test('day flips to night and the night overlay darkens', async ({ page }) => {
   expect(before.nightAlpha).toBeCloseTo(0, 2); // mid-day plateau: no dim
 
   // Step across the dusk ramp and past the DAY_MS boundary into deep night.
-  await step(page, TWILIGHT_MS + 300);
+  await stepLogic(page, TWILIGHT_MS + 300);
 
   const after = await state(page);
   expect(after.dayPhase).toBe('night');
@@ -42,10 +42,10 @@ test('the day/night dial marker sweeps as time passes within a phase', async ({ 
       return { cx: m.getAttribute('cx'), cy: m.getAttribute('cy') };
     });
 
-  await step(page, 300); // let a first time:progress land after the seed
+  await stepLogic(page, 300); // let a first time:progress land after the seed
   const before = await marker();
 
-  await step(page, 3_000); // advance within the day (no transition); inside the step budget
+  await stepLogic(page, 3_000); // advance within the day (no transition); inside the stepLogic budget
   const after = await marker();
 
   expect(await state(page)).toMatchObject({ dayPhase: 'day', dayCount: 1 }); // still same phase
@@ -61,7 +61,7 @@ test('the day count increments after a full cycle', async ({ page }) => {
   expect(before.dayCount).toBe(1);
   expect(before.dayPhase).toBe('night');
 
-  await step(page, 300); // cross the cycle boundary into day 2
+  await stepLogic(page, 300); // cross the cycle boundary into day 2
 
   const after = await state(page);
   expect(after.dayCount).toBe(2);

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { startGame, applyScenario, step, state, beginWave, blocked, emit } from './harness';
+import { startGame, applyScenario, stepLogic, state, beginWave, blocked, emit } from './harness';
 
 // Tier-2: the night wave (plan 038 Step 3). WaveDirector meters skeleton spawns from the "treeline" (a
 // band off the defended centre — the lit hearth) during a wave, started by the night phase edge, the
@@ -25,12 +25,12 @@ test('no skeletons spawn during the day (the wave never triggers by daylight)', 
   await applyScenario(page, { player: FAR_PLAYER, campfires: [[CENTRE.col, CENTRE.row]] }); // day (default)
 
   expect((await state(page)).enemies).toBe(0); // scenario placed none; day reconcile starts no wave
-  await step(page, 5000); // driven day time
+  await stepLogic(page, 5000); // driven day time
   expect((await state(page)).enemies).toBe(0); // still none — no wave by day
 });
 
 test('beginWave starts a paced wave of walkable spawns local to the camp', async ({ page }) => {
-  test.setTimeout(120_000); // steps ~1320 fixed frames to cross the first (trickle) spawn interval
+  test.setTimeout(20_000); // stepLogic (render-free) since plan 045; ~1320 fixed frames, observed ~3.5s cold
   await startGame(page);
   await applyScenario(page, { player: FAR_PLAYER, campfires: [[CENTRE.col, CENTRE.row]] });
 
@@ -48,7 +48,7 @@ test('beginWave starts a paced wave of walkable spawns local to the camp', async
 
   // PACED over time: crossing the first ~20s trickle interval adds a spawn or two — a metered trickle,
   // not the whole night's worth at once.
-  await step(page, 22000);
+  await stepLogic(page, 22000);
   const later = await state(page);
   expect(later.enemies).toBeGreaterThanOrEqual(2);
   expect(later.enemies).toBeLessThanOrEqual(4);
@@ -67,7 +67,7 @@ test('a wave auto-starts when the clock is seeded straight into night (first-tic
     startPhase: 'night',
   });
 
-  await step(page, 1000); // first driven tick reconciles phase === 'night' → begins the wave
+  await stepLogic(page, 1000); // first driven tick reconciles phase === 'night' → begins the wave
   expect((await state(page)).enemies).toBeGreaterThanOrEqual(1);
 });
 
@@ -88,7 +88,7 @@ test('a fire-seeking mob with no player near attacks the fire (drains its fuel)'
   expect(campfireIds.length).toBe(1);
 
   const before = (await state(page)).campfires[0].fuel;
-  await step(page, 6000); // several ~1s strike cadences of WAVE_FIRE_ATTACK_DAMAGE each
+  await stepLogic(page, 6000); // several ~1s strike cadences of WAVE_FIRE_ATTACK_DAMAGE each
 
   const s = await state(page);
   expect(s.enemyModes[0]).toBe('seek'); // seeking + striking the fire (never chasing — player is far)
@@ -102,7 +102,7 @@ test('a fire-seeking mob with no player near attacks the fire (drains its fuel)'
 test('roadmap Step 2 acceptance: wave at night → survive to dawn → day increments', async ({
   page,
 }) => {
-  test.setTimeout(60_000); // ~510 driven frames + a live wave; fill-rate-heavy under fullyParallel load
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~4.5s cold
   await startGame(page);
   await applyScenario(page, {
     player: FAR_PLAYER, // out of the wave's reach → the player cleanly survives the crossing
@@ -110,14 +110,14 @@ test('roadmap Step 2 acceptance: wave at night → survive to dawn → day incre
     clockMs: 895_000, // night of day 1, ~5s from dawn (cycle = 900_000; DAY_MS = 660_000)
   });
 
-  await step(page, 500); // reconcile → the wave is on, mobs out of the treeline
+  await stepLogic(page, 500); // reconcile → the wave is on, mobs out of the treeline
   const night = await state(page);
   expect(night.dayPhase).toBe('night');
   expect(night.waveActive).toBe(true);
   expect(night.enemies).toBeGreaterThanOrEqual(1); // edge spawns arrived
   expect(night.enemyKinds.every((k) => k === 'kidZombie' || k === 'boar')).toBe(true);
 
-  await step(page, 8000); // cross dawn (895_000 + 8500 > 900_000)
+  await stepLogic(page, 8000); // cross dawn (895_000 + 8500 > 900_000)
   const dawn = await state(page);
   expect(dawn.dayPhase).toBe('day'); // survived the night…
   expect(dawn.dayCount).toBe(2); // …into day 2 (loop-close: the next day begins)
@@ -134,7 +134,7 @@ test('the dev force-wave hook jumps to night and starts a wave on demand', async
   expect((await state(page)).enemies).toBe(0);
 
   await emit(page, 'debug:forceWave');
-  await step(page, 200);
+  await stepLogic(page, 200);
 
   const s = await state(page);
   expect(s.dayPhase).toBe('night'); // jumped to night…
@@ -143,7 +143,7 @@ test('the dev force-wave hook jumps to night and starts a wave on demand', async
 
 // Plan 038 Step 5: loop-close + per-night escalation. Surviving a night rolls into a harder one —
 // keyed off the in-game day count. Seed the clock straight into the night of day 1 vs day 2 and compare
-// the opening rush (cheap + deterministic; a full two-night run is far too many frames to step).
+// the opening rush (cheap + deterministic; a full two-night run is far too many frames to step through).
 // clockMs for the night of day N = DAY_MS (660_000) + (N-1)·cycleLength (900_000).
 test('later nights escalate — the opening rush grows (loop-close)', async ({ page }) => {
   await startGame(page);
@@ -153,7 +153,7 @@ test('later nights escalate — the opening rush grows (loop-close)', async ({ p
     campfires: [[CENTRE.col, CENTRE.row]],
     clockMs: 660_000, // night of day 1
   });
-  await step(page, 200); // first-tick reconcile → begins the wave with day-1's opening burst
+  await stepLogic(page, 200); // first-tick reconcile → begins the wave with day-1's opening burst
   const night1 = (await state(page)).enemies;
 
   await applyScenario(page, {
@@ -161,7 +161,7 @@ test('later nights escalate — the opening rush grows (loop-close)', async ({ p
     campfires: [[CENTRE.col, CENTRE.row]],
     clockMs: 1_560_000, // night of day 2
   });
-  await step(page, 200);
+  await stepLogic(page, 200);
   const night2 = (await state(page)).enemies;
 
   expect(night1).toBe(1); // day-1 baseline opening burst
@@ -183,7 +183,7 @@ test('a fire-seeking mob next to the player chases the player instead of the fir
   });
 
   const before = (await state(page)).campfires[0].fuel;
-  await step(page, 3000); // short — enough to acquire + a bite or two, not enough to kill the player
+  await stepLogic(page, 3000); // short — enough to acquire + a bite or two, not enough to kill the player
 
   const s = await state(page);
   expect(s.enemyModes[0]).toBe('chase'); // player-acquire preempted the fire objective

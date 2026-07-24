@@ -281,12 +281,12 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
 > place-on-*pointerdown* architecture, with no step migrating it — plus a mis-named direction and a
 > spend inconsistency.
 
-| # | Finding | Severity | Resolution in this plan |
-| - | ------- | -------- | ----------------------- |
-| 1 | Placement fires on `pointerdown` (`GameScene.ts:671-674`); "tap places / drag pans" can't hold — a pan first places+charges a tile; no step moved placement to pointerup. | High | **New Step 3** moves placement to pointer-up (resolve only if not a drag), reworks the `:209` return, enables pan, and gates command-paint off for build mode. |
-| 2 | "Option C" premise not recorded in-repo; collides with the **rejected** *Twin Grip* (C) in `docs/ui-overhaul/`. | Medium | Mockup committed to `docs/build-ui-options.html`; Summary renamed to "Blueprint Mode" and disambiguated; decision recorded in Step 11. |
-| 3 | Build-UX polish is off the scheduled post-MVP roadmap list. | Medium | Acknowledged in Direction fit; defensible via documented ui-overhaul intent; Step 11 records it in ROADMAP/DECISIONS. |
-| 4 | Two divergent spend semantics (tap immediate vs run deferred). | Medium | Kept, but made **deliberate + documented** (single tap must be one action per the user's "no multiple clicks" rule); both share placeability/ghost code. |
-| 5 | Step 8 progress bar anchored to a `Rectangle` (`site.rect`) but `showActionProgress` needs an `Image`. | Low | Step 9 anchors the bar to the new **scaffold Image/Sprite**. |
-| 6 | Icons step (Gemini key over Tailscale) is orthogonal + the only ext-dep risk. | Low | Split into its own follow-up **Step 10**; swatch fallback de-risks Steps 1–9. |
-| 7 | Rotation ring "around the ghost" (DOM) needs per-frame world→screen tracking. | Low | Step 8 commits to the **fixed thumb-reachable** ring. |
+|#|Finding|Severity|Resolution in this plan|
+|-|-------|--------|-----------------------|
+|1|Placement fires on `pointerdown` (`GameScene.ts:671-674`); "tap places / drag pans" can't hold — a pan first places+charges a tile; no step moved placement to pointerup.|High|**New Step 3** moves placement to pointer-up (resolve only if not a drag), reworks the `:209` return, enables pan, and gates command-paint off for build mode.|
+|2|"Option C" premise not recorded in-repo; collides with the **rejected** *Twin Grip* (C) in `docs/ui-overhaul/`.|Medium|Mockup committed to `docs/build-ui-options.html`; Summary renamed to "Blueprint Mode" and disambiguated; decision recorded in Step 11.|
+|3|Build-UX polish is off the scheduled post-MVP roadmap list.|Medium|Acknowledged in Direction fit; defensible via documented ui-overhaul intent; Step 11 records it in ROADMAP/DECISIONS.|
+|4|Two divergent spend semantics (tap immediate vs run deferred).|Medium|Kept, but made **deliberate + documented** (single tap must be one action per the user's "no multiple clicks" rule); both share placeability/ghost code.|
+|5|Step 8 progress bar anchored to a `Rectangle` (`site.rect`) but `showActionProgress` needs an `Image`.|Low|Step 9 anchors the bar to the new **scaffold Image/Sprite**.|
+|6|Icons step (Gemini key over Tailscale) is orthogonal + the only ext-dep risk.|Low|Split into its own follow-up **Step 10**; swatch fallback de-risks Steps 1–9.|
+|7|Rotation ring "around the ghost" (DOM) needs per-frame world→screen tracking.|Low|Step 8 commits to the **fixed thumb-reachable** ring.|

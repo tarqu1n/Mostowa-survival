@@ -86,8 +86,8 @@ npm run smoke     # Tier-3 boot canary (needs `npm run preview` running) — nor
 > **Verifying a step/change: one guarding spec, not the whole suite.** To confirm a plan step or a
 > change works, run the **single** e2e spec that guards it (`npx playwright test <name>` / `-g`) — or a
 > unit run when it's Node-testable — **never** `npm run e2e` / `check:all` mid-work to "check
-> everything". The full ~9-min browser tier is CI's job, not a between-steps gate. See
-> [testing.md](testing.md#when-to-run-what-plan-044) for the rule and rationale.
+> everything". The full ~6.5-min browser tier (plan 045 cut it from ~9.3 min) is CI's job, not a
+> between-steps gate. See [testing.md](testing.md#when-to-run-what-plan-044) for the rule and rationale.
 
 **Git hooks** (husky, installed automatically by `npm install` via the `prepare` script):
 `.husky/pre-commit` runs `npx lint-staged` (lints/formats **staged files only** — fast even

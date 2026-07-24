@@ -106,6 +106,10 @@ export interface ScenarioResult {
 export interface GameTestApi {
   applyScenario(spec: ScenarioSpec): ScenarioResult;
   step(ms: number): void;
+  /** Render-free twin of {@link step} (plan 045 Step 1) — same fixed-slice semantics, but skips the
+   *  WebGL draw (and `SurvivalClock`'s RenderTexture composite) for the loop's duration. Use for specs
+   *  whose assertions never read a rendered frame (no glow/outline/PostFX/screenshot/`isWebGL`). */
+  stepLogic(ms: number): void;
   setRng(fn: () => number): void;
   state(): DebugState;
   order(a: Action): void;

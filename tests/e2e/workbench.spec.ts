@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   startGame,
   applyScenario,
-  step,
+  stepLogic,
   state,
   blocked,
   workbenches,
@@ -15,7 +15,7 @@ import {
 // Tier-2 (plan 048 Step 4): the workbench is a live HP structure like the wall — a walled-off mob
 // bashes it through the generic structure-target seam (the same seam the wall uses), and the PLAYER
 // mends it with a `repair` worker order (walk-adjacent → tend on a cadence → hp back to max). Both
-// scenarios drive purely with step() — deterministic, since the bench never dodges (flat resolve) and
+// scenarios drive purely with stepLogic() — deterministic, since the bench never dodges (flat resolve) and
 // repair restores a flat amount per cadence beat. Geometry uses the known-open row-10 band.
 
 const PLAYER: [number, number] = [10, 10];
@@ -35,7 +35,7 @@ const FRONTIER = { col: 11, row: 10 };
 test('a mob walled off by a workbench bashes it, destroys it, then reaches the player', async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(20_000); // stepLogic (render-free) since plan 045; heaviest in file, observed ~5.3s cold
   await startGame(page);
   await applyScenario(page, {
     player: PLAYER,
@@ -43,7 +43,7 @@ test('a mob walled off by a workbench bashes it, destroys it, then reaches the p
     workbenches: [[FRONTIER.col, FRONTIER.row]],
     enemies: [{ at: [13, 10], id: 'boar', mode: 'chase' }],
   });
-  await step(page, 500); // let the ring build anims settle + the mob close on the frontier bench
+  await stepLogic(page, 500); // let the ring build anims settle + the mob close on the frontier bench
 
   const bench0 = (await workbenches(page))[0];
   expect(bench0).toBeTruthy();
@@ -55,7 +55,7 @@ test('a mob walled off by a workbench bashes it, destroys it, then reaches the p
   // until a sampled reading shows the bench chipped below max while still standing.
   let benchDamaged = false;
   for (let i = 0; i < 40 && !benchDamaged; i++) {
-    await step(page, 400);
+    await stepLogic(page, 400);
     const b = (await workbenches(page))[0];
     if (b && b.hp < b.maxHp) benchDamaged = true;
   }
@@ -71,7 +71,7 @@ test('a mob walled off by a workbench bashes it, destroys it, then reaches the p
   let hurtBeforeBreak = false;
   let playerHurt = false;
   for (let i = 0; i < 60 && !playerHurt; i++) {
-    await step(page, 400);
+    await stepLogic(page, 400);
     if ((await workbenches(page)).length === 0) benchGone = true;
     const hp = (await state(page)).playerHp;
     if (hp < 10 && !benchGone) hurtBeforeBreak = true;
@@ -85,7 +85,7 @@ test('a mob walled off by a workbench bashes it, destroys it, then reaches the p
 });
 
 test('a player repair order mends a damaged workbench back to full HP', async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~3.8s cold
   await startGame(page);
   // Player next to a lone bench in the open — no enemies, deterministic. The bench blocks its own tile,
   // so the player stands on an adjacent tile ([10,10] is adjacent to the bench at [11,10]).
@@ -104,12 +104,12 @@ test('a player repair order mends a damaged workbench back to full HP', async ({
 
   await enqueue(page, { kind: 'repair', structureId: workbenchIds[0] });
 
-  // Drive step() until the bench is mended (walk-adjacent, then tend on the repair cadence). Watch that
+  // Drive stepLogic() until the bench is mended (walk-adjacent, then tend on the repair cadence). Watch that
   // HP rises monotonically toward max and the bench is never destroyed by repair.
   let mended = false;
   let prevHp = benches[0].hp;
   for (let i = 0; i < 60 && !mended; i++) {
-    await step(page, 500);
+    await stepLogic(page, 500);
     benches = await workbenches(page);
     expect(benches.length).toBe(1); // repair never removes the bench
     const hp = benches[0].hp;
@@ -125,7 +125,7 @@ test('a player repair order mends a damaged workbench back to full HP', async ({
 test('a queued craft at a healthy bench delivers the item to the pack (spending the cost)', async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~4.1s cold
   await startGame(page);
   // Player adjacent to a full-hp bench, holding the brand recipe cost (wood + cloth) plus spare.
   const { workbenchIds } = await applyScenario(page, {
@@ -137,11 +137,11 @@ test('a queued craft at a healthy bench delivers the item to the pack (spending 
 
   await enqueue(page, { kind: 'craft', benchId: workbenchIds[0], recipeId: 'brand' });
 
-  // Drive step() until the brand arrives (walk-adjacent is trivial — already adjacent — then ~craftMs
+  // Drive stepLogic() until the brand arrives (walk-adjacent is trivial — already adjacent — then ~craftMs
   // of work at full-hp 1× rate). Budget well over CRAFT_BASE_MS (8s).
   let crafted = false;
   for (let i = 0; i < 40 && !crafted; i++) {
-    await step(page, 500);
+    await stepLogic(page, 500);
     if ((await itemCount(page, 'brand')) >= 1) crafted = true;
   }
 
@@ -155,7 +155,7 @@ test('a queued craft at a healthy bench delivers the item to the pack (spending 
 test('a damaged bench crafts slower than a healthy one, but never fully stalls', async ({
   page,
 }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(20_000); // stepLogic (render-free) since plan 045; observed ~4.1s cold
   await startGame(page);
   const { workbenchIds } = await applyScenario(page, {
     player: PLAYER,
@@ -169,14 +169,14 @@ test('a damaged bench crafts slower than a healthy one, but never fully stalls',
 
   // After a window that a HEALTHY bench would have finished in (9s > 8s craftMs) but a crippled one
   // would NOT (needs ~17.8s), the damaged craft is still in flight — no brand yet, still crafting.
-  await step(page, 9000);
+  await stepLogic(page, 9000);
   expect(await itemCount(page, 'brand')).toBe(0); // slower — not done in the healthy-bench window
   expect((await workbenches(page))[0].crafting).toBe(true); // …but still progressing (not stalled)
 
   // Given more time it DOES complete — the rate floors at CRAFT_DAMAGED_MIN_FRAC, never zero.
   let crafted = false;
   for (let i = 0; i < 40 && !crafted; i++) {
-    await step(page, 500);
+    await stepLogic(page, 500);
     if ((await itemCount(page, 'brand')) >= 1) crafted = true;
   }
   expect(crafted).toBe(true); // a damaged bench still finishes eventually
@@ -185,7 +185,7 @@ test('a damaged bench crafts slower than a healthy one, but never fully stalls',
 test('the HUD craft-menu events (craft:queue / craft:repair) drive the real orders', async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(15_000); // stepLogic (render-free) since plan 045; observed ~3.3s cold
   await startGame(page);
   const { workbenchIds } = await applyScenario(page, {
     player: PLAYER,
@@ -199,7 +199,7 @@ test('the HUD craft-menu events (craft:queue / craft:repair) drive the real orde
   await emit(page, 'craft:queue', { benchId, recipeId: 'sword' });
   let crafted = false;
   for (let i = 0; i < 40 && !crafted; i++) {
-    await step(page, 500);
+    await stepLogic(page, 500);
     if ((await itemCount(page, 'sword')) >= 1) crafted = true;
   }
   expect(crafted).toBe(true); // the menu's craft:queue delivered the sword
@@ -211,7 +211,7 @@ test('the HUD craft-menu events (craft:queue / craft:repair) drive the real orde
   await emit(page, 'craft:repair', { benchId });
   let mended = false;
   for (let i = 0; i < 40 && !mended; i++) {
-    await step(page, 500);
+    await stepLogic(page, 500);
     if ((await workbenches(page))[0].hp >= maxHp) mended = true;
   }
   expect(mended).toBe(true); // the menu's craft:repair mended the bench to full

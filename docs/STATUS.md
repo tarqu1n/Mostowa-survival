@@ -506,18 +506,23 @@ deps); `CampfireUnit`/`PlacedWall` collapsed into `PlacedStructure<CampfireState
 (`refactor-tripwire` golden unchanged); the `game.__test` signatures re-point internally. See
 [DECISIONS.md](DECISIONS.md) (2026-07-13 [DONE] note).
 
-## Test harness (plan 007; overhauled plan 044)
+## Test harness (plan 007; overhauled plan 044; re-tiered plan 045)
 
 Three tiers: **Tier 1** Vitest unit tests over pure systems + data (`npm test`, plain Node, ~1.3s /
-925 tests); **Tier 2** deterministic Playwright scenarios (`npm run e2e`, 106 tests, ~9.3 min) driven
-by a DEV-only `window.game.__test` scenario/fixed-step API on `GameScene` (`applyScenario` builds a
-known world from a declarative spec; `step(ms)` advances gameplay with zero wall-clock); **Tier 3** a
-thin boot canary (`npm run smoke`; its real-WebGL run compiles the shaders as a free check).
-**Plan 044 Phase 1:** cut Vitest overhead (threads + isolate:false), added a fast pre-push hook
+925 tests); **Tier 2** deterministic Playwright scenarios (`npm run e2e`, 130 tests, ~6.3–6.5 min)
+driven by a DEV-only `window.game.__test` scenario/fixed-step API on `GameScene` (`applyScenario`
+builds a known world from a declarative spec; `step(ms)` advances gameplay with zero wall-clock);
+**Tier 3** a thin boot canary (`npm run smoke`; its real-WebGL run compiles the shaders as a free
+check). **Plan 044 Phase 1:** cut Vitest overhead (threads + isolate:false), added a fast pre-push hook
 (typecheck + unit) + `check:all`, moved the browser tiers off the local critical path into a separate
 non-blocking `ci.yml` (unit + sharded e2e + smoke, tracking-issue on failure) parallel to deploy, and
-made the suite reliably green (flakes fixed in-place, `workers: '50%'`). Phase 2 (re-tier / render-free
-`stepLogic`) deferred to plan 045. See [testing.md](testing.md) for the when-to-run-what matrix.
+made the suite reliably green (flakes fixed in-place, `workers: '50%'`). **Plan 045 (committed core):**
+a render-free `stepLogic(ms)` twin of `step(ms)` (skips only the WebGL draw + `SurvivalClock.composite`,
+same fixed-step update loop) converted the 9 top render-cost specs off `step()`, cutting the e2e wall
+from ~9.3 min to ~6.3–6.5 min; `test.setTimeout(...)` on those specs was re-timed and right-sized to
+match. Phase 2b (spec audit/deletion, Node migration, shared-boot) stays opt-in, gated on recorded
+CI-wall-blocking-work evidence. See [testing.md](testing.md) for the when-to-run-what matrix and the
+`step` vs `stepLogic` rule.
 
 ## Map Builder — dev-only editor (plans 014, 017)
 

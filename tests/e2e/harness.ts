@@ -244,6 +244,29 @@ export function deconstructWall(page: Page, index: number): Promise<boolean> {
   return page.evaluate((i) => (window as any).game.__test.deconstructWall(i), index);
 }
 
+/** The live workbenches (col/row/hp/maxHp + crafting), placement order (plan 048). NOT part of
+ *  DebugState — a standalone read seam like {@link walls}. */
+export function workbenches(
+  page: Page,
+): Promise<Array<{ col: number; row: number; hp: number; maxHp: number; crafting: boolean }>> {
+  return page.evaluate(() => (window as any).game.__test.workbenches());
+}
+
+/** Damage the workbench at `index` by `amount` (WorkbenchBehavior.takeDamage, plan 048); returns
+ *  whether the blow destroyed it (false if no bench at that index). */
+export function damageWorkbench(page: Page, index: number, amount: number): Promise<boolean> {
+  return page.evaluate(
+    ({ index, amount }) => (window as any).game.__test.damageWorkbench(index, amount),
+    { index, amount },
+  );
+}
+
+/** The player's aggregate count of item `id` in the pack (Inventory.get, plan 048) — assert a crafted
+ *  item arrived / a cost was spent. */
+export function itemCount(page: Page, id: string): Promise<number> {
+  return page.evaluate((i) => (window as any).game.__test.itemCount(i), id);
+}
+
 /** Live enemies' current HP, spec order (plan 037 2c) — lets the enemy-attack spec watch a mob's HP
  *  fall to a spiked wall's thorns. NOT part of DebugState. */
 export function enemyHps(page: Page): Promise<number[]> {

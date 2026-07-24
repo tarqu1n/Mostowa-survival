@@ -7,6 +7,9 @@ import {
   CAMPFIRE_FUEL_MAX,
   CAMPFIRE_FUEL_PER_WOOD,
   CAMPFIRE_FEED_INTERVAL_MS,
+  WORKBENCH_REPAIR_INTERVAL_MS,
+  WORKBENCH_REPAIR_PER_TICK,
+  CRAFT_DAMAGED_MIN_FRAC,
   LONGPRESS_MS,
   BUILD_MS,
   SALVAGE_MS,
@@ -19,6 +22,7 @@ import {
 } from '../config';
 import { ITEMS } from '../data/items';
 import { BUILDABLES } from '../data/buildables';
+import { RECIPES } from '../data/recipes';
 import { iconKey } from '../data/tileset';
 import { Inventory } from '../systems/Inventory';
 import { BaseSupply } from '../systems/baseSupply';
@@ -37,6 +41,7 @@ import { objectAsDefender } from '../systems/combat';
 import { hurtboxTiles, DEFAULT_HURTBOX } from '../systems/hurtbox';
 import type { DayPhase } from '../systems/daynight';
 import type { GameTestApi } from '../entities/testTypes';
+import type { PlacedStructure } from '../entities/types';
 import type { CharacterSprite } from '../entities/Character';
 import { PlayerCharacter } from '../entities/PlayerCharacter';
 import { CombatFxManager } from './fx/CombatFxManager';
@@ -54,6 +59,7 @@ import { StructureManager } from './world/StructureManager';
 import { CampfireBehavior } from './world/CampfireBehavior';
 import { WallBehavior } from './world/WallBehavior';
 import { TrapBehavior } from './world/TrapBehavior';
+import { WorkbenchBehavior } from './world/WorkbenchBehavior';
 import { SurvivalClock } from './world/SurvivalClock';
 import { WaveDirector } from './world/WaveDirector';
 import { VisionController } from './fx/VisionController';
@@ -230,6 +236,12 @@ export class GameScene extends Phaser.Scene {
    *  trap ops (rearm/trapById/trapAt) the generic StructureManager route doesn't cover (plan 040). */
   private get trap(): TrapBehavior {
     return this.structureManager.behavior<TrapBehavior>('trap');
+  }
+  /** The workbench behavior module, reached through the structure registry — for the behavior-SPECIFIC
+   *  bench ops (takeDamage/repair/benchById/benchAt) the generic StructureManager route doesn't cover
+   *  (plan 048): the enemy-attack seam + the player repair order. */
+  private get workbench(): WorkbenchBehavior {
+    return this.structureManager.behavior<WorkbenchBehavior>('workbench');
   }
 
   // Pointer "raycast" + the tap/inspect intent built on top of it (plan 015 Step 5) — see
@@ -444,19 +456,27 @@ export class GameScene extends Phaser.Scene {
       damageNpc: (amount) => this.damageNpc(amount),
       litHearth: () => this.litHearth(),
       attackFire: (id, amount) => this.campfire.damageFire(id, amount),
-      // Structure-target seam (plan 037 2c) — the wall a walled-off mob bashes, plus its combat defender
-      // (armour, zeroed offence) + thorns; routes to the wall behavior module (the sole wall owner). A
-      // single wall archetype today, so the defender comes straight off BUILDABLES.wall (as the module does).
+      // Structure-target seam (plan 037 2c) — the blocking structure a walled-off mob bashes, plus its
+      // combat defender (armour, zeroed offence) + thorns; routes to the owning behavior module. A wall
+      // (plan 037) OR a workbench (plan 048) can be in the way — both `blocksPath`, so a mob pathing to
+      // the fire/player bashes whichever sits on the tile. The bench has no thorns. Checked wall-first;
+      // only one blocking structure ever occupies a tile.
       structureAt: (col, row) => {
         const w = this.wall.wallAt(col, row);
-        if (!w) return null;
-        return {
-          id: w.id,
-          defender: objectAsDefender(BUILDABLES.wall),
-          thorns: this.wall.thornsOf(w.id),
-        };
+        if (w)
+          return {
+            id: w.id,
+            defender: objectAsDefender(BUILDABLES.wall),
+            thorns: this.wall.thornsOf(w.id),
+          };
+        const b = this.workbench.benchAt(col, row);
+        if (b) return { id: b.id, defender: objectAsDefender(BUILDABLES.workbench), thorns: 0 };
+        return null;
       },
-      attackStructure: (id, dmg) => this.wall.takeDamage(id, dmg),
+      // Route damage to the module that owns the id (ids are module-prefixed, but resolve by lookup so
+      // this never assumes the prefix format): a wall if one has that id, else a workbench.
+      attackStructure: (id, dmg) =>
+        this.wall.wallById(id) ? this.wall.takeDamage(id, dmg) : this.workbench.takeDamage(id, dmg),
       flashHit: (sprite) => this.fx.flashHit(sprite),
       lungeAt: (m, x, y) => this.fx.lungeAt(m, x, y),
       beginWindUp: (m, ms) => this.fx.beginWindUp(m, ms),
@@ -614,6 +634,17 @@ export class GameScene extends Phaser.Scene {
         },
       }),
     );
+    // Workbench crafting station (plan 048) — the 4th behavior: an HP structure like the wall (mobs bash
+    // it, the player repairs it, it crafts slower while damaged) but with a static object sprite. A
+    // destroyed bench frees its tile back through BuildManager (the sole occupancy/collision writer) +
+    // repaths, same as the wall.
+    this.structureManager.register(
+      'workbench',
+      new WorkbenchBehavior(this, {
+        freeTile: (c, r) => this.buildManager.releaseTile(c, r),
+        repath: () => this.repath(),
+      }),
+    );
 
     // Pointer "raycast" + tap/inspect intent (plan 015 Step 5) — constructed here, after
     // ResourceNodeManager/EnemyManager/BuildManager all exist, so its deps close over their real
@@ -707,6 +738,14 @@ export class GameScene extends Phaser.Scene {
         if (this.demolishMode) {
           const wall = this.scenePicker.wallAt(pointer.worldX, pointer.worldY);
           if (wall) this.enqueue({ kind: 'deconstruct', wallId: wall.id });
+          return;
+        }
+        // A tap on a workbench opens its craft menu (plan 048 Step 7) — a HUD side effect, not a world
+        // order (crafting is a bench-tapped station interaction, like the NPC's assignment menu). Checked
+        // before the generic actionAt dispatch so the bench never falls through to a move onto its tile.
+        const bench = this.scenePicker.workbenchAt(pointer.worldX, pointer.worldY);
+        if (bench) {
+          this.openCraftMenu(bench);
           return;
         }
         const action = this.scenePicker.actionAt(pointer.worldX, pointer.worldY);
@@ -841,6 +880,11 @@ export class GameScene extends Phaser.Scene {
       ['npc:assignNightPosture', this.setNpcNightPosture, this],
       ['npc:beginPlaceGuard', this.beginPlaceGuardPoint, this],
       ['npc:cancelPlaceGuard', this.cancelPlaceGuardPoint, this], // Escape while armed
+      // Workbench craft menu (plan 048 Step 7) — the DOM craft menu routes a recipe pick back here to
+      // enqueue the real `craft` order, and a Repair pick (shown when the bench is damaged) to the
+      // player `repair` order — the same worker orders a `__test.enqueue` drives.
+      ['craft:queue', this.onCraftQueue, this],
+      ['craft:repair', this.onCraftRepair, this],
     ];
     for (const [event, handler, ctx] of subs) bus.on(event, handler, ctx);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -949,6 +993,9 @@ export class GameScene extends Phaser.Scene {
       damageFire: (i, amount) => testApi.damageFire(i, amount),
       walls: () => testApi.walls(),
       damageWall: (i, amount) => testApi.damageWall(i, amount),
+      workbenches: () => testApi.workbenches(),
+      damageWorkbench: (i, amount) => testApi.damageWorkbench(i, amount),
+      itemCount: (id) => this.inv.get(id),
       enemyHps: () => testApi.enemyHps(),
       nodes: () => testApi.nodes(),
       setNodeProgress: (id, ms) => testApi.setNodeProgress(id, ms),
@@ -1157,14 +1204,16 @@ export class GameScene extends Phaser.Scene {
     refuel: (a, delta) => this.runRefuel(a, delta),
     deconstruct: (a) => this.runDeconstruct(a),
     rearm: (a) => this.runRearm(a),
+    repair: (a, delta) => this.runRepair(a, delta),
+    craft: (a, delta) => this.runCraft(a, delta),
     clear: (a, delta) => this.runClear(a, delta),
   };
 
   /**
    * Stand-tile resolution keyed by order kind — the dispatch table {@link beginCurrent} runs. Each
-   * resolves the walk-to tile (or aborts via {@link completeCurrent}) for its kind. `repair` is a
-   * companion-only order (driven on CompanionManager's own queue, plan 042 Step 5) — it never reaches
-   * the player's queue; drop it defensively so the kind union stays exhaustive.
+   * resolves the walk-to tile (or aborts via {@link completeCurrent}) for its kind. On the PLAYER queue
+   * `repair` targets a workbench (plan 048 Step 4); the companion's wall repair runs on its OWN queue
+   * (CompanionManager, plan 042 Step 5), never here.
    */
   private readonly orderBeginners: {
     [K in Action['kind']]?: (a: Extract<Action, { kind: K }>) => void;
@@ -1172,7 +1221,8 @@ export class GameScene extends Phaser.Scene {
     move: (a) => {
       if (!this.pathTo({ col: a.col, row: a.row })) this.completeCurrent();
     },
-    repair: () => this.completeCurrent(),
+    repair: (a) => this.beginRepair(a),
+    craft: (a) => this.beginCraft(a),
     harvest: (a) => this.beginHarvest(a),
     refuel: (a) => this.beginRefuel(a),
     deconstruct: (a) => this.beginDeconstruct(a),
@@ -1249,6 +1299,41 @@ export class GameScene extends Phaser.Scene {
     const stand = reachableAdjacent(
       this.playerChar.tile(),
       { col: t.col, row: t.row },
+      this.isBlocked,
+      this.gridDims,
+    );
+    if (!stand || !this.pathTo(stand)) this.completeCurrent();
+  }
+
+  private beginRepair(a: Extract<Action, { kind: 'repair' }>): void {
+    const b = this.workbench.benchById(a.structureId);
+    // Player repair targets a workbench (plan 048). Gone, or already at full hp → nothing to mend; drop
+    // the order. (A wall id on the player queue also resolves to no bench here → dropped — walls are
+    // the companion's job, plan 042.)
+    if (!b || b.state.hp >= b.state.maxHp) return this.completeCurrent();
+    // Stand on any tile adjacent to the bench's foot tile (it blocks its own tile, like the fire/wall).
+    const stand = reachableAdjacent(
+      this.playerChar.tile(),
+      { col: b.col, row: b.row },
+      this.isBlocked,
+      this.gridDims,
+    );
+    if (!stand || !this.pathTo(stand)) this.completeCurrent();
+  }
+
+  private beginCraft(a: Extract<Action, { kind: 'craft' }>): void {
+    const b = this.workbench.benchById(a.benchId);
+    const recipe = RECIPES[a.recipeId];
+    if (!b || !recipe) return this.completeCurrent(); // bench gone / unknown recipe — drop the order
+    // Start (or resume) the craft record on the bench. A different recipe mid-craft on this bench
+    // shouldn't happen (crafts are sequential), but defensively restart fresh for THIS recipe — the
+    // progress lives on the bench so a walk-away + re-queue of the same recipe picks up where it left off.
+    if (!b.state.craft || b.state.craft.recipeId !== a.recipeId)
+      b.state.craft = { recipeId: a.recipeId, progress: 0 };
+    // Stand on any tile adjacent to the bench's foot tile (it blocks its own tile, like the fire/wall).
+    const stand = reachableAdjacent(
+      this.playerChar.tile(),
+      { col: b.col, row: b.row },
       this.isBlocked,
       this.gridDims,
     );
@@ -1488,6 +1573,72 @@ export class GameScene extends Phaser.Scene {
    * (frees its tile + repaths), and END the order. If the ruin vanished before arrival (scenario reset),
    * drop the order rather than stall — mirrors runDeconstruct's gone-target guard.
    */
+  /**
+   * Repair a damaged workbench (plan 048 Step 4): walk to the stand tile (set in beginRepair), then tend
+   * it on a cadence — restoring {@link WORKBENCH_REPAIR_PER_TICK} hp every
+   * {@link WORKBENCH_REPAIR_INTERVAL_MS} until full, then END the order (like {@link runRefuel}, a
+   * walk-adjacent-then-tend loop that self-terminates on a *condition* — here, hp back at max). Worker-
+   * time only, no resource cost this pass (mirrors the trap re-arm). If the bench vanished before/along
+   * the way (a mob destroyed it mid-walk), drop the order rather than stall — WorkbenchBehavior.repair
+   * also no-ops on a gone bench.
+   */
+  private runRepair(a: Extract<Action, { kind: 'repair' }>, delta: number): void {
+    const b = this.workbench.benchById(a.structureId);
+    if (!b) return this.completeCurrent(); // bench gone (e.g. a mob destroyed it) — drop the order
+    if (b.state.hp >= b.state.maxHp) return this.completeCurrent(); // already mended
+    if (this.playerChar.advancePath()) {
+      this.player.body.setVelocity(0, 0);
+      this.playerChar.faceTile(b.col, b.row); // face the bench while mending it
+      this.harvestSwing = 'gather'; // reuse the forage/tend motion as "working on the bench"
+      this.chopElapsed += delta;
+      if (this.chopElapsed >= WORKBENCH_REPAIR_INTERVAL_MS) {
+        this.chopElapsed = 0;
+        if (this.workbench.repair(a.structureId, WORKBENCH_REPAIR_PER_TICK)) this.completeCurrent();
+      }
+    }
+  }
+
+  /**
+   * Craft a recipe at a workbench (plan 048 Step 6): walk to the stand tile (set in beginCraft), then
+   * accumulate craft progress on the bench's `craft` record — the rate SCALED by the bench's current hp
+   * (`Linear(CRAFT_DAMAGED_MIN_FRAC, 1, hp/maxHp)`, so a full-hp bench crafts at 1× and a near-dead one
+   * at the {@link CRAFT_DAMAGED_MIN_FRAC} floor, never fully stalling). A timed progress-accumulator like
+   * {@link runBuild}/{@link runClear} (progress lives on the bench, so a walk-away + re-queue resumes),
+   * with an above-bench progress bar (à la the salvage/clear bar). On reaching `recipe.craftMs`: SPEND
+   * `recipe.cost` + ADD `recipe.output` to the bag, then END the order. Deliberately checked at
+   * COMPLETION (not begin — materials may be gathered mid-craft): if the cost is unaffordable OR the
+   * output won't fit the bag at that moment, the craft FIZZLES (no spend, no item, a bench flash) rather
+   * than stalling. If the bench vanished mid-craft (a mob destroyed it), drop the order.
+   */
+  private runCraft(a: Extract<Action, { kind: 'craft' }>, delta: number): void {
+    const b = this.workbench.benchById(a.benchId);
+    const recipe = RECIPES[a.recipeId];
+    if (!b || !recipe) return this.completeCurrent(); // bench destroyed mid-craft / bad recipe — drop
+    if (this.playerChar.advancePath()) {
+      this.player.body.setVelocity(0, 0);
+      this.playerChar.faceTile(b.col, b.row); // face the bench while working it
+      this.harvestSwing = 'gather'; // the work-the-bench loop reads as the rummage/gather motion
+      const craft = (b.state.craft ??= { recipeId: a.recipeId, progress: 0 });
+      const rate = Phaser.Math.Linear(CRAFT_DAMAGED_MIN_FRAC, 1, b.state.hp / b.state.maxHp);
+      craft.progress += delta * rate;
+      this.nodeFx.showActionProgress(b.sprite, Math.min(1, craft.progress / recipe.craftMs));
+      if (craft.progress >= recipe.craftMs) {
+        this.nodeFx.hideActionProgress(b.sprite);
+        b.state.craft = null;
+        if (
+          this.inv.canAfford(recipe.cost) &&
+          this.inv.canAccept(recipe.output.itemId, recipe.output.count)
+        ) {
+          this.inv.spend(recipe.cost);
+          this.inv.add(recipe.output.itemId, recipe.output.count);
+        } else {
+          this.workbench.flashFizzle(b.id); // unaffordable / bag full at completion — fizzle, no item
+        }
+        this.completeCurrent();
+      }
+    }
+  }
+
   private runClear(a: Extract<Action, { kind: 'clear' }>, delta: number): void {
     const tree = this.resourceNodeManager.treeById(a.treeId);
     if (!tree || tree.alive || !tree.def.oneShot) return this.completeCurrent(); // gone / regrew / not a ruin
@@ -1703,6 +1854,30 @@ export class GameScene extends Phaser.Scene {
       dayRole: npc.dayRole,
       nightPosture: npc.nightPosture,
     });
+  }
+
+  /** Open the DOM craft menu for a tapped workbench (plan 048 Step 7): emit its id + live hp so the
+   *  menu can list recipes and offer Repair when damaged. Resolved through the module so `state` is
+   *  the typed {@link WorkbenchState}; a bench gone between pick and here is a silent no-op. */
+  private openCraftMenu(bench: PlacedStructure): void {
+    const b = this.workbench.benchById(bench.id);
+    if (!b) return;
+    this.game.events.emit('craft:menuOpen', {
+      benchId: b.id,
+      hp: b.state.hp,
+      maxHp: b.state.maxHp,
+    });
+  }
+
+  /** A recipe pick in the craft menu → enqueue the real `craft` worker order (plan 048 Step 7). */
+  private onCraftQueue(p: { benchId: string; recipeId: string }): void {
+    this.enqueue({ kind: 'craft', benchId: p.benchId, recipeId: p.recipeId });
+  }
+
+  /** The Repair pick in the craft menu (shown when the bench is damaged) → enqueue the player `repair`
+   *  worker order for the bench (plan 048 Step 7; the mechanic landed in Step 4). */
+  private onCraftRepair(p: { benchId: string }): void {
+    this.enqueue({ kind: 'repair', structureId: p.benchId });
   }
 
   /** True while the movepad is authoritative — manual Combat mode OR the combatActive auto-surface

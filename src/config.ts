@@ -600,6 +600,29 @@ export const CAMPFIRE_FLAME_RISE_PX = 2;
 export const CAMPFIRE_SMOKE_RISE_PX = 22;
 
 /**
+ * Workbench crafting (plan 048). The workbench is a buildable crafting station (`data/buildables.ts`,
+ * `behavior:'workbench'`) that crafts an item over time via a player-queued `craft` worker order, and
+ * — like a wall — is bashed by night mobs and repaired by the player, crafting SLOWER while damaged.
+ * The build cost + `maxHp` are content, so they live inline on the `workbench` BUILDABLES entry beside
+ * wall/campfire/spike_trap (plan 043 Step 16 — data-driven cost/stat consolidation), not here. What
+ * lives here is the craft-RATE tuning (consumed by the `craft` order in Step 6):
+ *  - `CRAFT_BASE_MS` 8000: work-time for one craft at FULL bench HP (a healthy-bench baseline beat).
+ *  - `CRAFT_DAMAGED_MIN_FRAC` 0.4: the floor of the HP→speed scale, so a near-dead bench still crafts
+ *    at 40% speed rather than fully stalling — rate = Linear(frac, 1, hp/maxHp). Placeholder numbers.
+ */
+export const CRAFT_BASE_MS = 8000;
+export const CRAFT_DAMAGED_MIN_FRAC = 0.4;
+
+/**
+ * Player workbench repair (plan 048 Step 4) — the player-queued `repair` order tends a damaged bench
+ * on a cadence, restoring `WORKBENCH_REPAIR_PER_TICK` hp every `WORKBENCH_REPAIR_INTERVAL_MS` until
+ * full (worker-time only, no resource cost this pass — mirrors the trap re-arm). Distinct from the
+ * companion's wall repair (`NPC_REPAIR_HP_PER_TICK`, off baseSupply). Placeholder numbers.
+ */
+export const WORKBENCH_REPAIR_INTERVAL_MS = 500;
+export const WORKBENCH_REPAIR_PER_TICK = 4;
+
+/**
  * Trap tuning (placeholder — tune vs wave DPS). The spike trap (plan 040) is an ARMED floor tile that
  * triggers ONCE when an enemy stands on it, deals flat `SPIKE_TRAP_DAMAGE` through the normal kill
  * path, then goes spent until re-armed (a dawn worker order + a tap).

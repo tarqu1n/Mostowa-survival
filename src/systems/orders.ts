@@ -36,7 +36,9 @@ export function orderTargetId(a: Action): string | null {
     case 'rearm':
       return a.trapId;
     case 'repair':
-      return a.wallId;
+      return a.structureId;
+    case 'craft':
+      return a.benchId;
     case 'move':
       return null;
   }
@@ -61,9 +63,9 @@ export interface OrderMeta {
  * kind is now a single entry here (plus its `Action` variant + a scene `begin`/`run` handler) rather
  * than edits scattered across the quartet, `describeActionTarget`, and the highlight branch.
  *
- * `repair` is a companion-only order driven on CompanionManager's own queue — it never reaches the
- * player queue, the enqueue de-dupe, or the queue renderer, so its entry is defensive/for
- * exhaustiveness only.
+ * `repair` runs on BOTH queues: the companion mends walls on its own queue (plan 042 Step 5), and the
+ * player mends a workbench on the player queue (plan 048 Step 4) — so it goes through the enqueue
+ * de-dupe + `'structure'` highlight like the other structure-tending kinds.
  */
 export const ORDER_META: Record<Action['kind'], OrderMeta> = {
   move: { highlight: 'move', dedupeOnEnqueue: false },
@@ -74,6 +76,9 @@ export const ORDER_META: Record<Action['kind'], OrderMeta> = {
   deconstruct: { highlight: 'structure', dedupeOnEnqueue: true },
   rearm: { highlight: 'structure', dedupeOnEnqueue: true },
   repair: { highlight: 'structure', dedupeOnEnqueue: true },
+  // Craft does NOT de-dupe (like build): several crafts of the SAME recipe at the SAME bench may queue
+  // up (craft three swords), so enqueuing must APPEND, not toggle a same-target duplicate off.
+  craft: { highlight: 'structure', dedupeOnEnqueue: false },
 };
 
 /** Two orders address the same work: same kind AND same (non-null) target id. Never true for a

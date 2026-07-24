@@ -11,6 +11,7 @@ const refuel = (campfireId: string): Action => ({ kind: 'refuel', campfireId });
 const rearm = (trapId: string): Action => ({ kind: 'rearm', trapId });
 const deconstruct = (wallId: string): Action => ({ kind: 'deconstruct', wallId });
 const build = (siteId: string): Action => ({ kind: 'build', siteId });
+const craft = (benchId: string, recipeId: string): Action => ({ kind: 'craft', benchId, recipeId });
 const move = (col: number, row: number): Action => ({ kind: 'move', col, row });
 
 describe('orderTargetId', () => {
@@ -21,7 +22,8 @@ describe('orderTargetId', () => {
     expect(orderTargetId(build('s1'))).toBe('s1');
     expect(orderTargetId(deconstruct('w1'))).toBe('w1');
     expect(orderTargetId(rearm('r1'))).toBe('r1');
-    expect(orderTargetId({ kind: 'repair', wallId: 'w9' })).toBe('w9');
+    expect(orderTargetId({ kind: 'repair', structureId: 'w9' })).toBe('w9');
+    expect(orderTargetId(craft('b1', 'brand'))).toBe('b1'); // the bench, not the recipe
   });
 
   it('is null for a move (no target)', () => {
@@ -37,7 +39,7 @@ describe('sameOrderTarget', () => {
 
   it('false across kinds even when ids coincide', () => {
     // a wall id shared by deconstruct + repair must not collide
-    expect(sameOrderTarget(deconstruct('w1'), { kind: 'repair', wallId: 'w1' })).toBe(false);
+    expect(sameOrderTarget(deconstruct('w1'), { kind: 'repair', structureId: 'w1' })).toBe(false);
   });
 
   it('a move never matches (null target)', () => {
@@ -53,7 +55,9 @@ describe('ORDER_META', () => {
     const noDedupe = (Object.keys(ORDER_META) as Action['kind'][]).filter(
       (k) => !ORDER_META[k].dedupeOnEnqueue,
     );
-    expect(noDedupe.sort()).toEqual(['build', 'move']);
+    // `craft` joins build/move as append-not-toggle: queuing three swords at one bench must stack, not
+    // cancel the previous same-target craft (plan 048 Step 6).
+    expect(noDedupe.sort()).toEqual(['build', 'craft', 'move']);
   });
 
   it('classifies highlights, folding the three structure-tending kinds together', () => {
@@ -61,8 +65,20 @@ describe('ORDER_META', () => {
     expect(ORDER_META.clear.highlight).toBe('tree');
     expect(ORDER_META.build.highlight).toBe('site');
     expect(ORDER_META.move.highlight).toBe('move');
-    for (const k of ['refuel', 'deconstruct', 'rearm'] as const)
+    for (const k of ['refuel', 'deconstruct', 'rearm', 'repair', 'craft'] as const)
       expect(ORDER_META[k].highlight).toBe('structure');
+  });
+});
+
+describe('craft order (plan 048)', () => {
+  it('targets the bench (so two recipes at one bench share a target id) but never de-dupes', () => {
+    // orderTargetId is the bench, so two DIFFERENT recipes at the SAME bench are "same target"…
+    expect(sameOrderTarget(craft('b1', 'brand'), craft('b1', 'sword'))).toBe(true);
+    // …yet because craft does NOT de-dupe on enqueue, both still queue (append, never toggle off).
+    const q = new TaskQueue();
+    q.append(craft('b1', 'brand'));
+    q.append(craft('b1', 'sword'));
+    expect(q.all()).toEqual([craft('b1', 'brand'), craft('b1', 'sword')]);
   });
 });
 

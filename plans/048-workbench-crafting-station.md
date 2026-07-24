@@ -1,7 +1,6 @@
 # Workbench — First Crafting Station
 
-> Status: planned — run /execute-plan to begin. **Gate 1 open**: plan-only deliverable; stop for
-> Matt's review. Split out of the original combined plan after the Gate-2 critique (see
+> Status: in review. Split out of the original combined plan after the Gate-2 critique (see
 > `## Critique resolution`). The **equip system + torch/durability + combat rewire** is the sibling
 > plan **049**; this plan (crafting station) is its prerequisite and ships first.
 
@@ -90,7 +89,7 @@ queued station task over `craftMs`" — exactly the worker-order model here.
 
 ## Steps
 
-- [ ] **Step 1: Rope resource + craftable item stubs + tent loot** `[delegate sonnet]`
+- [x] **Step 1: Rope resource + craftable item stubs + tent loot** `[delegate sonnet]`
   - `src/data/items.ts`: add `rope` (inedible material) and the recipe outputs as **plain items** —
     `brand` (name "Brand"), `bow`, `sword`, each `maxStack: 1`, placeholder colour + icon. **No
     `equip`/`durability` fields yet** (those + combat/light land in 049; these stay inert bag items).
@@ -101,8 +100,14 @@ queued station task over `craftMs`" — exactly the worker-order model here.
   - Side effects: `data.test.ts` validates every `ItemDef`; `parseLootTable` cross-checks
     `itemId ∈ ITEMS`. Salvage fixtures asserting exact drops may need the new entry.
   - Done when: `npm test` + build + smoke green; salvaging a tent can yield rope.
+  - Outcome: added `rope` (material, `maxStack:50`) + inert `brand`/`bow`/`sword` (`maxStack:1`, no
+    equip/durability) to `src/data/items.ts`; added `rope` drops to both `salvagedTent.loot` and
+    `.clearLoot` in `nodes.json`; new `scripts/craft-items-art.mjs` bakes 4 placeholder 32×32 icons to
+    `public/assets/icons/{rope,brand,bow,sword}.png` (tent-art.mjs convention, zlib-only, re-runnable);
+    updated `tests/e2e/salvage-lifecycle.spec.ts` loot assertions for the new drop. `npm test` (967
+    tests), `npm run build`, `npm run smoke` all green.
 
-- [ ] **Step 2: Workbench buildable data + sprite/object region** `[inline]`
+- [x] **Step 2: Workbench buildable data + sprite/object region** `[inline]`
   - `src/data/buildables.ts`: add `workbench` — `cost:{ wood:50 }`, `behavior:'workbench'`,
     `category:'craft'`, `maxHp: WORKBENCH_MAX_HP`, `blocksPath:true`, `baseOnly:true`, with
     `originY`/`tilesTall` for a ~1-tile bench. Wire its sprite to the **small wooden `Workbench.png`**
@@ -111,8 +116,21 @@ queued station task over `craftMs`" — exactly the worker-order model here.
   - Side effects: the Build catalog surfaces its first `'craft'`-category tab — verify
     `CommandBar`/`BuildCatalog` render a tab per non-empty category. `data.test.ts` buildable checks.
   - Done when: the workbench appears in the Build menu at 50 wood and renders its wooden sprite.
+  - Outcome: added `workbench` to `src/data/buildables.ts` (cost `{wood:50}`, `behavior:'workbench'`,
+    `category:'craft'`, `blocksPath`+`baseOnly`, `tilesTall:1`/`originY:1`). Sprite wired via a NEW
+    `BuildableDef.objectSprite?: { asset; region? }` field (`src/data/types.ts`, imports `DecorRegion`)
+    — the shared object-region path (`resolveDecorDraw`), asset
+    `pixel-crawler/…/Workbench/Workbench.png` region `{x:0,y:84,w:32,h:28}` (left column, 2nd row down;
+    smallest wooden variant). PreloadScene loads any `objectSprite` sheet unconditionally (deduped,
+    beside the campfire/barricade/trap loads). Craft-RATE knobs `CRAFT_BASE_MS`/`CRAFT_DAMAGED_MIN_FRAC`
+    added to `config.ts`. **Deviation:** `maxHp:60` is inline on the buildable entry (NOT a config
+    `WORKBENCH_MAX_HP`) to match wall/campfire/spike_trap and plan 043 Step 16's cost/stat
+    consolidation — only craft-rate tuning went to config. Build catalog auto-surfaces the Craft tab
+    (data-driven off categories). Build + 967 unit tests + smoke boot canary all green. NOTE: the
+    in-world wooden sprite RENDER lands in Step 3 (WorkbenchBehavior.materialise consumes `objectSprite`
+    - `resolveDecorDraw`); Step 2 lands the data, the field, the config, and the preload.
 
-- [ ] **Step 3: `WorkbenchBehavior` StructureManager module** `[inline]`
+- [x] **Step 3: `WorkbenchBehavior` StructureManager module** `[inline]`
   - New `src/scenes/world/WorkbenchBehavior.ts` implementing `StructureBehavior` — copy `WallBehavior`
     for `materialise`/`takeDamage`/`repair`/`stats`/`highlightBounds`/`reset`/`destroy` + the
     SHUTDOWN/reset sprite rule. Add `WorkbenchStructure` to `entities/types.ts` (`hp`/`maxHp`, plus a
@@ -121,8 +139,20 @@ queued station task over `craftMs`" — exactly the worker-order model here.
   - Side effects: `StructureManager.stats`/`highlightBounds`/`materialise` already dispatch on
     `behavior` — just the registration + new module.
   - Done when: a built workbench is a live structure with HP that Inspect shows; build passes.
+  - Outcome: new `src/scenes/world/WorkbenchBehavior.ts` (copies the WallBehavior HP spine; renders the
+    STATIC `objectSprite` region crop via `resolveDecorDraw`+`parseAssetId`, no anim; damage feedback =
+    a progressive tint lerp white→dark-brown, no crumble sheet). `WorkbenchState`/`WorkbenchStructure`
+    (`hp`/`maxHp`/`craft`) added to `entities/types.ts`; `placedWorkbenchStats` added to `systems/stats.ts`
+    (currentHp bar + Idle/Crafting status). Registered under `'workbench'` in GameScene `buildWorld()`
+    with `freeTile`+`repath` deps (same as the wall). **Design decision (flag):** a bench IS destroyed
+    at `hp<=0` like the wall (faithful to "bashed by night mobs like a wall" — real defend-or-lose
+    stakes; the "never fully stalls" clause governs the craft RATE at positive HP, Step 6, not the HP).
+    The behavior-specific `workbench` getter is deferred to Step 4 (its first consumer) to avoid an
+    unused-symbol error — Step 3 reaches the bench only through the generic StructureManager dispatch.
+    Build + 967 unit tests + smoke green; the runtime materialise/damage/repair proof lands in Step 4's
+    scenario test (as sequenced).
 
-- [ ] **Step 4: Mobs attack + player repairs the workbench** `[inline]`
+- [x] **Step 4: Mobs attack + player repairs the workbench** `[inline]`
   - Extend the GameScene wiring of `EnemyManager` `structureAt`/`attackStructure` (currently
     wall-only) to also resolve a **blocking workbench** and route damage to
     `WorkbenchBehavior.takeDamage`. Allow the player `repair` order to target a workbench (add a
@@ -132,16 +162,38 @@ queued station task over `craftMs`" — exactly the worker-order model here.
     change (bench `blocksPath`).
   - Done when: a night mob adjacent to a workbench damages it; a queued repair restores it; a
     scenario test shows both.
+  - Outcome: `structureAt` now resolves wall-first-then-workbench (bench = `objectAsDefender` +
+    0 thorns); `attackStructure` routes damage by id lookup (wall else bench). Generalised the `repair`
+    Action's field `wallId`→`structureId` (honest — repair targets a structure); updated `orders.ts`
+    (`orderTargetId` + doc), CompanionManager (2 refs — its wall repair still works), `orders.test.ts`.
+    Added a PLAYER `repair` begin/run (`beginRepair`/`runRepair`, workbench-scoped: walk-adjacent →
+    tend on a cadence → hp to max, worker-time only, no resource cost) wired into the begin/run dispatch
+    tables (was a no-op stub); config `WORKBENCH_REPAIR_INTERVAL_MS`/`_PER_TICK`. The player-facing
+    repair TRIGGER (a Repair action in the craft menu when damaged) is deferred to Step 7 — Step 4
+    proves the mechanic via the DEV enqueue seam. Scenario harness: `workbenches` fixture (ScenarioSpec)
+    - `workbenchIds` (ScenarioResult) + `workbenches()`/`damageWorkbench()` DEV seams (standalone, NOT in
+    DebugState, so the refactor-tripwire golden is untouched) across `testTypes.ts`/`testApi.ts`/
+    `GameScene` `__test`/`harness.ts`. New `tests/e2e/workbench.spec.ts` (2 tests: a walled-off mob
+    bashes+destroys the bench then reaches the player; a player `repair` order mends a damaged bench to
+    full HP). Build + 967 unit + the 2 new e2e + 22 affected e2e (companion/refactor-tripwire/wall-attack/
+    build) all green.
 
-- [ ] **Step 5: Recipe data model** `[delegate sonnet]`
+- [x] **Step 5: Recipe data model** `[delegate sonnet]`
   - New `src/data/recipes.ts`: `RECIPES: Record<string, RecipeDef>` where `RecipeDef =
     { id; name; station: 'workbench'; cost: Record<string,number>; output: { itemId; count }; craftMs }`.
     Entries: `brand` (`{ wood:1, cloth:1 }` → 1 brand), `bow` (`{ rope:2, wood:2 }` → 1 bow), `sword`
     (`{ wood:2, stone:1 }` → 1 sword). Add validation (costs/outputs ∈ ITEMS, station ∈ BUILDABLES).
   - Side effects: none until Step 6.
   - Done when: recipes resolve + validate; `npm test` green.
+  - Outcome: new `src/data/recipes.ts` (pure data — no consumers until Step 6); `RecipeDef` added to
+    `types.ts` between `BuildableDef`/`EnemyDef` (matches the ITEMS/BUILDABLES/NODES Def-in-types
+    convention). All three recipes craft at `workbench`, `craftMs = CRAFT_BASE_MS` (8000). Validation
+    follows the repo pattern — plain assertions in `data.test.ts` (a new `RECIPES` describe block, +6
+    tests: keyed-by-id, cost/output ids ∈ ITEMS, positive-int counts, station ∈ BUILDABLES, `craftMs>0`,
+    exact brand/bow/sword shape), NOT load-time (that's reserved for external JSON like nodeDefs). All
+    required item ids + the workbench buildable confirmed present. `npm test` (974 tests) + build green.
 
-- [ ] **Step 6: `craft` worker order (HP-scaled)** `[inline]`
+- [x] **Step 6: `craft` worker order (HP-scaled)** `[inline]`
   - `src/systems/tasks.ts`: add `{ kind:'craft', benchId, recipeId }` to `Action`. `src/systems/orders.ts`:
     `orderTargetId` → `benchId`; `ORDER_META.craft` (`highlight:'structure'`, `dedupeOnEnqueue:false`
     — several crafts may queue). Extend `orders.test.ts` exhaustively. GameScene `begin`/`run`: walk
@@ -153,6 +205,18 @@ queued station task over `craftMs`" — exactly the worker-order model here.
     is one `ORDER_META` entry + the scene handlers.
   - Done when: a queued craft at a healthy bench delivers the item; a damaged bench is visibly slower;
     unit + build green.
+  - Outcome: `craft` Action `{ benchId, recipeId }` added (tasks.ts); `orderTargetId`→`benchId` +
+    `ORDER_META.craft` (`highlight:'structure'`, `dedupeOnEnqueue:false` — appends like build so several
+    crafts stack); `orders.test.ts` extended (craft target-id, noDedupe now `[build,craft,move]`, a
+    craft-specific describe). GameScene `beginCraft`/`runCraft` wired into the begin/run tables: walk
+    adjacent, accumulate `bench.state.craft.progress` at rate `Linear(CRAFT_DAMAGED_MIN_FRAC,1,hp/maxHp)`
+    with an above-bench progress bar (nodeFx, cleaned up by beginCurrent's blanket chokepoint on
+    interrupt); at `craftMs` spend cost + add output, or **fizzle** (new `WorkbenchBehavior.flashFizzle`
+    red flash) if unaffordable/bag-full at completion. Progress persists on the bench (walk-away + same
+    recipe re-queue resumes). Added an `itemCount(id)` DEV seam (Inventory.get) + harness wrapper for the
+    craft proof. e2e (`workbench.spec.ts`, +2 tests): a healthy bench delivers brand + spends the cost;
+    a crippled bench (hp 5/60) is unfinished in the healthy 9s window but still completes later (floors,
+    never stalls). Build + 975 unit + 4 workbench e2e green.
 
 - [ ] **Step 7: HUD craft menu + tests + docs** `[inline]`
   - Tapping a workbench opens a **recipe list** (a drawer/sheet like `PackDrawer`): each recipe shows

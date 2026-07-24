@@ -1,6 +1,6 @@
 # Equippable Items + Equip Slots (Brand · Bow · Sword)
 
-> Status: in review
+> Status: deployed
 
 ## Summary
 

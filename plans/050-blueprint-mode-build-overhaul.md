@@ -1,6 +1,6 @@
 # Blueprint Mode — Build Experience Overhaul
 
-> Status: planned — run /execute-plan to begin.
+> Status: in review
 
 ## Summary
 
@@ -109,7 +109,8 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
 
 ## Steps
 
-- [ ] **Step 1: Data model + per-buildable build time** `[delegate]`
+- [x] **Step 1: Data model + per-buildable build time** `[delegate]`
+  - Outcome: added `icon?`/`buildTimeMs?`/`footprint?` (stub) to `BuildableDef` (`src/data/types.ts`); set `buildTimeMs: 2500` on all 4 entries (`src/data/buildables.ts`); new pure module `src/systems/buildTime.ts` (`buildTimeFor(def) => def.buildTimeMs ?? BUILD_MS`) + `src/systems/__tests__/buildTime.test.ts` (4 cases); `runBuild` in `GameScene.ts` now routes through `buildTimeFor` (dropped direct `BUILD_MS` import). Only remaining `BUILD_MS` readers: its def in `config.ts` + the fallback in `buildTime.ts`. `npm test` 996 pass; typecheck clean. No deviations.
   - `src/data/types.ts`: add optional `BuildableDef` fields — `icon?: string` (PNG under
     `public/assets/icons/`), `buildTimeMs?: number`, `footprint?: { w: number; h: number }` (stub;
     absent ⇒ treated as `{w:1,h:1}`). Terse comment each.
@@ -122,7 +123,8 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
   - Done when: `npm test` passes; a unit test asserts `buildTimeFor` returns the per-buildable value
     and falls back to `BUILD_MS`; every structure builds in the same time as before.
 
-- [ ] **Step 2: Textured, orientation-aware ghost sprite** `[inline]`
+- [x] **Step 2: Textured, orientation-aware ghost sprite** `[inline]`
+  - Outcome: ghost is now a `Phaser.GameObjects.Sprite` (was `Rectangle`) in `BuildManager.ts` via new `applyGhostAppearance()` (called from constructor/`select`/`rotatePlacement`/`reset`/`updateGhost`), tinted valid/invalid at 0.5 alpha. New `src/scenes/build/ghostTexture.ts` (`ghostTextureFor(scene, buildableId, facing)`) resolves each buildable's in-world texture/frame/flip (wall→`barricadeDestroyKey`, workbench→`resolveDecorDraw`, campfire→`campfireBaseKey`, trap→`spikeTrapKey`). Facing→(orient,flipX) mapping extracted to new pure `src/systems/wallOrientation.ts` and `WallBehavior.ts` refactored to use it (byte-for-byte identical). `createBlueprint`/`TaskGlowRenderer` untouched. typecheck clean, 996 unit pass, build + smoke canary pass. Minor: also handled workbench ghost (plan named only campfire/trap); campfire ghost preview slightly larger than in-world (didn't duplicate CampfireBehavior private constants) — cosmetic, acceptable.
   - Replace the flat `Rectangle` ghost (`BuildManager.ts:103-106`) with a real structure sprite
     (`Sprite`/`Image` using the buildable's in-world texture/frame). `updateGhost` reads `placeFacing`
     and sets frame + `setFlipX`, reusing the exact `orient`/flip mapping in `WallBehavior.ts:88-94` —
@@ -135,8 +137,9 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
   - Done when: the wall ghost is wall-shaped and re-orients (flips for `left`) as `build:rotate` fires;
     campfire/trap show their sprite; boot smoke passes.
 
-- [ ] **Step 3: Build-mode input rework — pointer-up tap, pan enable, gate command-paint** `[inline]`
+- [x] **Step 3: Build-mode input rework — pointer-up tap, pan enable, gate command-paint** `[inline]`
   *(critique #1 — the load-bearing change; do first, before any pan/paint UX)*
+  - Outcome: `PointerInputController.ts` — `onBuildDown` now arms only (`updateGhost`, no spend); new `onBuildUp` dep does single-tap place+spend on release ONLY if never dragged (guarded by `isPanning`). Build-move early-return removed → build-mode drag falls through to the shared pan block; command-mode long-press/queue-paint block gated `if (!buildMode && getMode()==='command')`. `GameScene.ts` deps rewired (`onBuildDown: updateGhost`, `onBuildUp: placeOrEnqueueBuild`). Movepad gate + pinch preserved. Two new specs in `tests/e2e/build.spec.ts` (tap places 1 on release / drag pans+charges nothing) PASS; `gestures.spec.ts` still passes (command-mode byte-for-byte). typecheck clean, 996 unit pass. Deviation: no separate anchor-tile field (reused `isPanning`); movepad gate also applied to build-mode pointer-up for consistency.
   - Move single-tap placement from `pointerdown` to `pointerup`: split the build deps so `onBuildDown`
     only **arms** (update ghost, record anchor tile, no placement/spend); add `onBuildUp` that resolves
     a **single-tap placement** (existing immediate spend+enqueue via `placeOrEnqueueBuild`) **only if
@@ -155,7 +158,8 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
     one tile **on release**; command-mode tap-to-order and long-press paint are unaffected; scenario
     test covers tap-vs-drag in build mode.
 
-- [ ] **Step 4: Blueprint Mode visuals — dim overlay + snap grid** `[inline]`
+- [x] **Step 4: Blueprint Mode visuals — dim overlay + snap grid** `[inline]`
+  - Outcome: DOM dim layer `BuildDim` in `GameHud.tsx` (gated on the pre-existing store `buildMode`, `pointer-events:none`, vignette-style transition, testid `hud-build-dim`); Phaser snap grid in `BuildManager` (`snapGrid` Graphics depth 5, `syncSnapGrid()` culls to `cameras.main.worldView` + redraws each frame from `GameScene.update()`, cleared/hidden on mode exit, torn down in `reset()`/`destroy()`). New `COLORS.snapGrid` + `BUILD_DIM_COLOR/ALPHA/MS` config consts. Demolish shows neither (dim gates on `buildMode`, grid on `buildManager.buildMode`; demolish never sets it). typecheck clean, 996 unit pass, smoke canary pass. Deviation: added 3 `BUILD_DIM_*` config consts beyond the named `snapGrid` (matches config-driven vignette convention).
   - Reuse the existing `buildMode` boolean as the trigger (entering build = Blueprint Mode), emitting
     the already-wired `build:modeChanged`; add only the visual surface, matching the ad-hoc mode
     precedent (`GameScene.ts:1647-1658`). Preserve build↔demolish mutual exclusion.
@@ -168,7 +172,8 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
   - Docs: none.
   - Done when: entering build dims the world + shows the grid; leaving restores both; demolish clean.
 
-- [ ] **Step 5: Pending-run model + affordability (BuildManager)** `[inline]`
+- [x] **Step 5: Pending-run model + affordability (BuildManager)** `[inline]`
+  - Outcome: new pure `src/systems/buildRun.ts` (`runAxis`, `runTiles` axis-locked + inherently deduped, `selectRun` → `{tiles, placeableCount, affordableCount, totalCost, etaMs}`; affordable = cumulative-cost prefix, eta = affordableCount × buildTime serial) + 13 unit tests (`buildRun.test.ts`). `BuildManager` holds `runAnchor`/`pendingTiles`/`runGhosts` pool with `beginRun`/`extendRun`(recomputes full line)/`clearRun`/`runSelection()`; `applyGhostAppearance` refactored to shared `applyAppearanceTo` so pool + hover ghost can't drift; pending tiles rendered valid iff `i < affordableCount && placeable[i]`. Run cleared on mode exit/select/reset; pool destroyed on SHUTDOWN. NO spend/blueprint. New `heldCounts()` dep → `inv.snapshot()`. typecheck clean, 1009 unit pass, smoke pass.
   - Add a **pending run** to `BuildManager`: ordered `{col,row,facing}` list + `beginRun(anchor)`,
     `extendRun(tile)` (axis-lock to dominant axis vs anchor; dedupe repeats), `clearRun()`, and a
     selector `{ tiles, placeableCount, affordableCount, totalCost, etaMs }` (eta = `Σ buildTimeFor`
@@ -181,7 +186,8 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
   - Done when: unit tests cover axis-lock (row vs column), dedupe, affordable-subset cutoff, and eta;
     building a run spends no resources.
 
-- [ ] **Step 6: Line-tool toggle + straight-line drag paint (input)** `[inline]`
+- [x] **Step 6: Line-tool toggle + straight-line drag paint (input)** `[inline]`
+  - Outcome: `lineTool` flag lives on `GameScene` (source of truth), read by `PointerInputController` via new `isLineTool()` dep (mirrors `isBuildMode`). New deps `onBuildRunBegin`/`onBuildRunExtend` → `BuildManager.beginRun`/`extendRun` (pointer→tile via `worldToTile`). Armed build-mode gesture: down→beginRun, move→`paintRunAt` (per-gesture `runExtendedThisGesture` Set dedupes new tiles, mirrors `paintedThisGesture`; returns before pan classifier), up→ends gesture, run stays pending (no commit). Tool-off = byte-for-byte Step-3 path. New `build:lineTool {on}` inbound + `build:lineToolChanged` outbound (`bridge.ts`/`store.ts`); new `LineToolFab.tsx` in `GameHud` ActionLayer, gated on `buildMode`, fires on pointerdown, mirrors store state. Pinch checked first, movepad gate applies. typecheck clean, 1009 unit pass, smoke pass. Note for Step 7: an armed single tap begins a length-1 pending run (committed via the commit bar).
   - Add a **line-tool toggle** FAB to the build thumb zone (new `InboundEvent` `build:lineTool` {on} +
     `wireBus` row + a flag). When build mode + tool armed: `pointerdown` → `onBuildRunBegin`;
     `pointermove` → `onBuildRunExtend` painting each new tile via a per-gesture `Set` mirroring
@@ -194,7 +200,8 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
   - Done when: armed → drag paints an axis-locked, deduped run of ghosts; off → drag pans; the FAB
     reflects state.
 
-- [ ] **Step 7: Commit bar HUD + commit handler (deferred spend, batch enqueue)** `[inline]`
+- [x] **Step 7: Commit bar HUD + commit handler (deferred spend, batch enqueue)** `[inline]`
+  - Outcome: `BuildManager.commitRun()` (spends + `createBlueprint` + `enqueueBuild` for the affordable-prefix ∩ placeable subset, then `clearRun`; no-ops on empty run) + `emitRunChanged()` on every run mutation. New outbound `build:runChanged` → store `runTally` (`RunTally`); new inbound `build:commitRun`/`build:cancelRun` (`bridge.ts` union + `wireBus` rows → `commitRun`/`clearRun`). New `src/hud/components/CommitBar.tsx` in `GameHud` ActionLayer, gated `buildMode && runTally.tileCount>0`, shows `<affordable> of <placeable>` + cost + ~Ns ETA, Confirm/Cancel fire on pointerdown. Single-tap path untouched. `runSelection()` added to `__test` surface. New `paintRun` helper + 2 commit-bar specs in `build.spec.ts`. typecheck clean, 1009 unit pass, all 7 `build.spec.ts` e2e pass. Deviation: commits affordable∩placeable (matches valid-tint preview, prevents blueprinting unplaceable tiles); smoke not run (needs separate preview server) — real-browser e2e exercised the path instead.
   - **Commit bar** in the thumb zone (ActionLayer, `buildMode`-gated), showing `<affordable> of
     <placeable>` count, total cost, and worker **ETA** from Step 5's selector, with **Confirm** +
     **Cancel**; fire on `pointerdown` (survive movepad hold) like combat buttons.
@@ -209,7 +216,8 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
   - Done when: painting a run shows the live tally; Confirm queues exactly the affordable tiles and
     spends their cost; Cancel clears with no spend; scenario test covers paint→commit→build.
 
-- [ ] **Step 8: Rotation ring control + `R`-key parity** `[inline]`
+- [x] **Step 8: Rotation ring control + `R`-key parity** `[inline]`
+  - Outcome: new `src/hud/components/RotationRing.tsx` — fixed thumb-zone compass (3×3 grid, 4 quadrant buttons fire on pointerdown), rendered in `GameHud` ActionLayer gated `buildMode && orientable` (orientable already in store), highlights the current facing. `facing` added to store via new outbound `build:facingChanged` (emitted by `BuildManager` on rotate/select/reset + GameScene restart; mirrors the `lineToolChanged`/`runChanged` pattern). Drag-safe: wrapper `pointer-events-none`, only buttons opt back in. `R`/`Shift+R` bound in `wireBus()` (first Game-scene key binding), gated to build mode → `build:rotate`. `rotatePlacement` + `build:rotate` payload extended backward-compatibly: no-arg = forward cycle (legacy CommandBar button unchanged), `{dir:-1}` reverse, `{to}` jump (ring uses `{to}` for a directional compass). typecheck clean, 1009 unit pass; smoke deferred to Step 11 (preview-server dependent).
   - A **fixed, thumb-reachable** rotation ring in the HUD (not tracking the moving world ghost — avoids
     per-frame world→screen mapping, critique #7) whose quadrants emit the existing `build:rotate`;
     light the current facing. Mirror the fight-cluster thumb pattern (`CommandBar.tsx:202-224`),
@@ -221,7 +229,8 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
   - Done when: the ring rotates the ghost on touch, `R` on desktop, facing is lit, hidden for
     non-orientable buildables.
 
-- [ ] **Step 9: Construction arc + world-space progress bar** `[inline]`
+- [x] **Step 9: Construction arc + world-space progress bar** `[inline]`
+  - Outcome: `BuildSite.scaffold` field (`src/entities/types.ts`); `BuildManager` lazily creates one scaffold Sprite per active build (`ensureScaffold`, positioned at tile center, depth-sorted, alpha 0.7, textured via the shared `applyAppearanceTo`/`ghostTextureFor` path — no new art), settles it in `finishSite` (structure's own Build strip), destroys via `clearScaffold`/`clearScaffolds`/`reset`. `runBuild` (`GameScene.ts`) anchors `NodeFxManager.showActionProgress` to the scaffold sprite (not the `Rectangle` — critique #5), driven by `site.progress / buildTimeFor(def)`, hidden on completion; old blueprint-rect alpha-ramp deleted (single feedback). Leak teardown at the `beginCurrent` chokepoint (`clearScaffolds` + `hideAllActionProgress`) covers cancel/block/switch, plus reset/SHUTDOWN. typecheck clean, 1009 unit pass, 7/7 `build.spec.ts` e2e pass. No deviations from intent.
   - Add a **scaffold sprite** (an `Image`/`Sprite`) on the site while building, and wire
     `NodeFxManager.showActionProgress` **anchored to that scaffold sprite** (not `site.rect`, which is
     a `Rectangle` — critique #5) tracking `site.progress / buildTimeFor(def)`; hide on `finishSite`,
@@ -233,7 +242,9 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
   - Done when: building shows a progress bar + scaffold resolving into the built sprite; no fx leaks;
     smoke passes.
 
-- [ ] **Step 10: Structure icons (separable follow-up)** `[inline]`
+- [~] **Step 10: Structure icons (separable follow-up)** `[inline]` — CODE PART DONE; icon-art generation DEFERRED (follow-up)
+  - Outcome (code part): new shared `src/hud/components/BuildableIcon.tsx` (`{def, className?, fallback}` — renders pixel-crisp `<img src={iconUrl(def.icon)}>` when `icon` set, else the caller's `fallback`). Wired into `BuildCatalog.tsx` (icon vs colour swatch), `Hotbar.tsx` `SlotContent` (icon vs name text; dropped stale TODO), `CommandBar.tsx` build tray chip (icon-only slot, `null` fallback). `CommitBar.tsx` skipped — `RunTally` has no buildable identity, no natural slot. No buildable sets `icon` yet, so visuals are byte-for-byte unchanged; the `<img>` path activates once icon files land. typecheck clean, 1009 unit pass, build compiles.
+  - DEFERRED (not done): generating structure-icon PNGs into `public/assets/icons/` via the Gemini pipeline over Tailscale/guppi + setting `icon` per buildable + the art/assets doc pointer. Left as a separate follow-up (per session decision to avoid external-service connection here); swatch fallback fully covers the gap.
   - Render `<img src={`/assets/icons/${def.icon}`}>` (`image-rendering:pixelated`) wherever buildables
     show — build catalog (`BuildCatalog.tsx:99-103`), hotbar (`Hotbar.tsx:189-191` TODO), command-bar
     tray, commit bar — **falling back to the colour swatch** when `def.icon` is unset.
@@ -247,7 +258,8 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
   - Done when: catalog/hotbar/commit bar show real art; a buildable with no `icon` still renders a
     swatch; build passes.
 
-- [ ] **Step 11: Tests + docs** `[inline]`
+- [x] **Step 11: Tests + docs** `[inline]`
+  - Outcome: unit coverage reviewed — `buildTime.test.ts` (4) + `buildRun.test.ts` (13) already cover buildTimeFor/axis-lock/dedupe/affordable-cutoff/ETA fully, no cases added. New `tests/e2e/blueprint.spec.ts` owns the 4 Blueprint-Mode scenario specs (tap-vs-drag ×2; line-tool paint→Confirm spends exactly affordable subset→finishSite; Cancel no-spend) moved out of `build.spec.ts` (+`paintRun` helper); `build.spec.ts` keeps its 3 core grid/occupancy specs; 7 pass together. Docs: `STATUS.md` (Blueprint Mode section), `CONVENTIONS.md` (pointer-up + pending-run seam + `build:*` event list synced to `bridge.ts`), `DECISIONS.md`+`decisions/architecture.md` (build-UX focus, links `build-ui-options.html`), `ROADMAP.md` (post-MVP note), `CLAUDE.md` (one lean Status clause). Icon-art deferral noted throughout. typecheck clean, 1009 unit pass, markdownlint clean. Full `npm run e2e`/`smoke` deferred to CI (repo rule).
   - **Unit** (`src/systems/__tests__/`): finalise `buildTimeFor`, axis-lock, run dedupe,
     affordable-subset cutoff, ETA. Mirror `tasks.test.ts`/`orders.test.ts`.
   - **Scenario** (`tests/e2e/blueprint.spec.ts`): mirror `gestures.spec.ts` + `build.spec.ts` — assert

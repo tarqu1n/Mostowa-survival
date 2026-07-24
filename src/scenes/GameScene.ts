@@ -11,7 +11,6 @@ import {
   WORKBENCH_REPAIR_PER_TICK,
   CRAFT_DAMAGED_MIN_FRAC,
   LONGPRESS_MS,
-  BUILD_MS,
   SALVAGE_MS,
   CLEAR_MS,
   COMBAT_ACTIVE_RADIUS_TILES,
@@ -43,6 +42,7 @@ import { ORDER_META, isOrderQueued, orderTargetId, toggleOrder } from '../system
 import { harvestAnimMotion } from '../systems/nodeDefs';
 import { rollLoot } from '../systems/loot';
 import { objectAsDefender } from '../systems/combat';
+import { buildTimeFor } from '../systems/buildTime';
 import { hurtboxTiles, DEFAULT_HURTBOX } from '../systems/hurtbox';
 import type { DayPhase } from '../systems/daynight';
 import type { GameTestApi } from '../entities/testTypes';
@@ -129,6 +129,14 @@ export class GameScene extends Phaser.Scene {
   // mode — turning either on turns the other off. Non-destructive: toggling it never cancelAll()s the
   // queue (mirrors build mode). The DOM HUD mirrors it via `demolish:modeChanged` for the DEMOLISH button.
   private demolishMode = false;
+
+  // Blueprint-Mode line tool (plan 050 Step 6): while armed, a build-mode drag paints an axis-locked
+  // straight run of blueprint ghosts (BuildManager's Step-5 run API) instead of the tool-off Step-3
+  // tap-place-on-up / drag-pans behaviour. The HUD FAB is the source of truth via the `build:lineTool`
+  // inbound event (onLineToolToggle sets this + echoes `build:lineToolChanged` so the FAB reflects it);
+  // PointerInputController reads it through the `isLineTool` dep. Persists across a build-mode toggle
+  // (the FAB only shows in build mode); reset to false on a death-restart (resetState + buildWorld resync).
+  private lineTool = false;
 
   // Guard-point placement (plan 042 Step 9): armed by the companion assignment menu's "Guard here"
   // option, it makes the NEXT command-mode world tap set the companion's guard tile (and its night
@@ -365,6 +373,7 @@ export class GameScene extends Phaser.Scene {
     this.nodeFx.reset();
     this.mode = 'command';
     this.demolishMode = false; // a death-restart starts clear of demolish mode (HUD resynced in buildWorld)
+    this.lineTool = false; // …and clear of the build line tool (plan 050 Step 6; HUD resynced in buildWorld)
     this.placingGuardPoint = false; // …and clear of any half-armed guard-point placement (plan 042 Step 9)
     // baseSupply is (re)constructed fresh in buildWorld (like the shared Inventory), so a death-restart
     // starts with an empty pool without an explicit reset here — see plan 042 Step 3.
@@ -609,6 +618,7 @@ export class GameScene extends Phaser.Scene {
       hasLitClaim: () => this.campfire.hasLitHearth(),
       inClaim: (col, row) => this.campfire.inClaim(tileToWorldCenter(col), tileToWorldCenter(row)),
       canAfford: (cost) => this.inv.canAfford(cost),
+      heldCounts: () => this.inv.snapshot(),
       spend: (cost) => this.inv.spend(cost),
       enqueueBuild: (siteId) => this.enqueue({ kind: 'build', siteId }),
       // Dispatch a completed live buildable to its runtime behavior module (finishSite only calls this
@@ -724,11 +734,26 @@ export class GameScene extends Phaser.Scene {
     this.pointerInput = new PointerInputController(this, {
       getPlayerSprite: () => this.player,
       isBuildMode: () => this.buildManager.buildMode,
-      onBuildDown: (pointer) => {
-        this.buildManager.updateGhost(pointer);
-        this.buildManager.placeOrEnqueueBuild(pointer);
-      },
+      // Build placement resolves on pointer-UP, not down (plan 050 Step 3): down only ARMS the ghost so
+      // a drag can pan the camera without dropping/charging for a tile on touch-down; up places+spends a
+      // single tile IF the gesture never became a drag (the controller only calls onBuildUp then).
+      onBuildDown: (pointer) => this.buildManager.updateGhost(pointer),
       onBuildMove: (pointer) => this.buildManager.updateGhost(pointer),
+      onBuildUp: (pointer) => this.buildManager.placeOrEnqueueBuild(pointer),
+      // Line tool (plan 050 Step 6): while armed, a build-mode drag paints an axis-locked run of ghosts
+      // via BuildManager's Step-5 run API (begin at the anchor tile, extend to each new drag tile). The
+      // controller converts the pointer to a tile the same way the ghost does (worldToTile).
+      isLineTool: () => this.lineTool,
+      onBuildRunBegin: (pointer) =>
+        this.buildManager.beginRun({
+          col: worldToTile(pointer.worldX),
+          row: worldToTile(pointer.worldY),
+        }),
+      onBuildRunExtend: (pointer) =>
+        this.buildManager.extendRun({
+          col: worldToTile(pointer.worldX),
+          row: worldToTile(pointer.worldY),
+        }),
       getMode: () => this.mode,
       // The DOM movepad (plan 046 Step 10) sets the `movepadHeld` registry flag through the HUD bridge;
       // read it here (was `this.ui.isMovepadHeld()`, the retired Phaser CombatControls movepad) so world
@@ -860,6 +885,16 @@ export class GameScene extends Phaser.Scene {
     // Demolish mode: re-emit the reset value (false) so the DEMOLISH button/hint don't linger toggled
     // from the prior run (plan 037 2b).
     this.game.events.emit('demolish:modeChanged', this.demolishMode);
+    // Line tool: re-emit the reset value (false) so the build FAB doesn't linger armed from the prior
+    // run (plan 050 Step 6).
+    this.game.events.emit('build:lineToolChanged', this.lineTool);
+    // Blueprint-Mode run tally: the freshly-constructed BuildManager has an empty run, so re-emit it
+    // (an empty tally) — the persisting HUD store would otherwise linger on the prior run's tally and
+    // keep the commit bar shown (plan 050 Step 7).
+    this.buildManager.emitRunChanged();
+    // Placement facing: re-emit this (re)start's facing (fresh = 'down') so the HUD rotation ring lights
+    // the right quadrant rather than lingering on the prior run's facing (plan 050 Step 8).
+    this.buildManager.emitFacingChanged();
     // Seed the base-supply readout with this (re)start's pool (fresh = 0/0) so it reflects this run
     // (plan 042 Step 3).
     this.game.events.emit('supply:changed', this.baseSupply.snapshot());
@@ -883,6 +918,9 @@ export class GameScene extends Phaser.Scene {
       ['build:rotate', this.buildManager.rotatePlacement, this.buildManager],
       ['build:select', this.onBuildSelect, this],
       ['build:modeChanged', this.onBuildModeChanged, this], // turn demolish off when build turns on (plan 037 2b)
+      ['build:lineTool', this.onLineToolToggle, this], // FAB armed/off → flip the run-paint flag (plan 050 Step 6)
+      ['build:commitRun', this.buildManager.commitRun, this.buildManager], // commit bar Confirm → blueprint+enqueue the affordable run (plan 050 Step 7)
+      ['build:cancelRun', this.buildManager.clearRun, this.buildManager], // commit bar Cancel → drop the pending run, no spend (plan 050 Step 7)
       ['demolish:toggle', this.onDemolishToggle, this],
       ['tasks:cancel', this.cancelAll, this],
       ['debug:randomise', this.devWorldTools.randomiseWorld, this.devWorldTools], // dev menu: scatter nodes + enemies
@@ -917,8 +955,20 @@ export class GameScene extends Phaser.Scene {
       ['equip:toggle', this.toggleEquip, this],
     ];
     for (const [event, handler, ctx] of subs) bus.on(event, handler, ctx);
+
+    // Desktop rotate parity (plan 050 Step 8): R cycles the placement facing forward, Shift+R reverse.
+    // Gated to build mode so it only fires while a blueprint ghost is up, and routed through the same
+    // `build:rotate` bus event the HUD Rotate button / rotation ring emit — BuildManager stays the sole
+    // rotate owner and the ghost + ring update through one path. The keyboard plugin is optional (`?.`).
+    const onRotateKey = (e: KeyboardEvent): void => {
+      if (!this.buildManager.buildMode) return;
+      this.game.events.emit('build:rotate', e.shiftKey ? { dir: -1 } : undefined);
+    };
+    this.input.keyboard?.on('keydown-R', onRotateKey);
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       for (const [event, handler, ctx] of subs) bus.off(event, handler, ctx);
+      this.input.keyboard?.off('keydown-R', onRotateKey);
       // Hide the page-level HUD while no Game scene is live (a death-restart re-shows it in create()).
       this.registry.set('sceneActive', false);
     });
@@ -1040,6 +1090,7 @@ export class GameScene extends Phaser.Scene {
       inspect: (c, r) => testApi.inspect(c, r),
       blocked: (c, r) => testApi.isTileBlocked(c, r),
       tryPlace: (id, c, r) => testApi.tryPlace(id, c, r),
+      runSelection: () => this.buildManager.runSelection(),
       inLight: (c, r) => testApi.inLight(c, r),
       feedCampfire: (i) => testApi.feedCampfire(i),
       damageFire: (i, amount) => testApi.damageFire(i, amount),
@@ -1086,6 +1137,7 @@ export class GameScene extends Phaser.Scene {
   override update(_time: number, delta: number): void {
     this.harvestSwing = null; // re-set by runHarvest only while actually harvesting in place
     this.taskGlowRenderer.syncGlowTransforms(); // keep queued-tree halos locked to their (possibly animating) trees
+    this.buildManager.syncSnapGrid(); // redraw/hide the Blueprint-Mode snap grid against the moving camera view (plan 050 Step 4)
 
     // Player is collapsing: freeze the world on the death anim (which advances on its own via Phaser's
     // anim system) until the scheduled scene.restart() fires. No clock/hunger tick, no input, no AI —
@@ -1232,6 +1284,11 @@ export class GameScene extends Phaser.Scene {
     // `!a` idle return so going idle cleans up too. The active runner re-arms its own shake/bar next frame.
     this.nodeFx.stopAllShakes();
     this.nodeFx.hideAllActionProgress();
+    // Blanket-drop any under-construction build scaffold too (plan 050 Step 9): a cancelled/switched/idle
+    // build must not leave its scaffold sprite standing on the (still-unbuilt) blueprint. The bar it
+    // anchored was just hidden by hideAllActionProgress above; this frees the sprite. The active build
+    // runner re-raises its scaffold next frame, mirroring the shake/bar re-arm.
+    this.buildManager.clearScaffolds();
     this.chopElapsed = 0;
     this.playerChar.path = [];
     this.playerChar.pathIndex = 0;
@@ -1545,8 +1602,14 @@ export class GameScene extends Phaser.Scene {
       this.player.body.setVelocity(0, 0);
       this.playerChar.faceTile(site.col, site.row); // face the blueprint while building it
       site.progress += delta;
-      site.rect.setAlpha(0.35 + 0.55 * Math.min(1, site.progress / BUILD_MS));
-      if (site.progress >= BUILD_MS) {
+      const total = buildTimeFor(BUILDABLES[site.buildableId]); // per-def time, else BUILD_MS
+      // Single progress feedback (plan 050 Step 9): a scaffold sprite raised on the site + a world-space
+      // bar anchored to it (the blueprint rect is a Rectangle — can't anchor the bar, critique #5). The
+      // old alpha-ramp on `site.rect` is gone — the bar is the one construction cue now.
+      const scaffold = this.buildManager.ensureScaffold(site);
+      this.nodeFx.showActionProgress(scaffold, Math.min(1, site.progress / total));
+      if (site.progress >= total) {
+        this.nodeFx.hideActionProgress(scaffold); // drop the bar before finishSite settles the scaffold
         this.buildManager.finishSite(site);
         this.completeCurrent();
       }
@@ -1868,6 +1931,16 @@ export class GameScene extends Phaser.Scene {
    *  own build mode, so this closes the loop without them knowing demolish exists). */
   private onBuildModeChanged(active: boolean): void {
     if (active && this.demolishMode) this.setDemolishMode(false);
+  }
+
+  /** Arm/disarm the build line tool (plan 050 Step 6) — the HUD FAB's `build:lineTool {on}`. Flips the
+   *  flag PointerInputController reads (`isLineTool`) and echoes `build:lineToolChanged` so the FAB's
+   *  armed/off highlight mirrors the true state (same round-trip demolish/build mode use). Purely a
+   *  gesture-mode switch: no queue/run side effects here — leaving build mode / changing selection
+   *  already clears any in-flight run in BuildManager. */
+  private onLineToolToggle({ on }: { on: boolean }): void {
+    this.lineTool = on;
+    this.game.events.emit('build:lineToolChanged', this.lineTool);
   }
 
   // --- Companion assignment (plan 042 Step 9) — the SHARED setter path the assignment menu AND the

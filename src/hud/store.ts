@@ -3,6 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import { PLAYER_MAX_HP, HUNGER_MAX } from '@/config';
 import { BUILDABLES } from '@/data/buildables';
 import type { CombatantStats, InspectableStats } from '@/data/types';
+import type { FacingSpec } from '@/entities/types';
 import type { NpcDayRole, NpcNightPosture } from '@/entities/NpcCharacter';
 import type { EquipmentState } from '@/systems/Equipment';
 
@@ -53,6 +54,18 @@ export interface WaveInfo {
 
 export type HudMode = 'command' | 'combat' | 'inspect';
 
+/** Blueprint-Mode pending-run tally (plan 050 Step 7) — the live count/cost/ETA of the run a line-tool
+ *  drag has painted, mirroring the `build:runChanged` payload (BuildManager's `runSelection()`, minus
+ *  the tile array). Drives the commit bar: `tileCount > 0` reveals it; it shows `affordableCount` of
+ *  `placeableCount`, the affordable subset's `totalCost`, and its serial build `etaMs`. */
+export interface RunTally {
+  readonly tileCount: number;
+  readonly placeableCount: number;
+  readonly affordableCount: number;
+  readonly totalCost: Record<string, number>;
+  readonly etaMs: number;
+}
+
 /** Companion-menu readout (plan 046 Step 12). The DOM `CompanionMenu` is a bottom sheet, not the
  *  legacy anchored popover, so it drops `npc:menuOpen`'s `x`/`y` and keeps only what it renders: the
  *  open flag plus the companion's live `dayRole`/`nightPosture` (to highlight the active rows). Held
@@ -92,10 +105,21 @@ export interface HudState {
   tasks: TaskSummary;
   mode: HudMode;
   buildMode: boolean;
+  /** Whether the Blueprint-Mode line tool is armed (plan 050 Step 6). While true, a build-mode drag
+   *  paints an axis-locked run of blueprints; the build-thumb-zone FAB reflects this. Mirrors the
+   *  game's `build:lineToolChanged` (the game owns the flag; the FAB is a pure mirror). */
+  lineTool: boolean;
+  /** Live tally of the Blueprint-Mode pending run (plan 050 Step 7) — mirrors `build:runChanged`. The
+   *  commit bar renders it and shows only while `tileCount > 0`. Reset to an empty run each (re)start. */
+  runTally: RunTally;
   /** Currently selected buildable id, or `null` when nothing is selected. */
   selection: string | null;
   /** Whether {@link selection} can be rotated at placement (derived from `BUILDABLES`). */
   orientable: boolean;
+  /** Current placement facing of the build ghost (plan 050 Step 8) — mirrors the game's
+   *  `build:facingChanged` (BuildManager owns the flag; the rotation ring lights the matching quadrant).
+   *  Only meaningful for an `orientable` selection; harmless otherwise. */
+  facing: FacingSpec;
   demolishMode: boolean;
   combatActive: boolean;
   inspectTarget: InspectableStats | null;
@@ -154,8 +178,14 @@ export interface HudActions {
   setTasks(tasks: TaskSummary): void;
   setMode(mode: HudMode): void;
   setBuildMode(on: boolean): void;
+  /** Mirror the build line-tool armed/off flag (from `build:lineToolChanged`). */
+  setLineTool(on: boolean): void;
+  /** Mirror the Blueprint-Mode pending-run tally (from `build:runChanged`). */
+  setRunTally(tally: RunTally): void;
   /** Select a buildable (or `null` to clear). Recomputes {@link HudState.orientable} from data. */
   setSelection(id: string | null): void;
+  /** Mirror the build ghost's placement facing (from `build:facingChanged`). */
+  setFacing(facing: FacingSpec): void;
   setDemolishMode(on: boolean): void;
   setCombatActive(on: boolean): void;
   setInspect(target: InspectableStats | null): void;
@@ -209,8 +239,11 @@ const initialState: HudState = {
   tasks: { current: null, pending: 0 },
   mode: 'command',
   buildMode: false,
+  lineTool: false,
+  runTally: { tileCount: 0, placeableCount: 0, affordableCount: 0, totalCost: {}, etaMs: 0 },
   selection: null,
   orientable: false,
+  facing: 'down',
   demolishMode: false,
   combatActive: false,
   inspectTarget: null,
@@ -247,11 +280,14 @@ export const useHudStore = create<HudState & HudActions>()(
     setTasks: (tasks) => set({ tasks }),
     setMode: (mode) => set({ mode }),
     setBuildMode: (buildMode) => set({ buildMode }),
+    setLineTool: (lineTool) => set({ lineTool }),
+    setRunTally: (runTally) => set({ runTally }),
     setSelection: (selection) =>
       set({
         selection,
         orientable: selection ? (BUILDABLES[selection]?.orientable ?? false) : false,
       }),
+    setFacing: (facing) => set({ facing }),
     setDemolishMode: (demolishMode) => set({ demolishMode }),
     setCombatActive: (combatActive) => set({ combatActive }),
     setInspect: (inspectTarget) => set({ inspectTarget }),

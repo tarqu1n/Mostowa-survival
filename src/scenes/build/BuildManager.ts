@@ -6,9 +6,16 @@ import { ACTIVE_TILESET, resolveTile } from '../../data/tileset';
 import { BUILDABLES } from '../../data/buildables';
 import { isInBase, baseZoneFromSpawn, type Rect } from '../../systems/base';
 import { rowDepthOffset } from '../../systems/mapFormat';
+import { ghostTextureFor } from './ghostTexture';
+import { runTiles, selectRun, type RunTile, type RunSelection } from '../../systems/buildRun';
+import { buildTimeFor } from '../../systems/buildTime';
 import type { BuildSite, FacingSpec } from '../../entities/types';
 import type { CharacterSprite } from '../../entities/Character';
 import type { GameScene } from '../GameScene';
+
+/** Opacity of the Blueprint-Mode snap-grid lines (plan 050 Step 4) — faint, so the grid reads as a
+ *  placement aid over the dimmed world without competing with the ghost or the blueprints. */
+const SNAP_GRID_ALPHA = 0.22;
 
 /**
  * Narrow scene state {@link BuildManager} needs but doesn't own — GameScene supplies these as
@@ -40,6 +47,10 @@ export interface BuildManagerDeps {
   inClaim(col: number, row: number): boolean;
   /** Can the player afford `cost` right now? (updateGhost's valid/invalid tint + the placement gate). */
   canAfford(cost: Record<string, number>): boolean;
+  /** Current held-item counts (an `Inventory` snapshot) — the pending-run selector's cumulative-cost
+   *  affordability walk needs quantities, not just the single-cost yes/no `canAfford` gives (plan 050
+   *  Step 5). */
+  heldCounts(): Record<string, number>;
   /** Spend `cost`; false (no-op) if unaffordable. */
   spend(cost: Record<string, number>): boolean;
   /** Append a build order for a site to the task queue. */
@@ -76,7 +87,24 @@ export class BuildManager {
   private placeFacing: FacingSpec = 'down';
 
   private readonly walls: Phaser.Physics.Arcade.StaticGroup;
-  private readonly ghost: Phaser.GameObjects.Rectangle;
+  /** The pre-placement placement cursor — a real structure sprite (plan 050 Step 2) textured from the
+   *  selected buildable's in-world art, oriented to {@link placeFacing}, tinted valid/invalid. */
+  private readonly ghost: Phaser.GameObjects.Sprite;
+  /** Blueprint-Mode tile-snap grid (plan 050 Step 4) — a world-space Graphics redrawn each frame while
+   *  build mode is active ({@link syncSnapGrid}), spanning only the camera view so it stays aligned as
+   *  the camera follows the player; hidden/cleared on build-mode exit. Demolish never enters build mode,
+   *  so it shows no grid. */
+  private readonly snapGrid: Phaser.GameObjects.Graphics;
+  /** Blueprint-Mode **pending run** (plan 050 Step 5) — the anchor a drag started from and the ordered,
+   *  axis-locked tile line it currently spans ({@link runTiles}); `null`/empty when no run is in flight.
+   *  Pure model only this step: it spends nothing and creates no blueprint (Step 7 commits it). Cleared
+   *  on mode exit / selection change / reset. */
+  private runAnchor: Cell | null = null;
+  private pendingTiles: RunTile[] = [];
+  /** Ghost-sprite pool for rendering the pending run — one Step-2-style textured ghost per pending tile,
+   *  grown on demand and hidden (not destroyed) when the run shrinks/clears, mirroring the single
+   *  {@link ghost}. Destroyed with the manager in {@link destroy}. */
+  private readonly runGhosts: Phaser.GameObjects.Sprite[] = [];
   private readonly occupied = new Set<string>();
   private sites: BuildSite[] = [];
   private readonly siteTiles = new Set<string>();
@@ -99,11 +127,15 @@ export class BuildManager {
     this.walls = scene.physics.add.staticGroup();
     scene.physics.add.collider(deps.getPlayerSprite(), this.walls);
 
-    // Build ghost — hidden until build mode; recoloured valid/invalid as it tracks the tapped tile.
-    this.ghost = scene.add
-      .rectangle(0, 0, TILE_SIZE, TILE_SIZE, COLORS.ghostValid, 0.5)
-      .setVisible(false)
-      .setDepth(6);
+    // Build ghost — a structure sprite, hidden until build mode; textured from the selected buildable
+    // + placeFacing and tinted valid/invalid as it tracks the tapped tile. Starts on a neutral frame,
+    // then applyGhostAppearance() points it at the default selection (the wall, facing down).
+    this.ghost = scene.add.sprite(0, 0, '__WHITE').setVisible(false).setDepth(6);
+    this.applyGhostAppearance();
+
+    // Snap grid — sits just under the ghost (depth 6) and above the world/blueprints, hidden until
+    // build mode. Redrawn per-frame by syncSnapGrid() (the scene's update() drives it).
+    this.snapGrid = scene.add.graphics().setDepth(5).setVisible(false);
 
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
@@ -177,10 +209,47 @@ export class BuildManager {
     const ok =
       this.tilePlaceable(col, row) &&
       this.deps.canAfford(BUILDABLES[this.selectedBuildableId].cost);
+    // Keep the sprite's texture/frame + flip in step with the current selection + placeFacing (the
+    // orientable wall re-orients as build:rotate fires), then track/tint the tile under the pointer.
+    this.applyGhostAppearance();
     this.ghost
       .setPosition(snapToTileCenter(pointer.worldX), snapToTileCenter(pointer.worldY))
-      .setFillStyle(ok ? COLORS.ghostValid : COLORS.ghostInvalid, 0.5)
+      .setTint(ok ? COLORS.ghostValid : COLORS.ghostInvalid)
+      .setAlpha(0.5)
       .setVisible(true);
+  }
+
+  /** Point the ghost sprite at the selected buildable's in-world texture for the current
+   *  {@link placeFacing}: set its texture/frame, orientation flip, bottom-anchor, and tile-scaled size
+   *  ({@link ghostTextureFor} — the wall reuses the barricade orient/flip mapping the placed wall
+   *  renders from, so the two can't drift). Called on construction and whenever the selection or facing
+   *  changes (select/rotate/reset) plus each {@link updateGhost}; leaves visibility/position/tint alone.
+   *  Falls back to a neutral tile square if the buildable's texture isn't resident (shouldn't happen —
+   *  PreloadScene loads every structure texture). */
+  private applyGhostAppearance(): void {
+    this.applyAppearanceTo(this.ghost, this.placeFacing);
+  }
+
+  /** Texture a ghost sprite (the hover {@link ghost} or a {@link runGhosts} pool sprite) as the selected
+   *  buildable's in-world art for `facing`: texture/frame, orient flip, bottom-anchor + tile-scaled size
+   *  ({@link ghostTextureFor}). Leaves position/tint/alpha/visibility to the caller. Shared so the single
+   *  hover ghost and every pending-run ghost can't drift (plan 050 Step 5). */
+  private applyAppearanceTo(sprite: Phaser.GameObjects.Sprite, facing: FacingSpec): void {
+    const tex = ghostTextureFor(this.scene, this.selectedBuildableId, facing);
+    if (!tex) {
+      sprite
+        .setTexture('__WHITE')
+        .setOrigin(0.5)
+        .setFlipX(false)
+        .setDisplaySize(TILE_SIZE, TILE_SIZE);
+      return;
+    }
+    if (tex.frame !== undefined) sprite.setTexture(tex.key, tex.frame);
+    else sprite.setTexture(tex.key);
+    sprite
+      .setOrigin(0.5, tex.originY)
+      .setFlipX(tex.flipX)
+      .setScale((TILE_SIZE * tex.tilesTall) / sprite.frame.height);
   }
 
   placeOrEnqueueBuild(pointer: Phaser.Input.Pointer): void {
@@ -212,22 +281,175 @@ export class BuildManager {
     return true;
   }
 
+  // --- Pending run (plan 050 Step 5) -----------------------------------------
+
+  /** Start a pending run at `anchor` — a length-1 run (just the anchor) until {@link extendRun} grows it.
+   *  Renders the anchor as a Step-2 ghost. No spend, no blueprint (Step 7 commits). */
+  beginRun(anchor: Cell): void {
+    this.runAnchor = anchor;
+    this.pendingTiles = runTiles(anchor, anchor, this.runFacing());
+    this.refreshRunGhosts();
+    this.emitRunChanged();
+  }
+
+  /** Grow/redraw the pending run out to `tile`: recomputes the axis-locked straight line from the anchor
+   *  ({@link runTiles} — dominant axis vs anchor, inherently deduped). No-op-safe before a {@link beginRun}
+   *  (treats `tile` as a fresh anchor). Pure re-projection each call, so a drag that jitters back over
+   *  earlier tiles never duplicates. No spend, no blueprint. */
+  extendRun(tile: Cell): void {
+    if (!this.runAnchor) {
+      this.beginRun(tile);
+      return;
+    }
+    this.pendingTiles = runTiles(this.runAnchor, tile, this.runFacing());
+    this.refreshRunGhosts();
+    this.emitRunChanged();
+  }
+
+  /** Drop the pending run + hide its ghost pool (kept for reuse, not destroyed). Called on mode
+   *  exit / selection change / reset, by {@link commitRun} once a run commits, and by the HUD Cancel
+   *  (`build:cancelRun`). Emits an empty tally so the HUD commit bar hides. */
+  clearRun(): void {
+    this.runAnchor = null;
+    this.pendingTiles = [];
+    for (const g of this.runGhosts) g.setVisible(false);
+    this.emitRunChanged();
+  }
+
+  /**
+   * Commit the pending run (plan 050 Step 7): blueprint + enqueue-build the run's VALID subset — each
+   * tile in the affordable PREFIX ({@link runSelection}'s `affordableCount`) that is ALSO placeable —
+   * spending its cost per tile through the shared `Inventory`, then {@link clearRun}. No-op on an empty
+   * run (Confirm on nothing). Building only the affordable-prefix∩placeable tiles matches the ghost
+   * preview's valid tint (see {@link refreshRunGhosts}), so a commit places exactly what the run showed
+   * as buildable and inventory drops by exactly that subset's cumulative cost. Build orders APPEND
+   * (`ORDER_META.build.dedupeOnEnqueue === false`), so a run batches cleanly behind any existing work.
+   */
+  commitRun(): void {
+    if (this.pendingTiles.length === 0) return; // Confirm no-ops on an empty run
+    const cost = BUILDABLES[this.selectedBuildableId].cost;
+    const { affordableCount } = this.runSelection();
+    for (let i = 0; i < this.pendingTiles.length && i < affordableCount; i++) {
+      const t = this.pendingTiles[i];
+      if (!this.tilePlaceable(t.col, t.row)) continue; // skip a non-placeable tile inside the affordable prefix
+      if (!this.deps.spend(cost)) break; // budget exhausted (shouldn't happen within the prefix) — stop
+      const site = this.createBlueprint(t.col, t.row);
+      this.deps.enqueueBuild(site.id);
+    }
+    this.clearRun();
+  }
+
+  /** Emit `build:runChanged` with the current pending-run tally so the HUD commit bar (plan 050 Step 7)
+   *  renders the live count/cost/ETA. Called on every run mutation (begin/extend/clear/commit) and once
+   *  per (re)start by GameScene's HUD resync. Lean payload — counts + the affordable subset's cost/ETA,
+   *  not the tile array — so the emit stays cheap even mid-drag. */
+  emitRunChanged(): void {
+    const sel = this.runSelection();
+    this.scene.game.events.emit('build:runChanged', {
+      tileCount: sel.tiles.length,
+      placeableCount: sel.placeableCount,
+      affordableCount: sel.affordableCount,
+      totalCost: sel.totalCost,
+      etaMs: sel.etaMs,
+    });
+  }
+
+  /**
+   * The Step-5 pending-run selector: `{ tiles, placeableCount, affordableCount, totalCost, etaMs }` for
+   * the current run — delegating the math to the pure {@link selectRun}, fed this manager's live
+   * {@link tilePlaceable} per tile, the selected buildable's cost, the {@link BuildManagerDeps.heldCounts}
+   * inventory snapshot, and its {@link buildTimeFor} time. Read-only (no spend); consumed by Step 7's
+   * commit + HUD.
+   */
+  runSelection(): RunSelection {
+    const def = BUILDABLES[this.selectedBuildableId];
+    const placeable = this.pendingTiles.map((t) => this.tilePlaceable(t.col, t.row));
+    return selectRun({
+      tiles: this.pendingTiles,
+      placeable,
+      cost: def.cost,
+      inventory: this.deps.heldCounts(),
+      buildTimeMs: buildTimeFor(def),
+    });
+  }
+
+  /** The placement facing to stamp on each run tile — the current {@link placeFacing} only for an
+   *  orientable buildable (the wall), else undefined (matching {@link createBlueprint}). */
+  private runFacing(): FacingSpec | undefined {
+    return BUILDABLES[this.selectedBuildableId].orientable ? this.placeFacing : undefined;
+  }
+
+  /** Redraw the ghost pool to the current {@link pendingTiles}: one Step-2-style textured ghost per tile,
+   *  tinted valid up to `affordableCount` (and only where placeable), invalid beyond — the single tile
+   *  being the length-1 case. Grows the pool on demand; hides surplus sprites. */
+  private refreshRunGhosts(): void {
+    const def = BUILDABLES[this.selectedBuildableId];
+    const placeable = this.pendingTiles.map((t) => this.tilePlaceable(t.col, t.row));
+    const { affordableCount } = selectRun({
+      tiles: this.pendingTiles,
+      placeable,
+      cost: def.cost,
+      inventory: this.deps.heldCounts(),
+      buildTimeMs: buildTimeFor(def),
+    });
+    while (this.runGhosts.length < this.pendingTiles.length) {
+      this.runGhosts.push(this.scene.add.sprite(0, 0, '__WHITE').setVisible(false).setDepth(6));
+    }
+    for (let i = 0; i < this.runGhosts.length; i++) {
+      const g = this.runGhosts[i];
+      if (i >= this.pendingTiles.length) {
+        g.setVisible(false);
+        continue;
+      }
+      const t = this.pendingTiles[i];
+      this.applyAppearanceTo(g, t.facing ?? 'down');
+      const valid = i < affordableCount && placeable[i];
+      g.setPosition(tileToWorldCenter(t.col), tileToWorldCenter(t.row))
+        .setTint(valid ? COLORS.ghostValid : COLORS.ghostInvalid)
+        .setAlpha(0.5)
+        .setVisible(true);
+    }
+  }
+
   /** Palette selected a buildable: remember it + enter build mode. Wired to `build:select` by the
    *  scene; emits `build:modeChanged` so the HUD reflects build mode (mirrors {@link toggleBuild}). */
   select(id: string): void {
     this.selectedBuildableId = id;
     this.placeFacing = 'down'; // a fresh selection starts front-facing (rotate cycles from here)
+    this.clearRun(); // a selection change abandons any in-flight run (would re-cost against the new pick)
+    this.applyGhostAppearance(); // re-texture the ghost for the newly-selected buildable
     this.buildMode = true;
+    this.emitFacingChanged(); // reset-to-'down' → light the ring's default quadrant (plan 050 Step 8)
     this.scene.game.events.emit('build:modeChanged', this.buildMode);
   }
 
-  /** Cycle the placement facing for an `orientable` buildable: down → right → up → left → down (plan
-   *  037). Wired to the `build:rotate` game event (the HUD ROTATE button + the R key). No-op visual-wise
+  /** Set the placement facing for an `orientable` buildable. Wired to the `build:rotate` game event (the
+   *  HUD Rotate button + rotation ring + the R key). No payload cycles the facing forward
+   *  (down → right → up → left → down, plan 037); an optional payload steers it — `{ dir: -1 }` cycles
+   *  the other way (Shift+R reverse), `{ to }` jumps straight to a facing (the ring's compass quadrants,
+   *  plan 050 Step 8). Backward-compatible: a no-arg call is the original forward cycle. No-op visual-wise
    *  for a non-orientable selection — createBlueprint only stamps the facing when the buildable is
    *  orientable, so the extra state is harmless. */
-  rotatePlacement(): void {
+  rotatePlacement(payload?: { dir?: 1 | -1; to?: FacingSpec }): void {
     const order: FacingSpec[] = ['down', 'right', 'up', 'left'];
-    this.placeFacing = order[(order.indexOf(this.placeFacing) + 1) % order.length];
+    if (payload?.to) {
+      this.placeFacing = payload.to;
+    } else {
+      const dir = payload?.dir ?? 1;
+      this.placeFacing =
+        order[(order.indexOf(this.placeFacing) + dir + order.length) % order.length];
+    }
+    // Re-orient the ghost now: rotate fires off a button/key, not a pointer move, so updateGhost won't
+    // run — refresh here so the wall ghost flips/re-faces immediately (plan 050 Step 2 acceptance).
+    this.applyGhostAppearance();
+    this.emitFacingChanged();
+  }
+
+  /** Emit the current placement facing so the HUD rotation ring can light its active quadrant (plan 050
+   *  Step 8). Fired whenever {@link placeFacing} changes (rotate/select/reset) and re-emitted on every
+   *  (re)start by the scene — mirroring how {@link emitRunChanged} keeps the commit bar in sync. */
+  emitFacingChanged(): void {
+    this.scene.game.events.emit('build:facingChanged', this.placeFacing);
   }
 
   /** Add a passable, unbuilt blueprint at a tile and register its occupancy (shared by real build
@@ -259,6 +481,7 @@ export class BuildManager {
       row,
       rect,
       visual: null,
+      scaffold: null,
       progress: 0,
       done: false,
       // Stamp the current rotate facing only for an orientable buildable (the wall); a fixed-orientation
@@ -268,6 +491,41 @@ export class BuildManager {
     this.sites.push(site);
     this.siteTiles.add(key);
     return site;
+  }
+
+  /**
+   * Lazily create (and return) the under-construction **scaffold sprite** for a site (plan 050 Step 9):
+   * a structure-textured preview raised on the tile while a worker builds it — the Image/Sprite anchor
+   * `NodeFxManager.showActionProgress` hangs the world-space build bar off (the blueprint `rect` is a
+   * `Rectangle`, so it can't be that anchor — critique #5). Textured + oriented exactly like the
+   * placement ghost via {@link applyAppearanceTo} (so it reads as the real structure materialising, no
+   * new art), bottom-anchored at the tile centre and y-sorted with the world like the blueprint/finished
+   * sprite. Idempotent: the runner calls it every build tick, but only the first creates the sprite.
+   */
+  ensureScaffold(site: BuildSite): Phaser.GameObjects.Sprite {
+    if (site.scaffold) return site.scaffold;
+    const scaffold = this.scene.add
+      .sprite(tileToWorldCenter(site.col), tileToWorldCenter(site.row), '__WHITE')
+      .setDepth(1 + rowDepthOffset(site.row)) // same base-row y-sort as the blueprint rect + finished art
+      .setAlpha(0.7); // translucent so it reads as "materialising", distinct from the solid finished sprite
+    this.applyAppearanceTo(scaffold, site.facing ?? 'down');
+    site.scaffold = scaffold;
+    return scaffold;
+  }
+
+  /** Destroy a site's scaffold sprite (if any) and drop the ref — the settle on finish, and the removal
+   *  on a cancelled/blocked build. Safe if the site never raised one. Idempotent. */
+  clearScaffold(site: BuildSite): void {
+    site.scaffold?.destroy();
+    site.scaffold = null;
+  }
+
+  /** Destroy every live scaffold across all sites — the blanket teardown for a cancelled/switched/idle
+   *  build order (called from GameScene.beginCurrent alongside the NodeFxManager bar/shake blanket), so a
+   *  scaffold never lingers on a blueprint whose build was abandoned. Only the actively-built site ever
+   *  has one, so this touches at most one sprite. */
+  clearScaffolds(): void {
+    for (const s of this.sites) this.clearScaffold(s);
   }
 
   /** Complete a blueprint into its finished structure (materialises on the worker-vacated tile).
@@ -283,6 +541,9 @@ export class BuildManager {
     // Hide the blueprint square either way — the finished sprite renders on top of the (kept) rect,
     // whose physics body backs the occupancy below.
     site.rect.setAlpha(0);
+    // Settle: drop the under-construction scaffold so the freshly-materialised structure (the wall plays
+    // its own Build strip anim below) is what remains. The bar was already hidden by the runner (runBuild).
+    this.clearScaffold(site);
 
     // Occupancy + static body for any blocking buildable (missing blocksPath ⇒ true, so the wall
     // keeps blocking). A non-blocking buildable stays passable and off the occupancy set.
@@ -334,18 +595,54 @@ export class BuildManager {
    *  scene (in), emits `build:modeChanged` (out) — names unchanged from the pre-move scene method. */
   toggleBuild(): void {
     this.buildMode = !this.buildMode;
-    if (!this.buildMode) this.ghost.setVisible(false);
+    if (!this.buildMode) {
+      this.ghost.setVisible(false);
+      this.clearRun(); // leaving build mode abandons any in-flight run + hides its ghosts
+    }
     this.scene.game.events.emit('build:modeChanged', this.buildMode);
+  }
+
+  /**
+   * Redraw the Blueprint-Mode snap grid — called each frame by the scene's `update()` (plan 050
+   * Step 4). Off build mode: clear + hide (a one-shot no-op once already hidden). In build mode: redraw
+   * tile-boundary lines spanning ONLY the camera's current world view (culled to the viewport), snapped
+   * to `TILE_SIZE` so they line up with the ghost's {@link snapToTileCenter} placement. Redrawing every
+   * frame keeps it aligned as the camera follows the player / zooms — the same "sync to a moving
+   * camera-space transform each frame" shape TaskGlowRenderer.syncGlowTransforms uses. The camera is
+   * bounded to the map (`cameras.main.setBounds`), so the view never spills past the buildable area and
+   * no extra map-extent clamp is needed.
+   */
+  syncSnapGrid(): void {
+    if (!this.buildMode) {
+      if (this.snapGrid.visible) this.snapGrid.clear().setVisible(false);
+      return;
+    }
+    const view = this.scene.cameras.main.worldView;
+    const startX = Math.floor(view.x / TILE_SIZE) * TILE_SIZE;
+    const startY = Math.floor(view.y / TILE_SIZE) * TILE_SIZE;
+    this.snapGrid.clear().lineStyle(1, COLORS.snapGrid, SNAP_GRID_ALPHA).beginPath();
+    for (let x = startX; x <= view.right; x += TILE_SIZE) {
+      this.snapGrid.moveTo(x, view.y);
+      this.snapGrid.lineTo(x, view.bottom);
+    }
+    for (let y = startY; y <= view.bottom; y += TILE_SIZE) {
+      this.snapGrid.moveTo(view.x, y);
+      this.snapGrid.lineTo(view.right, y);
+    }
+    this.snapGrid.strokePath();
+    this.snapGrid.setVisible(true);
   }
 
   // --- Reset / teardown --------------------------------------------------------
 
   /** Drop every placed site's GameObjects + this run's build-mode/occupancy state — mirrors what a
    *  fresh create() used to do inline, now on demand for the DEV-only scenario reset (testResetWorld).
-   *  Does NOT touch the ghost — it persists across a scenario reset, same as before this move. */
+   *  The ghost sprite persists across a scenario reset (not destroyed/hidden); its texture is just
+   *  re-pointed at the reset wall selection so it can't show a stale prior buildable. */
   reset(): void {
     for (const s of this.sites) {
       s.visual?.destroy();
+      s.scaffold?.destroy(); // drop any under-construction scaffold with its site (scene alive → destroy)
       s.rect.destroy();
     }
     this.walls.clear(false, false); // drop the (now-destroyed) wall-rect refs; children handled above
@@ -356,6 +653,10 @@ export class BuildManager {
     this.buildMode = false;
     this.selectedBuildableId = 'wall'; // don't leak a prior campfire selection into a fresh scenario
     this.placeFacing = 'down'; // nor a prior rotate facing (a fresh scenario places walls front-facing)
+    this.emitFacingChanged(); // keep the ring's lit quadrant in step with the reset facing (plan 050 Step 8)
+    this.applyGhostAppearance(); // re-texture the (persisting) ghost back to the reset wall selection
+    this.snapGrid.clear().setVisible(false); // buildMode is now false — drop the grid immediately too
+    this.clearRun(); // drop any in-flight run + hide its ghost pool (sprites persist like the ghost)
   }
 
   /**
@@ -374,5 +675,7 @@ export class BuildManager {
    */
   private destroy(): void {
     this.ghost.destroy();
+    for (const g of this.runGhosts) g.destroy(); // run-ghost pool goes with the ghost (plain sprites, no bodies)
+    this.snapGrid.destroy(); // a plain Graphics (no physics body) — safe to drop the stale ref, like the ghost
   }
 }

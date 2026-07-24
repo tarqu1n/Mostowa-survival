@@ -25,10 +25,28 @@ export interface PointerInputDeps {
   getPlayerSprite(): CharacterSprite;
   /** True while build-mode placement owns the pointer (ghost tracking + place/enqueue). */
   isBuildMode(): boolean;
-  /** Build-mode pointerdown: track the ghost to the pointer, then place/enqueue the blueprint under it. */
+  /** Build-mode pointerdown: ARM only — track the ghost to the pointer, record the anchor. Does NOT
+   *  place/spend (plan 050 Step 3): placement resolves on {@link onBuildUp} for a tap that never dragged,
+   *  so a drag can pan the camera without dropping-and-charging for a tile on touch-down. */
   onBuildDown(pointer: Phaser.Input.Pointer): void;
   /** Build-mode pointermove: track the ghost to the pointer. */
   onBuildMove(pointer: Phaser.Input.Pointer): void;
+  /** Build-mode pointerup: resolve a single-tap placement (place/enqueue the blueprint under the
+   *  pointer). Called by {@link PointerInputController} ONLY when the gesture never became a drag —
+   *  a drag pans instead and never places (plan 050 Step 3). */
+  onBuildUp(pointer: Phaser.Input.Pointer): void;
+  /** True while the build-mode **line tool** is armed (plan 050 Step 6). When armed, a build-mode drag
+   *  PAINTS an axis-locked straight run of ghosts ({@link onBuildRunBegin}/{@link onBuildRunExtend})
+   *  instead of the tool-off Step 3 tap-place-on-up / drag-pans behaviour. Mirrors {@link isBuildMode}:
+   *  a scene closure over the flag `build:lineTool` flips. */
+  isLineTool(): boolean;
+  /** Line-tool pointerdown: BEGIN the pending run at the anchor tile under the pointer (renders the
+   *  anchor ghost). No spend, no blueprint — the run stays pending (commit is a later step). */
+  onBuildRunBegin(pointer: Phaser.Input.Pointer): void;
+  /** Line-tool pointermove: EXTEND/redraw the pending run out to the tile under the pointer. Called by
+   *  {@link PointerInputController} once per NEW tile the drag visits (a per-gesture dedupe Set mirrors
+   *  the command-mode {@link onPaint} pattern), never every frame on the same tile. */
+  onBuildRunExtend(pointer: Phaser.Input.Pointer): void;
   /** Current input mode ('command'/'combat'/'inspect') — gates tap/paint/inspect dispatch. */
   getMode(): 'command' | 'combat' | 'inspect';
   /** True while a finger is held on the combat movepad. While it is, map order dispatch (tap-to-move,
@@ -68,6 +86,7 @@ export class PointerInputController {
   private pressStart = 0; // scene-clock time of the current pointer press (for hold detection)
   private queuePainting = false; // once a hold crosses LONGPRESS_MS, dragging paints queue orders
   private paintedThisGesture = new Set<string>(); // tile keys already queued in the current gesture
+  private runExtendedThisGesture = new Set<string>(); // tile keys already run-extended this line-tool gesture (plan 050 Step 6)
   private pinching = false; // a second pointer went down — the gesture is a pinch-zoom, not a tap
   private pinchDist = 0; // previous frame's inter-pointer distance, for the zoom delta ratio
   private isPanning = false; // this gesture dragged the camera rather than issuing an order
@@ -95,6 +114,7 @@ export class PointerInputController {
    *  scenario reset mirrors what a fresh create() would start with (see GameScene.testResetWorld). */
   clearPaintedTiles(): void {
     this.paintedThisGesture.clear();
+    this.runExtendedThisGesture.clear();
   }
 
   // --- Input gate ------------------------------------------------------------
@@ -124,8 +144,18 @@ export class PointerInputController {
     this.pressStart = this.scene.time.now;
     this.queuePainting = false;
     this.paintedThisGesture.clear();
+    this.runExtendedThisGesture.clear();
     if (this.deps.isBuildMode()) {
-      this.deps.onBuildDown(pointer);
+      if (this.deps.isLineTool()) {
+        // Line tool armed (plan 050 Step 6): begin the pending run at this anchor tile. Record the
+        // anchor's key so a move that stays on it doesn't re-extend (beginRun already spans it).
+        this.deps.onBuildRunBegin(pointer);
+        this.runExtendedThisGesture.add(
+          tileKey(worldToTile(pointer.worldX), worldToTile(pointer.worldY)),
+        );
+      } else {
+        this.deps.onBuildDown(pointer);
+      }
     }
   }
 
@@ -137,33 +167,50 @@ export class PointerInputController {
       this.pinchDist = dist;
       return;
     }
-    if (this.deps.isBuildMode()) {
-      this.deps.onBuildMove(pointer);
+    // Build mode: the line tool (checked first, below) OWNS a drag when armed. When it's OFF (Step 3),
+    // keep the ghost tracking the pointer then FALL THROUGH to the shared drag→pan classifier so a
+    // one-finger drag past DRAG_PX pans the camera. The command-mode queue-paint/long-press block is
+    // gated OFF for build mode (see below) so a build move can't fall into it and paint move orders.
+    const buildMode = this.deps.isBuildMode();
+    if (buildMode && this.deps.isLineTool()) {
+      // Line tool armed (plan 050 Step 6): a build-mode drag paints an axis-locked straight run of
+      // ghosts instead of falling through to the camera-pan classifier. The movepad gate still holds
+      // (a run finger must stay inert while the other thumb drives), and `!isDown` filters hover moves.
+      // Extend once per NEW tile the drag visits — see paintRunAt (mirrors the command-mode dedupe).
+      if (this.deps.isMovepadHeld()) return;
+      if (!pointer.isDown) return;
+      this.paintRunAt(pointer);
       return;
     }
-    // Combat mode: the DOM movepad owns all dragging. A world drag must never fall through to the
-    // camera-pan below — steering the movepad drags the thumb off the small pad, and without this gate
-    // that off-pad travel panned the world and broke the follow-lock, yanking the camera around
-    // whenever the player changed direction.
-    //
-    // This (and the tap dispatch in onPointerUp) stays gated on raw `mode === 'combat'`, NOT the
-    // combatActive auto-surface (plan 035a Step 3, critique #2): the chosen precedence is "movepad
-    // drives, taps still queue orders", so command-mode pan/queue-paint/tap-to-move must stay live
-    // while controls auto-surface. The movepad itself is still safe there — it is a DOM control that
-    // consumes its own presses (they never reach this canvas) — so command-mode + auto-surface never
-    // yields a dead movepad NOR a hijacked camera. Only the drive + onCombatMove gate in GameScene
-    // rebase onto combatActive (see GameScene.movepadDrives).
-    if (this.deps.getMode() === 'combat') return;
+    if (buildMode) {
+      this.deps.onBuildMove(pointer);
+    } else if (this.deps.getMode() === 'combat') {
+      // Combat mode: the DOM movepad owns all dragging. A world drag must never fall through to the
+      // camera-pan below — steering the movepad drags the thumb off the small pad, and without this gate
+      // that off-pad travel panned the world and broke the follow-lock, yanking the camera around
+      // whenever the player changed direction.
+      //
+      // This (and the tap dispatch in onPointerUp) stays gated on raw `mode === 'combat'`, NOT the
+      // combatActive auto-surface (plan 035a Step 3, critique #2): the chosen precedence is "movepad
+      // drives, taps still queue orders", so command-mode pan/queue-paint/tap-to-move must stay live
+      // while controls auto-surface. The movepad itself is still safe there — it is a DOM control that
+      // consumes its own presses (they never reach this canvas) — so command-mode + auto-surface never
+      // yields a dead movepad NOR a hijacked camera. Only the drive + onCombatMove gate in GameScene
+      // rebase onto combatActive (see GameScene.movepadDrives).
+      return;
+    }
     // While the movepad is held (driving with the other thumb), the map is inert for any other
     // pointer — no queue-paint, no pan — until the pad is released. The pinch guard alone can't cover
     // this: BootScene registers 3 touch pointers but activePointerCount() only sees pointer1/2, so a
     // movepad finger on pointer3 slips the count and a map finger paints a path mid-drive (playtest bug).
+    // Also gates build-mode pan (movepad suppresses world pan for every other pointer).
     if (this.deps.isMovepadHeld()) return;
     if (!pointer.isDown) return;
 
     // Command-mode-only: queue-painting (long-press-drag) issues tap-to-pathfind orders, which
-    // would fight Combat mode's direct movepad control and has no meaning in Inspect mode.
-    if (this.deps.getMode() === 'command') {
+    // would fight Combat mode's direct movepad control and has no meaning in Inspect mode. Gated OFF
+    // for build mode (plan 050 Step 3) — placement resolves on a tap-up, not a held-drag paint.
+    if (!buildMode && this.deps.getMode() === 'command') {
       if (this.queuePainting) {
         this.paintQueueAt(pointer);
         return;
@@ -206,7 +253,26 @@ export class PointerInputController {
     // (Reset so a second leaked release also no-ops.)
     if (!this.sawPointerDown) return;
     this.sawPointerDown = false;
-    if (this.deps.isBuildMode()) return;
+    if (this.deps.isBuildMode() && this.deps.isLineTool()) {
+      // Line tool armed (plan 050 Step 6): the drag already painted the run via onBuildRunExtend; the
+      // release just ENDS the gesture — the run STAYS pending (no commit/spend; that's a later step).
+      // Reset the per-gesture dedupe Set + isPanning so the next gesture starts fresh and nothing leaks.
+      this.runExtendedThisGesture.clear();
+      this.isPanning = false;
+      return;
+    }
+    if (this.deps.isBuildMode()) {
+      // Build mode (plan 050 Step 3): a drag panned the camera and never places; a tap (never crossed
+      // DRAG_PX → isPanning stayed false) resolves a single-tap placement here, on release, spending
+      // once. Clear isPanning either way so the next gesture starts fresh. A held movepad swallows the
+      // release (a stray second-finger tap while driving), mirroring the command-mode gate below.
+      const panned = this.isPanning;
+      this.isPanning = false;
+      if (panned) return;
+      if (this.deps.isMovepadHeld()) return;
+      this.deps.onBuildUp(pointer);
+      return;
+    }
     // Movepad held → this release is a stray second-finger tap while driving; swallow it so it can't
     // issue a move/queue order (mirrors the onPointerMove gate above).
     if (this.deps.isMovepadHeld()) return;
@@ -235,6 +301,17 @@ export class PointerInputController {
     if (this.paintedThisGesture.has(key)) return;
     this.paintedThisGesture.add(key);
     this.deps.onPaint(pointer);
+  }
+
+  /** Extend the pending build run to the tile under the pointer, once per NEW tile per line-tool
+   *  gesture (plan 050 Step 6). Mirrors {@link paintQueueAt}: dedupe on the tile key so the same tile
+   *  isn't re-extended every frame, letting BuildManager re-project the axis-locked run only when the
+   *  drag actually reaches fresh ground. */
+  private paintRunAt(pointer: Phaser.Input.Pointer): void {
+    const key = tileKey(worldToTile(pointer.worldX), worldToTile(pointer.worldY));
+    if (this.runExtendedThisGesture.has(key)) return;
+    this.runExtendedThisGesture.add(key);
+    this.deps.onBuildRunExtend(pointer);
   }
 
   /** How many of the tracked pointers (see BootScene's addPointer) are currently held down. */

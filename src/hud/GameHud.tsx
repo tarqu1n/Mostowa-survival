@@ -8,6 +8,9 @@ import {
   HUNGER_VIGNETTE_COLOR,
   HUNGER_VIGNETTE_MAX_ALPHA,
   HUNGER_LOW_FRACTION,
+  BUILD_DIM_COLOR,
+  BUILD_DIM_ALPHA,
+  BUILD_DIM_MS,
 } from '@/config';
 import { useCanvasRect } from './hooks/useCanvasRect';
 import type { CanvasRect } from './hooks/useCanvasRect';
@@ -20,6 +23,9 @@ import { Hotbar } from './components/Hotbar';
 import { CommandBar } from './components/CommandBar';
 import type { CommandBarMode } from './components/CommandBar';
 import { BuildCatalog } from './components/BuildCatalog';
+import { LineToolFab } from './components/LineToolFab';
+import { RotationRing } from './components/RotationRing';
+import { CommitBar } from './components/CommitBar';
 import { PackDrawer } from './components/PackDrawer';
 import { StatusDrawer } from './components/StatusDrawer';
 import { InspectCard } from './components/InspectCard';
@@ -59,6 +65,7 @@ export function GameHud() {
 
   return (
     <div className="hud-root" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      <BuildDim rect={rect} />
       <Vignettes rect={rect} />
 
       <div
@@ -112,7 +119,9 @@ type OpenDrawer = 'build' | 'pack' | 'status' | null;
 function ActionLayer() {
   const gameMode = useHudStore((s) => s.mode);
   const buildMode = useHudStore((s) => s.buildMode);
+  const orientable = useHudStore((s) => s.orientable);
   const combatActive = useHudStore((s) => s.combatActive);
+  const hasPendingRun = useHudStore((s) => s.runTally.tileCount > 0);
   const [openDrawer, setOpenDrawer] = useState<OpenDrawer>(null);
 
   const barMode: CommandBarMode = buildMode
@@ -126,6 +135,16 @@ function ActionLayer() {
 
   return (
     <div className="absolute inset-x-0 bottom-0 flex flex-col items-stretch gap-1.5 px-2 pb-2">
+      {/* Build line-tool FAB (plan 050 Step 6) — right-aligned at the top of the thumb cluster, shown
+          only in build mode. Toggles the run-paint gesture; the CommandBar's build morph below carries
+          the rest of the placement controls (Rotate/Place/Demolish/Cancel). */}
+      {buildMode && <LineToolFab />}
+      {/* Rotation ring (plan 050 Step 8) — a fixed thumb-reachable compass shown only while building an
+          orientable buildable; each quadrant emits `build:rotate` and the lit one mirrors the ghost facing. */}
+      {buildMode && orientable && <RotationRing />}
+      {/* Commit bar (plan 050 Step 7) — shown only while build mode has a non-empty pending run painted
+          by the line tool; Confirm/Cancel commit or drop the run. */}
+      {buildMode && hasPendingRun && <CommitBar />}
       <div className="flex justify-center">
         <Hotbar />
       </div>
@@ -184,6 +203,34 @@ function Overlays() {
       />
       <DevMenu />
     </>
+  );
+}
+
+/**
+ * Blueprint-Mode dim (plan 050 Step 4) — a flat full-canvas dark wash faded in while build mode is
+ * active, so the world recedes and attention falls on placement (paired with the Phaser snap grid).
+ * Gated purely on the store's `buildMode` flag, which the bridge mirrors from `build:modeChanged`;
+ * demolish mode never sets it (build↔demolish are mutually exclusive in GameScene), so demolish
+ * shows NEITHER this dim nor the grid. Covers the live canvas rect (a screen effect, so NOT inside
+ * the design-scaled layer) and is always click-through — taps fall straight through to the world.
+ */
+function BuildDim({ rect }: { rect: CanvasRect }) {
+  const buildMode = useHudStore((s) => s.buildMode);
+  return (
+    <div
+      data-testid="hud-build-dim"
+      style={{
+        position: 'absolute',
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+        pointerEvents: 'none',
+        opacity: buildMode ? BUILD_DIM_ALPHA : 0,
+        transition: `opacity ${BUILD_DIM_MS}ms linear`,
+        background: cssHex(BUILD_DIM_COLOR),
+      }}
+    />
   );
 }
 

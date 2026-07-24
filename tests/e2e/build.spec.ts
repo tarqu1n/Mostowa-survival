@@ -3,7 +3,8 @@ import { startGame, applyScenario, order, step, state, blocked, emit } from './h
 import { wallToRouteAround } from './scenarios';
 
 // Tier-2: building + occupancy on the REAL grid (blueprint passable while unbuilt → worker builds it
-// → solid blocking wall), and that the pathfinder respects that live grid.
+// → solid blocking wall), and that the pathfinder respects that live grid. The Blueprint-Mode build
+// experience (tap-vs-drag placement, line-tool run + commit bar) lives in `blueprint.spec.ts`.
 
 test('a placed blueprint is passable until built, then becomes a blocking wall', async ({
   page,

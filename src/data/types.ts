@@ -193,6 +193,15 @@ export interface BuildableDef extends ObjectStats {
    *  buildable sets at most one of the two. The workbench (plan 048) is the first — its behavior module
    *  bakes + renders this crop on materialise; PreloadScene loads the source sheet. */
   objectSprite?: { asset: string; region?: DecorRegion };
+  /** HUD build-catalog icon: a PNG basename under `public/assets/icons/`. Omit ⇒ colour-swatch
+   *  fallback from `color` (plan 050 Step 10). */
+  icon?: string;
+  /** On-site worker build time (ms) for this buildable; omit ⇒ the global `config.BUILD_MS`. Read via
+   *  `buildTimeFor` (systems/buildTime.ts) so timing stays per-def but centralised (plan 050). */
+  buildTimeMs?: number;
+  /** Tile footprint the buildable occupies (stub — plan 050 Step 1). Absent ⇒ treated as `{w:1,h:1}`;
+   *  only 1×1 is implemented today. */
+  footprint?: { w: number; h: number };
 }
 
 /**

@@ -24,6 +24,7 @@ export const BUILDABLES: Record<string, BuildableDef> = {
     thorns: 1, // wave-time tuning knob
     orientable: true, // player-rotate at placement picks the facing (down/right/up/left)
     category: 'defense', // HUD build-catalog tab (plan 046)
+    buildTimeMs: 2500, // == config.BUILD_MS — timing unchanged (plan 050 Step 1)
   },
   // Base-only light source; always burning once built, drains fuel continuously (see
   // config.CAMPFIRE_FUEL_* — plan 012 Context & decisions). Renders as two layers (ember base + a
@@ -44,6 +45,7 @@ export const BUILDABLES: Record<string, BuildableDef> = {
     tilesTall: 3, // flame height (Fire_01 48px → 3 tiles native) + the tappable pick column
     originY: 1,
     category: 'survival', // HUD build-catalog tab (plan 046)
+    buildTimeMs: 2500, // == config.BUILD_MS — timing unchanged (plan 050 Step 1)
   },
   // Spike trap (plan 040) — the roadmap's "one trap": an ARMED floor tile that triggers ONCE when an
   // enemy stands on it (deals SPIKE_TRAP_DAMAGE, then goes spent) and is re-armed each morning by a
@@ -72,6 +74,7 @@ export const BUILDABLES: Record<string, BuildableDef> = {
     tilesTall: 2,
     originY: 0.5,
     category: 'defense', // HUD build-catalog tab (plan 046)
+    buildTimeMs: 2500, // == config.BUILD_MS — timing unchanged (plan 050 Step 1)
   },
   // Workbench (plan 048) — the game's first CRAFTING STATION: a buildable bench that crafts items over
   // time via a player-queued `craft` worker order (Step 6). Like the wall it is a live HP structure
@@ -100,5 +103,6 @@ export const BUILDABLES: Record<string, BuildableDef> = {
       region: { x: 0, y: 84, w: 32, h: 28 },
     },
     category: 'craft', // first 'craft'-category buildable — surfaces the HUD Craft tab (plan 046)
+    buildTimeMs: 2500, // == config.BUILD_MS — timing unchanged (plan 050 Step 1)
   },
 };

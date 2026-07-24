@@ -158,7 +158,8 @@ build slowly (one serial worker). Keep any fetched image-gen key in-memory only 
     one tile **on release**; command-mode tap-to-order and long-press paint are unaffected; scenario
     test covers tap-vs-drag in build mode.
 
-- [ ] **Step 4: Blueprint Mode visuals — dim overlay + snap grid** `[inline]`
+- [x] **Step 4: Blueprint Mode visuals — dim overlay + snap grid** `[inline]`
+  - Outcome: DOM dim layer `BuildDim` in `GameHud.tsx` (gated on the pre-existing store `buildMode`, `pointer-events:none`, vignette-style transition, testid `hud-build-dim`); Phaser snap grid in `BuildManager` (`snapGrid` Graphics depth 5, `syncSnapGrid()` culls to `cameras.main.worldView` + redraws each frame from `GameScene.update()`, cleared/hidden on mode exit, torn down in `reset()`/`destroy()`). New `COLORS.snapGrid` + `BUILD_DIM_COLOR/ALPHA/MS` config consts. Demolish shows neither (dim gates on `buildMode`, grid on `buildManager.buildMode`; demolish never sets it). typecheck clean, 996 unit pass, smoke canary pass. Deviation: added 3 `BUILD_DIM_*` config consts beyond the named `snapGrid` (matches config-driven vignette convention).
   - Reuse the existing `buildMode` boolean as the trigger (entering build = Blueprint Mode), emitting
     the already-wired `build:modeChanged`; add only the visual surface, matching the ad-hoc mode
     precedent (`GameScene.ts:1647-1658`). Preserve build↔demolish mutual exclusion.

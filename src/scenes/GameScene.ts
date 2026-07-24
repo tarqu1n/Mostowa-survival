@@ -1083,6 +1083,7 @@ export class GameScene extends Phaser.Scene {
   override update(_time: number, delta: number): void {
     this.harvestSwing = null; // re-set by runHarvest only while actually harvesting in place
     this.taskGlowRenderer.syncGlowTransforms(); // keep queued-tree halos locked to their (possibly animating) trees
+    this.buildManager.syncSnapGrid(); // redraw/hide the Blueprint-Mode snap grid against the moving camera view (plan 050 Step 4)
 
     // Player is collapsing: freeze the world on the death anim (which advances on its own via Phaser's
     // anim system) until the scheduled scene.restart() fires. No clock/hunger tick, no input, no AI —

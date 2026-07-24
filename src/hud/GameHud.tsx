@@ -8,6 +8,9 @@ import {
   HUNGER_VIGNETTE_COLOR,
   HUNGER_VIGNETTE_MAX_ALPHA,
   HUNGER_LOW_FRACTION,
+  BUILD_DIM_COLOR,
+  BUILD_DIM_ALPHA,
+  BUILD_DIM_MS,
 } from '@/config';
 import { useCanvasRect } from './hooks/useCanvasRect';
 import type { CanvasRect } from './hooks/useCanvasRect';
@@ -59,6 +62,7 @@ export function GameHud() {
 
   return (
     <div className="hud-root" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      <BuildDim rect={rect} />
       <Vignettes rect={rect} />
 
       <div
@@ -184,6 +188,34 @@ function Overlays() {
       />
       <DevMenu />
     </>
+  );
+}
+
+/**
+ * Blueprint-Mode dim (plan 050 Step 4) — a flat full-canvas dark wash faded in while build mode is
+ * active, so the world recedes and attention falls on placement (paired with the Phaser snap grid).
+ * Gated purely on the store's `buildMode` flag, which the bridge mirrors from `build:modeChanged`;
+ * demolish mode never sets it (build↔demolish are mutually exclusive in GameScene), so demolish
+ * shows NEITHER this dim nor the grid. Covers the live canvas rect (a screen effect, so NOT inside
+ * the design-scaled layer) and is always click-through — taps fall straight through to the world.
+ */
+function BuildDim({ rect }: { rect: CanvasRect }) {
+  const buildMode = useHudStore((s) => s.buildMode);
+  return (
+    <div
+      data-testid="hud-build-dim"
+      style={{
+        position: 'absolute',
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+        pointerEvents: 'none',
+        opacity: buildMode ? BUILD_DIM_ALPHA : 0,
+        transition: `opacity ${BUILD_DIM_MS}ms linear`,
+        background: cssHex(BUILD_DIM_COLOR),
+      }}
+    />
   );
 }
 

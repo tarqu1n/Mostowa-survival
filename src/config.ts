@@ -536,6 +536,16 @@ export const STARVE_DAMAGE_INTERVAL_MS = 2_000;
 export const HUNGER_LOW_FRACTION = 0.2;
 export const HUNGER_VIGNETTE_COLOR = 0xe0b020;
 export const HUNGER_VIGNETTE_MAX_ALPHA = 0.5;
+
+/**
+ * Blueprint Mode (plan 050 Step 4) full-canvas dim: a flat dark wash the HUD fades over the whole
+ * canvas while build mode is active, focusing attention on placement (paired with the Phaser snap
+ * grid). Alpha kept modest so the world + ghost stay legible underneath; `BUILD_DIM_MS` matches the
+ * vignette-style opacity transition so it eases in/out rather than snapping.
+ */
+export const BUILD_DIM_COLOR = 0x04060e; // near-black, matches the night light-layer tint
+export const BUILD_DIM_ALPHA = 0.32;
+export const BUILD_DIM_MS = 200;
 /**
  * Minimum gap between eats (ms). Eating any food starts this cooldown; a further eat is rejected until
  * it elapses, so you can't chug a whole stack in one frame (both a balance guard and the anti-spam the
@@ -696,6 +706,7 @@ export const COLORS = {
   ghostValid: 0x4caf50, // build ghost when a tile is placeable + affordable
   ghostInvalid: 0xb23b3b, // build ghost when blocked or unaffordable
   blueprint: 0x5a7a9a, // placed-but-unbuilt construction site (drawn translucent)
+  snapGrid: 0x8fb8e0, // Blueprint-Mode tile-snap grid overlay (plan 050 Step 4; drawn faint over the camera view while build mode is active)
   queued: 0xffd500, // outline / marker for targets currently in the worker's task queue
   night: 0x04060e, // near-black night light-layer tint (plan 039 Step 2: full dark that conceals; a faint blue, not clinical black)
   fireLight: 0xffb066, // warm campfire glow tint (later step: light/reveal radius rendering)

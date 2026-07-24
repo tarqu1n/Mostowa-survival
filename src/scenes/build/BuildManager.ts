@@ -11,6 +11,10 @@ import type { BuildSite, FacingSpec } from '../../entities/types';
 import type { CharacterSprite } from '../../entities/Character';
 import type { GameScene } from '../GameScene';
 
+/** Opacity of the Blueprint-Mode snap-grid lines (plan 050 Step 4) — faint, so the grid reads as a
+ *  placement aid over the dimmed world without competing with the ghost or the blueprints. */
+const SNAP_GRID_ALPHA = 0.22;
+
 /**
  * Narrow scene state {@link BuildManager} needs but doesn't own — GameScene supplies these as
  * closures over its own private fields/methods at construction (plan 013 Step 6 coupling rules:
@@ -80,6 +84,11 @@ export class BuildManager {
   /** The pre-placement placement cursor — a real structure sprite (plan 050 Step 2) textured from the
    *  selected buildable's in-world art, oriented to {@link placeFacing}, tinted valid/invalid. */
   private readonly ghost: Phaser.GameObjects.Sprite;
+  /** Blueprint-Mode tile-snap grid (plan 050 Step 4) — a world-space Graphics redrawn each frame while
+   *  build mode is active ({@link syncSnapGrid}), spanning only the camera view so it stays aligned as
+   *  the camera follows the player; hidden/cleared on build-mode exit. Demolish never enters build mode,
+   *  so it shows no grid. */
+  private readonly snapGrid: Phaser.GameObjects.Graphics;
   private readonly occupied = new Set<string>();
   private sites: BuildSite[] = [];
   private readonly siteTiles = new Set<string>();
@@ -107,6 +116,10 @@ export class BuildManager {
     // then applyGhostAppearance() points it at the default selection (the wall, facing down).
     this.ghost = scene.add.sprite(0, 0, '__WHITE').setVisible(false).setDepth(6);
     this.applyGhostAppearance();
+
+    // Snap grid — sits just under the ghost (depth 6) and above the world/blueprints, hidden until
+    // build mode. Redrawn per-frame by syncSnapGrid() (the scene's update() drives it).
+    this.snapGrid = scene.add.graphics().setDepth(5).setVisible(false);
 
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
@@ -374,6 +387,37 @@ export class BuildManager {
     this.scene.game.events.emit('build:modeChanged', this.buildMode);
   }
 
+  /**
+   * Redraw the Blueprint-Mode snap grid — called each frame by the scene's `update()` (plan 050
+   * Step 4). Off build mode: clear + hide (a one-shot no-op once already hidden). In build mode: redraw
+   * tile-boundary lines spanning ONLY the camera's current world view (culled to the viewport), snapped
+   * to `TILE_SIZE` so they line up with the ghost's {@link snapToTileCenter} placement. Redrawing every
+   * frame keeps it aligned as the camera follows the player / zooms — the same "sync to a moving
+   * camera-space transform each frame" shape TaskGlowRenderer.syncGlowTransforms uses. The camera is
+   * bounded to the map (`cameras.main.setBounds`), so the view never spills past the buildable area and
+   * no extra map-extent clamp is needed.
+   */
+  syncSnapGrid(): void {
+    if (!this.buildMode) {
+      if (this.snapGrid.visible) this.snapGrid.clear().setVisible(false);
+      return;
+    }
+    const view = this.scene.cameras.main.worldView;
+    const startX = Math.floor(view.x / TILE_SIZE) * TILE_SIZE;
+    const startY = Math.floor(view.y / TILE_SIZE) * TILE_SIZE;
+    this.snapGrid.clear().lineStyle(1, COLORS.snapGrid, SNAP_GRID_ALPHA).beginPath();
+    for (let x = startX; x <= view.right; x += TILE_SIZE) {
+      this.snapGrid.moveTo(x, view.y);
+      this.snapGrid.lineTo(x, view.bottom);
+    }
+    for (let y = startY; y <= view.bottom; y += TILE_SIZE) {
+      this.snapGrid.moveTo(view.x, y);
+      this.snapGrid.lineTo(view.right, y);
+    }
+    this.snapGrid.strokePath();
+    this.snapGrid.setVisible(true);
+  }
+
   // --- Reset / teardown --------------------------------------------------------
 
   /** Drop every placed site's GameObjects + this run's build-mode/occupancy state — mirrors what a
@@ -394,6 +438,7 @@ export class BuildManager {
     this.selectedBuildableId = 'wall'; // don't leak a prior campfire selection into a fresh scenario
     this.placeFacing = 'down'; // nor a prior rotate facing (a fresh scenario places walls front-facing)
     this.applyGhostAppearance(); // re-texture the (persisting) ghost back to the reset wall selection
+    this.snapGrid.clear().setVisible(false); // buildMode is now false — drop the grid immediately too
   }
 
   /**
@@ -412,5 +457,6 @@ export class BuildManager {
    */
   private destroy(): void {
     this.ghost.destroy();
+    this.snapGrid.destroy(); // a plain Graphics (no physics body) — safe to drop the stale ref, like the ghost
   }
 }
